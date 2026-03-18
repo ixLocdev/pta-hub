@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# OS files
+.DS_Store
+
+# Build output
+dist/
+build/
+.next/
+.nuxt/
+.svelte-kit/
+
+# Logs
+*.log
+
+# Cache
+.cache/
+.turbo/
+
+# IDE settings
+.vscode/
+.idea/
+.cursor/
+
+# Database
+*.sqlite
+
+# Deploy cache
+.vercel/
+.netlify/
