@@ -174,6 +174,11 @@ class PTK_Search_Engine {
             }
         }
 
+        // Filter by role-based access before sorting.
+        if ( class_exists( 'PTK_Role_Access' ) ) {
+            $scored = PTK_Role_Access::filter_search_results( $scored );
+        }
+
         // Sort by score descending.
         usort( $scored, function( $a, $b ) {
             return $b['score'] - $a['score'];

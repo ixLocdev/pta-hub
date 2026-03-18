@@ -42,6 +42,14 @@ class PTK_Admin_Helpers {
             'default'           => true,
             'sanitize_callback' => 'rest_sanitize_boolean',
         ) );
+
+        if ( is_multisite() ) {
+            register_setting( 'ptk_settings', 'ptk_enable_network_sharing', array(
+                'type'              => 'boolean',
+                'default'           => false,
+                'sanitize_callback' => 'rest_sanitize_boolean',
+            ) );
+        }
     }
 
     /**
@@ -98,6 +106,22 @@ class PTK_Admin_Helpers {
                             <p class="description">
                                 The importer is hidden automatically after the first import. Enable this to show it again
                                 (e.g., if you want to re-import on a fresh site).
+                            </p>
+                        </td>
+                    </tr>
+                    <?php endif; ?>
+                    <?php if ( is_multisite() && is_main_site() ) : ?>
+                    <tr>
+                        <th scope="row">Network Sharing</th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="ptk_enable_network_sharing" value="1"
+                                    <?php checked( get_option( 'ptk_enable_network_sharing', false ) ); ?>>
+                                Enable sharing knowledge entries to all school sites
+                            </label>
+                            <p class="description">
+                                When enabled, you can mark individual entries to be shared across all sites in
+                                the network. Shared entries appear on school sites automatically and stay in sync.
                             </p>
                         </td>
                     </tr>
@@ -272,11 +296,13 @@ class PTK_Admin_Helpers {
      */
     public static function custom_columns( $columns ) {
         $new_columns = array();
-        $new_columns['cb']       = $columns['cb'];
-        $new_columns['title']    = $columns['title'];
-        $new_columns['category'] = 'Category';
-        $new_columns['ptk_tags'] = 'Tags';
-        $new_columns['date']     = $columns['date'];
+        $new_columns['cb']             = $columns['cb'];
+        $new_columns['title']          = $columns['title'];
+        $new_columns['category']       = 'Category';
+        $new_columns['ptk_tags']       = 'Tags';
+        $new_columns['ptk_visibility'] = 'Visibility';
+        $new_columns['ptk_feedback']   = 'Feedback';
+        $new_columns['date']           = $columns['date'];
         return $new_columns;
     }
 
@@ -302,6 +328,26 @@ class PTK_Admin_Helpers {
                     }
                 } else {
                     echo '<span class="ptk-muted">No tags</span>';
+                }
+                break;
+
+            case 'ptk_visibility':
+                if ( class_exists( 'PTK_Role_Access' ) ) {
+                    PTK_Role_Access::render_admin_column( $column, $post_id );
+                } else {
+                    echo '<span class="ptk-muted">Everyone</span>';
+                }
+                break;
+
+            case 'ptk_feedback':
+                if ( class_exists( 'PTK_Feedback' ) ) {
+                    $counts = PTK_Feedback::get_feedback_counts( $post_id );
+                    if ( $counts['helpful'] > 0 || $counts['not_helpful'] > 0 ) {
+                        echo '<span style="color:#059669;" title="Helpful">&#128077; ' . esc_html( $counts['helpful'] ) . '</span> ';
+                        echo '<span style="color:#dc2626;" title="Not helpful">&#128078; ' . esc_html( $counts['not_helpful'] ) . '</span>';
+                    } else {
+                        echo '<span class="ptk-muted">No votes</span>';
+                    }
                 }
                 break;
         }

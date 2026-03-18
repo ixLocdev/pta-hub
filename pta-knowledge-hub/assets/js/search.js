@@ -541,4 +541,17 @@
         fetch(ptkSearch.ajaxUrl, { method: "POST", body: body }).catch(function () {});
     }
 
+    // --- What's New: Dismiss Button ---
+    var whatsNewEl = document.getElementById("ptk-whats-new");
+    var whatsNewDismiss = document.getElementById("ptk-whats-new-dismiss");
+    if (whatsNewEl && whatsNewDismiss) {
+        whatsNewDismiss.addEventListener("click", function () {
+            whatsNewEl.classList.add("ptk-whats-new-hiding");
+            // Remove from DOM after animation.
+            setTimeout(function () {
+                whatsNewEl.remove();
+            }, 400);
+        });
+    }
+
 })();

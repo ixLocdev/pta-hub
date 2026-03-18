@@ -13,6 +13,37 @@ if ( ! defined( 'ABSPATH' ) ) {
 ?>
 <div class="ptk-search-wrap" id="ptk-search-app">
 
+    <!-- What's New Section -->
+    <?php if ( ! empty( $new_entries ) ) : ?>
+    <div class="ptk-whats-new" id="ptk-whats-new">
+        <div class="ptk-whats-new-header">
+            <h3 class="ptk-whats-new-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                What's New
+                <span class="ptk-whats-new-count"><?php echo esc_html( count( $new_entries ) ); ?></span>
+            </h3>
+            <button class="ptk-whats-new-dismiss" id="ptk-whats-new-dismiss" aria-label="Dismiss what's new">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="ptk-whats-new-list">
+            <?php foreach ( $new_entries as $entry ) : ?>
+                <a href="<?php echo esc_url( get_permalink( $entry['post']->ID ) ); ?>" class="ptk-whats-new-item">
+                    <span class="ptk-whats-new-badge ptk-whats-new-badge-<?php echo esc_attr( $entry['type'] ); ?>">
+                        <?php echo 'new' === $entry['type'] ? 'New' : 'Updated'; ?>
+                    </span>
+                    <span class="ptk-whats-new-item-title"><?php echo esc_html( $entry['post']->post_title ); ?></span>
+                    <?php if ( ! empty( $entry['category'] ) ) : ?>
+                        <span class="ptk-whats-new-item-cat"><?php echo esc_html( $entry['category'] ); ?></span>
+                    <?php endif; ?>
+                </a>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <!-- Hero Search Bar -->
     <div class="ptk-hero">
         <h2 class="ptk-hero-title">PTA Knowledge Base</h2>

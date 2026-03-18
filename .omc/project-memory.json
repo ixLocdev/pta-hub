@@ -1,0 +1,182 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1773804910813,
+  "projectRoot": "/Users/lucas/apps/PTA HUB",
+  "techStack": {
+    "languages": [],
+    "frameworks": [],
+    "packageManager": null,
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "pta-knowledge-hub": {
+      "path": "pta-knowledge-hub",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1773804910802,
+      "keyFiles": [
+        "pta-knowledge-hub.php",
+        "uninstall.php"
+      ]
+    },
+    "pta-knowledge-hub/assets": {
+      "path": "pta-knowledge-hub/assets",
+      "purpose": "Static assets",
+      "fileCount": 0,
+      "lastAccessed": 1773804910802,
+      "keyFiles": []
+    },
+    "pta-knowledge-hub/data": {
+      "path": "pta-knowledge-hub/data",
+      "purpose": "Data files",
+      "fileCount": 1,
+      "lastAccessed": 1773804910802,
+      "keyFiles": [
+        "synonyms.json"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "pta-knowledge-hub/pta-knowledge-hub.php",
+      "accessCount": 6,
+      "lastAccessed": 1773805803643,
+      "type": "file"
+    },
+    {
+      "path": "pta-knowledge-hub/templates/single-pta_knowledge.php",
+      "accessCount": 5,
+      "lastAccessed": 1773805694985,
+      "type": "file"
+    },
+    {
+      "path": "pta-knowledge-hub/includes/class-admin-helpers.php",
+      "accessCount": 5,
+      "lastAccessed": 1773805871222,
+      "type": "file"
+    },
+    {
+      "path": "pta-knowledge-hub/includes/class-shortcode.php",
+      "accessCount": 4,
+      "lastAccessed": 1773806917360,
+      "type": "file"
+    },
+    {
+      "path": "pta-knowledge-hub/includes/class-analytics.php",
+      "accessCount": 3,
+      "lastAccessed": 1773805402289,
+      "type": "file"
+    },
+    {
+      "path": "pta-knowledge-hub/includes/class-meta-fields.php",
+      "accessCount": 3,
+      "lastAccessed": 1773805451319,
+      "type": "file"
+    },
+    {
+      "path": "pta-knowledge-hub/assets/css/search-page.css",
+      "accessCount": 3,
+      "lastAccessed": 1773805748233,
+      "type": "file"
+    },
+    {
+      "path": "pta-knowledge-hub/assets/js/search.js",
+      "accessCount": 3,
+      "lastAccessed": 1773805767189,
+      "type": "file"
+    },
+    {
+      "path": "pta-knowledge-hub",
+      "accessCount": 2,
+      "lastAccessed": 1773805408326,
+      "type": "directory"
+    },
+    {
+      "path": "pta-knowledge-hub/includes/class-post-type.php",
+      "accessCount": 2,
+      "lastAccessed": 1773805450711,
+      "type": "file"
+    },
+    {
+      "path": "pta-knowledge-hub/assets/css/single.css",
+      "accessCount": 2,
+      "lastAccessed": 1773805647819,
+      "type": "file"
+    },
+    {
+      "path": "pta-knowledge-hub/templates/search-page.php",
+      "accessCount": 2,
+      "lastAccessed": 1773805707165,
+      "type": "file"
+    },
+    {
+      "path": "pta-knowledge-hub/includes/class-search-engine.php",
+      "accessCount": 2,
+      "lastAccessed": 1773805810187,
+      "type": "file"
+    },
+    {
+      "path": "pta-knowledge-hub/uninstall.php",
+      "accessCount": 2,
+      "lastAccessed": 1773805826794,
+      "type": "file"
+    },
+    {
+      "path": "",
+      "accessCount": 1,
+      "lastAccessed": 1773805447277,
+      "type": "directory"
+    },
+    {
+      "path": "pta-knowledge-hub/includes/class-notifications.php",
+      "accessCount": 1,
+      "lastAccessed": 1773805918419,
+      "type": "file"
+    },
+    {
+      "path": "pta-knowledge-hub/includes/class-feedback.php",
+      "accessCount": 1,
+      "lastAccessed": 1773805959467,
+      "type": "file"
+    },
+    {
+      "path": "pta-knowledge-hub/includes/class-role-access.php",
+      "accessCount": 1,
+      "lastAccessed": 1773806002451,
+      "type": "file"
+    },
+    {
+      "path": "pta-knowledge-hub/assets/js/feedback.js",
+      "accessCount": 1,
+      "lastAccessed": 1773806023518,
+      "type": "file"
+    },
+    {
+      "path": "pta-knowledge-hub/includes/class-multisite.php",
+      "accessCount": 1,
+      "lastAccessed": 1773806113064,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

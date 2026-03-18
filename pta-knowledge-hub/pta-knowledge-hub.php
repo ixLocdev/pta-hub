@@ -3,7 +3,7 @@
  * Plugin Name: PTA Knowledge Hub
  * Plugin URI:  https://github.com/your-pta/knowledge-hub
  * Description: A searchable knowledge base for your PTA. Volunteers add content through WordPress, parents and members find answers instantly via a smart search bar.
- * Version:     1.2.0
+ * Version:     2.0.0
  * Author:      Lucas Deichl
  * License:     GPL-2.0-or-later
  * Text Domain: pta-knowledge-hub
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'PTK_VERSION', '1.2.0' );
+define( 'PTK_VERSION', '2.0.0' );
 define( 'PTK_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PTK_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -31,6 +31,10 @@ require_once PTK_PLUGIN_DIR . 'includes/class-content-wizard.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-glossary-tooltips.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-glossary-page.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-content-importer.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-feedback.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-notifications.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-role-access.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-multisite.php';
 
 /**
  * Check whether the current visitor must log in to access the knowledge base.
@@ -91,6 +95,10 @@ function ptk_init() {
     PTK_Glossary_Tooltips::init();
     PTK_Glossary_Page::init();
     PTK_Content_Importer::init();
+    PTK_Feedback::init();
+    PTK_Notifications::init();
+    PTK_Role_Access::init();
+    PTK_Multisite::init();
 }
 add_action( 'plugins_loaded', 'ptk_init' );
 
@@ -167,8 +175,9 @@ function ptk_activate() {
         ) );
     }
 
-    // Create analytics table.
+    // Create database tables.
     PTK_Analytics::create_table();
+    PTK_Feedback::create_table();
 
     // Clear search cache so stale results don't persist across updates.
     PTK_Search_Engine::invalidate_cache();

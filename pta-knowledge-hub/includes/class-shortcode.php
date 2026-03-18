@@ -35,8 +35,18 @@ class PTK_Shortcode {
             'hide_empty' => true,
         ) );
 
+        // Get "What's New" entries for the notification section.
+        $new_entries = array();
+        if ( class_exists( 'PTK_Notifications' ) ) {
+            $new_entries = PTK_Notifications::get_new_entries( 5 );
+        }
+
         ob_start();
         include PTK_PLUGIN_DIR . 'templates/search-page.php';
+
+        // Don't update last visit here — wait until user dismisses the section.
+        // This prevents "I clicked one link, came back, and they all vanished."
+
         return ob_get_clean();
     }
 
