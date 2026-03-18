@@ -19,15 +19,15 @@ class PTK_Post_Type {
      */
     public static function register_post_type() {
         $labels = array(
-            'name'                  => 'PTA Knowledge',
-            'singular_name'         => 'Knowledge Entry',
-            'menu_name'             => 'PTA Knowledge',
+            'name'                  => 'PTA Hub',
+            'singular_name'         => 'Hub Entry',
+            'menu_name'             => 'PTA Hub',
             'add_new'               => 'Add New',
             'add_new_item'          => 'Add New Knowledge Entry',
             'edit_item'             => 'Edit Knowledge Entry',
             'new_item'              => 'New Knowledge Entry',
             'view_item'             => 'View Knowledge Entry',
-            'search_items'          => 'Search Knowledge Base',
+            'search_items'          => 'Search PTA Hub',
             'not_found'             => 'No knowledge entries found.',
             'not_found_in_trash'    => 'No knowledge entries found in Trash.',
             'all_items'             => 'All Entries',

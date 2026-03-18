@@ -13,40 +13,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 ?>
 <div class="ptk-search-wrap" id="ptk-search-app">
 
-    <!-- What's New Section -->
-    <?php if ( ! empty( $new_entries ) ) : ?>
-    <div class="ptk-whats-new" id="ptk-whats-new">
-        <div class="ptk-whats-new-header">
-            <h3 class="ptk-whats-new-title">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                What's New
-                <span class="ptk-whats-new-count"><?php echo esc_html( count( $new_entries ) ); ?></span>
-            </h3>
-            <button class="ptk-whats-new-dismiss" id="ptk-whats-new-dismiss" aria-label="Dismiss what's new">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-            </button>
-        </div>
-        <div class="ptk-whats-new-list">
-            <?php foreach ( $new_entries as $entry ) : ?>
-                <a href="<?php echo esc_url( get_permalink( $entry['post']->ID ) ); ?>" class="ptk-whats-new-item">
-                    <span class="ptk-whats-new-badge ptk-whats-new-badge-<?php echo esc_attr( $entry['type'] ); ?>">
-                        <?php echo 'new' === $entry['type'] ? 'New' : 'Updated'; ?>
-                    </span>
-                    <span class="ptk-whats-new-item-title"><?php echo esc_html( $entry['post']->post_title ); ?></span>
-                    <?php if ( ! empty( $entry['category'] ) ) : ?>
-                        <span class="ptk-whats-new-item-cat"><?php echo esc_html( $entry['category'] ); ?></span>
-                    <?php endif; ?>
-                </a>
-            <?php endforeach; ?>
-        </div>
-    </div>
-    <?php endif; ?>
-
     <!-- Hero Search Bar -->
     <div class="ptk-hero">
-        <h2 class="ptk-hero-title">PTA Knowledge Base</h2>
+        <h2 class="ptk-hero-title">PTA Hub</h2>
         <p class="ptk-hero-subtitle">Find answers, guides, and resources instantly.</p>
         <div class="ptk-search-box">
             <svg class="ptk-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -57,9 +26,9 @@ if ( ! defined( 'ABSPATH' ) ) {
                 type="text"
                 id="ptk-search-input"
                 class="ptk-search-input"
-                placeholder="Search the PTA knowledge base..."
+                placeholder="Search the PTA Hub..."
                 autocomplete="off"
-                aria-label="Search the PTA knowledge base"
+                aria-label="Search the PTA Hub"
             />
             <button id="ptk-search-clear" class="ptk-search-clear" aria-label="Clear search" style="display:none;">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -79,6 +48,45 @@ if ( ! defined( 'ABSPATH' ) ) {
                 <span class="ptk-filter-count"><?php echo esc_html( $cat->count ); ?></span>
             </button>
         <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+
+    <!-- Recently Added (always shows latest 4 entries) -->
+    <?php
+    $recent_posts = get_posts( array(
+        'post_type'      => 'pta_knowledge',
+        'post_status'    => 'publish',
+        'posts_per_page' => 4,
+        'orderby'        => 'date',
+        'order'          => 'DESC',
+    ) );
+    ?>
+    <?php if ( ! empty( $recent_posts ) ) : ?>
+    <div class="ptk-recent-section" id="ptk-recent-section">
+        <p class="ptk-recent-label">Recently Added</p>
+        <div class="ptk-recent-grid">
+            <?php foreach ( $recent_posts as $rp ) :
+                $rp_cats = wp_get_post_terms( $rp->ID, 'knowledge_category', array( 'fields' => 'names' ) );
+                $rp_cat  = ( ! is_wp_error( $rp_cats ) && ! empty( $rp_cats ) ) ? $rp_cats[0] : '';
+                $rp_cats_slugs = wp_get_post_terms( $rp->ID, 'knowledge_category', array( 'fields' => 'slugs' ) );
+                $rp_cat_slug   = ! empty( $rp_cats_slugs ) ? $rp_cats_slugs[0] : '';
+                $cat_css_map = array(
+                    'how-to-guide' => 'howto', 'event-playbook' => 'event', 'faq' => 'faq',
+                    'resource' => 'resource', 'glossary' => 'glossary', 'checklist' => 'checklist', 'policy' => 'policy',
+                );
+                $cat_class = isset( $cat_css_map[ $rp_cat_slug ] ) ? 'ptk-card-' . $cat_css_map[ $rp_cat_slug ] : '';
+            ?>
+                <div class="ptk-card <?php echo esc_attr( $cat_class ); ?>">
+                    <div class="ptk-card-body">
+                        <a href="<?php echo esc_url( get_permalink( $rp->ID ) ); ?>" class="ptk-card-title-link">
+                            <h3 class="ptk-card-title"><?php echo esc_html( $rp->post_title ); ?></h3>
+                        </a>
+                        <p class="ptk-card-excerpt"><?php echo esc_html( $rp->post_excerpt ? $rp->post_excerpt : wp_trim_words( wp_strip_all_tags( $rp->post_content ), 15 ) ); ?></p>
+                        <a href="<?php echo esc_url( get_permalink( $rp->ID ) ); ?>" class="ptk-card-link" aria-hidden="true" tabindex="-1">View &rarr;</a>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
     </div>
     <?php endif; ?>
 

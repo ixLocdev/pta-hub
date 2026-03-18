@@ -67,9 +67,58 @@ class PTK_Search_Engine {
         add_action( 'wp_ajax_pta_search', array( __CLASS__, 'handle_search' ) );
         add_action( 'wp_ajax_nopriv_pta_search', array( __CLASS__, 'handle_search' ) );
 
+        // Debug endpoint — remove after troubleshooting.
+        add_action( 'wp_ajax_pta_debug_terms', array( __CLASS__, 'debug_terms' ) );
+        add_action( 'admin_init', array( __CLASS__, 'maybe_debug_terms' ) );
+
         // Invalidate search cache when knowledge posts change.
         add_action( 'save_post_pta_knowledge', array( __CLASS__, 'invalidate_cache' ) );
         add_action( 'delete_post', array( __CLASS__, 'invalidate_cache_on_delete' ) );
+        // Also invalidate when taxonomy terms are changed on any post.
+        add_action( 'set_object_terms', array( __CLASS__, 'invalidate_cache_on_term_change' ), 10, 4 );
+    }
+
+    /**
+     * Hook into admin_init — if ?ptk_debug_terms=1 is in the URL, output debug info.
+     * Access via: /wp-admin/?ptk_debug_terms=1
+     * Remove after troubleshooting.
+     */
+    public static function maybe_debug_terms() {
+        if ( isset( $_GET['ptk_debug_terms'] ) && '1' === $_GET['ptk_debug_terms'] ) {
+            self::debug_terms();
+        }
+    }
+
+    /**
+     * Debug endpoint: shows all taxonomies and terms for every pta_knowledge post.
+     * Remove after troubleshooting.
+     */
+    public static function debug_terms() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( 'Admin only.' );
+        }
+
+        $posts = get_posts( array(
+            'post_type'      => 'pta_knowledge',
+            'post_status'    => 'publish',
+            'posts_per_page' => 50,
+        ) );
+
+        $debug = array();
+        foreach ( $posts as $post ) {
+            $kc = wp_get_post_terms( $post->ID, 'knowledge_category', array( 'fields' => 'all' ) );
+            $cat = wp_get_post_terms( $post->ID, 'category', array( 'fields' => 'all' ) );
+            $debug[] = array(
+                'id'                  => $post->ID,
+                'title'               => $post->post_title,
+                'knowledge_category'  => is_wp_error( $kc ) ? 'ERROR: ' . $kc->get_error_message() : array_map( function( $t ) { return $t->slug . ' (' . $t->name . ')'; }, $kc ),
+                'category'            => is_wp_error( $cat ) ? 'ERROR: ' . $cat->get_error_message() : array_map( function( $t ) { return $t->slug . ' (' . $t->name . ')'; }, $cat ),
+            );
+        }
+
+        header( 'Content-Type: application/json' );
+        echo json_encode( $debug, JSON_PRETTY_PRINT );
+        exit;
     }
 
     /**
@@ -90,6 +139,17 @@ class PTK_Search_Engine {
     public static function invalidate_cache_on_delete( $post_id ) {
         if ( 'pta_knowledge' === get_post_type( $post_id ) ) {
             self::invalidate_cache();
+        }
+    }
+
+    /**
+     * Clear cache when taxonomy terms change on a pta_knowledge post.
+     */
+    public static function invalidate_cache_on_term_change( $object_id, $terms, $tt_ids, $taxonomy ) {
+        if ( in_array( $taxonomy, array( 'knowledge_category', 'post_tag' ), true ) ) {
+            if ( 'pta_knowledge' === get_post_type( $object_id ) ) {
+                self::invalidate_cache();
+            }
         }
     }
 
@@ -262,21 +322,21 @@ class PTK_Search_Engine {
     private static function batch_load_terms( $post_ids ) {
         $map = array();
         foreach ( $post_ids as $id ) {
-            $map[ $id ] = array(
+            $map[ (int) $id ] = array(
                 'categories' => array(),
                 'cat_slugs'  => array(),
                 'tag_names'  => array(),
             );
         }
 
-        // Batch category load.
-        $cat_terms = wp_get_object_terms( $post_ids, 'knowledge_category' );
-        if ( ! is_wp_error( $cat_terms ) ) {
-            foreach ( $cat_terms as $term ) {
-                $oid = $term->object_id;
-                if ( isset( $map[ $oid ] ) ) {
-                    $map[ $oid ]['categories'][] = $term;
-                    $map[ $oid ]['cat_slugs'][]  = $term->slug;
+        // Batch category load — query per post to guarantee correct mapping.
+        foreach ( $post_ids as $pid ) {
+            $pid = (int) $pid;
+            $terms = wp_get_post_terms( $pid, 'knowledge_category', array( 'fields' => 'all' ) );
+            if ( ! is_wp_error( $terms ) && ! empty( $terms ) ) {
+                foreach ( $terms as $term ) {
+                    $map[ $pid ]['categories'][] = $term;
+                    $map[ $pid ]['cat_slugs'][]  = $term->slug;
                 }
             }
         }

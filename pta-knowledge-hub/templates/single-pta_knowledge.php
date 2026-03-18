@@ -31,7 +31,7 @@ if ( class_exists( 'PTK_Role_Access' ) ) {
             <div class="ptk-role-restricted">
                 <div class="ptk-role-restricted-icon">&#128274;</div>
                 <h2>Restricted Content</h2>
-                <p>This knowledge base entry is only available to certain roles. Contact your PTA administrator if you believe you should have access.</p>
+                <p>This entry is only available to certain roles. Contact your PTA administrator if you believe you should have access.</p>
             </div>
         </div>
         <?php
@@ -91,7 +91,7 @@ while ( have_posts() ) :
     <nav class="ptk-single-nav" aria-label="Breadcrumb">
         <a href="<?php echo esc_url( home_url( '/' ) ); ?>">Home</a>
         <span class="ptk-sep">/</span>
-        <a href="<?php echo esc_url( home_url( '/knowledge-base' ) ); ?>">Knowledge Base</a>
+        <a href="<?php echo esc_url( home_url( '/knowledge-base' ) ); ?>">PTA Hub</a>
         <?php if ( $cat_name ) : ?>
             <span class="ptk-sep">/</span>
             <span><?php echo esc_html( $cat_name ); ?></span>
@@ -201,6 +201,11 @@ while ( have_posts() ) :
             </div>
         </div>
     <?php endif; ?>
+
+    <!-- Print-only footer (hidden on screen, visible in print) -->
+    <div class="ptk-print-footer">
+        Internal documentation for Montclair PTA District. For authorized use only. Do not distribute.
+    </div>
 
 </div>
 

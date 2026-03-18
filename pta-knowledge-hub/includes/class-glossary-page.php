@@ -126,7 +126,7 @@ class PTK_Glossary_Page {
             <!-- Back to knowledge base link -->
             <div class="ptk-glossary-footer">
                 <a href="<?php echo esc_url( home_url( '/knowledge-base' ) ); ?>" class="ptk-glossary-back-link">
-                    &larr; Back to Knowledge Base
+                    &larr; Back to PTA Hub
                 </a>
             </div>
         </div>
@@ -186,7 +186,7 @@ class PTK_Glossary_Page {
                 </div>
                 <h2>No Glossary Terms Yet</h2>
                 <p>Glossary terms will appear here once they're created. Use the Content Wizard to add your first term!</p>
-                <a href="<?php echo esc_url( home_url( '/knowledge-base' ) ); ?>" class="ptk-glossary-back-link">&larr; Back to Knowledge Base</a>
+                <a href="<?php echo esc_url( home_url( '/knowledge-base' ) ); ?>" class="ptk-glossary-back-link">&larr; Back to PTA Hub</a>
             </div>
         </div>
         <?php

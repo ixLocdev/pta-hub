@@ -26,8 +26,8 @@ class PTK_Content_Wizard {
     }
 
     /**
-     * Remove the default "Add New Knowledge Entry" submenu and move
-     * "Create Entry" to the second position (right after "All Entries").
+     * Make the Content Wizard the default landing page for PTA Hub.
+     * Reorder submenu: Wizard first, then All Entries, then the rest.
      */
     public static function remove_default_add_new() {
         global $submenu;
@@ -37,36 +37,35 @@ class PTK_Content_Wizard {
         // Remove the default "Add New" link.
         remove_submenu_page( $parent, 'post-new.php?post_type=pta_knowledge' );
 
-        // Move "Create Entry" (the wizard) to position 1 (right after "All Entries" at 0).
+        // Make wizard the first item so clicking "PTA Hub" goes to it.
         if ( isset( $submenu[ $parent ] ) ) {
-            $wizard_key  = null;
-            $wizard_item = null;
+            $wizard_item   = null;
+            $all_entries   = null;
+            $others        = array();
 
             foreach ( $submenu[ $parent ] as $key => $item ) {
                 if ( isset( $item[2] ) && 'ptk-content-wizard' === $item[2] ) {
-                    $wizard_key  = $key;
                     $wizard_item = $item;
-                    break;
+                } elseif ( isset( $item[2] ) && 'edit.php?post_type=pta_knowledge' === $item[2] ) {
+                    $all_entries = $item;
+                } else {
+                    $others[] = $item;
                 }
             }
 
-            if ( null !== $wizard_key ) {
-                unset( $submenu[ $parent ][ $wizard_key ] );
-                // Re-index: put "All Entries" first, then wizard, then the rest.
-                $reordered = array();
-                $inserted  = false;
-                foreach ( $submenu[ $parent ] as $item ) {
-                    $reordered[] = $item;
-                    if ( ! $inserted ) {
-                        $reordered[] = $wizard_item;
-                        $inserted    = true;
-                    }
-                }
-                if ( ! $inserted ) {
-                    $reordered[] = $wizard_item;
-                }
-                $submenu[ $parent ] = $reordered;
+            // Rebuild: Wizard first (becomes the default), then All Entries, then rest.
+            $reordered = array();
+            if ( $wizard_item ) {
+                $reordered[] = $wizard_item;
             }
+            if ( $all_entries ) {
+                $reordered[] = $all_entries;
+            }
+            foreach ( $others as $item ) {
+                $reordered[] = $item;
+            }
+
+            $submenu[ $parent ] = $reordered;
         }
     }
 

@@ -32,3 +32,10 @@ build/
 # Deploy cache
 .vercel/
 .netlify/
+
+# BuddyShelf local metadata
+.buddyshelf.json
+
+# AI and tool metadata
+.omc/
+.claude/

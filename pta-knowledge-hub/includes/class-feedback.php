@@ -195,7 +195,7 @@ class PTK_Feedback {
 
         wp_add_dashboard_widget(
             'ptk_feedback_overview',
-            'PTA Knowledge Hub — Content Feedback',
+            'PTA Hub — Content Feedback',
             array( __CLASS__, 'render_dashboard_widget' )
         );
     }

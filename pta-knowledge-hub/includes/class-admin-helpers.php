@@ -73,9 +73,15 @@ class PTK_Admin_Helpers {
         if ( ! current_user_can( 'manage_options' ) ) {
             wp_die( 'You do not have permission to view this page.' );
         }
+
+        // Handle cache clear.
+        if ( ! empty( $_POST['ptk_clear_search_cache'] ) && check_admin_referer( 'ptk_clear_cache', 'ptk_clear_cache_nonce' ) ) {
+            PTK_Search_Engine::invalidate_cache();
+            echo '<div class="notice notice-success is-dismissible"><p>Search cache cleared.</p></div>';
+        }
         ?>
         <div class="wrap">
-            <h1>PTA Knowledge Hub Settings</h1>
+            <h1>PTA Hub Settings</h1>
             <form method="post" action="options.php">
                 <?php settings_fields( 'ptk_settings' ); ?>
                 <table class="form-table" role="presentation">
@@ -85,11 +91,11 @@ class PTK_Admin_Helpers {
                             <label>
                                 <input type="checkbox" name="ptk_require_login" value="1"
                                     <?php checked( get_option( 'ptk_require_login', false ) ); ?>>
-                                Only logged-in users can view the knowledge base
+                                Only logged-in users can view the PTA Hub
                             </label>
                             <p class="description">
                                 When enabled, visitors who aren't logged in to WordPress will see a "please log in" message
-                                instead of the knowledge base content. Anyone with a WordPress account on your site can access it
+                                instead of the PTA Hub content. Anyone with a WordPress account on your site can access it
                                 &mdash; no special role needed.
                             </p>
                         </td>
@@ -128,6 +134,14 @@ class PTK_Admin_Helpers {
                     <?php endif; ?>
                 </table>
                 <?php submit_button(); ?>
+            </form>
+
+            <hr>
+            <h2>Maintenance</h2>
+            <form method="post">
+                <?php wp_nonce_field( 'ptk_clear_cache', 'ptk_clear_cache_nonce' ); ?>
+                <p>If search results show stale categories or outdated content, clear the cache.</p>
+                <button type="submit" name="ptk_clear_search_cache" class="button">Clear Search Cache</button>
             </form>
         </div>
         <?php

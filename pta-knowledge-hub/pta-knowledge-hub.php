@@ -3,7 +3,7 @@
  * Plugin Name: PTA Knowledge Hub
  * Plugin URI:  https://github.com/your-pta/knowledge-hub
  * Description: A searchable knowledge base for your PTA. Volunteers add content through WordPress, parents and members find answers instantly via a smart search bar.
- * Version:     2.0.0
+ * Version:     2.1.4
  * Author:      Lucas Deichl
  * License:     GPL-2.0-or-later
  * Text Domain: pta-knowledge-hub
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'PTK_VERSION', '2.0.0' );
+define( 'PTK_VERSION', '2.1.4' );
 define( 'PTK_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PTK_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -71,7 +71,7 @@ function ptk_check_access( $render_message = false ) {
         <div class="ptk-login-required">
             <div class="ptk-login-icon">&#128274;</div>
             <h2>Members Only</h2>
-            <p>This knowledge base is for PTA members and volunteers. Please log in with your WordPress account to view this content.</p>
+            <p>The PTA Hub is for PTA members and volunteers. Please log in with your WordPress account to view this content.</p>
             <a href="<?php echo esc_url( $login_url ); ?>" class="ptk-login-btn">Log In</a>
         </div>
         <?php
@@ -101,6 +101,19 @@ function ptk_init() {
     PTK_Multisite::init();
 }
 add_action( 'plugins_loaded', 'ptk_init' );
+
+/**
+ * Clear search cache when the plugin is updated to a new version.
+ * This catches updates that don't trigger the activation hook.
+ */
+function ptk_maybe_clear_cache_on_update() {
+    $stored_version = get_option( 'ptk_installed_version', '' );
+    if ( $stored_version !== PTK_VERSION ) {
+        PTK_Search_Engine::invalidate_cache();
+        update_option( 'ptk_installed_version', PTK_VERSION );
+    }
+}
+add_action( 'init', 'ptk_maybe_clear_cache_on_update' );
 
 /**
  * On activation: create default categories and a Knowledge Base page.
@@ -202,6 +215,19 @@ function ptk_single_template( $template ) {
     return $template;
 }
 add_filter( 'single_template', 'ptk_single_template' );
+
+/**
+ * Override the document title for knowledge entries.
+ * Shows "Entry Title | PTA Council" instead of "Entry Title | Site Name"
+ * so printed pages display the PTA branding, not the site owner's name.
+ */
+function ptk_document_title_parts( $title_parts ) {
+    if ( is_singular( 'pta_knowledge' ) ) {
+        $title_parts['site'] = 'PTA Council';
+    }
+    return $title_parts;
+}
+add_filter( 'document_title_parts', 'ptk_document_title_parts' );
 
 /**
  * Enqueue styles and scripts on single pta_knowledge pages.

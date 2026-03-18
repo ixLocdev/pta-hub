@@ -22,6 +22,7 @@
     var countEl      = document.getElementById("ptk-result-count");
     var emptyEl      = document.getElementById("ptk-empty");
     var filtersEl    = document.getElementById("ptk-category-filters");
+    var recentEl     = document.getElementById("ptk-recent-section");
 
     if (!input) return;
 
@@ -252,6 +253,7 @@
         suggestedEl.style.display = "none";
         emptyEl.style.display = "none";
         resultsEl.style.display = "block";
+        if (recentEl) recentEl.style.display = "none";
 
         logSearch(lastQuery, totalVisible);
     }
@@ -295,7 +297,7 @@
         return wrap;
     }
 
-    function buildCard(result) {
+    function buildCard(result, insideGroup) {
         var cat = result.category;
         var suffix = cssSuffix(cat);
         var isFaq = (cat === "faq");
@@ -310,18 +312,28 @@
             card.className = "ptk-card ptk-card-" + suffix;
         }
 
-        // Thumbnail
-        var thumb = buildThumb(result);
-        if (thumb) card.appendChild(thumb);
+        // Badge — only show when NOT inside a category group (the heading already tells you)
+        if (!insideGroup) {
+            if (isFaq) {
+                var header = el("div", "ptk-card-header");
+                header.appendChild(el("span", "ptk-card-badge ptk-badge-" + suffix, result.catName));
 
-        // Body
-        var body = el("div", "ptk-card-body");
-
-        if (isFaq) {
-            // Header with badge + copy button
+                var copyBtn = document.createElement("button");
+                copyBtn.className = "ptk-copy-btn";
+                copyBtn.setAttribute("data-copy-text", result.excerpt);
+                copyBtn.setAttribute("aria-label", "Copy answer");
+                copyBtn.appendChild(copySvg());
+                copyBtn.appendChild(el("span", "ptk-copy-label", "Copy"));
+                header.appendChild(copyBtn);
+                card.appendChild(header);
+            } else {
+                var badgeWrap = el("div", "ptk-card-badge-wrap");
+                badgeWrap.appendChild(el("span", "ptk-card-badge ptk-badge-" + suffix, result.catName));
+                card.appendChild(badgeWrap);
+            }
+        } else if (isFaq) {
+            // Inside group but FAQ still needs the copy button (without badge)
             var header = el("div", "ptk-card-header");
-            header.appendChild(el("span", "ptk-card-badge ptk-badge-" + suffix, result.catName));
-
             var copyBtn = document.createElement("button");
             copyBtn.className = "ptk-copy-btn";
             copyBtn.setAttribute("data-copy-text", result.excerpt);
@@ -329,8 +341,17 @@
             copyBtn.appendChild(copySvg());
             copyBtn.appendChild(el("span", "ptk-copy-label", "Copy"));
             header.appendChild(copyBtn);
-            body.appendChild(header);
+            card.appendChild(header);
+        }
 
+        // Thumbnail (after badge, before body)
+        var thumb = buildThumb(result);
+        if (thumb) card.appendChild(thumb);
+
+        // Body
+        var body = el("div", "ptk-card-body");
+
+        if (isFaq) {
             // Title as link
             var titleLink = document.createElement("a");
             titleLink.href = result.permalink;
@@ -338,7 +359,6 @@
             titleLink.appendChild(el("h3", "ptk-card-title", result.title));
             body.appendChild(titleLink);
         } else {
-            body.appendChild(el("span", "ptk-card-badge ptk-badge-" + suffix, result.catName));
             body.appendChild(el("h3", "ptk-card-title", result.title));
         }
 
@@ -391,12 +411,14 @@
     }
 
     function buildGroup(catSlug, items) {
+        var suffix = cssSuffix(catSlug);
         var groupDiv = el("div", "ptk-group");
-        groupDiv.appendChild(el("h3", "ptk-group-title", categoryNames[catSlug] || catSlug));
+        var heading = el("h3", "ptk-group-title ptk-group-title-" + suffix, categoryNames[catSlug] || catSlug);
+        groupDiv.appendChild(heading);
 
         var grid = el("div", "ptk-group-cards");
         items.forEach(function (result) {
-            grid.appendChild(buildCard(result));
+            grid.appendChild(buildCard(result, true));
         });
         groupDiv.appendChild(grid);
 
@@ -414,6 +436,8 @@
         loadingEl.style.display = "none";
         suggestedEl.style.display = "block";
         bestEl.style.display = "none";
+        if (recentEl) recentEl.style.display = "block";
+        if (filtersEl) filtersEl.style.display = "flex";
         if (errorEl) errorEl.style.display = "none";
         if (hintEl) hintEl.style.display = "none";
         while (groupsEl.firstChild) groupsEl.removeChild(groupsEl.firstChild);
@@ -424,6 +448,7 @@
         resultsEl.style.display = "none";
         emptyEl.style.display = "none";
         suggestedEl.style.display = "none";
+        if (recentEl) recentEl.style.display = "none";
     }
 
     function hideLoading() {
@@ -436,6 +461,7 @@
         emptyEl.style.display = "block";
         resultsEl.style.display = "none";
         suggestedEl.style.display = "none";
+        if (recentEl) recentEl.style.display = "none";
         if (errorEl) errorEl.style.display = "none";
         if (hintEl) {
             if (hint) {
@@ -521,6 +547,7 @@
         emptyEl.style.display = "none";
         resultsEl.style.display = "none";
         suggestedEl.style.display = "none";
+        if (recentEl) recentEl.style.display = "none";
     }
 
     /**
@@ -541,17 +568,5 @@
         fetch(ptkSearch.ajaxUrl, { method: "POST", body: body }).catch(function () {});
     }
 
-    // --- What's New: Dismiss Button ---
-    var whatsNewEl = document.getElementById("ptk-whats-new");
-    var whatsNewDismiss = document.getElementById("ptk-whats-new-dismiss");
-    if (whatsNewEl && whatsNewDismiss) {
-        whatsNewDismiss.addEventListener("click", function () {
-            whatsNewEl.classList.add("ptk-whats-new-hiding");
-            // Remove from DOM after animation.
-            setTimeout(function () {
-                whatsNewEl.remove();
-            }, 400);
-        });
-    }
 
 })();

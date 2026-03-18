@@ -20,6 +20,10 @@ class PTK_Role_Access {
         add_action( 'init', array( __CLASS__, 'register_meta' ) );
         add_action( 'add_meta_boxes', array( __CLASS__, 'add_meta_box' ) );
         add_action( 'save_post_pta_knowledge', array( __CLASS__, 'save_meta' ), 10, 2 );
+
+        // Quick Edit support.
+        add_action( 'quick_edit_custom_box', array( __CLASS__, 'render_quick_edit' ), 10, 2 );
+        add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_quick_edit_js' ) );
     }
 
     /**
@@ -169,6 +173,9 @@ class PTK_Role_Access {
 
         $roles = self::get_visible_roles( $post_id );
 
+        // Hidden element for Quick Edit JS to read current roles.
+        echo '<span class="ptk-role-data" data-roles="' . esc_attr( implode( ',', $roles ) ) . '" style="display:none;"></span>';
+
         if ( empty( $roles ) ) {
             echo '<span class="ptk-muted">Everyone</span>';
             return;
@@ -181,6 +188,86 @@ class PTK_Role_Access {
             $badges[] = '<span class="ptk-tag-chip" style="background:#fef3c7;color:#92400e;">' . esc_html( $name ) . '</span>';
         }
         echo implode( ' ', $badges );
+    }
+
+    /* ------------------------------------------------------------------
+     * Quick Edit
+     * ----------------------------------------------------------------*/
+
+    /**
+     * Render the Quick Edit field for content visibility.
+     *
+     * @param string $column_name Column being rendered.
+     * @param string $post_type   Post type.
+     */
+    public static function render_quick_edit( $column_name, $post_type ) {
+        if ( 'ptk_visibility' !== $column_name || 'pta_knowledge' !== $post_type ) {
+            return;
+        }
+
+        $all_roles = wp_roles()->get_names();
+        wp_nonce_field( 'ptk_role_access', 'ptk_role_access_nonce' );
+        ?>
+        <fieldset class="inline-edit-col-right" style="clear:both;">
+            <div class="inline-edit-col">
+                <label class="inline-edit-group">
+                    <span class="title" style="width:auto;font-weight:600;">Content Visibility</span>
+                    <span class="description" style="margin-left:0;font-style:normal;color:#6b7280;font-size:12px;">
+                        Leave all unchecked = visible to everyone
+                    </span>
+                </label>
+                <div class="ptk-qe-roles" style="margin-top:6px;max-height:120px;overflow-y:auto;">
+                    <?php foreach ( $all_roles as $slug => $name ) : ?>
+                        <label style="display:block;padding:2px 0;font-size:13px;">
+                            <input type="checkbox"
+                                   name="ptk_visible_roles[]"
+                                   value="<?php echo esc_attr( $slug ); ?>">
+                            <?php echo esc_html( translate_user_role( $name ) ); ?>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </fieldset>
+        <?php
+    }
+
+    /**
+     * Enqueue inline JS that populates Quick Edit checkboxes
+     * with the current row's role data.
+     */
+    public static function enqueue_quick_edit_js() {
+        $screen = get_current_screen();
+        if ( ! $screen || 'edit-pta_knowledge' !== $screen->id ) {
+            return;
+        }
+
+        wp_add_inline_script( 'inline-edit-post', '
+            (function() {
+                var origInlineEdit = inlineEditPost.edit;
+                inlineEditPost.edit = function( id ) {
+                    origInlineEdit.apply( this, arguments );
+                    var postId = 0;
+                    if ( typeof id === "object" ) {
+                        postId = parseInt( this.getId( id ) );
+                    }
+                    if ( postId < 1 ) return;
+
+                    var row = document.getElementById( "post-" + postId );
+                    if ( ! row ) return;
+
+                    var rolesData = row.querySelector( ".ptk-role-data" );
+                    var roles = rolesData ? rolesData.getAttribute( "data-roles" ).split( "," ).filter(Boolean) : [];
+
+                    var editRow = document.getElementById( "edit-" + postId );
+                    if ( ! editRow ) return;
+
+                    var checkboxes = editRow.querySelectorAll( "input[name=\\"ptk_visible_roles[]\\"]" );
+                    checkboxes.forEach( function( cb ) {
+                        cb.checked = roles.indexOf( cb.value ) !== -1;
+                    });
+                };
+            })();
+        ' );
     }
 
     /* ------------------------------------------------------------------

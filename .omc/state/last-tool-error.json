@@ -1,7 +1,0 @@
-{
-  "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"ls -la \\\"/Users/lucas/apps/PTA HUB/pta-knowledge-hub/includes/class-feedback.php\\\" \\\"/Users/lucas/apps/PTA HUB/pta-knowledge-hub/includes/class-notifications.php\\\" \\\"/Users/lucas/apps/PTA ...",
-  "error": "Exit code 1\nls: /Users/lucas/apps/PTA HUB/pta-knowledge-hub/assets/js/feedback.js: No such file or directory\nls: /Users/lucas/apps/PTA HUB/pta-knowledge-hub/includes/class-feedback.php: No such file or directory\nls: /Users/lucas/apps/PTA HUB/pta-knowledge-hub/includes/class-multisite.php: No such file or directory\nls: /Users/lucas/apps/PTA HUB/pta-knowledge-hub/includes/class-notifications.php: No such file or directory\nls: /Users/lucas/apps/PTA HUB/pta-knowledge-hub/includes/class-role-access.p...",
-  "timestamp": "2026-03-18T03:51:16.628Z",
-  "retry_count": 2
-}

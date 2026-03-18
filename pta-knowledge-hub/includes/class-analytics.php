@@ -101,7 +101,7 @@ class PTK_Analytics {
 
         wp_add_dashboard_widget(
             'ptk_search_analytics',
-            'PTA Knowledge Hub — Search Analytics',
+            'PTA Hub — Search Analytics',
             array( __CLASS__, 'render_dashboard_widget' )
         );
     }
@@ -426,7 +426,7 @@ class PTK_Analytics {
                         </tbody>
                     </table>
                     <?php else : ?>
-                        <p class="ptk-no-data ptk-no-data-good">All searches returned results — nice work keeping your knowledge base complete!</p>
+                        <p class="ptk-no-data ptk-no-data-good">All searches returned results — nice work keeping your PTA Hub complete!</p>
                     <?php endif; ?>
                 </div>
             </div>
