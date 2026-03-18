@@ -1,0 +1,226 @@
+/**
+ * PTA Knowledge Hub — Search Analytics Admin Page
+ */
+
+.ptk-analytics-wrap {
+    max-width: 1200px;
+}
+
+.ptk-analytics-subtitle {
+    color: #6b7280;
+    font-size: 14px;
+    margin: -8px 0 20px;
+}
+
+/* Date range filter bar */
+.ptk-analytics-filters {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 24px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 6px;
+    width: fit-content;
+}
+
+.ptk-analytics-filters a {
+    text-decoration: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    transition: background 0.15s, color 0.15s;
+}
+
+.ptk-analytics-filters a:hover {
+    background: #f3f4f6;
+    color: #111827;
+}
+
+.ptk-analytics-filters a.active {
+    background: #4f46e5;
+    color: #fff;
+}
+
+.ptk-export-btn {
+    margin-left: 12px !important;
+    border-left: 1px solid #e5e7eb !important;
+    padding-left: 16px !important;
+    display: flex !important;
+    align-items: center;
+    gap: 4px;
+}
+
+.ptk-export-btn .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    line-height: 16px;
+}
+
+/* Stat cards row */
+.ptk-stat-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+}
+
+.ptk-stat-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 20px 24px;
+    text-align: center;
+}
+
+.ptk-stat-card-alert {
+    border-color: #fecaca;
+    background: #fef2f2;
+}
+
+.ptk-stat-number {
+    font-size: 32px;
+    font-weight: 700;
+    color: #111827;
+    line-height: 1.2;
+}
+
+.ptk-stat-card-alert .ptk-stat-number {
+    color: #dc2626;
+}
+
+.ptk-stat-label {
+    font-size: 13px;
+    color: #6b7280;
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+/* Section blocks */
+.ptk-analytics-section {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.ptk-analytics-section h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 4px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ptk-section-badge {
+    font-size: 11px;
+    font-weight: 600;
+    background: #e0e7ff;
+    color: #4338ca;
+    padding: 2px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.ptk-badge-alert {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.ptk-section-description {
+    font-size: 13px;
+    color: #9ca3af;
+    margin: 4px 0 16px;
+}
+
+/* Chart container */
+.ptk-chart-container {
+    position: relative;
+    height: 260px;
+    margin-top: 16px;
+}
+
+/* Two-column layout */
+.ptk-analytics-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+@media (max-width: 1024px) {
+    .ptk-analytics-columns {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Tables */
+.ptk-analytics-table {
+    border: none !important;
+}
+
+.ptk-analytics-table thead th {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6b7280;
+    font-weight: 600;
+    border-bottom: 2px solid #e5e7eb;
+    padding: 8px 12px;
+}
+
+.ptk-analytics-table tbody td {
+    padding: 10px 12px;
+    font-size: 13px;
+    vertical-align: middle;
+}
+
+.ptk-col-center {
+    text-align: center !important;
+}
+
+.ptk-badge-zero {
+    display: inline-block;
+    background: #fef2f2;
+    color: #dc2626;
+    font-weight: 600;
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+/* Create Entry button */
+.ptk-create-entry-btn {
+    background: #ecfdf5 !important;
+    color: #059669 !important;
+    border-color: #a7f3d0 !important;
+    font-weight: 600 !important;
+    font-size: 12px !important;
+    white-space: nowrap;
+}
+
+.ptk-create-entry-btn:hover {
+    background: #d1fae5 !important;
+    color: #047857 !important;
+}
+
+/* Empty states */
+.ptk-no-data {
+    text-align: center;
+    color: #9ca3af;
+    font-size: 14px;
+    padding: 32px 16px;
+}
+
+.ptk-no-data-good {
+    color: #059669;
+    background: #ecfdf5;
+    border-radius: 8px;
+}

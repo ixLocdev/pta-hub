@@ -1,0 +1,505 @@
+/**
+ * PTA Knowledge Hub — Content Wizard Styles
+ */
+
+/* ── Layout ── */
+.ptk-wizard-wrap {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 0 20px;
+}
+
+.ptk-wizard-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 24px;
+    margin-bottom: 4px;
+}
+.ptk-wizard-header .dashicons {
+    font-size: 28px;
+    width: 28px;
+    height: 28px;
+    color: #2271b1;
+}
+
+.ptk-wizard-intro {
+    color: #6b7280;
+    font-size: 14px;
+    margin: 0 0 24px;
+}
+
+/* ── Sections ── */
+.ptk-wizard-section {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 20px;
+}
+
+.ptk-wizard-section-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 18px;
+    margin: 0 0 20px;
+    color: #1e293b;
+}
+
+.ptk-step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: #2271b1;
+    color: #fff;
+    border-radius: 50%;
+    font-size: 14px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.ptk-hidden {
+    display: none !important;
+}
+
+/* ── Category Cards ── */
+.ptk-category-cards {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+@media (max-width: 600px) {
+    .ptk-category-cards {
+        grid-template-columns: 1fr;
+    }
+}
+
+.ptk-category-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 24px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: center;
+}
+.ptk-category-card:hover {
+    border-color: #93c5fd;
+    background: #f0f6fc;
+}
+.ptk-category-card.ptk-card-selected {
+    border-color: #2271b1;
+    background: #eff6ff;
+    box-shadow: 0 0 0 2px rgba(34, 113, 177, 0.2);
+}
+.ptk-category-card input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.ptk-card-icon {
+    font-size: 32px;
+    width: 32px;
+    height: 32px;
+    color: #6b7280;
+    transition: color 0.15s ease;
+}
+.ptk-card-selected .ptk-card-icon {
+    color: #2271b1;
+}
+
+.ptk-card-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.ptk-card-desc {
+    font-size: 12px;
+    color: #6b7280;
+    line-height: 1.4;
+}
+
+/* ── Custom Entry Card ── */
+.ptk-card-custom {
+    border-style: dashed;
+    background: #fafbfc;
+    text-decoration: none;
+    color: inherit;
+}
+.ptk-card-custom:hover {
+    border-color: #9ca3af;
+    background: #f3f4f6;
+    color: inherit;
+}
+.ptk-card-custom .ptk-card-icon {
+    color: #9ca3af;
+}
+.ptk-card-custom .ptk-card-name {
+    color: #6b7280;
+}
+.ptk-card-custom,
+.ptk-card-custom:hover,
+.ptk-card-custom:focus,
+.ptk-card-custom:active,
+.ptk-card-custom * {
+    text-decoration: none !important;
+}
+
+/* ── Form Fields ── */
+.ptk-field-group {
+    margin-bottom: 20px;
+}
+.ptk-field-group:last-child {
+    margin-bottom: 0;
+}
+
+.ptk-field-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 6px;
+}
+
+.ptk-required {
+    color: #dc2626;
+}
+
+.ptk-field-input,
+.ptk-field-textarea,
+.ptk-field-select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    line-height: 1.5;
+    background: #fff;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    box-sizing: border-box;
+}
+.ptk-field-input:focus,
+.ptk-field-textarea:focus,
+.ptk-field-select:focus {
+    outline: none;
+    border-color: #2271b1;
+    box-shadow: 0 0 0 2px rgba(34, 113, 177, 0.4);
+}
+
+.ptk-field-textarea {
+    resize: vertical;
+    min-height: 96px;
+}
+
+.ptk-field-hint {
+    font-size: 12px;
+    color: #6b7280;
+    margin: 4px 0 0;
+    line-height: 1.4;
+}
+
+/* Row layouts */
+.ptk-field-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+.ptk-field-half {
+    flex: 1;
+    margin-bottom: 0;
+}
+.ptk-field-third {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+@media (max-width: 600px) {
+    .ptk-field-row {
+        flex-direction: column;
+        gap: 0;
+    }
+    .ptk-field-half,
+    .ptk-field-third {
+        margin-bottom: 20px;
+    }
+}
+
+/* ── Repeater (Steps / Timeline) ── */
+.ptk-repeater {
+    margin-bottom: 12px;
+}
+
+.ptk-repeater-item {
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    background: #fafbfc;
+    overflow: hidden;
+}
+
+.ptk-repeater-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: #f3f4f6;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.ptk-repeater-number {
+    font-size: 13px;
+    font-weight: 700;
+    color: #2271b1;
+}
+
+.ptk-repeater-actions {
+    display: flex;
+    gap: 4px;
+}
+.ptk-repeater-actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px;
+    color: #9ca3af;
+    transition: color 0.15s ease;
+    line-height: 1;
+}
+.ptk-repeater-actions button:hover {
+    color: #374151;
+}
+.ptk-repeater-actions .ptk-repeater-remove:hover {
+    color: #dc2626;
+}
+.ptk-repeater-actions .dashicons {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+}
+
+.ptk-repeater-body {
+    padding: 12px;
+}
+.ptk-repeater-body .ptk-field-textarea {
+    margin-bottom: 8px;
+}
+
+/* Step image */
+.ptk-step-image {
+    margin-top: 4px;
+}
+.ptk-step-image-preview {
+    margin-bottom: 6px;
+}
+.ptk-step-image-preview img {
+    border-radius: 4px;
+    border: 1px solid #e5e7eb;
+}
+
+/* Timeline fields */
+.ptk-timeline-fields {
+    display: flex;
+    gap: 10px;
+}
+.ptk-timeline-when {
+    flex: 0 0 200px;
+}
+.ptk-timeline-what {
+    flex: 1;
+}
+
+@media (max-width: 600px) {
+    .ptk-timeline-fields {
+        flex-direction: column;
+        gap: 8px;
+    }
+    .ptk-timeline-when {
+        flex: none;
+    }
+}
+
+/* Add buttons */
+.ptk-add-step,
+.ptk-add-timeline {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 4px;
+}
+.ptk-add-step .dashicons,
+.ptk-add-timeline .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+/* ── Image Upload ── */
+.ptk-image-upload {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.ptk-image-preview img {
+    border-radius: 4px;
+    border: 1px solid #e5e7eb;
+}
+
+/* File preview */
+.ptk-file-preview {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #374151;
+}
+.ptk-file-preview .dashicons {
+    color: #6b7280;
+}
+
+/* ── Submit Area ── */
+.ptk-wizard-submit-area {
+    text-align: center;
+    padding: 8px 0;
+}
+
+.ptk-submit-options {
+    margin-bottom: 20px;
+}
+.ptk-submit-options .ptk-field-label {
+    margin-bottom: 10px;
+}
+.ptk-radio-label {
+    display: block;
+    font-size: 14px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    color: #374151;
+}
+.ptk-radio-label input[type="radio"] {
+    margin-right: 6px;
+}
+
+#ptk-wizard-submit-btn {
+    font-size: 16px;
+    padding: 10px 40px;
+    height: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+#ptk-wizard-submit-btn .dashicons {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+}
+
+/* Focus Visible — Keyboard accessibility */
+.ptk-wizard-wrap button:focus-visible,
+.ptk-wizard-wrap a:focus-visible,
+.ptk-wizard-wrap .ptk-category-card:focus-within {
+    outline: 2px solid #2271b1;
+    outline-offset: 2px;
+}
+.ptk-wizard-wrap input[type="radio"]:focus-visible + .ptk-category-card-inner {
+    outline: 2px solid #2271b1;
+    outline-offset: 2px;
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+    .ptk-wizard-wrap * { transition-duration: 0.01ms !important; }
+}
+
+.ptk-submit-note {
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 12px;
+}
+
+/* ── Success State ── */
+.ptk-wizard-success {
+    text-align: center;
+    padding: 60px 20px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+.ptk-wizard-success .dashicons {
+    font-size: 64px;
+    width: 64px;
+    height: 64px;
+    color: #16a34a;
+    margin-bottom: 16px;
+}
+.ptk-wizard-success h2 {
+    font-size: 24px;
+    color: #1e293b;
+    margin: 0 0 8px;
+}
+.ptk-wizard-success p {
+    color: #6b7280;
+    font-size: 14px;
+    margin: 0 0 24px;
+}
+
+.ptk-wizard-success-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.ptk-wizard-success-actions .button {
+    font-size: 14px;
+}
+
+/* ── Autosave Banner ── */
+.ptk-autosave-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: #92400e;
+}
+.ptk-autosave-banner .dashicons {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: #d97706;
+    flex-shrink: 0;
+}
+.ptk-autosave-banner a {
+    color: #2271b1;
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.ptk-autosave-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #16a34a;
+    margin-left: 12px;
+    opacity: 0.4;
+}
+.ptk-autosave-indicator .dashicons {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+}

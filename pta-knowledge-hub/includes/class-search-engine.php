@@ -1,0 +1,637 @@
+<?php
+/**
+ * Custom search engine with relevance scoring.
+ *
+ * Scores results by title, tags, excerpt, and content relevance.
+ * Uses a multi-layer approach: exact match → word match → substring
+ * match → stem/prefix match, so even partial queries find results.
+ *
+ * Performance features:
+ * - Batch term loading (2 queries instead of N×3)
+ * - Transient caching (1 hour, invalidated on post save/delete)
+ * - Result limit (configurable via filter)
+ * - Synonym file cached in static variable
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
+class PTK_Search_Engine {
+
+    /**
+     * Scoring weights — tune these to adjust result ranking.
+     */
+    const SCORE_TITLE_EXACT    = 50;  // Full query found as substring in title.
+    const SCORE_TITLE_WORD     = 20;  // Individual word matches title (word boundary).
+    const SCORE_TITLE_SUBSTR   = 10;  // Individual word found as substring in title.
+    const SCORE_TAG            = 15;  // Word matches a tag.
+    const SCORE_EXCERPT        = 10;  // Word matches excerpt.
+    const SCORE_EXCERPT_SUBSTR = 5;   // Word found as substring in excerpt.
+    const SCORE_CONTENT        = 3;   // Word matches content (word boundary).
+    const SCORE_CONTENT_SUBSTR = 1;   // Word found as substring in content.
+    const SCORE_INTENT_BOOST   = 30;  // Category matches detected intent.
+    const SCORE_STEM_TITLE     = 8;   // Stem/prefix matches title.
+    const SCORE_STEM_CONTENT   = 1;   // Stem/prefix matches content.
+
+    /**
+     * Cached synonyms data (loaded once per request).
+     */
+    private static $synonyms_cache = null;
+
+    /**
+     * Intent detection patterns.
+     * Maps query keywords to knowledge_category slugs.
+     */
+    private static $intent_map = array(
+        'how-to-guide'   => array( 'how to', 'how do', 'steps', 'instructions', 'procedure', 'process', 'setup', 'set up', 'guide' ),
+        'event-playbook' => array( 'event', 'when is', 'planning', 'schedule', 'timeline', 'supplies', 'budget' ),
+        'faq'            => array( 'faq', 'question', 'what is', 'why do', 'can i', 'do we', 'is there', 'explain' ),
+        'resource'       => array( 'video', 'watch', 'template', 'flyer', 'form', 'download', 'image', 'photo' ),
+        'glossary'       => array( 'what is', 'what does', 'define', 'definition', 'meaning', 'term', 'glossary', 'stands for', 'acronym' ),
+        'checklist'      => array( 'checklist', 'to do', 'todo', 'transition', 'onboarding', 'new officer', 'setup list' ),
+        'policy'         => array( 'policy', 'rule', 'rules', 'bylaw', 'bylaws', 'standing rule', 'guideline', 'governance' ),
+    );
+
+    /**
+     * Minimal stopwords — only the most meaningless words.
+     * Kept short so searches like "how to post" keep "how" and "post".
+     */
+    private static $stopwords = array(
+        'a', 'an', 'the', 'it', 'i', 'me', 'my',
+        'of', 'in', 'on', 'and', 'or', 'at',
+        'be', 'am',
+    );
+
+    public static function init() {
+        add_action( 'wp_ajax_pta_search', array( __CLASS__, 'handle_search' ) );
+        add_action( 'wp_ajax_nopriv_pta_search', array( __CLASS__, 'handle_search' ) );
+
+        // Invalidate search cache when knowledge posts change.
+        add_action( 'save_post_pta_knowledge', array( __CLASS__, 'invalidate_cache' ) );
+        add_action( 'delete_post', array( __CLASS__, 'invalidate_cache_on_delete' ) );
+    }
+
+    /**
+     * Clear all search transients when content changes.
+     */
+    public static function invalidate_cache() {
+        global $wpdb;
+        $wpdb->query(
+            "DELETE FROM {$wpdb->options}
+             WHERE option_name LIKE '_transient_ptk_search_%'
+                OR option_name LIKE '_transient_timeout_ptk_search_%'"
+        );
+    }
+
+    /**
+     * Clear cache only when a pta_knowledge post is deleted.
+     */
+    public static function invalidate_cache_on_delete( $post_id ) {
+        if ( 'pta_knowledge' === get_post_type( $post_id ) ) {
+            self::invalidate_cache();
+        }
+    }
+
+    /**
+     * AJAX handler: searches pta_knowledge posts and returns scored results.
+     */
+    public static function handle_search() {
+        check_ajax_referer( 'ptk_search_nonce', '_wpnonce' );
+
+        // Block search for logged-out users when login is required.
+        if ( ! ptk_check_access() ) {
+            wp_send_json_error( array( 'message' => 'Login required.' ), 403 );
+        }
+
+        $query = isset( $_GET['q'] ) ? sanitize_text_field( wp_unslash( $_GET['q'] ) ) : '';
+
+        if ( empty( trim( $query ) ) ) {
+            wp_send_json_success( array(
+                'results'    => array(),
+                'bestAnswer' => null,
+                'total'      => 0,
+            ) );
+        }
+
+        // Check transient cache.
+        $cache_key = 'ptk_search_' . md5( mb_strtolower( $query ) );
+        $cached    = get_transient( $cache_key );
+        if ( false !== $cached ) {
+            wp_send_json_success( $cached );
+        }
+
+        $tokens          = self::tokenize( $query );
+        $raw_words       = self::tokenize_raw( $query ); // All words, no stopword removal.
+        $expanded_tokens = self::expand_synonyms( $tokens, $query );
+        $intent_slugs    = self::detect_intent( $query );
+
+        // Handle queries that tokenize to nothing (single char or empty).
+        if ( empty( $tokens ) && empty( $raw_words ) ) {
+            $response = array(
+                'bestAnswer' => null,
+                'groups'     => array(),
+                'total'      => 0,
+                'hint'       => 'Try more specific keywords like "bake sale" or "volunteer sign up".',
+            );
+            wp_send_json_success( $response );
+        }
+
+        // Fetch all published pta_knowledge posts.
+        $posts = get_posts( array(
+            'post_type'      => 'pta_knowledge',
+            'post_status'    => 'publish',
+            'posts_per_page' => 500,
+        ) );
+
+        if ( empty( $posts ) ) {
+            wp_send_json_success( array(
+                'bestAnswer' => null,
+                'groups'     => array(),
+                'total'      => 0,
+            ) );
+        }
+
+        // Batch-load all terms in 2 queries instead of N×3.
+        $post_ids  = wp_list_pluck( $posts, 'ID' );
+        $terms_map = self::batch_load_terms( $post_ids );
+
+        $scored = array();
+
+        foreach ( $posts as $post ) {
+            $post_terms = isset( $terms_map[ $post->ID ] ) ? $terms_map[ $post->ID ] : array(
+                'categories' => array(),
+                'cat_slugs'  => array(),
+                'tag_names'  => array(),
+            );
+            $score = self::score_post( $post, $query, $expanded_tokens, $raw_words, $intent_slugs, $post_terms );
+            if ( $score > 0 ) {
+                $scored[] = array(
+                    'post'  => $post,
+                    'score' => $score,
+                    'terms' => $post_terms,
+                );
+            }
+        }
+
+        // Sort by score descending.
+        usort( $scored, function( $a, $b ) {
+            return $b['score'] - $a['score'];
+        } );
+
+        // Apply result limit.
+        $max_results = apply_filters( 'ptk_max_search_results', 50 );
+        $total       = count( $scored );
+        $scored      = array_slice( $scored, 0, $max_results );
+
+        // Detect "Best Answer".
+        $best_answer    = null;
+        $best_answer_id = null;
+        if ( count( $scored ) >= 2 && $scored[0]['score'] >= $scored[1]['score'] * 2 ) {
+            $best_answer    = self::format_result( $scored[0]['post'], $scored[0]['score'], $scored[0]['terms'], true );
+            $best_answer_id = $scored[0]['post']->ID;
+        } elseif ( count( $scored ) === 1 ) {
+            $best_answer    = self::format_result( $scored[0]['post'], $scored[0]['score'], $scored[0]['terms'], true );
+            $best_answer_id = $scored[0]['post']->ID;
+        }
+
+        // Group by category.
+        $grouped = array();
+        foreach ( $scored as $entry ) {
+            // Skip the best answer from regular results.
+            if ( $best_answer_id && $entry['post']->ID === $best_answer_id ) {
+                continue;
+            }
+
+            $cat_slugs = $entry['terms']['cat_slugs'];
+            $cat       = ! empty( $cat_slugs ) ? $cat_slugs[0] : 'uncategorized';
+
+            if ( ! isset( $grouped[ $cat ] ) ) {
+                $grouped[ $cat ] = array();
+            }
+            $grouped[ $cat ][] = self::format_result( $entry['post'], $entry['score'], $entry['terms'] );
+        }
+
+        $response = array(
+            'bestAnswer' => $best_answer,
+            'groups'     => $grouped,
+            'total'      => $total,
+        );
+
+        // Add "Did you mean?" suggestion on zero results.
+        if ( 0 === $total ) {
+            $suggestion = self::did_you_mean( $query );
+            if ( $suggestion ) {
+                $response['didYouMean'] = $suggestion;
+            }
+
+            // Fallback: show all entries as browseable suggestions when nothing matched.
+            if ( ! empty( $posts ) ) {
+                $fallback = array();
+                $shown    = 0;
+                foreach ( $posts as $post ) {
+                    if ( $shown >= 10 ) {
+                        break;
+                    }
+                    $pt = isset( $terms_map[ $post->ID ] ) ? $terms_map[ $post->ID ] : array(
+                        'categories' => array(),
+                        'cat_slugs'  => array(),
+                        'tag_names'  => array(),
+                    );
+                    $fallback[] = self::format_result( $post, 0, $pt );
+                    $shown++;
+                }
+                $response['suggestions'] = $fallback;
+            }
+        }
+
+        // Cache for 1 hour.
+        set_transient( $cache_key, $response, HOUR_IN_SECONDS );
+
+        wp_send_json_success( $response );
+    }
+
+    /**
+     * Batch-load categories and tags for all posts in 2 queries.
+     */
+    private static function batch_load_terms( $post_ids ) {
+        $map = array();
+        foreach ( $post_ids as $id ) {
+            $map[ $id ] = array(
+                'categories' => array(),
+                'cat_slugs'  => array(),
+                'tag_names'  => array(),
+            );
+        }
+
+        // Batch category load.
+        $cat_terms = wp_get_object_terms( $post_ids, 'knowledge_category' );
+        if ( ! is_wp_error( $cat_terms ) ) {
+            foreach ( $cat_terms as $term ) {
+                $oid = $term->object_id;
+                if ( isset( $map[ $oid ] ) ) {
+                    $map[ $oid ]['categories'][] = $term;
+                    $map[ $oid ]['cat_slugs'][]  = $term->slug;
+                }
+            }
+        }
+
+        // Batch tag load.
+        $tag_terms = wp_get_object_terms( $post_ids, 'post_tag' );
+        if ( ! is_wp_error( $tag_terms ) ) {
+            foreach ( $tag_terms as $term ) {
+                $oid = $term->object_id;
+                if ( isset( $map[ $oid ] ) ) {
+                    $map[ $oid ]['tag_names'][] = $term->name;
+                }
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * Check if a token matches text using word boundaries.
+     */
+    private static function word_match( $token, $text ) {
+        $pattern = '/\b' . preg_quote( $token, '/' ) . '\b/i';
+        return (bool) preg_match( $pattern, $text );
+    }
+
+    /**
+     * Check if a token appears anywhere in text (substring).
+     */
+    private static function substr_match( $token, $text ) {
+        return mb_strpos( $text, $token ) !== false;
+    }
+
+    /**
+     * Generate simple stems/prefixes of a word for fuzzy matching.
+     * Returns the word minus its last 1-2 characters (if word is long enough).
+     * e.g., "posting" → ["postin", "posti"], "bake" → ["bak"]
+     */
+    private static function get_stems( $word ) {
+        $stems = array();
+        $len   = mb_strlen( $word );
+        if ( $len >= 4 ) {
+            $stems[] = mb_substr( $word, 0, $len - 1 );
+        }
+        if ( $len >= 5 ) {
+            $stems[] = mb_substr( $word, 0, $len - 2 );
+        }
+        // Also add the word + common suffixes for prefix matching.
+        // e.g., "bake" checks if title contains words starting with "bake".
+        return $stems;
+    }
+
+    /**
+     * Check if any stem of the token matches a word in the text (prefix match).
+     * "post" matches "poster", "posting", "posted".
+     * "bake" matches "bakers", "baking".
+     */
+    private static function stem_match( $token, $text ) {
+        // First: does the token appear as a prefix of any word?
+        $pattern = '/\b' . preg_quote( $token, '/' ) . '/i';
+        if ( preg_match( $pattern, $text ) ) {
+            return true;
+        }
+        // Second: does a stem of the token match any word?
+        $stems = self::get_stems( $token );
+        foreach ( $stems as $stem ) {
+            $pattern = '/\b' . preg_quote( $stem, '/' ) . '/i';
+            if ( preg_match( $pattern, $text ) ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Score a single post against the query.
+     *
+     * Multi-layer scoring:
+     * 1. Exact full-query match in title (highest)
+     * 2. Word-boundary matches per token in title/tags/excerpt/content
+     * 3. Substring matches (catches partial words)
+     * 4. Stem/prefix matches (catches "bake" → "baking")
+     * 5. Intent boost (category matches detected intent)
+     */
+    private static function score_post( $post, $query, $expanded_tokens, $raw_words, $intent_slugs, $post_terms ) {
+        $lower_query = mb_strtolower( $query );
+        $title       = mb_strtolower( $post->post_title );
+        $excerpt     = mb_strtolower( $post->post_excerpt );
+
+        // Strip block comment markers before stripping tags.
+        $raw_content = preg_replace( '/<!--.*?-->/s', ' ', $post->post_content );
+        $content     = mb_strtolower( wp_strip_all_tags( $raw_content ) );
+        // Collapse whitespace for cleaner matching.
+        $content     = preg_replace( '/\s+/', ' ', trim( $content ) );
+
+        // Build tag string from pre-loaded terms.
+        $tags = mb_strtolower( implode( ' ', $post_terms['tag_names'] ) );
+
+        // Combine title + excerpt + content + tags for a "full text" field.
+        $full_text = $title . ' ' . $excerpt . ' ' . $tags . ' ' . $content;
+
+        $score = 0;
+
+        // --- Layer 1: Exact full-query match in title ---
+        if ( self::substr_match( $lower_query, $title ) ) {
+            $score += self::SCORE_TITLE_EXACT;
+        }
+
+        // --- Layer 2: Per-token word-boundary matches ---
+        foreach ( $expanded_tokens as $token ) {
+            if ( self::word_match( $token, $title ) ) {
+                $score += self::SCORE_TITLE_WORD;
+            }
+            if ( self::word_match( $token, $tags ) ) {
+                $score += self::SCORE_TAG;
+            }
+            if ( self::word_match( $token, $excerpt ) ) {
+                $score += self::SCORE_EXCERPT;
+            }
+            if ( self::word_match( $token, $content ) ) {
+                $score += self::SCORE_CONTENT;
+            }
+        }
+
+        // --- Layer 3: Substring matches (catches partial words) ---
+        // Use raw_words (includes words that were stopwords) for broader matching.
+        foreach ( $raw_words as $word ) {
+            if ( mb_strlen( $word ) < 3 ) {
+                continue; // Skip very short words for substring matching.
+            }
+            if ( self::substr_match( $word, $title ) && ! self::word_match( $word, $title ) ) {
+                $score += self::SCORE_TITLE_SUBSTR;
+            }
+            if ( self::substr_match( $word, $excerpt ) && ! self::word_match( $word, $excerpt ) ) {
+                $score += self::SCORE_EXCERPT_SUBSTR;
+            }
+            if ( self::substr_match( $word, $content ) && ! self::word_match( $word, $content ) ) {
+                $score += self::SCORE_CONTENT_SUBSTR;
+            }
+        }
+
+        // --- Layer 4: Stem/prefix matching ---
+        // "post" matches "posting", "bake" matches "baking"
+        if ( $score === 0 ) {
+            foreach ( $raw_words as $word ) {
+                if ( mb_strlen( $word ) < 3 ) {
+                    continue;
+                }
+                if ( self::stem_match( $word, $title ) ) {
+                    $score += self::SCORE_STEM_TITLE;
+                }
+                if ( self::stem_match( $word, $content ) ) {
+                    $score += self::SCORE_STEM_CONTENT;
+                }
+            }
+        }
+
+        // --- Layer 5: Intent boost (using pre-loaded terms) ---
+        if ( ! empty( $intent_slugs ) ) {
+            foreach ( $intent_slugs as $intent_slug ) {
+                if ( in_array( $intent_slug, $post_terms['cat_slugs'], true ) ) {
+                    $score += self::SCORE_INTENT_BOOST;
+                }
+            }
+        }
+
+        return $score;
+    }
+
+    /**
+     * Format a post into a JSON-friendly result object.
+     */
+    private static function format_result( $post, $score, $post_terms, $is_best = false ) {
+        $cat_slug = ! empty( $post_terms['cat_slugs'] ) ? $post_terms['cat_slugs'][0] : 'uncategorized';
+        $cat_name = ! empty( $post_terms['categories'] ) ? $post_terms['categories'][0]->name : 'Uncategorized';
+
+        $thumbnail = get_the_post_thumbnail_url( $post->ID, 'medium' );
+
+        return array(
+            'id'        => $post->ID,
+            'title'     => $post->post_title,
+            'excerpt'   => $post->post_excerpt ? $post->post_excerpt : wp_trim_words( wp_strip_all_tags( $post->post_content ), 30 ),
+            'permalink' => get_permalink( $post->ID ),
+            'thumbnail' => $thumbnail ? $thumbnail : null,
+            'category'  => $cat_slug,
+            'catName'   => $cat_name,
+            'tags'      => $post_terms['tag_names'],
+            'score'     => $score,
+            'isBest'    => $is_best,
+        );
+    }
+
+    /**
+     * Tokenize a query string, removing only minimal stopwords.
+     */
+    private static function tokenize( $query ) {
+        $words = preg_split( '/\s+/', mb_strtolower( trim( $query ) ) );
+        return array_values( array_filter( $words, function( $w ) {
+            return mb_strlen( $w ) > 1 && ! in_array( $w, self::$stopwords, true );
+        } ) );
+    }
+
+    /**
+     * Tokenize without removing any stopwords (for substring/stem matching).
+     * Only removes single-character words.
+     */
+    private static function tokenize_raw( $query ) {
+        $words = preg_split( '/\s+/', mb_strtolower( trim( $query ) ) );
+        return array_values( array_filter( $words, function( $w ) {
+            return mb_strlen( $w ) > 1;
+        } ) );
+    }
+
+    /**
+     * Load synonyms from file, cached in a static variable.
+     */
+    private static function load_synonyms() {
+        if ( null !== self::$synonyms_cache ) {
+            return self::$synonyms_cache;
+        }
+
+        $synonyms_file = PTK_PLUGIN_DIR . 'data/synonyms.json';
+        if ( ! file_exists( $synonyms_file ) || ! is_readable( $synonyms_file ) ) {
+            self::$synonyms_cache = array();
+            return self::$synonyms_cache;
+        }
+
+        $raw = file_get_contents( $synonyms_file );
+        if ( false === $raw ) {
+            self::$synonyms_cache = array();
+            return self::$synonyms_cache;
+        }
+
+        $decoded = json_decode( $raw, true );
+        self::$synonyms_cache = is_array( $decoded ) ? $decoded : array();
+        return self::$synonyms_cache;
+    }
+
+    /**
+     * Expand tokens using the synonyms.json file.
+     */
+    private static function expand_synonyms( $tokens, $query ) {
+        $synonyms = self::load_synonyms();
+        if ( empty( $synonyms ) ) {
+            return $tokens;
+        }
+
+        $lower_query = mb_strtolower( $query );
+        $expanded    = array_flip( $tokens ); // Use keys for uniqueness.
+
+        foreach ( $synonyms as $canonical => $aliases ) {
+            $all_forms = array_merge( array( $canonical ), $aliases );
+            $matched   = false;
+
+            foreach ( $all_forms as $form ) {
+                if ( strpos( $lower_query, $form ) !== false ) {
+                    $matched = true;
+                    break;
+                }
+                foreach ( $tokens as $token ) {
+                    if ( strpos( $form, $token ) !== false || strpos( $token, $form ) !== false ) {
+                        $matched = true;
+                        break 2;
+                    }
+                }
+            }
+
+            if ( $matched ) {
+                $expanded[ $canonical ] = true;
+                foreach ( $aliases as $alias ) {
+                    $expanded[ $alias ] = true;
+                }
+            }
+        }
+
+        return array_keys( $expanded );
+    }
+
+    /**
+     * Detect user intent from query keywords.
+     * Returns an array of knowledge_category slugs that should be boosted.
+     */
+    private static function detect_intent( $query ) {
+        $lower = mb_strtolower( $query );
+        $slugs = array();
+
+        foreach ( self::$intent_map as $slug => $keywords ) {
+            foreach ( $keywords as $kw ) {
+                if ( strpos( $lower, $kw ) !== false ) {
+                    $slugs[] = $slug;
+                    break;
+                }
+            }
+        }
+
+        return $slugs;
+    }
+
+    /**
+     * Get popular tags for suggested searches.
+     */
+    public static function get_suggested_searches( $count = 8 ) {
+        $tags = get_terms( array(
+            'taxonomy'   => 'post_tag',
+            'orderby'    => 'count',
+            'order'      => 'DESC',
+            'number'     => $count,
+            'hide_empty' => true,
+            'object_ids' => get_posts( array(
+                'post_type'      => 'pta_knowledge',
+                'post_status'    => 'publish',
+                'posts_per_page' => -1,
+                'fields'         => 'ids',
+            ) ),
+        ) );
+
+        if ( is_wp_error( $tags ) || empty( $tags ) ) {
+            // Fallback suggested searches.
+            return array( 'bake sale', 'volunteer', 'fundraiser', 'meeting', 'field trip', 'budget', 'safety', 'sign up' );
+        }
+
+        return wp_list_pluck( $tags, 'name' );
+    }
+
+    /**
+     * Get all synonym keys for "Did you mean?" suggestions.
+     */
+    public static function get_synonym_keys() {
+        $synonyms = self::load_synonyms();
+        $keys     = array_keys( $synonyms );
+        foreach ( $synonyms as $aliases ) {
+            $keys = array_merge( $keys, $aliases );
+        }
+        return array_unique( $keys );
+    }
+
+    /**
+     * Find the closest synonym key to the query using Levenshtein distance.
+     * Returns a suggestion string or null if nothing is close enough.
+     */
+    private static function did_you_mean( $query ) {
+        $lower_query = mb_strtolower( trim( $query ) );
+        $keys        = self::get_synonym_keys();
+        $best_match  = null;
+        $best_dist   = PHP_INT_MAX;
+
+        foreach ( $keys as $key ) {
+            $dist = levenshtein( $lower_query, $key );
+            // Only suggest if within 3 edits and the match is reasonably close.
+            if ( $dist < $best_dist && $dist <= 3 && $dist < mb_strlen( $lower_query ) ) {
+                $best_dist  = $dist;
+                $best_match = $key;
+            }
+        }
+
+        // Don't suggest the exact same thing.
+        if ( $best_match && $best_match !== $lower_query ) {
+            return $best_match;
+        }
+
+        return null;
+    }
+}

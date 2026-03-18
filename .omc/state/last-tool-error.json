@@ -1,0 +1,7 @@
+{
+  "tool_name": "Read",
+  "tool_input_preview": "{\"file_path\":\"/Users/lucas/apps/PTA\\\\ HUB/pta-knowledge-hub/pta-knowledge-hub.php\"}",
+  "error": "File does not exist. Note: your current working directory is /Users/lucas/apps/PTA HUB.",
+  "timestamp": "2026-03-12T05:42:55.455Z",
+  "retry_count": 1
+}

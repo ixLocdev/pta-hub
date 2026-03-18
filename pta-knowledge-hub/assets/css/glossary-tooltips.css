@@ -1,0 +1,85 @@
+/**
+ * PTA Knowledge Hub — Glossary Tooltip Styles
+ *
+ * Terms that appear in the glossary get a subtle dotted underline.
+ * Hovering or focusing shows the plain-English definition in a tooltip.
+ */
+
+.ptk-glossary-term {
+    position: relative;
+    display: inline;
+}
+
+.ptk-glossary-link {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1.5px dotted #93c5fd;
+    transition: border-color 0.15s ease;
+}
+.ptk-glossary-link:hover {
+    border-bottom-color: #2271b1;
+    color: inherit;
+}
+.ptk-glossary-link:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+/* Tooltip bubble — uses opacity/visibility for smooth animation */
+.ptk-glossary-tooltip {
+    visibility: hidden;
+    opacity: 0;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    background: #1e293b;
+    color: #f8fafc;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.5;
+    padding: 10px 14px;
+    border-radius: 8px;
+    width: max-content;
+    max-width: 320px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    text-align: left;
+    transition: opacity 0.15s ease, visibility 0.15s ease, transform 0.15s ease;
+}
+
+/* Arrow */
+.ptk-glossary-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #1e293b;
+}
+
+/* Show on hover AND keyboard focus */
+.ptk-glossary-term:hover .ptk-glossary-tooltip,
+.ptk-glossary-term:focus-within .ptk-glossary-tooltip {
+    visibility: visible;
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* On small screens, keep tooltip from going off-screen */
+@media (max-width: 600px) {
+    .ptk-glossary-tooltip {
+        max-width: 260px;
+        font-size: 12px;
+        padding: 8px 12px;
+    }
+}
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+    .ptk-glossary-tooltip {
+        transition: none;
+    }
+}
