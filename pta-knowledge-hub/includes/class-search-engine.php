@@ -33,6 +33,12 @@ class PTK_Search_Engine {
     const SCORE_INTENT_BOOST   = 30;  // Category matches detected intent.
     const SCORE_STEM_TITLE     = 8;   // Stem/prefix matches title.
     const SCORE_STEM_CONTENT   = 1;   // Stem/prefix matches content.
+    const SCORE_PHRASE_TITLE   = 25;  // Multi-word phrase found in sequence in title.
+    const SCORE_PHRASE_CONTENT = 8;   // Multi-word phrase found in sequence in content.
+    const SCORE_RECENCY_MAX    = 10;  // Max bonus for recently modified entries.
+    const SCORE_POPULARITY_MAX = 15;  // Max bonus for frequently clicked entries.
+    const SCORE_FUZZY_TITLE    = 12;  // Fuzzy/typo match against a title word.
+    const SCORE_FUZZY_TAG      = 8;   // Fuzzy/typo match against a tag.
 
     /**
      * Cached synonyms data (loaded once per request).
@@ -66,6 +72,14 @@ class PTK_Search_Engine {
     public static function init() {
         add_action( 'wp_ajax_pta_search', array( __CLASS__, 'handle_search' ) );
         add_action( 'wp_ajax_nopriv_pta_search', array( __CLASS__, 'handle_search' ) );
+
+        // Autocomplete endpoint (lightweight — returns titles only).
+        add_action( 'wp_ajax_pta_autocomplete', array( __CLASS__, 'handle_autocomplete' ) );
+        add_action( 'wp_ajax_nopriv_pta_autocomplete', array( __CLASS__, 'handle_autocomplete' ) );
+
+        // Click tracking for popularity-weighted ranking.
+        add_action( 'wp_ajax_pta_track_click', array( __CLASS__, 'handle_track_click' ) );
+        add_action( 'wp_ajax_nopriv_pta_track_click', array( __CLASS__, 'handle_track_click' ) );
 
         // Debug endpoint — remove after troubleshooting.
         add_action( 'wp_ajax_pta_debug_terms', array( __CLASS__, 'debug_terms' ) );
@@ -216,6 +230,9 @@ class PTK_Search_Engine {
         $post_ids  = wp_list_pluck( $posts, 'ID' );
         $terms_map = self::batch_load_terms( $post_ids );
 
+        // Load click popularity data (last 90 days).
+        $popularity_map = self::get_popularity_map( $post_ids );
+
         $scored = array();
 
         foreach ( $posts as $post ) {
@@ -224,7 +241,8 @@ class PTK_Search_Engine {
                 'cat_slugs'  => array(),
                 'tag_names'  => array(),
             );
-            $score = self::score_post( $post, $query, $expanded_tokens, $raw_words, $intent_slugs, $post_terms );
+            $popularity = isset( $popularity_map[ $post->ID ] ) ? $popularity_map[ $post->ID ] : 0;
+            $score = self::score_post( $post, $query, $expanded_tokens, $raw_words, $intent_slugs, $post_terms, $popularity );
             if ( $score > 0 ) {
                 $scored[] = array(
                     'post'  => $post,
@@ -421,7 +439,7 @@ class PTK_Search_Engine {
      * 4. Stem/prefix matches (catches "bake" → "baking")
      * 5. Intent boost (category matches detected intent)
      */
-    private static function score_post( $post, $query, $expanded_tokens, $raw_words, $intent_slugs, $post_terms ) {
+    private static function score_post( $post, $query, $expanded_tokens, $raw_words, $intent_slugs, $post_terms, $popularity = 0 ) {
         $lower_query = mb_strtolower( $query );
         $title       = mb_strtolower( $post->post_title );
         $excerpt     = mb_strtolower( $post->post_excerpt );
@@ -501,6 +519,72 @@ class PTK_Search_Engine {
                     $score += self::SCORE_INTENT_BOOST;
                 }
             }
+        }
+
+        // --- Layer 6: Phrase matching (multi-word queries matched in sequence) ---
+        if ( count( $raw_words ) >= 2 ) {
+            $phrase = implode( ' ', $raw_words );
+            if ( self::substr_match( $phrase, $title ) ) {
+                $score += self::SCORE_PHRASE_TITLE;
+            }
+            if ( self::substr_match( $phrase, $content ) ) {
+                $score += self::SCORE_PHRASE_CONTENT;
+            }
+        }
+
+        // --- Layer 7: Fuzzy/typo matching against title words and tags ---
+        if ( $score === 0 && ! empty( $raw_words ) ) {
+            $title_words = preg_split( '/\s+/', $title );
+            $all_tags    = ! empty( $post_terms['tag_names'] ) ? $post_terms['tag_names'] : array();
+
+            foreach ( $raw_words as $word ) {
+                if ( mb_strlen( $word ) < 3 ) {
+                    continue;
+                }
+                // Check against title words.
+                foreach ( $title_words as $tw ) {
+                    $tw = preg_replace( '/[^a-z0-9]/', '', $tw );
+                    if ( mb_strlen( $tw ) < 3 ) {
+                        continue;
+                    }
+                    $dist = levenshtein( $word, $tw );
+                    $threshold = mb_strlen( $word ) <= 4 ? 1 : 2;
+                    if ( $dist > 0 && $dist <= $threshold ) {
+                        $score += self::SCORE_FUZZY_TITLE;
+                        break; // One fuzzy match per query word is enough.
+                    }
+                }
+                // Check against tags.
+                foreach ( $all_tags as $tag ) {
+                    $tag_lower = mb_strtolower( $tag );
+                    $dist = levenshtein( $word, $tag_lower );
+                    $threshold = mb_strlen( $word ) <= 4 ? 1 : 2;
+                    if ( $dist > 0 && $dist <= $threshold ) {
+                        $score += self::SCORE_FUZZY_TAG;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // --- Layer 8: Recency boost (recently modified entries score higher) ---
+        if ( $score > 0 ) {
+            $modified   = strtotime( $post->post_modified_gmt );
+            $now        = time();
+            $days_ago   = max( 0, ( $now - $modified ) / DAY_IN_SECONDS );
+            // Full bonus within 7 days, linear decay over 90 days, 0 after 90.
+            if ( $days_ago <= 7 ) {
+                $score += self::SCORE_RECENCY_MAX;
+            } elseif ( $days_ago < 90 ) {
+                $score += (int) round( self::SCORE_RECENCY_MAX * ( 90 - $days_ago ) / 83 );
+            }
+        }
+
+        // --- Layer 9: Popularity boost (entries that get clicked more rank higher) ---
+        if ( $score > 0 && $popularity > 0 ) {
+            // Logarithmic scale: 1 click = ~0, 10 clicks = ~half max, 100+ clicks = max.
+            $pop_score = min( self::SCORE_POPULARITY_MAX, (int) round( self::SCORE_POPULARITY_MAX * log10( $popularity + 1 ) / 2 ) );
+            $score += $pop_score;
         }
 
         return $score;
@@ -698,5 +782,203 @@ class PTK_Search_Engine {
         }
 
         return null;
+    }
+
+    /* ------------------------------------------------------------------
+     * Autocomplete — lightweight endpoint returning matching titles
+     * ----------------------------------------------------------------*/
+
+    /**
+     * AJAX handler: returns up to 6 matching titles for autocomplete dropdown.
+     */
+    public static function handle_autocomplete() {
+        check_ajax_referer( 'ptk_search_nonce', '_wpnonce' );
+
+        $query = isset( $_GET['q'] ) ? sanitize_text_field( wp_unslash( $_GET['q'] ) ) : '';
+        if ( mb_strlen( trim( $query ) ) < 2 ) {
+            wp_send_json_success( array() );
+        }
+
+        $lower_query = mb_strtolower( trim( $query ) );
+
+        // Check transient cache.
+        $cache_key = 'ptk_ac_' . md5( $lower_query );
+        $cached    = get_transient( $cache_key );
+        if ( false !== $cached ) {
+            wp_send_json_success( $cached );
+        }
+
+        $posts = get_posts( array(
+            'post_type'      => 'pta_knowledge',
+            'post_status'    => 'publish',
+            'posts_per_page' => 100,
+        ) );
+
+        $matches = array();
+        foreach ( $posts as $post ) {
+            $title_lower = mb_strtolower( $post->post_title );
+            $score = 0;
+
+            // Exact substring in title.
+            if ( mb_strpos( $title_lower, $lower_query ) !== false ) {
+                $score = 100;
+                // Bonus if it starts with the query.
+                if ( mb_strpos( $title_lower, $lower_query ) === 0 ) {
+                    $score = 200;
+                }
+            } else {
+                // Word-level matching.
+                $words = preg_split( '/\s+/', $lower_query );
+                foreach ( $words as $w ) {
+                    if ( mb_strlen( $w ) >= 2 && mb_strpos( $title_lower, $w ) !== false ) {
+                        $score += 10;
+                    }
+                }
+            }
+
+            if ( $score > 0 ) {
+                $cats     = wp_get_post_terms( $post->ID, 'knowledge_category', array( 'fields' => 'all' ) );
+                $cat_slug = ( ! is_wp_error( $cats ) && ! empty( $cats ) ) ? $cats[0]->slug : '';
+                $cat_name = ( ! is_wp_error( $cats ) && ! empty( $cats ) ) ? $cats[0]->name : '';
+
+                $matches[] = array(
+                    'id'        => $post->ID,
+                    'title'     => $post->post_title,
+                    'permalink' => get_permalink( $post->ID ),
+                    'category'  => $cat_slug,
+                    'catName'   => $cat_name,
+                    'score'     => $score,
+                );
+            }
+        }
+
+        // Sort by score descending.
+        usort( $matches, function( $a, $b ) {
+            return $b['score'] - $a['score'];
+        } );
+
+        $results = array_slice( $matches, 0, 6 );
+
+        // Cache for 30 minutes.
+        set_transient( $cache_key, $results, 30 * MINUTE_IN_SECONDS );
+
+        wp_send_json_success( $results );
+    }
+
+    /* ------------------------------------------------------------------
+     * Click Tracking — for popularity-weighted ranking
+     * ----------------------------------------------------------------*/
+
+    /**
+     * Create the click tracking table on plugin activation.
+     */
+    public static function create_click_table() {
+        global $wpdb;
+        $table   = $wpdb->prefix . 'ptk_click_log';
+        $charset = $wpdb->get_charset_collate();
+
+        $sql = "CREATE TABLE IF NOT EXISTS {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            post_id BIGINT UNSIGNED NOT NULL,
+            query VARCHAR(255) NOT NULL DEFAULT '',
+            clicked_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY idx_post_id (post_id),
+            KEY idx_clicked_at (clicked_at)
+        ) {$charset};";
+
+        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+        dbDelta( $sql );
+    }
+
+    /**
+     * Drop the click table on uninstall.
+     */
+    public static function drop_click_table() {
+        global $wpdb;
+        $table = $wpdb->prefix . 'ptk_click_log';
+        $wpdb->query( "DROP TABLE IF EXISTS {$table}" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+    }
+
+    /**
+     * AJAX handler: log a click on a search result.
+     */
+    public static function handle_track_click() {
+        check_ajax_referer( 'ptk_search_nonce', '_wpnonce' );
+
+        $post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+        $query   = isset( $_POST['query'] ) ? sanitize_text_field( wp_unslash( $_POST['query'] ) ) : '';
+
+        if ( ! $post_id ) {
+            wp_send_json_error();
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'ptk_click_log';
+
+        $wpdb->insert(
+            $table,
+            array(
+                'post_id'    => $post_id,
+                'query'      => mb_substr( $query, 0, 255 ),
+                'clicked_at' => current_time( 'mysql' ),
+            ),
+            array( '%d', '%s', '%s' )
+        );
+
+        wp_send_json_success();
+    }
+
+    /**
+     * Get click counts per post (last 90 days) as a map: post_id => count.
+     *
+     * @param int[] $post_ids Array of post IDs to look up.
+     * @return int[] Associative array of post_id => click_count.
+     */
+    private static function get_popularity_map( $post_ids ) {
+        if ( empty( $post_ids ) ) {
+            return array();
+        }
+
+        // Check transient cache.
+        $cache_key = 'ptk_popularity_map';
+        $cached    = get_transient( $cache_key );
+        if ( false !== $cached ) {
+            return $cached;
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'ptk_click_log';
+
+        // Check if table exists (graceful fallback if not yet created).
+        $table_exists = $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s",
+            DB_NAME,
+            $table
+        ) );
+
+        if ( ! $table_exists ) {
+            return array();
+        }
+
+        $results = $wpdb->get_results(
+            "SELECT post_id, COUNT(*) AS click_count
+             FROM {$table}
+             WHERE clicked_at >= DATE_SUB(NOW(), INTERVAL 90 DAY)
+             GROUP BY post_id",
+            OBJECT
+        ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+
+        $map = array();
+        if ( $results ) {
+            foreach ( $results as $row ) {
+                $map[ (int) $row->post_id ] = (int) $row->click_count;
+            }
+        }
+
+        // Cache for 1 hour.
+        set_transient( $cache_key, $map, HOUR_IN_SECONDS );
+
+        return $map;
     }
 }

@@ -26,9 +26,12 @@
 
     if (!input) return;
 
-    var debounceTimer = null;
-    var activeFilter  = "all";
-    var lastQuery     = "";
+    var debounceTimer    = null;
+    var acDebounceTimer  = null;
+    var activeFilter     = "all";
+    var lastQuery        = "";
+    var acDropdown       = null; // Autocomplete dropdown element.
+    var acSelectedIndex  = -1;   // Keyboard navigation index.
 
     var categoryNames = {
         "how-to-guide":   "How-To Guides",
@@ -116,20 +119,62 @@
         clearBtn.style.display = q.length > 0 ? "flex" : "none";
 
         clearTimeout(debounceTimer);
+        clearTimeout(acDebounceTimer);
+
         if (q.length === 0) {
             resetUI();
+            hideAutocomplete();
             return;
         }
+
+        // Autocomplete fires faster (150ms) with a shorter query threshold.
+        if (q.length >= 2) {
+            acDebounceTimer = setTimeout(function () {
+                fetchAutocomplete(q);
+            }, 150);
+        }
+
         debounceTimer = setTimeout(function () {
+            hideAutocomplete();
             doSearch(q);
-        }, 300);
+        }, 400);
     });
 
     clearBtn.addEventListener("click", function () {
         input.value = "";
         clearBtn.style.display = "none";
         resetUI();
+        hideAutocomplete();
         input.focus();
+    });
+
+    // Keyboard navigation for autocomplete.
+    input.addEventListener("keydown", function (e) {
+        if (!acDropdown || acDropdown.style.display === "none") return;
+        var items = acDropdown.querySelectorAll(".ptk-ac-item");
+        if (!items.length) return;
+
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            acSelectedIndex = Math.min(acSelectedIndex + 1, items.length - 1);
+            updateAcHighlight(items);
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            acSelectedIndex = Math.max(acSelectedIndex - 1, -1);
+            updateAcHighlight(items);
+        } else if (e.key === "Enter" && acSelectedIndex >= 0) {
+            e.preventDefault();
+            items[acSelectedIndex].click();
+        } else if (e.key === "Escape") {
+            hideAutocomplete();
+        }
+    });
+
+    // Close autocomplete when clicking outside.
+    document.addEventListener("click", function (e) {
+        if (acDropdown && !input.contains(e.target) && !acDropdown.contains(e.target)) {
+            hideAutocomplete();
+        }
     });
 
     var suggestedTags = document.querySelectorAll(".ptk-suggested-tag");
@@ -311,6 +356,7 @@
             card.href = result.permalink;
             card.className = "ptk-card ptk-card-" + suffix;
         }
+        card.setAttribute("data-post-id", String(result.id));
 
         // Badge — only show when NOT inside a category group (the heading already tells you)
         if (!insideGroup) {
@@ -568,5 +614,148 @@
         fetch(ptkSearch.ajaxUrl, { method: "POST", body: body }).catch(function () {});
     }
 
+    // ==========================================
+    //  Click Tracking (popularity-weighted ranking)
+    // ==========================================
+
+    function trackClick(postId, query) {
+        if (!ptkSearch.nonce || !postId) return;
+        var body = new FormData();
+        body.append("action", "pta_track_click");
+        body.append("_wpnonce", ptkSearch.nonce);
+        body.append("post_id", String(postId));
+        body.append("query", query || "");
+        fetch(ptkSearch.ajaxUrl, { method: "POST", body: body }).catch(function () {});
+    }
+
+    // Attach click tracking to all card links via delegation.
+    document.addEventListener("click", function (e) {
+        var card = e.target.closest(".ptk-card[href], .ptk-card a[href], .ptk-best-answer-link, .ptk-related-card");
+        if (!card) return;
+
+        // Find the post ID from the card or its parent.
+        var postId = null;
+        var link = card.closest("[data-post-id]");
+        if (link) {
+            postId = link.getAttribute("data-post-id");
+        } else {
+            // Try to extract from the href URL.
+            var href = card.getAttribute("href") || (card.closest("a") && card.closest("a").getAttribute("href"));
+            if (href) {
+                // Match /pta_knowledge/slug or ?p=123.
+                var match = href.match(/[?&]p=(\d+)/);
+                if (match) postId = match[1];
+            }
+        }
+
+        if (postId) {
+            trackClick(postId, lastQuery);
+        }
+    });
+
+    // ==========================================
+    //  Autocomplete Dropdown
+    // ==========================================
+
+    function createAcDropdown() {
+        if (acDropdown) return acDropdown;
+        acDropdown = el("div", "ptk-autocomplete");
+        acDropdown.style.display = "none";
+        // Position it relative to the search input's parent.
+        var wrapper = input.closest(".ptk-search-bar") || input.parentElement;
+        wrapper.style.position = "relative";
+        wrapper.appendChild(acDropdown);
+        return acDropdown;
+    }
+
+    function fetchAutocomplete(query) {
+        var url = ptkSearch.ajaxUrl + "?action=pta_autocomplete&q=" + encodeURIComponent(query) + "&_wpnonce=" + encodeURIComponent(ptkSearch.nonce);
+
+        fetch(url)
+            .then(function (res) {
+                if (!res.ok) throw new Error("HTTP " + res.status);
+                return res.json();
+            })
+            .then(function (json) {
+                if (json.success && json.data && json.data.length > 0) {
+                    showAutocomplete(json.data, query);
+                } else {
+                    hideAutocomplete();
+                }
+            })
+            .catch(function () {
+                hideAutocomplete();
+            });
+    }
+
+    function showAutocomplete(items, query) {
+        var dropdown = createAcDropdown();
+        while (dropdown.firstChild) dropdown.removeChild(dropdown.firstChild);
+        acSelectedIndex = -1;
+
+        var lowerQuery = query.toLowerCase();
+
+        items.forEach(function (item, idx) {
+            var row = document.createElement("a");
+            row.href = item.permalink;
+            row.className = "ptk-ac-item";
+            row.setAttribute("data-index", String(idx));
+            row.setAttribute("data-post-id", String(item.id));
+
+            // Highlight matching portion in title.
+            var title = item.title;
+            var lowerTitle = title.toLowerCase();
+            var matchStart = lowerTitle.indexOf(lowerQuery);
+
+            var titleEl = el("span", "ptk-ac-title");
+            if (matchStart >= 0) {
+                titleEl.appendChild(document.createTextNode(title.substring(0, matchStart)));
+                var bold = el("strong", null, title.substring(matchStart, matchStart + query.length));
+                titleEl.appendChild(bold);
+                titleEl.appendChild(document.createTextNode(title.substring(matchStart + query.length)));
+            } else {
+                titleEl.textContent = title;
+            }
+
+            row.appendChild(titleEl);
+
+            if (item.catName) {
+                var suffix = (item.category || "").replace("how-to-guide", "howto").replace("event-playbook", "event");
+                row.appendChild(el("span", "ptk-ac-cat ptk-badge-" + suffix, item.catName));
+            }
+
+            // Track click on selection.
+            row.addEventListener("click", function () {
+                trackClick(item.id, query);
+                hideAutocomplete();
+            });
+
+            row.addEventListener("mouseenter", function () {
+                acSelectedIndex = idx;
+                updateAcHighlight(dropdown.querySelectorAll(".ptk-ac-item"));
+            });
+
+            dropdown.appendChild(row);
+        });
+
+        dropdown.style.display = "block";
+    }
+
+    function hideAutocomplete() {
+        if (acDropdown) {
+            acDropdown.style.display = "none";
+            acSelectedIndex = -1;
+        }
+    }
+
+    function updateAcHighlight(items) {
+        for (var i = 0; i < items.length; i++) {
+            if (i === acSelectedIndex) {
+                items[i].classList.add("ptk-ac-active");
+            } else {
+                items[i].classList.remove("ptk-ac-active");
+            }
+        }
+    }
 
 })();

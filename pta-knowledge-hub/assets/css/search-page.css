@@ -669,3 +669,70 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* ============================================
+   Autocomplete Dropdown
+   ============================================ */
+
+.ptk-autocomplete {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.ptk-ac-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 20px;
+    text-decoration: none !important;
+    color: #1e293b !important;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.1s;
+    cursor: pointer;
+}
+
+.ptk-ac-item:last-child {
+    border-bottom: none;
+}
+
+.ptk-ac-item:hover,
+.ptk-ac-item.ptk-ac-active {
+    background: #f8fafc;
+}
+
+.ptk-ac-title {
+    font-size: 0.95rem;
+    font-weight: 500;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ptk-ac-title strong {
+    font-weight: 700;
+    color: #4f46e5;
+}
+
+.ptk-ac-cat {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 3px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
