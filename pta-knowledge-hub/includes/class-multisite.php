@@ -283,6 +283,16 @@ class PTK_Multisite {
             if ( $copy_id && ! is_wp_error( $copy_id ) ) {
                 self::sync_terms( $copy_id, $cat_terms, 'knowledge_category' );
                 self::sync_terms( $copy_id, $tag_terms, 'post_tag' );
+
+                // Auto-flush rewrite rules on first sync to this subsite
+                // so /knowledge/ URLs work without manual permalink save.
+                if ( ! get_option( 'ptk_rewrite_flushed', false ) ) {
+                    // Re-register post type and taxonomy on this blog context.
+                    PTK_Post_Type::register_post_type();
+                    PTK_Post_Type::register_taxonomy();
+                    flush_rewrite_rules();
+                    update_option( 'ptk_rewrite_flushed', '1' );
+                }
             }
 
             restore_current_blog();

@@ -1,0 +1,10 @@
+{
+    "version": "2.2.1",
+    "download_url": "https://ixcreations.com/PTAC%20Updates/pta-knowledge-hub.zip",
+    "homepage": "https://ixcreations.com",
+    "requires": "6.0",
+    "requires_php": "7.4",
+    "tested": "6.9",
+    "last_updated": "2026-03-23",
+    "changelog": "<h4>v2.2.1</h4><ul><li>Auto-updater: update the plugin from WordPress admin with one click</li><li>Auto permalink flush on first multisite sync (no more manual Settings > Permalinks)</li><li>Smart search: autocomplete dropdown, typo tolerance, phrase matching, recency boost, popularity ranking</li><li>Click tracking for search result popularity</li></ul><h4>v2.1.4</h4><ul><li>Fixed category display in search results</li><li>Removed left border from cards</li><li>Colored category headings</li><li>Badge removed from cards under grouped headings</li></ul>"
+}

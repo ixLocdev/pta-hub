@@ -235,7 +235,167 @@
     }
 }
 
-/* ── Repeater (Steps / Timeline) ── */
+/* ── Textarea Wrap with Link Button ── */
+.ptk-textarea-wrap {
+    position: relative;
+}
+
+.ptk-link-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 2;
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 3px 6px;
+    cursor: pointer;
+    color: #6b7280;
+    line-height: 1;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.ptk-link-btn:hover {
+    background: #e5e7eb;
+    color: #2271b1;
+    border-color: #2271b1;
+}
+.ptk-link-btn .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+/* ── Link Popup Modal ── */
+.ptk-link-popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100100;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.ptk-link-popup.ptk-hidden {
+    display: none !important;
+}
+
+.ptk-link-popup-inner {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    width: 420px;
+    max-width: 90vw;
+    overflow: hidden;
+}
+
+.ptk-link-popup-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 15px;
+}
+
+.ptk-link-popup-close {
+    background: none;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    color: #9ca3af;
+    padding: 0;
+    line-height: 1;
+}
+.ptk-link-popup-close:hover {
+    color: #374151;
+}
+
+.ptk-link-popup-body {
+    padding: 18px;
+}
+.ptk-link-popup-body .ptk-field-input {
+    margin-bottom: 0;
+}
+.ptk-link-popup-body .ptk-field-label {
+    margin-bottom: 4px;
+}
+
+.ptk-link-popup-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 18px;
+    border-top: 1px solid #e5e7eb;
+    background: #fafbfc;
+}
+
+/* ── Per-Step Link Fields ── */
+.ptk-step-link-fields {
+    margin: 8px 0;
+    padding: 8px 10px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+}
+
+.ptk-step-link-label {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    margin-bottom: 6px !important;
+}
+.ptk-step-link-label .ptk-field-hint {
+    font-weight: 400;
+}
+
+.ptk-step-link-row {
+    display: flex;
+    gap: 8px;
+}
+.ptk-step-link-row .ptk-field-input {
+    flex: 1;
+    padding: 6px 10px;
+    font-size: 13px;
+}
+.ptk-step-link-text {
+    flex: 1;
+}
+.ptk-step-link-url {
+    flex: 1.5;
+}
+
+@media (max-width: 600px) {
+    .ptk-step-link-row {
+        flex-direction: column;
+        gap: 6px;
+    }
+}
+
+/* ── Links Repeater Fields ── */
+.ptk-link-fields {
+    display: flex;
+    gap: 10px;
+}
+.ptk-link-text-input {
+    flex: 1;
+}
+.ptk-link-url-input {
+    flex: 1.5;
+}
+
+@media (max-width: 600px) {
+    .ptk-link-fields {
+        flex-direction: column;
+        gap: 8px;
+    }
+}
+
+/* ── Repeater (Steps / Timeline / Links) ── */
 .ptk-repeater {
     margin-bottom: 12px;
 }
@@ -331,13 +491,17 @@
 
 /* Add buttons */
 .ptk-add-step,
-.ptk-add-timeline {
+.ptk-add-timeline,
+.ptk-add-checklist-item,
+.ptk-add-link-item {
     display: inline-flex !important;
     align-items: center;
     gap: 4px;
 }
 .ptk-add-step .dashicons,
-.ptk-add-timeline .dashicons {
+.ptk-add-timeline .dashicons,
+.ptk-add-checklist-item .dashicons,
+.ptk-add-link-item .dashicons {
     font-size: 16px;
     width: 16px;
     height: 16px;

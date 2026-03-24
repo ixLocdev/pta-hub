@@ -2,16 +2,19 @@
  * PTA Knowledge Hub — Content Wizard
  *
  * Handles dynamic form behavior: category switching, repeatable steps,
- * image uploads via WP media library, form validation, and autosave.
+ * image uploads via WP media library, form validation, autosave,
+ * edit mode pre-filling, inline link insertion, and links repeater.
  */
 (function ($) {
     'use strict';
 
     var stepCounter = 0;
     var timelineCounter = 0;
+    var linkItemCounter = 0;
     var STORAGE_KEY = 'ptk_wizard_autosave';
     var autosaveTimer = null;
     var isRestoring = false;
+    var activeTextarea = null; // Track which textarea the link popup targets.
 
     /**
      * Initialize wizard when DOM is ready.
@@ -22,7 +25,14 @@
         bindImageUploads();
         bindFileUploads();
         bindFormValidation();
+        bindLinkPopup();
+        initLinkButtons();
         initAutosave();
+
+        // If in edit mode, pre-fill the form.
+        if (typeof ptkWizardData !== 'undefined' && ptkWizardData.editMode && ptkWizardData.editData) {
+            restoreEditData(ptkWizardData.editData);
+        }
     });
 
     /* ──────────────────────────────────────────
@@ -49,7 +59,8 @@
                 $form.removeClass('ptk-hidden').hide().slideDown(300);
             }
 
-            // Show submit step.
+            // Show links section and submit step.
+            $('#ptk-step-links').removeClass('ptk-hidden').hide().slideDown(300);
             $('#ptk-step-submit').removeClass('ptk-hidden').hide().slideDown(300);
 
             // Add initial repeater items if empty.
@@ -69,6 +80,9 @@
                     addChecklistItem($checklist);
                 }
             }
+
+            // Initialize link buttons on newly visible textareas.
+            initLinkButtons();
 
             // Scroll to basics (skip during restore).
             if (!isRestoring) {
@@ -100,6 +114,12 @@
         $(document).on('click', '.ptk-add-checklist-item', function () {
             var $repeater = $('#' + $(this).data('repeater'));
             addChecklistItem($repeater);
+        });
+
+        // Add Link Item button.
+        $(document).on('click', '.ptk-add-link-item', function () {
+            var $repeater = $('#' + $(this).data('repeater'));
+            addLinkItem($repeater);
         });
 
         // Remove item.
@@ -152,7 +172,16 @@
                 '</div>' +
             '</div>' +
             '<div class="ptk-repeater-body">' +
-                '<textarea name="ptk_step_text[]" class="ptk-field-textarea" rows="3" placeholder="Describe what to do in this step..."></textarea>' +
+                '<div class="ptk-textarea-wrap">' +
+                    '<textarea name="ptk_step_text[]" class="ptk-field-textarea ptk-linkable" rows="3" placeholder="Describe what to do in this step..."></textarea>' +
+                '</div>' +
+                '<div class="ptk-step-link-fields">' +
+                    '<label class="ptk-field-label ptk-step-link-label">Link for this step <span class="ptk-field-hint">(optional)</span></label>' +
+                    '<div class="ptk-step-link-row">' +
+                        '<input type="text" name="ptk_step_link_text[]" class="ptk-field-input ptk-step-link-text" placeholder="Link text (e.g., Go to Givebacks)">' +
+                        '<input type="url" name="ptk_step_link_url[]" class="ptk-field-input ptk-step-link-url" placeholder="https://...">' +
+                    '</div>' +
+                '</div>' +
                 '<div class="ptk-step-image">' +
                     '<input type="hidden" name="ptk_step_image[]" class="ptk-step-image-id" value="">' +
                     '<div class="ptk-step-image-preview"></div>' +
@@ -167,6 +196,7 @@
         var $item = $(html).hide();
         $repeater.append($item);
         $item.slideDown(200);
+        initLinkButtons();
         if (!isRestoring) {
             $item.find('textarea').focus();
         }
@@ -226,12 +256,128 @@
         }
     }
 
+    function addLinkItem($repeater) {
+        linkItemCounter++;
+        var index = $repeater.find('.ptk-repeater-item').length;
+        var num = index + 1;
+
+        var html = '<div class="ptk-repeater-item ptk-link-item" data-index="' + index + '">' +
+            '<div class="ptk-repeater-header">' +
+                '<span class="ptk-repeater-number">#' + num + '</span>' +
+                '<div class="ptk-repeater-actions">' +
+                    '<button type="button" class="ptk-repeater-up" title="Move up"><span class="dashicons dashicons-arrow-up-alt2"></span></button>' +
+                    '<button type="button" class="ptk-repeater-down" title="Move down"><span class="dashicons dashicons-arrow-down-alt2"></span></button>' +
+                    '<button type="button" class="ptk-repeater-remove" title="Remove"><span class="dashicons dashicons-trash"></span></button>' +
+                '</div>' +
+            '</div>' +
+            '<div class="ptk-repeater-body ptk-link-fields">' +
+                '<input type="text" name="ptk_link_text[]" class="ptk-field-input ptk-link-text-input" placeholder="Link text (e.g., PTA Website)">' +
+                '<input type="url" name="ptk_link_url[]" class="ptk-field-input ptk-link-url-input" placeholder="https://...">' +
+            '</div>' +
+        '</div>';
+
+        var $item = $(html).hide();
+        $repeater.append($item);
+        $item.slideDown(200);
+        if (!isRestoring) {
+            $item.find('input:first').focus();
+        }
+    }
+
     function renumberSteps($repeater) {
         $repeater.find('.ptk-repeater-item').each(function (i) {
             var label = $repeater.attr('id') === 'ptk-howto-steps' ? 'Step ' : '#';
             $(this).find('.ptk-repeater-number').text(label + (i + 1));
             $(this).attr('data-index', i);
         });
+    }
+
+    /* ──────────────────────────────────────────
+     * Inline Link Button + Popup
+     * ────────────────────────────────────────── */
+
+    function initLinkButtons() {
+        // Add link button above each linkable textarea that doesn't already have one.
+        $('.ptk-linkable').each(function () {
+            var $textarea = $(this);
+            var $wrap = $textarea.closest('.ptk-textarea-wrap');
+            if ($wrap.length && !$wrap.find('.ptk-link-btn').length) {
+                var $btn = $('<button type="button" class="ptk-link-btn" title="Insert link">' +
+                    '<span class="dashicons dashicons-admin-links"></span>' +
+                    '</button>');
+                $wrap.prepend($btn);
+            }
+        });
+    }
+
+    function bindLinkPopup() {
+        // Open popup when link button is clicked.
+        $(document).on('click', '.ptk-link-btn', function (e) {
+            e.preventDefault();
+            activeTextarea = $(this).closest('.ptk-textarea-wrap').find('textarea')[0];
+            if (!activeTextarea) return;
+
+            $('#ptk-link-popup-text').val('');
+            $('#ptk-link-popup-url').val('');
+            $('#ptk-link-popup').removeClass('ptk-hidden');
+            $('#ptk-link-popup-text').focus();
+        });
+
+        // Insert link.
+        $(document).on('click', '#ptk-link-popup-insert', function () {
+            var linkText = $('#ptk-link-popup-text').val().trim();
+            var linkUrl = $('#ptk-link-popup-url').val().trim();
+
+            if (!linkText || !linkUrl) {
+                alert('Please enter both link text and URL.');
+                return;
+            }
+
+            // Ensure URL has protocol.
+            if (linkUrl && !/^https?:\/\//i.test(linkUrl)) {
+                linkUrl = 'https://' + linkUrl;
+            }
+
+            var markdown = '[' + linkText + '](' + linkUrl + ')';
+            insertAtCursor(activeTextarea, markdown);
+
+            $('#ptk-link-popup').addClass('ptk-hidden');
+            activeTextarea = null;
+        });
+
+        // Cancel / close popup.
+        $(document).on('click', '#ptk-link-popup-cancel, .ptk-link-popup-close', function () {
+            $('#ptk-link-popup').addClass('ptk-hidden');
+            activeTextarea = null;
+        });
+
+        // Close popup on Escape key.
+        $(document).on('keydown', function (e) {
+            if (e.key === 'Escape' && !$('#ptk-link-popup').hasClass('ptk-hidden')) {
+                $('#ptk-link-popup').addClass('ptk-hidden');
+                activeTextarea = null;
+            }
+        });
+
+        // Allow Enter in URL field to trigger insert.
+        $(document).on('keydown', '#ptk-link-popup-url', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                $('#ptk-link-popup-insert').trigger('click');
+            }
+        });
+    }
+
+    function insertAtCursor(textarea, text) {
+        if (!textarea) return;
+        var start = textarea.selectionStart;
+        var end = textarea.selectionEnd;
+        var before = textarea.value.substring(0, start);
+        var after = textarea.value.substring(end);
+        textarea.value = before + text + after;
+        textarea.selectionStart = textarea.selectionEnd = start + text.length;
+        $(textarea).trigger('input');
+        textarea.focus();
     }
 
     /* ──────────────────────────────────────────
@@ -370,6 +516,7 @@
         $('#ptk-wizard-form').on('submit', function (e) {
             var category = $('input[name="ptk_category"]:checked').val();
             var title = $('#ptk-title').val().trim();
+            var isEdit = $('input[name="ptk_edit_id"]').length > 0;
 
             if (!category) {
                 e.preventDefault();
@@ -446,8 +593,149 @@
             clearAutosave();
 
             // Disable submit button to prevent double-submit.
-            $('#ptk-wizard-submit-btn').prop('disabled', true).text('Creating...');
+            var btnText = isEdit ? 'Updating...' : 'Creating...';
+            $('#ptk-wizard-submit-btn').prop('disabled', true).text(btnText);
         });
+    }
+
+    /* ──────────────────────────────────────────
+     * Edit Mode: Pre-fill form with existing data
+     * ────────────────────────────────────────── */
+
+    function restoreEditData(data) {
+        isRestoring = true;
+
+        // Don't restore autosave when editing.
+        clearAutosave();
+
+        // Select category.
+        if (data.category) {
+            var $card = $('.ptk-category-card[data-category="' + data.category + '"]');
+            if ($card.length) {
+                $card.trigger('click');
+            }
+        }
+
+        // Basic fields.
+        if (data.title) { $('#ptk-title').val(data.title); }
+        if (data.excerpt) { $('#ptk-excerpt').val(data.excerpt); }
+        if (data.tags) { $('#ptk-tags').val(data.tags); }
+        if (data.status) {
+            $('input[name="ptk_status"][value="' + data.status + '"]').prop('checked', true);
+        }
+
+        // Featured image.
+        if (data.featured_id && data.featured_url) {
+            $('#ptk-featured-image-id').val(data.featured_id);
+            $('#ptk-featured-image-preview').html(
+                '<img src="' + data.featured_url + '" alt="" style="max-width:150px;max-height:150px;border-radius:4px;">'
+            );
+            $('[data-target="ptk-featured-image"].ptk-remove-image').removeClass('ptk-hidden');
+        }
+
+        // Category-specific fields.
+        var fields = data.fields || {};
+
+        if (data.category === 'how-to-guide') {
+            if (fields.intro) { $('#ptk-howto-intro').val(fields.intro); }
+            if (fields.difficulty) { $('#ptk-howto-difficulty').val(fields.difficulty); }
+            if (fields.time) { $('#ptk-howto-time').val(fields.time); }
+            if (fields.materials) { $('textarea[name="ptk_howto_materials"]').val(fields.materials); }
+            if (fields.tips) { $('textarea[name="ptk_howto_tips"]').val(fields.tips); }
+
+            if (fields.steps && fields.steps.length) {
+                var $steps = $('#ptk-howto-steps');
+                var $existing = $steps.find('.ptk-repeater-item');
+                if ($existing.length === 1 && !$existing.find('textarea').val().trim()) {
+                    $existing.remove();
+                }
+                for (var s = 0; s < fields.steps.length; s++) {
+                    if ($steps.find('.ptk-repeater-item').length <= s) {
+                        addStep($steps);
+                    }
+                    $steps.find('textarea[name="ptk_step_text[]"]').eq(s).val(fields.steps[s]);
+
+                    // Restore step links.
+                    if (fields.step_links && fields.step_links[s]) {
+                        if (fields.step_links[s].text) {
+                            $steps.find('input[name="ptk_step_link_text[]"]').eq(s).val(fields.step_links[s].text);
+                        }
+                        if (fields.step_links[s].url) {
+                            $steps.find('input[name="ptk_step_link_url[]"]').eq(s).val(fields.step_links[s].url);
+                        }
+                    }
+                }
+            }
+        } else if (data.category === 'event-playbook') {
+            if (fields.overview) { $('#ptk-event-overview').val(fields.overview); }
+            if (fields.date) { $('#ptk-event-date').val(fields.date); }
+            if (fields.location) { $('#ptk-event-location').val(fields.location); }
+            if (fields.budget) { $('#ptk-event-budget').val(fields.budget); }
+            if (fields.supplies) { $('textarea[name="ptk_event_supplies"]').val(fields.supplies); }
+            if (fields.contacts) { $('textarea[name="ptk_event_contacts"]').val(fields.contacts); }
+
+            if (fields.timeline && fields.timeline.length) {
+                var $timeline = $('#ptk-event-timeline');
+                var $existingTl = $timeline.find('.ptk-repeater-item');
+                if ($existingTl.length === 1 && !$existingTl.find('input').first().val().trim()) {
+                    $existingTl.remove();
+                }
+                for (var t = 0; t < fields.timeline.length; t++) {
+                    if ($timeline.find('.ptk-repeater-item').length <= t) {
+                        addTimelineItem($timeline);
+                    }
+                    $('input[name="ptk_timeline_when[]"]').eq(t).val(fields.timeline[t].when || '');
+                    $('input[name="ptk_timeline_what[]"]').eq(t).val(fields.timeline[t].what || '');
+                }
+            }
+        } else if (data.category === 'faq') {
+            if (fields.short_answer) { $('#ptk-faq-short-answer').val(fields.short_answer); }
+            if (fields.details) { $('#ptk-faq-details').val(fields.details); }
+            if (fields.reviewed) { $('#ptk-faq-reviewed').val(fields.reviewed); }
+        } else if (data.category === 'resource') {
+            if (fields.description) { $('#ptk-resource-desc').val(fields.description); }
+            if (fields.url) { $('#ptk-resource-url').val(fields.url); }
+            if (fields.file_type) { $('#ptk-resource-type').val(fields.file_type); }
+            if (fields.howto) { $('#ptk-resource-howto').val(fields.howto); }
+        } else if (data.category === 'glossary') {
+            if (fields.definition) { $('#ptk-glossary-definition').val(fields.definition); }
+            if (fields.details) { $('#ptk-glossary-details').val(fields.details); }
+            if (fields.example) { $('#ptk-glossary-example').val(fields.example); }
+        } else if (data.category === 'checklist') {
+            if (fields.intro) { $('#ptk-checklist-intro').val(fields.intro); }
+            if (fields.notes) { $('#ptk-checklist-notes').val(fields.notes); }
+
+            if (fields.items && fields.items.length) {
+                var $checklistR = $('#ptk-checklist-items');
+                var $existingCl = $checklistR.find('.ptk-repeater-item');
+                if ($existingCl.length === 1 && !$existingCl.find('input').first().val().trim()) {
+                    $existingCl.remove();
+                }
+                for (var cl = 0; cl < fields.items.length; cl++) {
+                    if ($checklistR.find('.ptk-repeater-item').length <= cl) {
+                        addChecklistItem($checklistR);
+                    }
+                    $('input[name="ptk_checklist_item[]"]').eq(cl).val(fields.items[cl] || '');
+                }
+            }
+        } else if (data.category === 'policy') {
+            if (fields.summary) { $('#ptk-policy-summary').val(fields.summary); }
+            if (fields.full_text) { $('#ptk-policy-full-text').val(fields.full_text); }
+            if (fields.effective) { $('#ptk-policy-effective').val(fields.effective); }
+            if (fields.reviewed) { $('#ptk-policy-reviewed').val(fields.reviewed); }
+        }
+
+        // Restore common links.
+        if (fields.links && fields.links.length) {
+            var $linksR = $('#ptk-links-repeater');
+            for (var li = 0; li < fields.links.length; li++) {
+                addLinkItem($linksR);
+                $('input[name="ptk_link_text[]"]').eq(li).val(fields.links[li].text || '');
+                $('input[name="ptk_link_url[]"]').eq(li).val(fields.links[li].url || '');
+            }
+        }
+
+        isRestoring = false;
     }
 
     /* ──────────────────────────────────────────
@@ -455,8 +743,12 @@
      * ────────────────────────────────────────── */
 
     function initAutosave() {
-        // Don't restore on the success page.
+        // Don't restore on the success page or in edit mode.
         if (window.location.search.indexOf('ptk_created') !== -1) {
+            clearAutosave();
+            return;
+        }
+        if (window.location.search.indexOf('ptk_edit_id') !== -1) {
             clearAutosave();
             return;
         }
@@ -490,6 +782,11 @@
     }
 
     function saveAutosave() {
+        // Don't autosave in edit mode.
+        if (typeof ptkWizardData !== 'undefined' && ptkWizardData.editMode) {
+            return;
+        }
+
         var data = {};
         var category = $('input[name="ptk_category"]:checked').val();
 
@@ -514,10 +811,15 @@
                 time: $('#ptk-howto-time').val() || '',
                 materials: $('textarea[name="ptk_howto_materials"]').val() || '',
                 tips: $('textarea[name="ptk_howto_tips"]').val() || '',
-                steps: []
+                steps: [],
+                stepLinks: []
             };
-            $('textarea[name="ptk_step_text[]"]').each(function () {
+            $('textarea[name="ptk_step_text[]"]').each(function (i) {
                 data.howto.steps.push($(this).val() || '');
+                data.howto.stepLinks.push({
+                    text: $('input[name="ptk_step_link_text[]"]').eq(i).val() || '',
+                    url: $('input[name="ptk_step_link_url[]"]').eq(i).val() || ''
+                });
             });
         } else if (category === 'event-playbook') {
             data.event = {
@@ -571,6 +873,15 @@
                 reviewed: $('#ptk-policy-reviewed').val() || ''
             };
         }
+
+        // Save common links.
+        data.links = [];
+        $('input[name="ptk_link_text[]"]').each(function (i) {
+            data.links.push({
+                text: $(this).val() || '',
+                url: $('input[name="ptk_link_url[]"]').eq(i).val() || ''
+            });
+        });
 
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -655,6 +966,11 @@
                         addStep($steps);
                     }
                     $steps.find('textarea[name="ptk_step_text[]"]').eq(s).val(data.howto.steps[s]);
+                    // Restore step links from autosave.
+                    if (data.howto.stepLinks && data.howto.stepLinks[s]) {
+                        $steps.find('input[name="ptk_step_link_text[]"]').eq(s).val(data.howto.stepLinks[s].text || '');
+                        $steps.find('input[name="ptk_step_link_url[]"]').eq(s).val(data.howto.stepLinks[s].url || '');
+                    }
                 }
             }
         } else if (data.category === 'event-playbook' && data.event) {
@@ -714,6 +1030,16 @@
             $('#ptk-policy-full-text').val(data.policy.fullText || '');
             $('#ptk-policy-effective').val(data.policy.effective || '');
             $('#ptk-policy-reviewed').val(data.policy.reviewed || '');
+        }
+
+        // Restore common links.
+        if (data.links && data.links.length) {
+            var $linksR = $('#ptk-links-repeater');
+            for (var li = 0; li < data.links.length; li++) {
+                addLinkItem($linksR);
+                $('input[name="ptk_link_text[]"]').eq(li).val(data.links[li].text || '');
+                $('input[name="ptk_link_url[]"]').eq(li).val(data.links[li].url || '');
+            }
         }
 
         isRestoring = false;
