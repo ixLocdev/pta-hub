@@ -39,3 +39,26 @@ build/
 # AI and tool metadata
 .omc/
 .claude/
+
+
+# Safety guardrails added by BuddyShelf
+# Helps keep private files from being shared (not exhaustive)
+.env.*
+*.pem
+*.p12
+*.pfx
+*.keystore
+id_rsa*
+id_ed25519*
+credentials.json
+secrets.json
+service-account*.json
+*.token
+~$*
+._*
+Thumbs.db
+Desktop.ini
+*.tmp
+*.swp
+*.swo
+
