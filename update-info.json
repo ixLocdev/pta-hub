@@ -1,10 +1,10 @@
 {
-    "version": "2.2.1",
+    "version": "2.6.0",
     "download_url": "https://ixcreations.com/PTAC%20Updates/pta-knowledge-hub.zip",
     "homepage": "https://ixcreations.com",
     "requires": "6.0",
     "requires_php": "7.4",
     "tested": "6.9",
-    "last_updated": "2026-03-23",
-    "changelog": "<h4>v2.2.1</h4><ul><li>Auto-updater: update the plugin from WordPress admin with one click</li><li>Auto permalink flush on first multisite sync (no more manual Settings > Permalinks)</li><li>Smart search: autocomplete dropdown, typo tolerance, phrase matching, recency boost, popularity ranking</li><li>Click tracking for search result popularity</li></ul><h4>v2.1.4</h4><ul><li>Fixed category display in search results</li><li>Removed left border from cards</li><li>Colored category headings</li><li>Badge removed from cards under grouped headings</li></ul>"
+    "last_updated": "2026-05-07",
+    "changelog": "<h4>v2.6.0 — Reading time, QR codes, review reminders, preview links</h4><ul><li>Single entries now show estimated reading time and an auto-generated Table of Contents (entries with 3+ headings)</li><li>New \"QR Code\" sidebar in the post editor — download a PNG to print on table tents</li><li>\"Last Reviewed\" column and dashboard widget for stale entries (12-month threshold)</li><li>Generate a 7-day public preview link for draft entries — share with reviewers without giving them an admin login</li></ul><h4>v2.5.0</h4><ul><li>Print footer uses the site name automatically</li><li>Wizard defaults to Draft instead of Published</li><li>Editing an entry in the Wizard now warns about overwriting hand-edits</li><li>\"Edit in Wizard\" button on success screen</li><li>Editors can now see Search Analytics and Content Gaps</li><li>Public feedback widget no longer shows raw vote counts</li><li>Category filter button counts removed (avoid stale numbers after a search)</li><li>Hub URL configurable via ptk_hub_slug option / ptk_hub_url filter</li><li>Glossary empty state speaks to visitors instead of pointing them at admin tools</li><li>Starter Content importer stays visible after first run</li></ul><h4>v2.4.0</h4><ul><li>Council entries auto-share to every school site by default</li><li>One-click \"Sync all entries now\" button on the Network Sync page</li></ul><h4>v2.2.1</h4><ul><li>Auto-updater: update the plugin from WordPress admin with one click</li><li>Smart search: autocomplete dropdown, typo tolerance, phrase matching, recency boost, popularity ranking</li></ul>"
 }

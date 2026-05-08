@@ -3,7 +3,7 @@
  * Plugin Name: PTA Knowledge Hub
  * Plugin URI:  https://github.com/your-pta/knowledge-hub
  * Description: A searchable knowledge base for your PTA. Volunteers add content through WordPress, parents and members find answers instantly via a smart search bar.
- * Version:     2.5.0
+ * Version:     2.6.0
  * Author:      Lucas Deichl
  * License:     GPL-2.0-or-later
  * Text Domain: pta-knowledge-hub
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'PTK_VERSION', '2.5.0' );
+define( 'PTK_VERSION', '2.6.0' );
 define( 'PTK_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PTK_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
