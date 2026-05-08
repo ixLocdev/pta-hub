@@ -45,7 +45,6 @@ if ( ! defined( 'ABSPATH' ) ) {
         <?php foreach ( $categories as $cat ) : ?>
             <button class="ptk-filter-btn" data-category="<?php echo esc_attr( $cat->slug ); ?>" aria-pressed="false">
                 <?php echo esc_html( $cat->name ); ?>
-                <span class="ptk-filter-count"><?php echo esc_html( $cat->count ); ?></span>
             </button>
         <?php endforeach; ?>
     </div>
