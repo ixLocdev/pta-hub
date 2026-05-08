@@ -20,6 +20,14 @@ class PTK_Multisite {
     private static $syncing = false;
 
     /**
+     * Public read-access to the sync flag so other classes can suppress
+     * side-effects (e.g. review-stamping) during multisite propagation.
+     */
+    public static function is_syncing(): bool {
+        return self::$syncing;
+    }
+
+    /**
      * Register hooks — only when running on a multisite network.
      */
     public static function init() {
@@ -32,6 +40,7 @@ class PTK_Multisite {
         add_action( 'add_meta_boxes', array( __CLASS__, 'register_meta_boxes' ) );
         add_action( 'admin_menu', array( __CLASS__, 'add_network_admin_page' ) );
         add_action( 'wp_ajax_ptk_suggest_to_council', array( __CLASS__, 'handle_suggest_to_council' ) );
+        add_action( 'admin_post_ptk_backfill_network', array( __CLASS__, 'handle_backfill_request' ) );
     }
 
     /* ------------------------------------------------------------------
@@ -72,17 +81,26 @@ class PTK_Multisite {
      */
     public static function render_share_meta_box( $post ) {
         wp_nonce_field( 'ptk_network_share', 'ptk_network_share_nonce' );
-        $shared = get_post_meta( $post->ID, 'ptk_share_network', true );
+        $shared     = get_post_meta( $post->ID, 'ptk_share_network', true );
+        $is_shared  = self::is_shared_value( $shared );
         ?>
         <label style="display:block;padding:4px 0;font-size:13px;">
-            <input type="checkbox" name="ptk_share_network" value="1" <?php checked( $shared, '1' ); ?>>
+            <input type="checkbox" name="ptk_share_network" value="1" <?php checked( $is_shared ); ?>>
             <strong>Share to All Schools</strong>
         </label>
         <p class="description" style="margin-top:8px;">
-            When checked, this entry will be automatically copied to all school sites
-            in the network and kept in sync when you update it.
+            New entries are shared to every school site by default. Uncheck to keep
+            this entry on the Council site only.
         </p>
         <?php
+    }
+
+    /**
+     * Default-on interpretation of the share meta.
+     * Only an explicit '0' counts as opted-out.
+     */
+    private static function is_shared_value( $meta_value ) {
+        return '0' !== (string) $meta_value;
     }
 
     /**
@@ -193,10 +211,10 @@ class PTK_Multisite {
             if ( ! empty( $_POST['ptk_share_network'] ) ) {
                 update_post_meta( $post_id, 'ptk_share_network', '1' );
             } else {
-                // Was previously shared, now unchecked — remove from network.
-                $was_shared = get_post_meta( $post_id, 'ptk_share_network', true );
-                delete_post_meta( $post_id, 'ptk_share_network' );
-                if ( '1' === $was_shared ) {
+                // Explicitly opted out — record '0' and remove network copies.
+                $was_shared = self::is_shared_value( get_post_meta( $post_id, 'ptk_share_network', true ) );
+                update_post_meta( $post_id, 'ptk_share_network', '0' );
+                if ( $was_shared ) {
                     self::unshare_from_network( $post_id );
                 }
                 return;
@@ -209,7 +227,7 @@ class PTK_Multisite {
         }
 
         $shared = get_post_meta( $post_id, 'ptk_share_network', true );
-        if ( '1' !== $shared ) {
+        if ( ! self::is_shared_value( $shared ) ) {
             return;
         }
 
@@ -360,11 +378,78 @@ class PTK_Multisite {
         }
 
         $shared = get_post_meta( $post_id, 'ptk_share_network', true );
-        if ( '1' !== $shared ) {
+        if ( ! self::is_shared_value( $shared ) ) {
             return;
         }
 
         self::unshare_from_network( $post_id );
+    }
+
+    /* ------------------------------------------------------------------
+     * Backfill
+     * ----------------------------------------------------------------*/
+
+    /**
+     * Sync every published Council entry to all subsites.
+     *
+     * Used to bring existing content (created before default-on sharing,
+     * or before a new subsite joined the network) up to date.
+     *
+     * @return int Number of entries pushed.
+     */
+    public static function backfill_all() {
+        if ( ! self::is_main_site() ) {
+            return 0;
+        }
+        if ( ! get_option( 'ptk_enable_network_sharing', false ) ) {
+            return 0;
+        }
+
+        $ids = get_posts( array(
+            'post_type'      => 'pta_knowledge',
+            'post_status'    => 'publish',
+            'posts_per_page' => -1,
+            'fields'         => 'ids',
+        ) );
+
+        $count = 0;
+        foreach ( $ids as $id ) {
+            $shared = get_post_meta( $id, 'ptk_share_network', true );
+            if ( ! self::is_shared_value( $shared ) ) {
+                continue; // Editor explicitly opted this one out.
+            }
+            // Mark canonical '1' so the meta query in get_shared_post_ids() picks it up.
+            if ( '1' !== (string) $shared ) {
+                update_post_meta( $id, 'ptk_share_network', '1' );
+            }
+            self::sync_to_network( $id );
+            $count++;
+        }
+
+        return $count;
+    }
+
+    /**
+     * Handle the "Sync all entries now" button on the Network Sync page.
+     */
+    public static function handle_backfill_request() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( 'You do not have permission to do this.' );
+        }
+        check_admin_referer( 'ptk_backfill_network' );
+
+        $count = self::backfill_all();
+
+        $redirect = add_query_arg(
+            array(
+                'post_type'    => 'pta_knowledge',
+                'page'         => 'ptk-network-sync',
+                'ptk_backfill' => $count,
+            ),
+            admin_url( 'edit.php' )
+        );
+        wp_safe_redirect( $redirect );
+        exit;
     }
 
     /* ------------------------------------------------------------------
@@ -493,10 +578,22 @@ class PTK_Multisite {
             ),
         ) );
 
+        $backfilled = isset( $_GET['ptk_backfill'] ) ? absint( $_GET['ptk_backfill'] ) : null;
         ?>
         <div class="wrap">
             <h1 class="wp-heading-inline">Network Sync</h1>
-            <p style="font-size:14px;color:#6b7280;">Manage content sharing across all school sites in your network.</p>
+            <p style="font-size:14px;color:#6b7280;">Manage content sharing across all school sites in your network. New Council entries are shared to every school by default.</p>
+
+            <?php if ( null !== $backfilled ) : ?>
+                <div class="notice notice-success is-dismissible"><p>Synced <?php echo esc_html( $backfilled ); ?> Council entries to all school sites.</p></div>
+            <?php endif; ?>
+
+            <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin:16px 0;">
+                <?php wp_nonce_field( 'ptk_backfill_network' ); ?>
+                <input type="hidden" name="action" value="ptk_backfill_network">
+                <button type="submit" class="button button-primary">Sync all entries now</button>
+                <span style="margin-left:10px;font-size:13px;color:#6b7280;">Pushes every published Council entry to all school sites. Safe to re-run.</span>
+            </form>
 
             <!-- Stats -->
             <div style="display:flex;gap:16px;margin:24px 0;">

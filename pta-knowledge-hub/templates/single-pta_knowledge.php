@@ -82,7 +82,8 @@ while ( have_posts() ) :
 
 <div class="ptk-single-wrap">
 
-    <a href="<?php echo esc_url( home_url( '/knowledge-base' ) ); ?>" class="ptk-back-link" onclick="if(history.length>1){history.back();return false;}">
+    <?php $ptk_hub_url = ptk_hub_url(); ?>
+    <a href="<?php echo esc_url( $ptk_hub_url ); ?>" class="ptk-back-link" onclick="if(history.length>1){history.back();return false;}">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
         Back to Search
     </a>
@@ -91,7 +92,7 @@ while ( have_posts() ) :
     <nav class="ptk-single-nav" aria-label="Breadcrumb">
         <a href="<?php echo esc_url( home_url( '/' ) ); ?>">Home</a>
         <span class="ptk-sep">/</span>
-        <a href="<?php echo esc_url( home_url( '/knowledge-base' ) ); ?>">PTA Hub</a>
+        <a href="<?php echo esc_url( $ptk_hub_url ); ?>">PTA Hub</a>
         <?php if ( $cat_name ) : ?>
             <span class="ptk-sep">/</span>
             <span><?php echo esc_html( $cat_name ); ?></span>
@@ -165,10 +166,6 @@ while ( have_posts() ) :
         <div class="ptk-feedback" id="ptk-feedback" data-post-id="<?php echo esc_attr( get_the_ID() ); ?>">
             <?php if ( $ptk_fb_voted ) : ?>
                 <p class="ptk-feedback-thanks">Thanks for your feedback!</p>
-                <p class="ptk-feedback-counts">
-                    <?php echo esc_html( $ptk_fb_counts['helpful'] ); ?> found this helpful &middot;
-                    <?php echo esc_html( $ptk_fb_counts['not_helpful'] ); ?> did not
-                </p>
             <?php else : ?>
                 <p class="ptk-feedback-question">Was this entry helpful?</p>
                 <div class="ptk-feedback-buttons">
@@ -204,7 +201,13 @@ while ( have_posts() ) :
 
     <!-- Print-only footer (hidden on screen, visible in print) -->
     <div class="ptk-print-footer">
-        Internal documentation for Montclair PTA District. For authorized use only. Do not distribute.
+        <?php
+        printf(
+            /* translators: %s: site name (e.g. Montclair PTA Council). */
+            esc_html__( 'Internal documentation for %s. For authorized use only. Do not distribute.', 'pta-knowledge-hub' ),
+            esc_html( get_bloginfo( 'name' ) )
+        );
+        ?>
     </div>
 
 </div>

@@ -184,9 +184,9 @@ class PTK_Glossary_Page {
                 <div class="ptk-glossary-empty-icon">
                     <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
                 </div>
-                <h2>No Glossary Terms Yet</h2>
-                <p>Glossary terms will appear here once they're created. Use the Content Wizard to add your first term!</p>
-                <a href="<?php echo esc_url( home_url( '/knowledge-base' ) ); ?>" class="ptk-glossary-back-link">&larr; Back to PTA Hub</a>
+                <h2>Glossary Coming Soon</h2>
+                <p>We're still building this glossary. In the meantime, try the search bar on the PTA Hub for answers.</p>
+                <a href="<?php echo esc_url( ptk_hub_url() ); ?>" class="ptk-glossary-back-link">&larr; Back to PTA Hub</a>
             </div>
         </div>
         <?php
