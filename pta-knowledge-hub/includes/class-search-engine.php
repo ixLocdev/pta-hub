@@ -168,7 +168,122 @@ class PTK_Search_Engine {
     }
 
     /**
-     * AJAX handler: searches pta_knowledge posts and returns scored results.
+     * Run a knowledge-base search and return formatted, ranked results.
+     *
+     * Public reusable API. Other classes (Wizard related-entries panel, etc.)
+     * call this directly to get a flat list of formatted results without the
+     * AJAX response shaping (best-answer detection, grouping, "did you mean"
+     * suggestions) that handle_search() does on top.
+     *
+     * @param string $query Search string.
+     * @param array  $args  {
+     *     Optional. Defaults shown.
+     *     @type int    $limit    Max results to return. Default 20.
+     *     @type int[]  $exclude  Post IDs to skip.
+     *     @type string $category Category slug filter, '' for all.
+     * }
+     * @return array List of formatted results (id, title, permalink, excerpt, category, catName, tags, score, ...).
+     */
+    public static function search( string $query, array $args = array() ): array {
+        $scored = self::score_posts( $query, $args );
+        $out    = array();
+        foreach ( $scored as $entry ) {
+            $out[] = self::format_result( $entry['post'], $entry['score'], $entry['terms'] );
+        }
+        return $out;
+    }
+
+    /**
+     * Core scoring loop. Returns ranked entries with the original post object,
+     * score, and pre-loaded terms — the shape the AJAX handler needs for
+     * best-answer detection and grouping.
+     *
+     * @param string $query
+     * @param array  $args  Same shape as search().
+     * @return array<int, array{post: WP_Post, score: int, terms: array}>
+     */
+    private static function score_posts( string $query, array $args ): array {
+        $args = array_merge( array(
+            'limit'    => 20,
+            'exclude'  => array(),
+            'category' => '',
+        ), $args );
+
+        $query = trim( $query );
+        if ( '' === $query ) {
+            return array();
+        }
+
+        $tokens          = self::tokenize( $query );
+        $raw_words       = self::tokenize_raw( $query );
+        $expanded_tokens = self::expand_synonyms( $tokens, $query );
+        $intent_slugs    = self::detect_intent( $query );
+
+        if ( empty( $tokens ) && empty( $raw_words ) ) {
+            return array();
+        }
+
+        $get_args = array(
+            'post_type'      => 'pta_knowledge',
+            'post_status'    => 'publish',
+            'posts_per_page' => 500,
+        );
+        if ( ! empty( $args['exclude'] ) ) {
+            $get_args['post__not_in'] = array_map( 'intval', (array) $args['exclude'] );
+        }
+        if ( ! empty( $args['category'] ) ) {
+            $get_args['tax_query'] = array(
+                array(
+                    'taxonomy' => 'knowledge_category',
+                    'field'    => 'slug',
+                    'terms'    => $args['category'],
+                ),
+            );
+        }
+
+        $posts = get_posts( $get_args );
+        if ( empty( $posts ) ) {
+            return array();
+        }
+
+        $post_ids       = wp_list_pluck( $posts, 'ID' );
+        $terms_map      = self::batch_load_terms( $post_ids );
+        $popularity_map = self::get_popularity_map( $post_ids );
+
+        $scored = array();
+        foreach ( $posts as $post ) {
+            $post_terms = isset( $terms_map[ $post->ID ] ) ? $terms_map[ $post->ID ] : array(
+                'categories' => array(),
+                'cat_slugs'  => array(),
+                'tag_names'  => array(),
+            );
+            $popularity = isset( $popularity_map[ $post->ID ] ) ? $popularity_map[ $post->ID ] : 0;
+            $score = self::score_post( $post, $query, $expanded_tokens, $raw_words, $intent_slugs, $post_terms, $popularity );
+            if ( $score > 0 ) {
+                $scored[] = array(
+                    'post'  => $post,
+                    'score' => $score,
+                    'terms' => $post_terms,
+                );
+            }
+        }
+
+        if ( class_exists( 'PTK_Role_Access' ) ) {
+            $scored = PTK_Role_Access::filter_search_results( $scored );
+        }
+
+        usort( $scored, function( $a, $b ) {
+            return $b['score'] - $a['score'];
+        } );
+
+        $limit  = max( 1, (int) $args['limit'] );
+        return array_slice( $scored, 0, $limit );
+    }
+
+    /**
+     * AJAX handler: searches pta_knowledge posts and returns the full response
+     * shape (best-answer, groups, suggestions, did-you-mean) consumed by the
+     * front-end search UI.
      */
     public static function handle_search() {
         check_ajax_referer( 'ptk_search_nonce', '_wpnonce' );
@@ -195,77 +310,44 @@ class PTK_Search_Engine {
             wp_send_json_success( $cached );
         }
 
-        $tokens          = self::tokenize( $query );
-        $raw_words       = self::tokenize_raw( $query ); // All words, no stopword removal.
-        $expanded_tokens = self::expand_synonyms( $tokens, $query );
-        $intent_slugs    = self::detect_intent( $query );
-
         // Handle queries that tokenize to nothing (single char or empty).
-        if ( empty( $tokens ) && empty( $raw_words ) ) {
-            $response = array(
-                'bestAnswer' => null,
-                'groups'     => array(),
-                'total'      => 0,
-                'hint'       => 'Try more specific keywords like "bake sale" or "volunteer sign up".',
-            );
-            wp_send_json_success( $response );
-        }
-
-        // Fetch all published pta_knowledge posts.
-        $posts = get_posts( array(
-            'post_type'      => 'pta_knowledge',
-            'post_status'    => 'publish',
-            'posts_per_page' => 500,
-        ) );
-
-        if ( empty( $posts ) ) {
+        $probe_tokens    = self::tokenize( $query );
+        $probe_raw_words = self::tokenize_raw( $query );
+        if ( empty( $probe_tokens ) && empty( $probe_raw_words ) ) {
             wp_send_json_success( array(
                 'bestAnswer' => null,
                 'groups'     => array(),
                 'total'      => 0,
+                'hint'       => 'Try more specific keywords like "bake sale" or "volunteer sign up".',
             ) );
         }
 
-        // Batch-load all terms in 2 queries instead of N×3.
-        $post_ids  = wp_list_pluck( $posts, 'ID' );
-        $terms_map = self::batch_load_terms( $post_ids );
+        // Run the core scoring loop. Score_posts() applies the limit internally,
+        // so capture the unlimited count by temporarily lifting the limit and
+        // recording total separately.
+        $max_results = apply_filters( 'ptk_max_search_results', 50 );
+        $scored      = self::score_posts( $query, array( 'limit' => $max_results ) );
+        $total       = count( $scored );
 
-        // Load click popularity data (last 90 days).
-        $popularity_map = self::get_popularity_map( $post_ids );
+        // Posts table is empty / nothing scored — return empty response with
+        // the same shape the front-end expects, then fall through to "did you mean".
+        // Note: we fetch the post list again only if needed for the suggestions fallback.
+        $posts = array();
+        if ( 0 === $total ) {
+            $posts = get_posts( array(
+                'post_type'      => 'pta_knowledge',
+                'post_status'    => 'publish',
+                'posts_per_page' => 500,
+            ) );
 
-        $scored = array();
-
-        foreach ( $posts as $post ) {
-            $post_terms = isset( $terms_map[ $post->ID ] ) ? $terms_map[ $post->ID ] : array(
-                'categories' => array(),
-                'cat_slugs'  => array(),
-                'tag_names'  => array(),
-            );
-            $popularity = isset( $popularity_map[ $post->ID ] ) ? $popularity_map[ $post->ID ] : 0;
-            $score = self::score_post( $post, $query, $expanded_tokens, $raw_words, $intent_slugs, $post_terms, $popularity );
-            if ( $score > 0 ) {
-                $scored[] = array(
-                    'post'  => $post,
-                    'score' => $score,
-                    'terms' => $post_terms,
-                );
+            if ( empty( $posts ) ) {
+                wp_send_json_success( array(
+                    'bestAnswer' => null,
+                    'groups'     => array(),
+                    'total'      => 0,
+                ) );
             }
         }
-
-        // Filter by role-based access before sorting.
-        if ( class_exists( 'PTK_Role_Access' ) ) {
-            $scored = PTK_Role_Access::filter_search_results( $scored );
-        }
-
-        // Sort by score descending.
-        usort( $scored, function( $a, $b ) {
-            return $b['score'] - $a['score'];
-        } );
-
-        // Apply result limit.
-        $max_results = apply_filters( 'ptk_max_search_results', 50 );
-        $total       = count( $scored );
-        $scored      = array_slice( $scored, 0, $max_results );
 
         // Detect "Best Answer".
         $best_answer    = null;
@@ -310,13 +392,15 @@ class PTK_Search_Engine {
 
             // Fallback: show all entries as browseable suggestions when nothing matched.
             if ( ! empty( $posts ) ) {
-                $fallback = array();
-                $shown    = 0;
+                $fallback_post_ids = wp_list_pluck( array_slice( $posts, 0, 10 ), 'ID' );
+                $fallback_terms    = self::batch_load_terms( $fallback_post_ids );
+                $fallback          = array();
+                $shown             = 0;
                 foreach ( $posts as $post ) {
                     if ( $shown >= 10 ) {
                         break;
                     }
-                    $pt = isset( $terms_map[ $post->ID ] ) ? $terms_map[ $post->ID ] : array(
+                    $pt = isset( $fallback_terms[ $post->ID ] ) ? $fallback_terms[ $post->ID ] : array(
                         'categories' => array(),
                         'cat_slugs'  => array(),
                         'tag_names'  => array(),
