@@ -37,6 +37,7 @@ if ( ! function_exists( 'ptk_hub_url' ) ) {
  */
 require_once PTK_PLUGIN_DIR . 'includes/class-post-type.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-search-engine.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-single-enhancements.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-shortcode.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-admin-helpers.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-block-patterns.php';
@@ -102,6 +103,7 @@ function ptk_check_access( $render_message = false ) {
 function ptk_init() {
     PTK_Post_Type::init();
     PTK_Search_Engine::init();
+    PTK_Single_Enhancements::init();
     PTK_Shortcode::init();
     PTK_Admin_Helpers::init();
     PTK_Block_Patterns::init();

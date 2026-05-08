@@ -517,3 +517,13 @@
         display: none !important;
     }
 }
+
+/* Auto Table of Contents (v2.6.0) */
+html { scroll-behavior: smooth; }
+.ptk-toc { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px 20px; margin: 24px 0; }
+.ptk-toc summary { cursor: pointer; font-weight: 600; font-size: 15px; color: #111827; }
+.ptk-toc[open] summary { margin-bottom: 8px; }
+.ptk-toc ol { margin: 12px 0 0 20px; padding: 0; }
+.ptk-toc li { margin: 4px 0; font-size: 14px; }
+.ptk-toc a { color: #2563eb; text-decoration: none; }
+.ptk-toc a:hover { text-decoration: underline; }

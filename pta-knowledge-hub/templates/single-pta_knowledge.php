@@ -119,6 +119,10 @@ while ( have_posts() ) :
 
     <!-- Meta -->
     <div class="ptk-single-meta">
+        <?php if ( class_exists( 'PTK_Single_Enhancements' ) ) : ?>
+            <span><?php echo esc_html( PTK_Single_Enhancements::reading_time( get_the_ID() ) ); ?> min read</span>
+            <span>&middot;</span>
+        <?php endif; ?>
         <span>Updated <?php echo get_the_modified_date(); ?></span>
         <?php if ( $cat_name ) : ?>
             <span>&middot;</span>
