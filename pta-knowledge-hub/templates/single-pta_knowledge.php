@@ -13,8 +13,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 get_header();
 
+$ptk_in_preview = class_exists( 'PTK_Public_Preview' ) && PTK_Public_Preview::is_preview_mode();
+
 // Check access — show login prompt if required and user is not logged in.
-if ( ! ptk_check_access() ) {
+// Skipped while rendering a public preview link.
+if ( ! $ptk_in_preview && ! ptk_check_access() ) {
     echo '<div style="max-width:600px;margin:60px auto;padding:0 20px;">';
     ptk_check_access( true );
     echo '</div>';
@@ -22,8 +25,8 @@ if ( ! ptk_check_access() ) {
     return;
 }
 
-// Check role-based access.
-if ( class_exists( 'PTK_Role_Access' ) ) {
+// Check role-based access. Skipped during preview rendering.
+if ( ! $ptk_in_preview && class_exists( 'PTK_Role_Access' ) ) {
     $post_id_check = get_the_ID();
     if ( $post_id_check && ! PTK_Role_Access::can_user_view( $post_id_check ) ) {
         ?>
