@@ -41,6 +41,7 @@ require_once PTK_PLUGIN_DIR . 'includes/class-single-enhancements.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-qr-codes.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-review-reminders.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-public-preview.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-suggestions.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-shortcode.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-admin-helpers.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-block-patterns.php';
@@ -110,6 +111,7 @@ function ptk_init() {
     PTK_QR_Codes::init();
     PTK_Review_Reminders::init();
     PTK_Public_Preview::init();
+    PTK_Suggestions::init();
     PTK_Shortcode::init();
     PTK_Admin_Helpers::init();
     PTK_Block_Patterns::init();

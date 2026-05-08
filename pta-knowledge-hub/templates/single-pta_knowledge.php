@@ -206,6 +206,20 @@ while ( have_posts() ) :
         </div>
     <?php endif; ?>
 
+    <!-- Suggest-a-topic CTA -->
+    <div class="ptk-suggest-cta">
+        <p>
+            Can't find what you need?
+            <?php
+            $ptk_suggest_url = get_option( 'ptk_suggest_page_url', '' );
+            if ( ! $ptk_suggest_url ) {
+                $ptk_suggest_url = function_exists( 'ptk_hub_url' ) ? ( ptk_hub_url() . '#ptk-suggest' ) : '#ptk-suggest';
+            }
+            ?>
+            <a href="<?php echo esc_url( $ptk_suggest_url ); ?>">Suggest a topic &rarr;</a>
+        </p>
+    </div>
+
     <!-- Print-only footer (hidden on screen, visible in print) -->
     <div class="ptk-print-footer">
         <?php
