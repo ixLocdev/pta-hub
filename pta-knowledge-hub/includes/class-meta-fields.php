@@ -123,7 +123,7 @@ class PTK_Meta_Fields {
         $all_fields = self::get_fields_for_category( $cat_slug );
 
         if ( empty( $all_fields ) ) {
-            echo '<p class="description">Select a category to see relevant fields.</p>';
+            echo '<p class="description"><strong>Pick a category</strong> in the sidebar (How-To Guide, FAQ, Resource, etc.) and <strong>save the entry once</strong>. Category-specific fields will appear here after saving.</p>';
             return;
         }
 

@@ -667,3 +667,22 @@
     width: 14px;
     height: 14px;
 }
+
+/* Related-entries side panel (v2.6.1) */
+.ptk-wizard-related { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px 18px; margin: 16px 0 24px; }
+.ptk-wizard-related-title { margin: 0 0 6px; font-size: 14px; font-weight: 600; color: #111827; }
+.ptk-wizard-related-empty { margin: 0; font-size: 13px; color: #6b7280; }
+.ptk-wizard-related-loading { margin: 0; font-size: 13px; color: #6b7280; font-style: italic; }
+.ptk-wizard-related-item { padding: 10px 0; border-top: 1px solid #e5e7eb; }
+.ptk-wizard-related-item:first-child { border-top: 0; }
+.ptk-wizard-related-itemtitle { display: block; font-weight: 600; font-size: 13px; color: #2563eb; text-decoration: none; }
+.ptk-wizard-related-itemtitle:hover { text-decoration: underline; }
+.ptk-wizard-related-itemcat { display: inline-block; margin-top: 2px; font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: .05em; }
+.ptk-wizard-related-itemexcerpt { margin: 4px 0 6px; font-size: 12px; color: #4b5563; line-height: 1.4; }
+.ptk-wizard-related-insert { font-size: 12px !important; }
+
+@media (min-width: 1280px) {
+    .ptk-wizard-wrap { position: relative; }
+    .ptk-wizard-related { position: absolute; right: 20px; top: 120px; width: 260px; margin: 0; }
+    .ptk-wizard-wrap form#ptk-wizard-form { max-width: calc(100% - 300px); }
+}

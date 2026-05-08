@@ -40,6 +40,49 @@ class PTK_Content_Wizard {
         add_action( 'admin_init', array( __CLASS__, 'handle_submission' ) );
         add_action( 'load-post-new.php', array( __CLASS__, 'redirect_add_new_to_wizard' ) );
         add_filter( 'post_row_actions', array( __CLASS__, 'add_edit_wizard_row_action' ), 10, 2 );
+        add_action( 'wp_ajax_ptk_wizard_related', array( __CLASS__, 'handle_related_ajax' ) );
+    }
+
+    /**
+     * Return up to 3 related published entries based on a draft title.
+     * Powers the suggested-related-entries panel in the Wizard.
+     */
+    public static function handle_related_ajax() {
+        check_ajax_referer( 'ptk_wizard_related', '_wpnonce' );
+        if ( ! current_user_can( 'edit_posts' ) ) {
+            wp_send_json_error( array( 'message' => 'Permission denied.' ), 403 );
+        }
+
+        $title = isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '';
+        if ( mb_strlen( trim( $title ) ) < 3 ) {
+            wp_send_json_success( array() );
+        }
+
+        $exclude = isset( $_POST['edit_id'] ) ? array( absint( $_POST['edit_id'] ) ) : array();
+
+        if ( ! class_exists( 'PTK_Search_Engine' ) ) {
+            wp_send_json_success( array() );
+        }
+
+        $results = PTK_Search_Engine::search( $title, array(
+            'exclude' => $exclude,
+            'limit'   => 3,
+        ) );
+
+        // Slim down the payload to just what the panel needs.
+        $out = array();
+        foreach ( $results as $r ) {
+            $excerpt = isset( $r['excerpt'] ) ? wp_trim_words( wp_strip_all_tags( $r['excerpt'] ), 25, '…' ) : '';
+            $out[] = array(
+                'id'        => isset( $r['id'] ) ? (int) $r['id'] : 0,
+                'title'     => isset( $r['title'] ) ? (string) $r['title'] : '',
+                'permalink' => isset( $r['permalink'] ) ? (string) $r['permalink'] : '',
+                'excerpt'   => $excerpt,
+                'category'  => isset( $r['catName'] ) ? (string) $r['catName'] : '',
+            );
+        }
+
+        wp_send_json_success( $out );
     }
 
     /**
@@ -172,18 +215,34 @@ class PTK_Content_Wizard {
             true
         );
 
+        wp_enqueue_script(
+            'ptk-wizard-related',
+            PTK_PLUGIN_URL . 'assets/js/wizard-related.js',
+            array(),
+            PTK_VERSION,
+            true
+        );
+
         // Pass edit data to JS if in edit mode.
         $edit_data = array();
+        $edit_id_for_related = 0;
         if ( isset( $_GET['ptk_edit_id'] ) ) {
             $edit_id = absint( $_GET['ptk_edit_id'] );
             if ( $edit_id ) {
                 $edit_data = self::get_edit_data( $edit_id );
+                $edit_id_for_related = $edit_id;
             }
         }
 
         wp_localize_script( 'ptk-content-wizard', 'ptkWizardData', array(
             'editMode' => ! empty( $edit_data ),
             'editData' => $edit_data,
+        ) );
+
+        wp_localize_script( 'ptk-wizard-related', 'ptkWizardRelated', array(
+            'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+            'nonce'   => wp_create_nonce( 'ptk_wizard_related' ),
+            'editId'  => $edit_id_for_related,
         ) );
     }
 
@@ -496,6 +555,7 @@ class PTK_Content_Wizard {
                     <p>Your knowledge entry has been <?php echo $is_update ? 'updated' : 'published and is now searchable'; ?>.</p>
                     <div class="ptk-wizard-success-actions">
                         <a href="<?php echo esc_url( $view_link ); ?>" class="button button-primary" target="_blank">View Entry</a>
+                        <a href="<?php echo esc_url( admin_url( 'edit.php?post_type=pta_knowledge&page=ptk-content-wizard&ptk_edit_id=' . $post_id ) ); ?>" class="button">Edit in Wizard</a>
                         <a href="<?php echo esc_url( $edit_link ); ?>" class="button">Edit in WordPress</a>
                         <a href="<?php echo esc_url( admin_url( 'edit.php?post_type=pta_knowledge&page=ptk-content-wizard' ) ); ?>" class="button">Create Another</a>
                     </div>
@@ -517,6 +577,18 @@ class PTK_Content_Wizard {
                 <?php echo $is_edit ? 'Edit Knowledge Entry' : 'Create a Knowledge Entry'; ?>
             </h1>
             <p class="ptk-wizard-intro"><?php echo $is_edit ? 'Update the fields below and save your changes.' : 'Fill in the fields below and we\'ll format everything for you. No editing required!'; ?></p>
+
+            <?php if ( $is_edit ) : ?>
+                <div class="notice notice-warning inline" style="margin:16px 0;padding:12px 16px;">
+                    <p style="margin:0;"><strong>Heads up:</strong> The wizard reads each field from your saved entry. If this entry was edited directly in WordPress (custom headings, extra blocks, reordered sections), some fields below may load blank &mdash; <strong>review every field carefully before saving</strong>, since the wizard rebuilds the entry from these fields. To preserve hand-edited content, edit it in <a href="<?php echo esc_url( get_edit_post_link( $edit_id ) ); ?>">WordPress</a> instead.</p>
+                </div>
+            <?php endif; ?>
+
+            <aside id="ptk-wizard-related" class="ptk-wizard-related" aria-label="Related entries">
+                <h3 class="ptk-wizard-related-title">Related entries</h3>
+                <p class="ptk-wizard-related-empty">Pick a category and start a title — we'll show similar existing entries here.</p>
+                <div class="ptk-wizard-related-list" hidden></div>
+            </aside>
 
             <form method="post" action="" id="ptk-wizard-form" enctype="multipart/form-data">
                 <?php wp_nonce_field( 'ptk_wizard_submit', 'ptk_wizard_nonce' ); ?>
@@ -930,12 +1002,12 @@ class PTK_Content_Wizard {
                 <div class="ptk-wizard-section ptk-wizard-step ptk-hidden" id="ptk-step-submit">
                     <div class="ptk-wizard-submit-area">
                         <div class="ptk-submit-options">
-                            <label class="ptk-field-label">Publish as:</label>
+                            <label class="ptk-field-label">Save as:</label>
                             <label class="ptk-radio-label">
-                                <input type="radio" name="ptk_status" value="publish" checked> Published (visible immediately)
+                                <input type="radio" name="ptk_status" value="draft" checked> Draft (recommended &mdash; review before publishing)
                             </label>
                             <label class="ptk-radio-label">
-                                <input type="radio" name="ptk_status" value="draft"> Draft (save for later)
+                                <input type="radio" name="ptk_status" value="publish"> Publish now (visible immediately)
                             </label>
                         </div>
                         <button type="submit" class="button button-primary button-hero" id="ptk-wizard-submit-btn">

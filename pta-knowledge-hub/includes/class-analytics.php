@@ -95,7 +95,7 @@ class PTK_Analytics {
      * Register the dashboard widget.
      */
     public static function add_dashboard_widget() {
-        if ( ! current_user_can( 'manage_options' ) ) {
+        if ( ! current_user_can( 'edit_posts' ) ) {
             return;
         }
 
@@ -197,7 +197,7 @@ class PTK_Analytics {
             'edit.php?post_type=pta_knowledge',
             'Search Analytics',
             'Search Analytics',
-            'manage_options',
+            'edit_posts',
             'ptk-search-analytics',
             array( __CLASS__, 'render_analytics_page' )
         );
@@ -207,7 +207,7 @@ class PTK_Analytics {
      * Render the full analytics admin page.
      */
     public static function render_analytics_page() {
-        if ( ! current_user_can( 'manage_options' ) ) {
+        if ( ! current_user_can( 'edit_posts' ) ) {
             wp_die( 'You do not have permission to view this page.' );
         }
 

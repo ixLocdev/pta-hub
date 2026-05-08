@@ -3,7 +3,7 @@
  * Plugin Name: PTA Knowledge Hub
  * Plugin URI:  https://github.com/your-pta/knowledge-hub
  * Description: A searchable knowledge base for your PTA. Volunteers add content through WordPress, parents and members find answers instantly via a smart search bar.
- * Version:     2.3.0
+ * Version:     2.6.1
  * Author:      Lucas Deichl
  * License:     GPL-2.0-or-later
  * Text Domain: pta-knowledge-hub
@@ -13,15 +13,35 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'PTK_VERSION', '2.3.0' );
+define( 'PTK_VERSION', '2.6.1' );
 define( 'PTK_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PTK_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+
+if ( ! function_exists( 'ptk_hub_url' ) ) {
+    /**
+     * Resolve the public PTA Hub URL.
+     *
+     * Defaults to /knowledge-base on the current site. Customizable via
+     * the `ptk_hub_slug` option or the `ptk_hub_url` filter.
+     */
+    function ptk_hub_url() {
+        return apply_filters(
+            'ptk_hub_url',
+            home_url( '/' . ltrim( get_option( 'ptk_hub_slug', 'knowledge-base' ), '/' ) )
+        );
+    }
+}
 
 /**
  * Load plugin classes.
  */
 require_once PTK_PLUGIN_DIR . 'includes/class-post-type.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-search-engine.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-single-enhancements.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-qr-codes.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-review-reminders.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-public-preview.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-suggestions.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-shortcode.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-admin-helpers.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-block-patterns.php';
@@ -87,6 +107,11 @@ function ptk_check_access( $render_message = false ) {
 function ptk_init() {
     PTK_Post_Type::init();
     PTK_Search_Engine::init();
+    PTK_Single_Enhancements::init();
+    PTK_QR_Codes::init();
+    PTK_Review_Reminders::init();
+    PTK_Public_Preview::init();
+    PTK_Suggestions::init();
     PTK_Shortcode::init();
     PTK_Admin_Helpers::init();
     PTK_Block_Patterns::init();

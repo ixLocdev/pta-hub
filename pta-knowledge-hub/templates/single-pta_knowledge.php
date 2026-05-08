@@ -13,8 +13,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 get_header();
 
+$ptk_in_preview = class_exists( 'PTK_Public_Preview' ) && PTK_Public_Preview::is_preview_mode();
+
 // Check access — show login prompt if required and user is not logged in.
-if ( ! ptk_check_access() ) {
+// Skipped while rendering a public preview link.
+if ( ! $ptk_in_preview && ! ptk_check_access() ) {
     echo '<div style="max-width:600px;margin:60px auto;padding:0 20px;">';
     ptk_check_access( true );
     echo '</div>';
@@ -22,8 +25,8 @@ if ( ! ptk_check_access() ) {
     return;
 }
 
-// Check role-based access.
-if ( class_exists( 'PTK_Role_Access' ) ) {
+// Check role-based access. Skipped during preview rendering.
+if ( ! $ptk_in_preview && class_exists( 'PTK_Role_Access' ) ) {
     $post_id_check = get_the_ID();
     if ( $post_id_check && ! PTK_Role_Access::can_user_view( $post_id_check ) ) {
         ?>
@@ -82,7 +85,8 @@ while ( have_posts() ) :
 
 <div class="ptk-single-wrap">
 
-    <a href="<?php echo esc_url( home_url( '/knowledge-base' ) ); ?>" class="ptk-back-link" onclick="if(history.length>1){history.back();return false;}">
+    <?php $ptk_hub_url = ptk_hub_url(); ?>
+    <a href="<?php echo esc_url( $ptk_hub_url ); ?>" class="ptk-back-link" onclick="if(history.length>1){history.back();return false;}">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
         Back to Search
     </a>
@@ -91,7 +95,7 @@ while ( have_posts() ) :
     <nav class="ptk-single-nav" aria-label="Breadcrumb">
         <a href="<?php echo esc_url( home_url( '/' ) ); ?>">Home</a>
         <span class="ptk-sep">/</span>
-        <a href="<?php echo esc_url( home_url( '/knowledge-base' ) ); ?>">PTA Hub</a>
+        <a href="<?php echo esc_url( $ptk_hub_url ); ?>">PTA Hub</a>
         <?php if ( $cat_name ) : ?>
             <span class="ptk-sep">/</span>
             <span><?php echo esc_html( $cat_name ); ?></span>
@@ -118,6 +122,10 @@ while ( have_posts() ) :
 
     <!-- Meta -->
     <div class="ptk-single-meta">
+        <?php if ( class_exists( 'PTK_Single_Enhancements' ) ) : ?>
+            <span><?php echo esc_html( PTK_Single_Enhancements::reading_time( get_the_ID() ) ); ?> min read</span>
+            <span>&middot;</span>
+        <?php endif; ?>
         <span>Updated <?php echo get_the_modified_date(); ?></span>
         <?php if ( $cat_name ) : ?>
             <span>&middot;</span>
@@ -165,10 +173,6 @@ while ( have_posts() ) :
         <div class="ptk-feedback" id="ptk-feedback" data-post-id="<?php echo esc_attr( get_the_ID() ); ?>">
             <?php if ( $ptk_fb_voted ) : ?>
                 <p class="ptk-feedback-thanks">Thanks for your feedback!</p>
-                <p class="ptk-feedback-counts">
-                    <?php echo esc_html( $ptk_fb_counts['helpful'] ); ?> found this helpful &middot;
-                    <?php echo esc_html( $ptk_fb_counts['not_helpful'] ); ?> did not
-                </p>
             <?php else : ?>
                 <p class="ptk-feedback-question">Was this entry helpful?</p>
                 <div class="ptk-feedback-buttons">
@@ -202,9 +206,29 @@ while ( have_posts() ) :
         </div>
     <?php endif; ?>
 
+    <!-- Suggest-a-topic CTA -->
+    <div class="ptk-suggest-cta">
+        <p>
+            Can't find what you need?
+            <?php
+            $ptk_suggest_url = get_option( 'ptk_suggest_page_url', '' );
+            if ( ! $ptk_suggest_url ) {
+                $ptk_suggest_url = function_exists( 'ptk_hub_url' ) ? ( ptk_hub_url() . '#ptk-suggest' ) : '#ptk-suggest';
+            }
+            ?>
+            <a href="<?php echo esc_url( $ptk_suggest_url ); ?>">Suggest a topic &rarr;</a>
+        </p>
+    </div>
+
     <!-- Print-only footer (hidden on screen, visible in print) -->
     <div class="ptk-print-footer">
-        Internal documentation for Montclair PTA District. For authorized use only. Do not distribute.
+        <?php
+        printf(
+            /* translators: %s: site name (e.g. Montclair PTA Council). */
+            esc_html__( 'Internal documentation for %s. For authorized use only. Do not distribute.', 'pta-knowledge-hub' ),
+            esc_html( get_bloginfo( 'name' ) )
+        );
+        ?>
     </div>
 
 </div>
