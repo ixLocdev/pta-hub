@@ -736,3 +736,50 @@
     white-space: nowrap;
     flex-shrink: 0;
 }
+
+/* Fresh-install empty state (v2.7.0) */
+.ptk-search-wrap .ptk-empty-install {
+    text-align: center;
+    padding: 48px 24px;
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 14px;
+    margin: 20px 0 40px;
+}
+.ptk-search-wrap .ptk-empty-install-icon {
+    width: 56px;
+    height: 56px;
+    color: #94a3b8;
+    margin: 0 auto 14px;
+    display: block;
+}
+.ptk-search-wrap .ptk-empty-install-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 8px;
+}
+.ptk-search-wrap .ptk-empty-install-text {
+    font-size: 15px;
+    color: #475569;
+    max-width: 380px;
+    margin: 0 auto 18px;
+    line-height: 1.55;
+}
+.ptk-search-wrap .ptk-empty-install-cta {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 10px 22px;
+    background: #2563eb;
+    color: #fff !important;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 10px;
+    text-decoration: none;
+    transition: background 0.15s;
+}
+.ptk-search-wrap .ptk-empty-install-cta:hover {
+    background: #1d4ed8;
+    color: #fff !important;
+}

@@ -11,12 +11,33 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 ?>
+<?php
+$ptk_total_published = (int) wp_count_posts( 'pta_knowledge' )->publish;
+?>
 <div class="ptk-search-wrap" id="ptk-search-app">
+
+<?php if ( 0 === $ptk_total_published ) : ?>
+    <!-- Fresh-install empty state -->
+    <div class="ptk-hero">
+        <h2 class="ptk-hero-title">PTA Hub</h2>
+        <p class="ptk-hero-subtitle">Quick answers to your PTA questions.</p>
+    </div>
+    <div class="ptk-empty-install">
+        <svg class="ptk-empty-install-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 17l9 4 9-4"/><path d="M3 12l9 4 9-4"/>
+        </svg>
+        <h3 class="ptk-empty-install-title">Coming soon</h3>
+        <p class="ptk-empty-install-text">This PTA Hub is being set up. Check back soon for searchable guides, FAQs, and resources.</p>
+        <?php if ( current_user_can( 'edit_posts' ) ) : ?>
+            <a class="ptk-empty-install-cta" href="<?php echo esc_url( admin_url( 'edit.php?post_type=pta_knowledge&page=ptk-content-wizard' ) ); ?>">+ Add your first entry</a>
+        <?php endif; ?>
+    </div>
+<?php else : ?>
 
     <!-- Hero Search Bar -->
     <div class="ptk-hero">
         <h2 class="ptk-hero-title">PTA Hub</h2>
-        <p class="ptk-hero-subtitle">Find answers, guides, and resources instantly.</p>
+        <p class="ptk-hero-subtitle">Quick answers to your PTA questions &mdash; search or browse below.</p>
         <div class="ptk-search-box">
             <svg class="ptk-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <circle cx="11" cy="11" r="8"/>
@@ -141,4 +162,5 @@ if ( ! defined( 'ABSPATH' ) ) {
         <p class="ptk-empty-text">Please try again in a moment.</p>
     </div>
 
+<?php endif; ?>
 </div>
