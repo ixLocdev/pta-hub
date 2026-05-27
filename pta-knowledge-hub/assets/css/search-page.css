@@ -303,7 +303,7 @@
     overflow: hidden;
     text-decoration: none;
     color: inherit;
-    transition: box-shadow 0.15s, transform 0.1s;
+    transition: box-shadow 0.15s, transform 0.15s;
 }
 .ptk-search-wrap .ptk-card:hover {
     box-shadow: 0 4px 12px rgba(0,0,0,0.08);
@@ -375,7 +375,7 @@
 }
 
 .ptk-search-wrap .ptk-card-excerpt {
-    font-size: 13px;
+    font-size: 14px;
     color: #6b7280;
     line-height: 1.5;
     margin: 0 0 10px;
@@ -397,7 +397,7 @@
     color: #6b7280;
     background: #f3f4f6;
     padding: 2px 8px;
-    border-radius: 8px;
+    border-radius: 999px;
 }
 
 .ptk-search-wrap .ptk-card-link {
@@ -698,7 +698,7 @@
     text-decoration: none !important;
     color: #1e293b !important;
     border-bottom: 1px solid #f1f5f9;
-    transition: background 0.1s;
+    transition: background 0.15s;
     cursor: pointer;
 }
 
