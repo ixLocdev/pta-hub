@@ -31,7 +31,7 @@ class PTK_QR_Codes {
             array( __CLASS__, 'render_meta_box' ),
             'pta_knowledge',
             'side',
-            'default'
+            'low'
         );
     }
 

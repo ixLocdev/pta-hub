@@ -60,3 +60,20 @@
     color: #6b21a8;
     line-height: 1.4;
 }
+
+/* PTA Hub sidebar meta-box accent (v2.7.0) — subtle left strip on every PTK
+   meta box so they read as a coherent group without competing with WP's UI. */
+#ptk_category_fields,
+#ptk_role_access,
+#ptk_network_share,
+#ptk_network_notice,
+#ptk_qr_code {
+    border-left: 3px solid #2563eb;
+}
+#ptk_category_fields .inside,
+#ptk_role_access .inside,
+#ptk_network_share .inside,
+#ptk_network_notice .inside,
+#ptk_qr_code .inside {
+    font-size: 13px;
+}

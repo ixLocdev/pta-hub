@@ -109,7 +109,7 @@ class PTK_Meta_Fields {
             array( __CLASS__, 'render_meta_box' ),
             'pta_knowledge',
             'side',
-            'default'
+            'high'
         );
     }
 

@@ -64,22 +64,31 @@ class PTK_Role_Access {
 
         $saved_roles = self::get_visible_roles( $post->ID );
         $all_roles   = wp_roles()->get_names();
+        $is_restricted = ! empty( $saved_roles );
 
         ?>
-        <p class="description" style="margin-bottom:10px;">
-            Leave all unchecked to make this visible to everyone.
+        <p class="ptk-visibility-status" style="margin:0 0 10px;font-size:13px;">
+            <?php if ( $is_restricted ) : ?>
+                <strong style="color:#b45309;">&#128274; Restricted</strong> &mdash; only specific roles can see this entry.
+            <?php else : ?>
+                <strong style="color:#166534;">&#128065; Visible to everyone</strong> who can reach this page.
+            <?php endif; ?>
         </p>
-        <div class="ptk-role-checkboxes" style="max-height:200px;overflow-y:auto;">
-            <?php foreach ( $all_roles as $slug => $name ) : ?>
-                <label style="display:block;padding:3px 0;font-size:13px;">
-                    <input type="checkbox"
-                           name="ptk_visible_roles[]"
-                           value="<?php echo esc_attr( $slug ); ?>"
-                           <?php checked( in_array( $slug, $saved_roles, true ) ); ?>>
-                    <?php echo esc_html( translate_user_role( $name ) ); ?>
-                </label>
-            <?php endforeach; ?>
-        </div>
+        <details<?php echo $is_restricted ? ' open' : ''; ?> style="margin-top:8px;">
+            <summary style="cursor:pointer;font-size:13px;color:#2563eb;"><?php echo $is_restricted ? 'Edit restrictions' : 'Restrict who can see this'; ?></summary>
+            <p class="description" style="margin:10px 0 6px;">Check the roles allowed to view this entry. Leave all unchecked to allow everyone.</p>
+            <div class="ptk-role-checkboxes" style="max-height:200px;overflow-y:auto;">
+                <?php foreach ( $all_roles as $slug => $name ) : ?>
+                    <label style="display:block;padding:3px 0;font-size:13px;">
+                        <input type="checkbox"
+                               name="ptk_visible_roles[]"
+                               value="<?php echo esc_attr( $slug ); ?>"
+                               <?php checked( in_array( $slug, $saved_roles, true ) ); ?>>
+                        <?php echo esc_html( translate_user_role( $name ) ); ?>
+                    </label>
+                <?php endforeach; ?>
+            </div>
+        </details>
         <?php
     }
 

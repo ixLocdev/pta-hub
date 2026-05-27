@@ -62,7 +62,7 @@ class PTK_Multisite {
                 array( __CLASS__, 'render_share_meta_box' ),
                 'pta_knowledge',
                 'side',
-                'default'
+                'low'
             );
         } else {
             add_meta_box(
