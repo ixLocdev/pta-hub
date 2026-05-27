@@ -20,7 +20,7 @@
     font-size: 28px;
     width: 28px;
     height: 28px;
-    color: #2271b1;
+    color: #2563eb;
 }
 
 .ptk-wizard-intro {
@@ -53,7 +53,7 @@
     justify-content: center;
     width: 32px;
     height: 32px;
-    background: #2271b1;
+    background: #2563eb;
     color: #fff;
     border-radius: 50%;
     font-size: 14px;
@@ -96,9 +96,9 @@
     background: #f0f6fc;
 }
 .ptk-category-card.ptk-card-selected {
-    border-color: #2271b1;
+    border-color: #2563eb;
     background: #eff6ff;
-    box-shadow: 0 0 0 2px rgba(34, 113, 177, 0.2);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
 }
 .ptk-category-card input[type="radio"] {
     position: absolute;
@@ -114,7 +114,7 @@
     transition: color 0.15s ease;
 }
 .ptk-card-selected .ptk-card-icon {
-    color: #2271b1;
+    color: #2563eb;
 }
 
 .ptk-card-name {
@@ -193,8 +193,8 @@
 .ptk-field-textarea:focus,
 .ptk-field-select:focus {
     outline: none;
-    border-color: #2271b1;
-    box-shadow: 0 0 0 2px rgba(34, 113, 177, 0.4);
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.4);
 }
 
 .ptk-field-textarea {
@@ -259,8 +259,8 @@
 }
 .ptk-link-btn:hover {
     background: #e5e7eb;
-    color: #2271b1;
-    border-color: #2271b1;
+    color: #2563eb;
+    border-color: #2563eb;
 }
 .ptk-link-btn .dashicons {
     font-size: 16px;
@@ -420,7 +420,7 @@
 .ptk-repeater-number {
     font-size: 13px;
     font-weight: 700;
-    color: #2271b1;
+    color: #2563eb;
 }
 
 .ptk-repeater-actions {
@@ -578,11 +578,11 @@
 .ptk-wizard-wrap button:focus-visible,
 .ptk-wizard-wrap a:focus-visible,
 .ptk-wizard-wrap .ptk-category-card:focus-within {
-    outline: 2px solid #2271b1;
+    outline: 2px solid #2563eb;
     outline-offset: 2px;
 }
 .ptk-wizard-wrap input[type="radio"]:focus-visible + .ptk-category-card-inner {
-    outline: 2px solid #2271b1;
+    outline: 2px solid #2563eb;
     outline-offset: 2px;
 }
 
@@ -654,7 +654,7 @@
     flex-shrink: 0;
 }
 .ptk-autosave-banner a {
-    color: #2271b1;
+    color: #2563eb;
     margin-left: auto;
     white-space: nowrap;
 }
