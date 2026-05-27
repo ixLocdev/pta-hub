@@ -54,8 +54,11 @@ class PTK_Content_Importer {
             <?php endif; ?>
 
             <?php if ( $already_imported && ! isset( $_GET['ptk_imported'] ) ) : ?>
-                <div class="notice notice-warning">
-                    <p>Starter content has already been imported. Importing again will create duplicate entries.</p>
+                <div class="notice notice-warning" style="border-left-width:6px;padding:12px 16px;font-size:14px;">
+                    <p style="margin:0;display:flex;align-items:center;gap:8px;">
+                        <span class="dashicons dashicons-warning" style="color:#b45309;"></span>
+                        <strong>Starter content has already been imported.</strong> Running it again will create duplicate entries.
+                    </p>
                 </div>
             <?php endif; ?>
 

@@ -90,11 +90,13 @@ class PTK_Suggestions {
             <form id="ptk-suggest-form" class="ptk-suggest-form">
                 <p>
                     <label for="ptk-suggest-title">What's the topic?</label>
-                    <input type="text" id="ptk-suggest-title" name="suggestion_title" required maxlength="200" placeholder="e.g., How to set up the membership store" />
+                    <input type="text" id="ptk-suggest-title" name="suggestion_title" required minlength="5" maxlength="200" placeholder="e.g., How to set up the membership store" />
+                    <span class="ptk-suggest-count" data-target="ptk-suggest-title" data-max="200">0 / 200</span>
                 </p>
                 <p>
                     <label for="ptk-suggest-body">Anything else you want to add? <span class="ptk-optional">(optional)</span></label>
                     <textarea id="ptk-suggest-body" name="suggestion_body" rows="4" maxlength="2000" placeholder="Why is this useful, where have you looked, who would benefit..."></textarea>
+                    <span class="ptk-suggest-count" data-target="ptk-suggest-body" data-max="2000">0 / 2000</span>
                 </p>
                 <p>
                     <label for="ptk-suggest-name">Your name <span class="ptk-optional">(optional)</span></label>
@@ -138,8 +140,27 @@ class PTK_Suggestions {
                 submit.textContent = 'Send suggestion';
             }
 
+            // Live character counters.
+            form.querySelectorAll('.ptk-suggest-count').forEach(function(span){
+                var input = document.getElementById(span.dataset.target);
+                var max = parseInt(span.dataset.max, 10);
+                if (!input) return;
+                function tick(){
+                    var len = input.value.length;
+                    span.textContent = len + ' / ' + max;
+                    span.classList.toggle('ptk-suggest-count-warn', len > max - 20);
+                }
+                input.addEventListener('input', tick);
+                tick();
+            });
+
             form.addEventListener('submit', function(e){
                 e.preventDefault();
+                var titleEl = form.querySelector('[name="suggestion_title"]');
+                if (titleEl && titleEl.value.trim().length < 5) {
+                    showError('Please add a few more words to the topic — at least 5 characters.');
+                    return;
+                }
                 status.textContent = '';
                 submit.disabled = true;
                 submit.textContent = 'Sending...';
@@ -257,7 +278,12 @@ class PTK_Suggestions {
             admin_url( 'admin.php?action=ptk_convert_suggestion&id=' . $post->ID ),
             'ptk_convert_suggestion_' . $post->ID
         );
-        $actions['ptk_convert'] = '<a href="' . esc_url( $url ) . '">Convert to Draft</a>';
+        // Visually distinct "Convert to Draft" (blue, bold) so editors can tell
+        // it apart from the standard Trash row action at a glance.
+        $actions = array_merge(
+            array( 'ptk_convert' => '<a href="' . esc_url( $url ) . '" style="color:#2563eb;font-weight:600;">Convert to Draft</a>' ),
+            $actions
+        );
         return $actions;
     }
 

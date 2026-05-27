@@ -148,8 +148,14 @@
 .ptk-single-wrap .ptk-related-title { font-size: 18px; font-weight: 600; color: #111827; margin-bottom: 16px; }
 .ptk-single-wrap .ptk-related-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-template-columns: 1fr;
     gap: 12px;
+}
+@media (min-width: 600px) {
+    .ptk-single-wrap .ptk-related-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 900px) {
+    .ptk-single-wrap .ptk-related-grid { grid-template-columns: repeat(3, 1fr); }
 }
 .ptk-single-wrap .ptk-related-card {
     background: #fff;
@@ -193,12 +199,25 @@
     .ptk-single-wrap * { transition-duration: 0.01ms !important; }
 }
 
-/* Action Bar (holds print + FAQ copy buttons) */
+/* Action Bar (holds print + FAQ copy buttons)
+   On desktop, floats top-right of the title row for better discoverability.
+   On mobile (< 600px) it stacks below the meta like before. */
 .ptk-single-wrap .ptk-single-actions {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
     margin-bottom: 28px;
+}
+@media (min-width: 720px) {
+    .ptk-single-wrap {
+        position: relative;
+    }
+    .ptk-single-wrap .ptk-single-actions {
+        position: absolute;
+        top: 24px;
+        right: 16px;
+        margin-bottom: 0;
+    }
 }
 
 /* Shared action button base — used by Print and FAQ Copy */
@@ -518,18 +537,21 @@
     }
 }
 
-/* Auto Table of Contents (v2.6.0) */
+/* Auto Table of Contents (v2.6.0; lighter chrome v2.7.0) */
 html { scroll-behavior: smooth; }
-.ptk-toc { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px 20px; margin: 24px 0; }
-.ptk-toc summary { cursor: pointer; font-weight: 600; font-size: 15px; color: #111827; }
-.ptk-toc[open] summary { margin-bottom: 8px; }
-.ptk-toc ol { margin: 12px 0 0 20px; padding: 0; }
+.ptk-toc { border-left: 3px solid #e5e7eb; padding: 4px 0 4px 16px; margin: 24px 0; }
+.ptk-toc summary { cursor: pointer; font-weight: 600; font-size: 14px; color: #475569; list-style: none; }
+.ptk-toc summary::-webkit-details-marker { display: none; }
+.ptk-toc summary::before { content: "▸ "; display: inline-block; transition: transform 0.15s ease; color: #94a3b8; }
+.ptk-toc[open] summary::before { transform: rotate(90deg); }
+.ptk-toc[open] summary { margin-bottom: 8px; color: #1e293b; }
+.ptk-toc ol { margin: 8px 0 0 24px; padding: 0; }
 .ptk-toc li { margin: 4px 0; font-size: 14px; }
 .ptk-toc a { color: #2563eb; text-decoration: none; }
 .ptk-toc a:hover { text-decoration: underline; }
 
-/* Suggest-a-topic CTA on single entries (v2.6.1) */
-.ptk-suggest-cta { margin: 32px 0 16px; padding: 16px 20px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; text-align: center; font-size: 14px; color: #075985; }
+/* Suggest-a-topic CTA on single entries (v2.6.1; accent v2.7.0) */
+.ptk-suggest-cta { margin: 32px 0 16px; padding: 16px 20px; background: #f0f9ff; border: 1px solid #bae6fd; border-left: 4px solid #0369a1; border-radius: 8px; text-align: center; font-size: 14px; color: #075985; }
 .ptk-suggest-cta a { color: #0369a1; font-weight: 600; text-decoration: none; }
 .ptk-suggest-cta a:hover { text-decoration: underline; }
 
@@ -547,3 +569,5 @@ html { scroll-behavior: smooth; }
 .ptk-suggest-status { margin-top: 8px; font-size: 13px; }
 .ptk-suggest-error { color: #b91c1c; }
 .ptk-suggest-thanks { color: #047857; font-weight: 600; }
+.ptk-suggest-count { display: block; margin-top: 4px; font-size: 11px; color: #9ca3af; text-align: right; }
+.ptk-suggest-count-warn { color: #b45309; font-weight: 600; }

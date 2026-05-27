@@ -241,7 +241,7 @@ class PTK_Review_Reminders {
 
             echo '<tr>';
             echo '<td><strong><a href="' . esc_url( $edit_url ) . '">' . esc_html( $p->post_title ) . '</a></strong></td>';
-            echo '<td>' . wp_kses_post( $last_display ) . '</td>';
+            echo '<td><span class="ptk-review-dot ptk-review-red"></span> ' . wp_kses_post( $last_display ) . '</td>';
             echo '<td>';
             echo '<a href="' . esc_url( $mark_url ) . '" class="button button-small button-primary">Mark Reviewed</a> ';
             echo '<a href="' . esc_url( $edit_url ) . '" class="button button-small">Edit</a>';
@@ -260,7 +260,8 @@ class PTK_Review_Reminders {
         $screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
         $is_dashboard = $screen && 'dashboard' === $screen->id;
         $is_list      = $screen && 'edit-pta_knowledge' === $screen->id;
-        if ( ! $is_dashboard && ! $is_list ) {
+        $is_index     = $screen && 'index.php' === $screen->parent_file;
+        if ( ! $is_dashboard && ! $is_list && ! $is_index ) {
             return;
         }
         echo '<style>
