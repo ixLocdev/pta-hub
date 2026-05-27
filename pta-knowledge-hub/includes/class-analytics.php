@@ -143,17 +143,37 @@ class PTK_Analytics {
         ?>
         <p style="font-size:13px;color:#6b7280;">Last 30 days &mdash; <strong><?php echo esc_html( number_format( (int) $total ) ); ?></strong> total searches</p>
 
+        <style>
+        .ptk-anly-row { display: flex; align-items: center; gap: 10px; }
+        .ptk-anly-bar { flex: 1; height: 6px; background: #e5e7eb; border-radius: 999px; overflow: hidden; min-width: 40px; }
+        .ptk-anly-bar-fill { height: 100%; background: #2563eb; border-radius: 999px; }
+        .ptk-anly-bar-red .ptk-anly-bar-fill { background: #ef4444; }
+        .ptk-anly-num { font-variant-numeric: tabular-nums; min-width: 28px; text-align: right; color: #1f2937; font-weight: 600; }
+        </style>
+
+        <?php
+        $top_max = ! empty( $top_searches ) ? max( array_map( function( $r ){ return (int) $r->search_count; }, $top_searches ) ) : 0;
+        $zero_max = ! empty( $zero_results ) ? max( array_map( function( $r ){ return (int) $r->search_count; }, $zero_results ) ) : 0;
+        ?>
+
         <?php if ( ! empty( $top_searches ) ) : ?>
         <h4 style="margin:16px 0 8px;">Top Searches</h4>
         <table class="widefat striped" style="font-size:13px;">
             <thead>
-                <tr><th>Query</th><th style="width:60px;text-align:center;">Count</th><th style="width:80px;text-align:center;">Avg Results</th></tr>
+                <tr><th>Query</th><th style="width:55%;">Count</th><th style="width:80px;text-align:center;">Avg Results</th></tr>
             </thead>
             <tbody>
-                <?php foreach ( $top_searches as $row ) : ?>
+                <?php foreach ( $top_searches as $row ) :
+                    $pct = $top_max > 0 ? max( 6, (int) round( ( $row->search_count / $top_max ) * 100 ) ) : 0;
+                ?>
                 <tr>
                     <td><?php echo esc_html( $row->query ); ?></td>
-                    <td style="text-align:center;"><?php echo esc_html( $row->search_count ); ?></td>
+                    <td>
+                        <div class="ptk-anly-row">
+                            <div class="ptk-anly-bar"><div class="ptk-anly-bar-fill" style="width:<?php echo esc_attr( $pct ); ?>%;"></div></div>
+                            <span class="ptk-anly-num"><?php echo esc_html( $row->search_count ); ?></span>
+                        </div>
+                    </td>
                     <td style="text-align:center;"><?php echo esc_html( $row->avg_results ); ?></td>
                 </tr>
                 <?php endforeach; ?>
@@ -166,13 +186,20 @@ class PTK_Analytics {
         <p style="font-size:12px;color:#9ca3af;margin:0 0 8px;">People searched for these but found nothing. Consider adding content!</p>
         <table class="widefat striped" style="font-size:13px;">
             <thead>
-                <tr><th>Query</th><th style="width:60px;text-align:center;">Count</th></tr>
+                <tr><th>Query</th><th style="width:55%;">Count</th></tr>
             </thead>
             <tbody>
-                <?php foreach ( $zero_results as $row ) : ?>
+                <?php foreach ( $zero_results as $row ) :
+                    $pct = $zero_max > 0 ? max( 6, (int) round( ( $row->search_count / $zero_max ) * 100 ) ) : 0;
+                ?>
                 <tr>
                     <td><?php echo esc_html( $row->query ); ?></td>
-                    <td style="text-align:center;"><?php echo esc_html( $row->search_count ); ?></td>
+                    <td>
+                        <div class="ptk-anly-row ptk-anly-bar-red">
+                            <div class="ptk-anly-bar"><div class="ptk-anly-bar-fill" style="width:<?php echo esc_attr( $pct ); ?>%;"></div></div>
+                            <span class="ptk-anly-num"><?php echo esc_html( $row->search_count ); ?></span>
+                        </div>
+                    </td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
