@@ -578,6 +578,10 @@ class PTK_Content_Wizard {
             </h1>
             <p class="ptk-wizard-intro"><?php echo $is_edit ? 'Update the fields below and save your changes.' : 'Fill in the fields below and we\'ll format everything for you. No editing required!'; ?></p>
 
+            <?php if ( ! $is_edit ) : ?>
+                <p class="ptk-wizard-meta">4 quick steps &middot; takes about 5 minutes <span class="ptk-required-legend"><span class="ptk-required">*</span> required</span></p>
+            <?php endif; ?>
+
             <?php if ( $is_edit ) : ?>
                 <div class="notice notice-warning inline" style="margin:16px 0;padding:12px 16px;">
                     <p style="margin:0;"><strong>Heads up:</strong> The wizard reads each field from your saved entry. If this entry was edited directly in WordPress (custom headings, extra blocks, reordered sections), some fields below may load blank &mdash; <strong>review every field carefully before saving</strong>, since the wizard rebuilds the entry from these fields. To preserve hand-edited content, edit it in <a href="<?php echo esc_url( get_edit_post_link( $edit_id ) ); ?>">WordPress</a> instead.</p>
@@ -642,7 +646,8 @@ class PTK_Content_Wizard {
                     <div class="ptk-field-group">
                         <label for="ptk-excerpt" class="ptk-field-label">Short Summary</label>
                         <textarea id="ptk-excerpt" name="ptk_excerpt" class="ptk-field-textarea" rows="2"
-                                  placeholder="A 1-2 sentence summary that appears in search results."></textarea>
+                                  placeholder="e.g., A quick way to set up the bake sale tables and signage."></textarea>
+                        <p class="ptk-field-hint">1-2 sentences. This shows on search result cards.</p>
                     </div>
 
                     <div class="ptk-field-group">
@@ -678,8 +683,9 @@ class PTK_Content_Wizard {
                         <label for="ptk-howto-intro" class="ptk-field-label">Introduction</label>
                         <div class="ptk-textarea-wrap">
                             <textarea id="ptk-howto-intro" name="ptk_howto_intro" class="ptk-field-textarea ptk-linkable" rows="3"
-                                      placeholder="Briefly describe what this guide covers and why it's useful."></textarea>
+                                      placeholder="e.g., This guide walks you through setting up a bake sale table from start to finish."></textarea>
                         </div>
+                        <p class="ptk-field-hint">Briefly describe what this guide covers and why it's useful.</p>
                     </div>
 
                     <div class="ptk-field-row">
@@ -723,8 +729,9 @@ class PTK_Content_Wizard {
                         <label class="ptk-field-label">Tips &amp; Notes</label>
                         <div class="ptk-textarea-wrap">
                             <textarea name="ptk_howto_tips" class="ptk-field-textarea ptk-linkable" rows="3"
-                                      placeholder="Any helpful tips, common mistakes to avoid, or additional notes."></textarea>
+                                      placeholder="e.g., Arrive 30 minutes early to set up. Bring extra trash bags."></textarea>
                         </div>
+                        <p class="ptk-field-hint">Helpful tips, common mistakes to avoid, or extra notes. Leave blank if not needed.</p>
                     </div>
                 </div>
 
@@ -739,8 +746,9 @@ class PTK_Content_Wizard {
                         <label for="ptk-event-overview" class="ptk-field-label">Event Overview</label>
                         <div class="ptk-textarea-wrap">
                             <textarea id="ptk-event-overview" name="ptk_event_overview" class="ptk-field-textarea ptk-linkable" rows="3"
-                                      placeholder="Describe the event: what it is, who it's for, and the goal."></textarea>
+                                      placeholder="e.g., An evening of food, games, and silent auction items to raise funds for the playground."></textarea>
                         </div>
+                        <p class="ptk-field-hint">What it is, who it's for, and what success looks like.</p>
                     </div>
 
                     <div class="ptk-field-row">
@@ -808,8 +816,9 @@ class PTK_Content_Wizard {
                         <label for="ptk-faq-details" class="ptk-field-label">Detailed Explanation</label>
                         <div class="ptk-textarea-wrap">
                             <textarea id="ptk-faq-details" name="ptk_faq_details" class="ptk-field-textarea ptk-linkable" rows="5"
-                                      placeholder="Optional: provide more context, background info, or links."></textarea>
+                                      placeholder="e.g., Background context, related policies, or any links someone might need."></textarea>
                         </div>
+                        <p class="ptk-field-hint">Optional &mdash; for anyone who wants the long version.</p>
                     </div>
 
                     <div class="ptk-field-group">
@@ -830,8 +839,9 @@ class PTK_Content_Wizard {
                         <label for="ptk-resource-desc" class="ptk-field-label">Description <span class="ptk-required">*</span></label>
                         <div class="ptk-textarea-wrap">
                             <textarea id="ptk-resource-desc" name="ptk_resource_description" class="ptk-field-textarea ptk-linkable" rows="3"
-                                      placeholder="What is this resource and why is it useful?"></textarea>
+                                      placeholder="e.g., A printable sign-up sheet for the fall fundraiser, sized for letter paper."></textarea>
                         </div>
+                        <p class="ptk-field-hint">What this resource is and why someone would use it.</p>
                     </div>
 
                     <div class="ptk-field-row">
@@ -872,8 +882,9 @@ class PTK_Content_Wizard {
                         <label for="ptk-resource-howto" class="ptk-field-label">How to Use</label>
                         <div class="ptk-textarea-wrap">
                             <textarea id="ptk-resource-howto" name="ptk_resource_howto" class="ptk-field-textarea ptk-linkable" rows="3"
-                                      placeholder="Instructions for using this resource, one step per line."></textarea>
+                                      placeholder="e.g., 1. Print double-sided. 2. Fill in dates. 3. Post on the bulletin board."></textarea>
                         </div>
+                        <p class="ptk-field-hint">One instruction per line.</p>
                     </div>
                 </div>
 
@@ -897,8 +908,9 @@ class PTK_Content_Wizard {
                         <label for="ptk-glossary-details" class="ptk-field-label">More Details</label>
                         <div class="ptk-textarea-wrap">
                             <textarea id="ptk-glossary-details" name="ptk_glossary_details" class="ptk-field-textarea ptk-linkable" rows="4"
-                                      placeholder="Optional: add more context, examples, or links for people who want to learn more."></textarea>
+                                      placeholder="e.g., Background context, related rules, or a link to the official source."></textarea>
                         </div>
+                        <p class="ptk-field-hint">Optional &mdash; for people who want the deeper explanation.</p>
                     </div>
 
                     <div class="ptk-field-group">
@@ -921,8 +933,9 @@ class PTK_Content_Wizard {
                         <label for="ptk-checklist-intro" class="ptk-field-label">Introduction</label>
                         <div class="ptk-textarea-wrap">
                             <textarea id="ptk-checklist-intro" name="ptk_checklist_intro" class="ptk-field-textarea ptk-linkable" rows="2"
-                                      placeholder="Briefly describe what this checklist is for and when to use it."></textarea>
+                                      placeholder="e.g., Run through this list two weeks before any school-wide event."></textarea>
                         </div>
+                        <p class="ptk-field-hint">What this checklist covers and when to use it.</p>
                     </div>
 
                     <div class="ptk-field-group">
@@ -940,8 +953,9 @@ class PTK_Content_Wizard {
                         <label for="ptk-checklist-notes" class="ptk-field-label">Notes</label>
                         <div class="ptk-textarea-wrap">
                             <textarea id="ptk-checklist-notes" name="ptk_checklist_notes" class="ptk-field-textarea ptk-linkable" rows="3"
-                                      placeholder="Any additional notes, reminders, or important deadlines."></textarea>
+                                      placeholder="e.g., Permits must be filed at least 14 days in advance."></textarea>
                         </div>
+                        <p class="ptk-field-hint">Reminders, deadlines, or anything that isn't a checklist item.</p>
                     </div>
                 </div>
 
@@ -965,8 +979,9 @@ class PTK_Content_Wizard {
                         <label for="ptk-policy-full-text" class="ptk-field-label">Full Policy Text</label>
                         <div class="ptk-textarea-wrap">
                             <textarea id="ptk-policy-full-text" name="ptk_policy_full_text" class="ptk-field-textarea ptk-linkable" rows="6"
-                                      placeholder="Optional: paste the official policy language here for reference."></textarea>
+                                      placeholder="Paste the official policy or bylaws section here for reference."></textarea>
                         </div>
+                        <p class="ptk-field-hint">Optional &mdash; useful when someone needs the exact wording.</p>
                     </div>
 
                     <div class="ptk-field-row">
