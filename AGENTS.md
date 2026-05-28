@@ -19,6 +19,12 @@ which still describes the user-facing flows accurately.
 Lucas Deichl is the author (see plugin header) and uses this for his Northeast
 PTA chapter (sibling project: `NEPTANewsletter`).
 
+**Live site:** https://montclairpta.org/ (WordPress multisite — the Montclair PTA
+Council site plus 10 school subsites). When debugging production behavior, that's
+the URL. Note: it sits behind a security plugin that blocks automated fetchers,
+so `WebFetch` / `curl` against it returns 403. Verify changes by uploading the
+zip to `ixcreations.com/PTAC Updates/` and using the auto-updater.
+
 ## Stack & tooling
 
 - **WordPress plugin** (PHP). Plugin entry: `pta-knowledge-hub/pta-knowledge-hub.php`.
