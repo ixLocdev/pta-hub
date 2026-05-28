@@ -16,6 +16,42 @@
     var isRestoring = false;
     var activeTextarea = null; // Track which textarea the link popup targets.
 
+    // Respect user's OS-level motion preference. When reduced, skip all
+    // jQuery slide/scroll animations and just show/hide instantly.
+    var REDUCE_MOTION = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    /**
+     * Reveal a wizard step. Plain show() — height animation reflows the page
+     * on mobile and the user only triggers this once per entry create.
+     */
+    function revealStep($el) {
+        $el.removeClass('ptk-hidden').show();
+    }
+
+    /**
+     * Reveal a repeater item with a gentle slide on add. Guarded by
+     * reduced-motion preference.
+     */
+    function revealRepeaterItem($item) {
+        if (REDUCE_MOTION) {
+            $item.show();
+        } else {
+            $item.hide().slideDown(200);
+        }
+    }
+
+    /**
+     * Collapse a repeater item before removing. Guarded by reduced-motion.
+     */
+    function collapseRepeaterItem($item, done) {
+        if (REDUCE_MOTION) {
+            $item.hide();
+            if (typeof done === 'function') done();
+        } else {
+            $item.slideUp(200, done);
+        }
+    }
+
     /**
      * Initialize wizard when DOM is ready.
      */
@@ -49,19 +85,20 @@
             $card.addClass('ptk-card-selected');
             $card.find('input[type="radio"]').prop('checked', true);
 
-            // Show basics step.
-            $('#ptk-step-basics').removeClass('ptk-hidden').hide().slideDown(300);
+            // Show basics step. Instant reveal — slideDown(300) used to
+            // reflow the whole page below, especially bad on mobile.
+            revealStep($('#ptk-step-basics'));
 
             // Show the correct category form, hide others.
             $('.ptk-category-form').addClass('ptk-hidden').hide();
             var $form = $('#ptk-form-' + category);
             if ($form.length) {
-                $form.removeClass('ptk-hidden').hide().slideDown(300);
+                revealStep($form);
             }
 
             // Show links section and submit step.
-            $('#ptk-step-links').removeClass('ptk-hidden').hide().slideDown(300);
-            $('#ptk-step-submit').removeClass('ptk-hidden').hide().slideDown(300);
+            revealStep($('#ptk-step-links'));
+            revealStep($('#ptk-step-submit'));
 
             // Add initial repeater items if empty.
             if (category === 'how-to-guide') {
@@ -86,9 +123,13 @@
 
             // Scroll to basics (skip during restore).
             if (!isRestoring) {
-                $('html, body').animate({
-                    scrollTop: $('#ptk-step-basics').offset().top - 50
-                }, 400);
+                if (REDUCE_MOTION) {
+                    window.scrollTo(0, $('#ptk-step-basics').offset().top - 50);
+                } else {
+                    $('html, body').animate({
+                        scrollTop: $('#ptk-step-basics').offset().top - 50
+                    }, 200);
+                }
             }
         });
     }
@@ -129,7 +170,7 @@
             var minItems = parseInt($repeater.data('min') || 1, 10);
 
             if ($repeater.find('.ptk-repeater-item').length > minItems) {
-                $item.slideUp(200, function () {
+                collapseRepeaterItem($item, function () {
                     $item.remove();
                     renumberSteps($repeater);
                 });
@@ -195,7 +236,7 @@
 
         var $item = $(html).hide();
         $repeater.append($item);
-        $item.slideDown(200);
+        revealRepeaterItem($item);
         initLinkButtons();
         if (!isRestoring) {
             $item.find('textarea').focus();
@@ -224,7 +265,7 @@
 
         var $item = $(html).hide();
         $repeater.append($item);
-        $item.slideDown(200);
+        revealRepeaterItem($item);
         if (!isRestoring) {
             $item.find('input:first').focus();
         }
@@ -250,7 +291,7 @@
 
         var $item = $(html).hide();
         $repeater.append($item);
-        $item.slideDown(200);
+        revealRepeaterItem($item);
         if (!isRestoring) {
             $item.find('input').focus();
         }
@@ -278,7 +319,7 @@
 
         var $item = $(html).hide();
         $repeater.append($item);
-        $item.slideDown(200);
+        revealRepeaterItem($item);
         if (!isRestoring) {
             $item.find('input:first').focus();
         }
@@ -521,7 +562,11 @@
             if (!category) {
                 e.preventDefault();
                 alert('Please select a category first.');
-                $('html, body').animate({ scrollTop: $('#ptk-step-category').offset().top - 50 }, 400);
+                if (REDUCE_MOTION) {
+                    window.scrollTo(0, $('#ptk-step-category').offset().top - 50);
+                } else {
+                    $('html, body').animate({ scrollTop: $('#ptk-step-category').offset().top - 50 }, 200);
+                }
                 return false;
             }
 
@@ -1063,7 +1108,8 @@
                     '<span class="dashicons dashicons-saved"></span> Draft saved</span>');
                 $('.ptk-wizard-intro').append($indicator);
             }
-            $indicator.stop(true).css('opacity', 1).delay(2000).animate({ opacity: 0.4 }, 500);
+            // Brief pulse — Emil frequency rule: autosave fires often, don't linger.
+            $indicator.stop(true).css('opacity', 1).delay(400).animate({ opacity: 0 }, 600);
         }
     }
 

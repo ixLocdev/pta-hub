@@ -737,3 +737,47 @@
 #ptk-wizard-submit-btn:focus {
     box-shadow: 0 0 0 3px rgba(37,99,235,0.35);
 }
+
+/* v2.8.0 motion polish */
+
+/* T2.1 — Submit button press state so click is acknowledged */
+#ptk-wizard-submit-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 2px rgba(37, 99, 235, 0.35);
+}
+
+/* T2.2 — Link popup modal: gentle reveal so users see where it came from */
+.ptk-link-popup .ptk-link-popup-inner {
+    animation: ptk-modal-in 120ms ease-out;
+}
+@keyframes ptk-modal-in {
+    from { opacity: 0; transform: scale(0.96); }
+    to   { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .ptk-link-popup .ptk-link-popup-inner { animation: none; }
+}
+
+/* T2.5 — Category card press state (mobile lacks hover) */
+.ptk-category-card:active {
+    transform: translateY(1px);
+}
+
+/* Autosave indicator (fast pulse) */
+.ptk-autosave-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 12px;
+    font-size: 12px;
+    color: #059669;
+    font-weight: 500;
+}
+.ptk-autosave-indicator .dashicons {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    line-height: 1;
+    position: relative;
+    top: 1px;
+}

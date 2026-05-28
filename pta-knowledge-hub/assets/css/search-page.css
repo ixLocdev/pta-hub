@@ -783,3 +783,13 @@
     background: #1d4ed8;
     color: #fff !important;
 }
+
+/* T2.5 — Filter button press state so click registers on touch (v2.8.0) */
+.ptk-search-wrap .ptk-filter-btn:active {
+    transform: translateY(1px);
+}
+
+/* T2.6 — Explicit transition on filter buttons (avoid 'all' surprises) */
+.ptk-search-wrap .ptk-filter-btn {
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
