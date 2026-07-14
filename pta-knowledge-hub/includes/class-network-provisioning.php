@@ -72,6 +72,14 @@ class PTK_Network_Provisioning {
         PTK_Feedback::create_table();
         PTK_Search_Engine::create_click_table();
 
+        // Seed vendor categories — core is_main_site() (true on single-site,
+        // and false here after provision_new_site()'s switch_to_blog), NOT
+        // PTK_Multisite::is_main_site(), which is false on single-site and
+        // would silently skip seeding there.
+        if ( is_main_site() ) {
+            PTK_Vendor_Directory::ensure_default_categories();
+        }
+
         // Vendor Directory page with the shortcode.
         PTK_Vendor_Directory::ensure_directory_page();
 
