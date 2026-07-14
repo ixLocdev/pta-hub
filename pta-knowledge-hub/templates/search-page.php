@@ -158,8 +158,10 @@ $ptk_total_published = (int) wp_count_posts( 'pta_knowledge' )->publish;
         <svg class="ptk-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
             <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
         </svg>
-        <p class="ptk-empty-title">Search unavailable</p>
-        <p class="ptk-empty-text">Please try again in a moment.</p>
+        <p class="ptk-empty-title">Search isn&rsquo;t working right now</p>
+        <p class="ptk-empty-text">This is usually a brief connection hiccup &mdash; it&rsquo;s nothing you did.</p>
+        <button type="button" class="ptk-retry-btn" id="ptk-retry">Try again</button>
+        <p class="ptk-empty-text ptk-error-fallback">Still stuck? Refresh the page, or scroll up to browse recent entries.</p>
     </div>
 
 <?php endif; ?>

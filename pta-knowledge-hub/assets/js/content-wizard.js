@@ -634,9 +634,6 @@
                 }
             }
 
-            // Clear autosave on successful submit.
-            clearAutosave();
-
             // Disable submit button to prevent double-submit.
             var btnText = isEdit ? 'Updating...' : 'Creating...';
             $('#ptk-wizard-submit-btn').prop('disabled', true).text(btnText);

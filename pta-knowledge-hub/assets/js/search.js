@@ -213,6 +213,15 @@
     var errorEl = document.getElementById("ptk-error");
     var hintEl  = document.getElementById("ptk-hint");
 
+    var retryBtn = document.getElementById("ptk-retry");
+    if (retryBtn) {
+        retryBtn.addEventListener("click", function () {
+            if (!lastQuery) return;
+            if (input) input.focus(); // keep keyboard users anchored — hiding the error panel would blur to <body>
+            doSearch(lastQuery);
+        });
+    }
+
     function doSearch(query) {
         lastQuery = query;
         showLoading();
@@ -494,6 +503,7 @@
         resultsEl.style.display = "none";
         emptyEl.style.display = "none";
         suggestedEl.style.display = "none";
+        if (errorEl) errorEl.style.display = "none";
         if (recentEl) recentEl.style.display = "none";
     }
 

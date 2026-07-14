@@ -39,7 +39,7 @@ class PTK_Admin_Helpers {
         ) );
         register_setting( 'ptk_settings', 'ptk_show_importer', array(
             'type'              => 'boolean',
-            'default'           => true,
+            'default'           => false,
             'sanitize_callback' => 'rest_sanitize_boolean',
         ) );
 
@@ -106,7 +106,7 @@ class PTK_Admin_Helpers {
                         <td>
                             <label>
                                 <input type="checkbox" name="ptk_show_importer" value="1"
-                                    <?php checked( get_option( 'ptk_show_importer', true ) ); ?>>
+                                    <?php checked( get_option( 'ptk_show_importer', false ) ); ?>>
                                 Show "Import Starter Content" in the menu
                             </label>
                             <p class="description">

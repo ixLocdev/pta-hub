@@ -25,8 +25,12 @@ class PTK_Content_Importer {
      * imported unless re-enabled in Settings.
      */
     public static function add_import_page() {
-        // Always visible. The page itself shows a clear warning when a previous
-        // import is detected, which is friendlier than hiding the option entirely.
+        // After the first import, the menu item hides unless re-enabled in
+        // Settings (ptk_show_importer) — matches the Settings-page description.
+        if ( get_option( 'ptk_starter_content_imported', false )
+            && ! get_option( 'ptk_show_importer', false ) ) {
+            return;
+        }
         add_submenu_page(
             'edit.php?post_type=pta_knowledge',
             'Import Starter Content',

@@ -31,20 +31,20 @@ Status legend: `[ ]` open · `[x]` fixed · `[-]` won't fix
   and permalinks still leak to logged-out visitors. `handle_track_click` (line ~990)
   similarly ungated (minor).
 
-- [ ] **4. Phantom setting: importer visibility toggle does nothing.**
+- [x] **4. Phantom setting: importer visibility toggle does nothing.**
   Settings copy (`class-admin-helpers.php:112-115`) claims the importer hides after
   first import; `class-content-importer.php:28-38` always shows it and the
   `ptk_show_importer` option is never read to gate anything. Wire it up or fix the copy.
 
 ## 🟡 Volunteer experience (approachability)
 
-- [ ] **5. Search error state is a dead end.**
+- [x] **5. Search error state is a dead end.**
   `templates/search-page.php:156-163` — "Search unavailable / Please try again in a
   moment." No retry button, no browse-categories fallback (the no-results state
   right above it does this well — mirror it). All fetch failures collapse to the
   same message (`assets/js/search.js:222-238`).
 
-- [ ] **6. Wizard submission failures white-screen via `wp_die()`.**
+- [x] **6. Wizard submission failures white-screen via `wp_die()`.**
   `class-content-wizard.php:1069-1138` (multiple call sites) — validation errors
   render a bare WP error page with no "Back" link; browser-back after POST risks
   losing work since the last autosave. Return to the form with inline errors instead.

@@ -20,6 +20,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class PTK_Content_Wizard {
 
+    /** @var string Validation error from handle_submission, shown by render_wizard. */
+    private static $submission_error = '';
+
     /**
      * Default knowledge categories with slug => name.
      */
@@ -584,6 +587,13 @@ class PTK_Content_Wizard {
             </h1>
             <p class="ptk-wizard-intro"><?php echo $is_edit ? 'Update the fields below and save your changes.' : 'Fill in the fields below and we\'ll format everything for you. No editing required!'; ?></p>
 
+            <?php if ( self::$submission_error ) : ?>
+                <div class="notice notice-error inline" style="margin:16px 0;padding:12px 16px;">
+                    <p style="margin:0;"><strong>Couldn&rsquo;t save your entry:</strong> <?php echo esc_html( self::$submission_error ); ?>
+                    Nothing was published &mdash; scroll down, fix that field, and save again.</p>
+                </div>
+            <?php endif; ?>
+
             <?php if ( ! $is_edit ) : ?>
                 <p class="ptk-wizard-meta">4 quick steps &middot; takes about 5 minutes <span class="ptk-required-legend"><span class="ptk-required">*</span> required</span></p>
             <?php endif; ?>
@@ -1072,11 +1082,15 @@ class PTK_Content_Wizard {
         }
 
         if ( ! wp_verify_nonce( $_POST['ptk_wizard_nonce'], 'ptk_wizard_submit' ) ) {
-            wp_die( 'Security check failed. Please try again.' );
+            wp_die(
+                'Your session expired while the form was open, so this save was blocked for safety. Go back and press the save button again &mdash; your answers are still there.',
+                'PTA Hub',
+                array( 'back_link' => true )
+            );
         }
 
         if ( ! current_user_can( 'edit_posts' ) ) {
-            wp_die( 'You do not have permission to create entries.' );
+            wp_die( 'You do not have permission to create entries.', 'PTA Hub', array( 'back_link' => true ) );
         }
 
         $edit_id  = absint( $_POST['ptk_edit_id'] ?? 0 );
@@ -1087,7 +1101,8 @@ class PTK_Content_Wizard {
         $status   = in_array( $_POST['ptk_status'] ?? 'draft', array( 'publish', 'draft' ), true ) ? $_POST['ptk_status'] : 'draft';
 
         if ( empty( $title ) || empty( $category ) ) {
-            wp_die( 'Title and category are required.' );
+            self::$submission_error = 'Please add a Title and pick a category, then save again.';
+            return;
         }
 
         // For glossary terms, auto-fill the excerpt with the definition
@@ -1098,16 +1113,20 @@ class PTK_Content_Wizard {
 
         // Category-specific server-side validation.
         if ( 'faq' === $category && empty( trim( sanitize_textarea_field( wp_unslash( $_POST['ptk_faq_short_answer'] ?? '' ) ) ) ) ) {
-            wp_die( 'Please provide a Quick Answer for your FAQ entry.' );
+            self::$submission_error = 'Please provide a Quick Answer for your FAQ entry.';
+            return;
         }
         if ( 'resource' === $category && empty( trim( sanitize_textarea_field( wp_unslash( $_POST['ptk_resource_description'] ?? '' ) ) ) ) ) {
-            wp_die( 'Please provide a Description for your Resource.' );
+            self::$submission_error = 'Please provide a Description for your Resource.';
+            return;
         }
         if ( 'glossary' === $category && empty( trim( sanitize_textarea_field( wp_unslash( $_POST['ptk_glossary_definition'] ?? '' ) ) ) ) ) {
-            wp_die( 'Please provide a Definition for your Glossary Term.' );
+            self::$submission_error = 'Please provide a Definition for your Glossary Term.';
+            return;
         }
         if ( 'policy' === $category && empty( trim( sanitize_textarea_field( wp_unslash( $_POST['ptk_policy_summary'] ?? '' ) ) ) ) ) {
-            wp_die( 'Please provide a Summary for your Policy entry.' );
+            self::$submission_error = 'Please provide a Summary for your Policy entry.';
+            return;
         }
 
         // Generate block content based on category.
@@ -1127,10 +1146,11 @@ class PTK_Content_Wizard {
             // Verify the post exists and user can edit it.
             $existing = get_post( $edit_id );
             if ( ! $existing || 'pta_knowledge' !== $existing->post_type ) {
-                wp_die( 'Invalid entry to update.' );
+                self::$submission_error = 'That entry no longer exists — it may have been deleted. Nothing was saved.';
+                return;
             }
             if ( ! current_user_can( 'edit_post', $edit_id ) ) {
-                wp_die( 'You do not have permission to edit this entry.' );
+                wp_die( 'You do not have permission to edit this entry.', 'PTA Hub', array( 'back_link' => true ) );
             }
 
             $post_data['ID'] = $edit_id;
@@ -1141,7 +1161,9 @@ class PTK_Content_Wizard {
         }
 
         if ( is_wp_error( $post_id ) ) {
-            wp_die( 'Error saving entry: ' . esc_html( $post_id->get_error_message() ) );
+            self::$submission_error = 'Sorry — the entry could not be saved (' . $post_id->get_error_message() . '). '
+                . ( $edit_id ? 'The fields below show the last saved version — re-apply your changes and try again.' : 'Please try again; your answers are still below.' );
+            return;
         }
 
         // Set category.
