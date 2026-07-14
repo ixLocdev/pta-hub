@@ -56,6 +56,10 @@ require_once PTK_PLUGIN_DIR . 'includes/class-notifications.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-role-access.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-multisite.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-auto-updater.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-network-provisioning.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-vendor-directory.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-vendor-reviews.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-vendor-moderation.php';
 
 /**
  * Check whether the current visitor must log in to access the knowledge base.
@@ -126,6 +130,10 @@ function ptk_init() {
     PTK_Role_Access::init();
     PTK_Multisite::init();
     PTK_Auto_Updater::init();
+    PTK_Network_Provisioning::init();
+    PTK_Vendor_Directory::init();
+    PTK_Vendor_Reviews::init();
+    PTK_Vendor_Moderation::init();
 }
 add_action( 'plugins_loaded', 'ptk_init' );
 
@@ -219,6 +227,10 @@ function ptk_activate() {
     PTK_Analytics::create_table();
     PTK_Feedback::create_table();
     PTK_Search_Engine::create_click_table();
+
+    // Vendor Directory (v3.0): shared reviews table + this site's provisioning.
+    PTK_Network_Provisioning::create_reviews_table();
+    PTK_Network_Provisioning::provision_site();
 
     // Clear search cache so stale results don't persist across updates.
     PTK_Search_Engine::invalidate_cache();
