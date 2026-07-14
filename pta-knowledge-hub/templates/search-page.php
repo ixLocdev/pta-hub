@@ -29,7 +29,7 @@ $ptk_total_published = (int) wp_count_posts( 'pta_knowledge' )->publish;
         <h3 class="ptk-empty-install-title">Coming soon</h3>
         <p class="ptk-empty-install-text">This PTA Hub is being set up. Check back soon for searchable guides, FAQs, and resources.</p>
         <?php if ( current_user_can( 'edit_posts' ) ) : ?>
-            <a class="ptk-empty-install-cta" href="<?php echo esc_url( admin_url( 'edit.php?post_type=pta_knowledge&page=ptk-content-wizard' ) ); ?>">+ Add your first entry</a>
+            <a class="ptk-empty-install-cta" href="<?php echo esc_url( PTK_Content_Wizard::url() ); ?>">+ Add your first entry</a>
         <?php endif; ?>
     </div>
 <?php else : ?>

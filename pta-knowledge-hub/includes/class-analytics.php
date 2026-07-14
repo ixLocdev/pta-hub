@@ -329,7 +329,7 @@ class PTK_Analytics {
         }
 
         // New entry URL base.
-        $wizard_url = admin_url( 'admin.php?page=ptk-content-wizard' );
+        $wizard_url = PTK_Content_Wizard::url();
 
         // Enqueue admin styles.
         wp_enqueue_style( 'ptk-analytics-admin', PTK_PLUGIN_URL . 'assets/css/analytics-admin.css', array(), PTK_VERSION );

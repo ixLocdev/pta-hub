@@ -439,7 +439,7 @@ class PTK_Admin_Helpers {
         if ( ! $screen || 'edit-pta_knowledge' !== $screen->id ) {
             return;
         }
-        $wizard_url = admin_url( 'edit.php?post_type=pta_knowledge&page=ptk-content-wizard' );
+        $wizard_url = PTK_Content_Wizard::url();
         ?>
         <div class="notice notice-info ptk-wizard-banner" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-left-color:#2271b1;">
             <span class="dashicons dashicons-welcome-learn-more" style="font-size:24px;color:#2271b1;"></span>

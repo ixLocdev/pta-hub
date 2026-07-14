@@ -143,7 +143,9 @@ class PTK_Search_Engine {
         $wpdb->query(
             "DELETE FROM {$wpdb->options}
              WHERE option_name LIKE '_transient_ptk_search_%'
-                OR option_name LIKE '_transient_timeout_ptk_search_%'"
+                OR option_name LIKE '_transient_timeout_ptk_search_%'
+                OR option_name LIKE '_transient_ptk_ac_%'
+                OR option_name LIKE '_transient_timeout_ptk_ac_%'"
         );
     }
 
@@ -303,8 +305,10 @@ class PTK_Search_Engine {
             ) );
         }
 
-        // Check transient cache.
-        $cache_key = 'ptk_search_' . md5( mb_strtolower( $query ) );
+        // Check transient cache — keyed by query AND the viewer's roles, because
+        // results are filtered per-user by PTK_Role_Access before caching. A
+        // query-only key would serve one user's visibility set to everyone.
+        $cache_key = 'ptk_search_' . md5( mb_strtolower( $query ) . '|' . self::viewer_cache_fragment() );
         $cached    = get_transient( $cache_key );
         if ( false !== $cached ) {
             wp_send_json_success( $cached );
@@ -416,6 +420,22 @@ class PTK_Search_Engine {
         set_transient( $cache_key, $response, HOUR_IN_SECONDS );
 
         wp_send_json_success( $response );
+    }
+
+    /**
+     * Cache-key fragment describing the current viewer's visibility level.
+     * Same roles => same fragment => shared cache entry.
+     *
+     * @return string
+     */
+    private static function viewer_cache_fragment() {
+        $user = wp_get_current_user();
+        if ( ! $user->exists() ) {
+            return 'anon';
+        }
+        $roles = array_values( (array) $user->roles );
+        sort( $roles );
+        return implode( ',', $roles );
     }
 
     /**
@@ -878,6 +898,11 @@ class PTK_Search_Engine {
     public static function handle_autocomplete() {
         check_ajax_referer( 'ptk_search_nonce', '_wpnonce' );
 
+        // Respect the "require login" setting — same gate as full search.
+        if ( ! ptk_check_access() ) {
+            wp_send_json_error( array( 'message' => 'Login required.' ), 403 );
+        }
+
         $query = isset( $_GET['q'] ) ? sanitize_text_field( wp_unslash( $_GET['q'] ) ) : '';
         if ( mb_strlen( trim( $query ) ) < 2 ) {
             wp_send_json_success( array() );
@@ -885,8 +910,8 @@ class PTK_Search_Engine {
 
         $lower_query = mb_strtolower( trim( $query ) );
 
-        // Check transient cache.
-        $cache_key = 'ptk_ac_' . md5( $lower_query );
+        // Role-aware for the same reason as the search cache (see handle_search).
+        $cache_key = 'ptk_ac_' . md5( $lower_query . '|' . self::viewer_cache_fragment() );
         $cached    = get_transient( $cache_key );
         if ( false !== $cached ) {
             wp_send_json_success( $cached );
@@ -900,6 +925,10 @@ class PTK_Search_Engine {
 
         $matches = array();
         foreach ( $posts as $post ) {
+            // Skip entries the current viewer isn't allowed to see.
+            if ( class_exists( 'PTK_Role_Access' ) && ! PTK_Role_Access::can_user_view( $post->ID ) ) {
+                continue;
+            }
             $title_lower = mb_strtolower( $post->post_title );
             $score = 0;
 
@@ -989,6 +1018,11 @@ class PTK_Search_Engine {
      */
     public static function handle_track_click() {
         check_ajax_referer( 'ptk_search_nonce', '_wpnonce' );
+
+        // Respect the "require login" setting — same gate as full search.
+        if ( ! ptk_check_access() ) {
+            wp_send_json_error( array( 'message' => 'Login required.' ), 403 );
+        }
 
         $post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
         $query   = isset( $_POST['query'] ) ? sanitize_text_field( wp_unslash( $_POST['query'] ) ) : '';

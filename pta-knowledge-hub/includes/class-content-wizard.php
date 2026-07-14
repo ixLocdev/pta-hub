@@ -93,14 +93,7 @@ class PTK_Content_Wizard {
             return $actions;
         }
 
-        $wizard_url = add_query_arg(
-            array(
-                'post_type'   => 'pta_knowledge',
-                'page'        => 'ptk-content-wizard',
-                'ptk_edit_id' => $post->ID,
-            ),
-            admin_url( 'edit.php' )
-        );
+        $wizard_url = add_query_arg( 'ptk_edit_id', $post->ID, self::url() );
 
         $actions['edit_wizard'] = sprintf(
             '<a href="%s">Edit in Wizard</a>',
@@ -172,8 +165,21 @@ class PTK_Content_Wizard {
             return;
         }
 
-        wp_safe_redirect( admin_url( 'edit.php?post_type=pta_knowledge&page=ptk-content-wizard' ) );
+        wp_safe_redirect( self::url() );
         exit;
+    }
+
+    /**
+     * Canonical admin URL of the wizard page.
+     *
+     * The wizard is a submenu of the pta_knowledge list screen, so links
+     * MUST go through edit.php — admin.php?page=... does not resolve.
+     * Always use this helper instead of hardcoding the URL.
+     *
+     * @return string
+     */
+    public static function url() {
+        return admin_url( 'edit.php?post_type=pta_knowledge&page=ptk-content-wizard' );
     }
 
     /**
@@ -555,9 +561,9 @@ class PTK_Content_Wizard {
                     <p>Your knowledge entry has been <?php echo $is_update ? 'updated' : 'published and is now searchable'; ?>.</p>
                     <div class="ptk-wizard-success-actions">
                         <a href="<?php echo esc_url( $view_link ); ?>" class="button button-primary" target="_blank">View Entry</a>
-                        <a href="<?php echo esc_url( admin_url( 'edit.php?post_type=pta_knowledge&page=ptk-content-wizard&ptk_edit_id=' . $post_id ) ); ?>" class="button">Edit in Wizard</a>
+                        <a href="<?php echo esc_url( self::url() . '&ptk_edit_id=' . $post_id ); ?>" class="button">Edit in Wizard</a>
                         <a href="<?php echo esc_url( $edit_link ); ?>" class="button">Edit in WordPress</a>
-                        <a href="<?php echo esc_url( admin_url( 'edit.php?post_type=pta_knowledge&page=ptk-content-wizard' ) ); ?>" class="button">Create Another</a>
+                        <a href="<?php echo esc_url( self::url() ); ?>" class="button">Create Another</a>
                     </div>
                 </div>
             </div>
@@ -1165,15 +1171,13 @@ class PTK_Content_Wizard {
 
         // Redirect to success page.
         $redirect_args = array(
-            'post_type'   => 'pta_knowledge',
-            'page'        => 'ptk-content-wizard',
             'ptk_created' => $post_id,
         );
         if ( $is_update ) {
             $redirect_args['ptk_updated'] = '1';
         }
 
-        wp_safe_redirect( add_query_arg( $redirect_args, admin_url( 'edit.php' ) ) );
+        wp_safe_redirect( add_query_arg( $redirect_args, self::url() ) );
         exit;
     }
 
