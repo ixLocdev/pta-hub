@@ -502,12 +502,12 @@
 .ptk-add-timeline .dashicons,
 .ptk-add-checklist-item .dashicons,
 .ptk-add-link-item .dashicons {
+    /* The button is inline-flex + align-items:center — let that do the
+       centering. A manual top-nudge here pushes the glyph below the label. */
     font-size: 16px;
     width: 16px;
     height: 16px;
-    line-height: 1;
-    position: relative;
-    top: 2px;
+    line-height: 16px;
 }
 
 /* ── Image Upload ── */
@@ -688,9 +688,13 @@
 .ptk-wizard-related-insert { font-size: 12px !important; }
 
 @media (min-width: 1280px) {
-    .ptk-wizard-wrap { position: relative; }
-    .ptk-wizard-related { position: absolute; right: 20px; top: 120px; width: 260px; margin: 0; }
+    /* Two-column flow: float the panel beside the form instead of pinning it
+       at a fixed offset — a fixed top collides with the "4 quick steps" bar
+       and drifts whenever a banner (recovered draft, error notice) changes
+       the header height. Floated, it always starts right where the form does. */
+    .ptk-wizard-related { float: right; width: 260px; margin: 0 0 24px 24px; }
     .ptk-wizard-wrap form#ptk-wizard-form { max-width: calc(100% - 300px); }
+    .ptk-wizard-wrap::after { content: ""; display: table; clear: both; }
 }
 
 /* ── Top-of-form scope cue + required legend (v2.7.0) ── */
