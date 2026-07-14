@@ -28,7 +28,7 @@ zip to `ixcreations.com/PTAC Updates/` and using the auto-updater.
 ## Stack & tooling
 
 - **WordPress plugin** (PHP). Plugin entry: `pta-knowledge-hub/pta-knowledge-hub.php`.
-- Plugin version: `2.3.0` (as of last edit).
+- Plugin version: `2.9.0` (as of last edit).
 - Custom post type backed by class files in `includes/`.
 - Front-end search via shortcode + page templates.
 - No node/build pipeline. PHP + a small amount of bundled CSS/JS in
