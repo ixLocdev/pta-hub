@@ -57,9 +57,21 @@ review-form — options B, B, and ✓ chosen respectively).
   )
   ```
   One review per user per vendor (UNIQUE key); re-submitting updates their
-  review and resets it to `pending`. Attribution display values (user display
+  review, resets it to `pending`, **overwrites `blog_id` with the submitting
+  site** (latest submission wins attribution), and bumps the cache version
+  (a re-pended review must leave public view immediately, not after the
+  transient expires). Writes use select-then-insert/update (`$wpdb->insert`/
+  `$wpdb->update`); the UNIQUE key backstops any race — no raw
+  `ON DUPLICATE KEY` SQL needed. Attribution display values (user display
   name, PTA/site name) are resolved at render time from `user_id`/`blog_id`,
   not stored, so renames stay correct.
+
+  **PTA rollup for the verdict line** ("X of Y PTAs would use them again"):
+  Y = distinct `blog_id`s with at least one approved review; a PTA counts
+  toward X when at least half of its reviewers recommend (ties lean yes —
+  rare, since most PTAs will have a single reviewer per vendor). Directory
+  card ranking uses the simpler reviewer-level recommend-% (more granular
+  for sorting; the PTA rollup is display language, not the sort key).
 
 ### Cross-site reads (rendering Option A)
 
@@ -73,8 +85,8 @@ cache-version option (see Caching). Precedent for cross-site writes:
 
 One "Vendor Directory" page per site containing the `[pta_vendors]` shortcode
 (auto-created on the Council site at activation; created on subsites by the
-provisioning hook or on first render setup — same pattern as the Knowledge
-Base page). Views:
+provisioning mechanisms below — same pattern as the Knowledge Base page).
+Views:
 
 - `/vendors/` — directory (category tiles + search + cards)
 - `/vendors/?vendor=<slug>` — vendor detail (two-column)
@@ -82,6 +94,12 @@ Base page). Views:
 
 Query-var routing (not CPT permalinks) because vendor posts exist only on the
 Council site; a shortcode-driven page renders identically on every subsite.
+
+**Existing-subsite provisioning:** `wp_initialize_site` only covers FUTURE
+sites. For the ~10 current schools, a version-gated ensure-routine on each
+site's `admin_init` (the `ptk_maybe_clear_cache_on_update` pattern,
+`pta-knowledge-hub.php:136-143`) creates the Vendor Directory page if missing
+after the plugin updates to v3.0. Idempotent, no manual step per site.
 
 ### New class files
 
@@ -113,7 +131,14 @@ Following the one-class-per-concern convention:
    name, combined star summary, "X of Y PTAs would use again", review count.
 4. "Suggest a vendor" button — form: name, category, phone/email/website
    (at least one contact required), plus the suggester's first review inline
-   (a vendor with zero reviews isn't useful). Entire submission → pending.
+   (a vendor with zero reviews isn't useful). The endpoint atomically creates
+   vendor (`pending`) + review (`pending`) — this is the ONE exception to the
+   "reviews only against `publish` vendors" check (the standalone review
+   endpoint keeps it strictly). Moderation treats the pair as one unit:
+   approving the vendor approves its bundled review; rejecting the vendor
+   deletes its review rows. Duplicate suggestions ("John's Pizza" from two
+   schools) are caught by the moderator — **moderation is the dedup layer**
+   in v3.0; no automatic matching.
 5. Empty states: no vendors yet ("Be the first to suggest one"), no search
    matches (offer clearing the filter).
 
@@ -139,8 +164,9 @@ both star ratings required; comment required, ≤ 2000 chars.
 
 Every vendor view (directory, detail, AJAX endpoints) requires
 `is_user_logged_in()` — hard requirement independent of `ptk_require_login`.
-Logged-out visitors get the existing friendly "Members Only" prompt
-(`ptk_check_access( true )` pattern with vendor-specific copy).
+Do NOT wire this to `ptk_check_access()` (it returns true for everyone when
+the hub-wide login setting is off); reuse only its "Members Only" prompt
+MARKUP with vendor-specific copy, gated on `is_user_logged_in()` directly.
 
 ## Moderation & notifications
 
@@ -152,8 +178,10 @@ Logged-out visitors get the existing friendly "Members Only" prompt
   v3.0 — keep simple).
 - **Email:** on new pending submission, one email to the Council admin email
   (`get_option('admin_email')` on the main site) with the content and a link
-  to the queue. Batched-per-submission (volume is low). Fixes the
-  silent-queue failure mode the audit found in suggest-to-council.
+  to the queue. One email per submission (volume is low). This avoids
+  repeating, for vendors, the silent-queue failure mode the audit found in
+  suggest-to-council (knowledge-entry suggestion emails remain audit #28,
+  out of scope here).
 - **Member expectation:** the form says "usually within a few days"; their
   own pending review is visible to them on the vendor page.
 
@@ -161,7 +189,8 @@ Logged-out visitors get the existing friendly "Members Only" prompt
 
 - All AJAX endpoints: nonce + `is_user_logged_in()` + object-level checks
   (verify vendor exists and is `publish` before accepting a review — the
-  audit-#25 lesson).
+  audit-#25 lesson; sole exception: the suggest-a-vendor endpoint's bundled
+  first review, see Member experience item 4).
 - Spam: honeypot field + per-user rate limit (5 submissions/hour) copied from
   `PTK_Suggestions`. No IP handling needed — submitters are logged in.
 - Sanitization: `sanitize_textarea_field` comments, `absint` ratings clamped
@@ -172,20 +201,27 @@ Logged-out visitors get the existing friendly "Members Only" prompt
 
 - Directory + per-vendor aggregates cached in per-site transients,
   1 hour, keyed `ptk_vendors_{version}` where `{version}` is a network option
-  (`ptk_vendor_cache_ver`) bumped on every vendor/review approve/edit/delete —
-  version-bump invalidation works under object caches (avoids audit #20's
-  LIKE-delete trap) and needs no cross-site transient deletion.
-- No role variance needed (everything is simply login-gated, same content for
-  all members), but the gate check runs BEFORE cache read on every request.
+  (`ptk_vendor_cache_ver`) bumped on every vendor/review approve/edit/delete
+  AND on member re-submission (which re-pends a live review) — version-bump
+  invalidation works under object caches (avoids audit #20's LIKE-delete
+  trap) and needs no cross-site transient deletion.
+- **The cached payload contains only approved data**, identical for all
+  members — so no role variance is needed. The viewer's own pending review
+  (shown only to them with a "waiting for approval" chip) is fetched
+  per-request via a single uncached row lookup on the UNIQUE key and layered
+  on at render time — it never enters the shared cache.
+- The login-gate check runs BEFORE cache read on every request.
 
 ## Provisioning & lifecycle (audit #22 groundwork)
 
 - Activation on the main site: create reviews table (network-safe:
   `base_prefix`, created once), seed `vendor_category` terms, create the
   Vendor Directory page.
-- `wp_initialize_site`: when a new school site joins, auto-create its Vendor
-  Directory page (and the knowledge-base tables the audit flagged — included
-  here as the natural home for that fix).
+- `wp_initialize_site` (late priority, e.g. 100, so core setup completes
+  first): when a new school site joins, auto-create its Vendor Directory
+  page (and the knowledge-base tables the audit flagged — included here as
+  the natural home for that fix). Existing sites are covered by the
+  version-gated `admin_init` routine described under Routing.
 - Uninstall: drop the reviews table, delete vendor CPT posts + terms + pages?
   NO — follow existing philosophy (posts preserved on uninstall); drop the
   shared table only on network uninstall, and add the new options/transients
