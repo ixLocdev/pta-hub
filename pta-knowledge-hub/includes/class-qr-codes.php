@@ -45,7 +45,10 @@ class PTK_QR_Codes {
         }
 
         if ( ! self::lib_available() ) {
-            echo '<p class="description">QR library missing. Place <code>phpqrcode.php</code> in <code>' . esc_html( self::LIB_PATH ) . '</code>.</p>';
+            echo '<p class="description">QR codes aren&rsquo;t available right now. Ask your website administrator for help &mdash; everything else about this entry still works normally.</p>';
+            if ( current_user_can( 'manage_options' ) ) {
+                echo '<p class="description" style="color:#9ca3af;">Technical detail: <code>' . esc_html( self::LIB_PATH ) . '</code> is missing from the plugin folder.</p>';
+            }
             return;
         }
 
@@ -53,7 +56,7 @@ class PTK_QR_Codes {
         $img = self::generate_png_data_url( $url, 4, 3 );
 
         if ( ! $img ) {
-            echo '<p class="description">QR generation failed.</p>';
+            echo '<p class="description">The QR code couldn&rsquo;t be created just now. Try reloading this page; if it keeps happening, ask your website administrator.</p>';
             return;
         }
         ?>

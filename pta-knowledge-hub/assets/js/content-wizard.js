@@ -634,6 +634,19 @@
                 }
             }
 
+            // Publishing is immediate and site-wide — give one plain-language
+            // moment of pause (Draft, the default, needs none).
+            var chosenStatus = $('input[name="ptk_status"]:checked').val();
+            if (chosenStatus === 'publish') {
+                var publishMsg = isEdit
+                    ? 'Publish these changes now? They will be visible to everyone right away.'
+                    : 'Publish now? This entry will be visible to everyone right away. Choose Cancel to go back (you can pick "Draft" to review it first).';
+                if (!window.confirm(publishMsg)) {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+
             // Disable submit button to prevent double-submit.
             var btnText = isEdit ? 'Updating...' : 'Creating...';
             $('#ptk-wizard-submit-btn').prop('disabled', true).text(btnText);

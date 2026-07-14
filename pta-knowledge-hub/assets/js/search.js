@@ -222,6 +222,12 @@
         });
     }
 
+    // Screen-reader wiring for the autocomplete dropdown (combobox pattern).
+    input.setAttribute("role", "combobox");
+    input.setAttribute("aria-autocomplete", "list");
+    input.setAttribute("aria-expanded", "false");
+    input.setAttribute("aria-controls", "ptk-ac-listbox");
+
     function doSearch(query) {
         lastQuery = query;
         showLoading();
@@ -670,6 +676,8 @@
     function createAcDropdown() {
         if (acDropdown) return acDropdown;
         acDropdown = el("div", "ptk-autocomplete");
+        acDropdown.id = "ptk-ac-listbox";
+        acDropdown.setAttribute("role", "listbox");
         acDropdown.style.display = "none";
         // Position it relative to the search input's parent.
         var wrapper = input.closest(".ptk-search-bar") || input.parentElement;
@@ -711,6 +719,9 @@
             row.className = "ptk-ac-item";
             row.setAttribute("data-index", String(idx));
             row.setAttribute("data-post-id", String(item.id));
+            row.id = "ptk-ac-opt-" + idx;
+            row.setAttribute("role", "option");
+            row.setAttribute("aria-selected", "false");
 
             // Highlight matching portion in title.
             var title = item.title;
@@ -749,12 +760,15 @@
         });
 
         dropdown.style.display = "block";
+        input.setAttribute("aria-expanded", "true");
     }
 
     function hideAutocomplete() {
         if (acDropdown) {
             acDropdown.style.display = "none";
             acSelectedIndex = -1;
+            input.setAttribute("aria-expanded", "false");
+            input.removeAttribute("aria-activedescendant");
         }
     }
 
@@ -762,9 +776,15 @@
         for (var i = 0; i < items.length; i++) {
             if (i === acSelectedIndex) {
                 items[i].classList.add("ptk-ac-active");
+                items[i].setAttribute("aria-selected", "true");
+                input.setAttribute("aria-activedescendant", items[i].id);
             } else {
                 items[i].classList.remove("ptk-ac-active");
+                items[i].setAttribute("aria-selected", "false");
             }
+        }
+        if (acSelectedIndex < 0) {
+            input.removeAttribute("aria-activedescendant");
         }
     }
 

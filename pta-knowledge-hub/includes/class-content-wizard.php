@@ -600,7 +600,7 @@ class PTK_Content_Wizard {
 
             <?php if ( $is_edit ) : ?>
                 <div class="notice notice-warning inline" style="margin:16px 0;padding:12px 16px;">
-                    <p style="margin:0;"><strong>Heads up:</strong> The wizard reads each field from your saved entry. If this entry was edited directly in WordPress (custom headings, extra blocks, reordered sections), some fields below may load blank &mdash; <strong>review every field carefully before saving</strong>, since the wizard rebuilds the entry from these fields. To preserve hand-edited content, edit it in <a href="<?php echo esc_url( get_edit_post_link( $edit_id ) ); ?>">WordPress</a> instead.</p>
+                    <p style="margin:0;"><strong>Before you save:</strong> quickly scan every field below. Saving here <strong>replaces the whole entry</strong> with what&rsquo;s in these fields &mdash; anything added directly in WordPress (extra sections, special formatting) may not show up here, and would be lost. Missing something? <a href="<?php echo esc_url( get_edit_post_link( $edit_id ) ); ?>">Edit in WordPress instead</a>.</p>
                 </div>
             <?php endif; ?>
 

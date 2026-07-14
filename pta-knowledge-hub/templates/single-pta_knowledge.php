@@ -32,9 +32,10 @@ if ( ! $ptk_in_preview && class_exists( 'PTK_Role_Access' ) ) {
         ?>
         <div class="ptk-single-wrap">
             <div class="ptk-role-restricted">
-                <div class="ptk-role-restricted-icon">&#128274;</div>
-                <h2>Restricted Content</h2>
-                <p>This entry is only available to certain roles. Contact your PTA administrator if you believe you should have access.</p>
+                <div class="ptk-role-restricted-icon" aria-hidden="true">&#128274;</div>
+                <h2>This entry is limited to certain PTA roles</h2>
+                <p>You&rsquo;re logged in, but this entry is only shown to specific volunteer roles (for example, board members). If you think you should be able to see it, ask your PTA president or the person who manages your website to update your access.</p>
+                <a href="<?php echo esc_url( ptk_hub_url() ); ?>" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:15px;font-weight:600;">&larr; Back to the PTA Hub</a>
             </div>
         </div>
         <?php
@@ -104,7 +105,7 @@ while ( have_posts() ) :
 
     <!-- Network Sync Banner (multisite) -->
     <?php if ( class_exists( 'PTK_Multisite' ) && PTK_Multisite::is_network_copy( get_the_ID() ) ) : ?>
-        <div class="ptk-network-banner">
+        <div class="ptk-network-banner" style="cursor:help;" title="This entry is written and kept up to date by the district-wide PTA Council. The same entry appears on every school&#039;s site.">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             Shared by the PTA Council
         </div>

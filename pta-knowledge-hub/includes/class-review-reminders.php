@@ -75,25 +75,31 @@ class PTK_Review_Reminders {
 
         $reviewed = get_post_meta( $post_id, self::META_KEY, true );
         $threshold_months = self::get_threshold();
-        $now = current_time( 'timestamp' );
+        $now = time();
 
         if ( $reviewed ) {
             $rev_ts  = strtotime( $reviewed );
             $months  = ( $now - $rev_ts ) / ( 30 * DAY_IN_SECONDS );
             $color   = 'green';
+            $label   = sprintf( 'Up to date — reviewed %s ago', human_time_diff( $rev_ts, $now ) );
             if ( $months >= $threshold_months ) {
                 $color = 'red';
+                $label = sprintf( 'Overdue for review — last reviewed %s ago', human_time_diff( $rev_ts, $now ) );
             } elseif ( $months >= ( $threshold_months - 2 ) ) {
                 $color = 'amber';
+                $label = sprintf( 'Due for review soon — last reviewed %s ago', human_time_diff( $rev_ts, $now ) );
             }
-            echo '<span class="ptk-review-dot ptk-review-' . esc_attr( $color ) . '"></span> ';
+            echo '<span class="ptk-review-dot ptk-review-' . esc_attr( $color ) . '" role="img" title="' . esc_attr( $label ) . '" aria-label="' . esc_attr( $label ) . '"></span> ';
             echo esc_html( $reviewed );
         } else {
             // Never reviewed — flag red if the post itself is old.
             $post_ts = get_post_time( 'U', true, $post_id );
             $months  = ( $now - $post_ts ) / ( 30 * DAY_IN_SECONDS );
             $color   = ( $months >= $threshold_months ) ? 'red' : 'amber';
-            echo '<span class="ptk-review-dot ptk-review-' . esc_attr( $color ) . '"></span> ';
+            $label   = ( 'red' === $color )
+                ? 'Overdue for review — never reviewed since publishing'
+                : 'Not yet reviewed';
+            echo '<span class="ptk-review-dot ptk-review-' . esc_attr( $color ) . '" role="img" title="' . esc_attr( $label ) . '" aria-label="' . esc_attr( $label ) . '"></span> ';
             echo '<em style="color:#9ca3af;">Never</em>';
         }
     }

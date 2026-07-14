@@ -55,43 +55,44 @@ Status legend: `[ ]` open · `[x]` fixed · `[-]` won't fix
   Hub is, the 3 things you'll do, link to the wizard. Pairs with the IT council's
   "introduce the tool to new presidents" goal — ship with the Vendor Directory.
 
-- [ ] **8. "Last Reviewed" dots are color-only.**
+- [x] **8. "Last Reviewed" dots are color-only.**
   `class-review-reminders.php:71-99` — green/amber/red dots with no title/aria-label
   or legend (accessibility: meaning by color alone). Add
   `title="Reviewed 14 months ago — overdue"` and/or a small legend.
 
-- [ ] **9. QR meta box leaks raw server path to volunteers.**
+- [x] **9. QR meta box leaks raw server path to volunteers.**
   `class-qr-codes.php:47-50` — if the library is missing, any editor sees
   `vendor/phpqrcode/phpqrcode.php`. Reword ("QR codes aren't available right now —
   contact your tech committee"); technical detail behind `manage_options`.
 
-- [ ] **10. "Publish now" in the wizard has no confirmation.** Draft default is good;
+- [x] **10. "Publish now" in the wizard has no confirmation.** Draft default is good;
   Publish pushes live network-wide with no "visible immediately" moment
   (`class-content-wizard.php:1021-1023`).
 
-- [ ] **11. Restricted-entry page is vague + dead-ends.**
+- [x] **11. Restricted-entry page is vague + dead-ends.**
   `templates/single-pta_knowledge.php:33-39` — "only available to certain roles.
   Contact your PTA administrator" (who?). Branch returns before the Suggest-a-topic
   CTA; no link back to search. Also: lock emoji (line 35) lacks aria-hidden.
 
-- [ ] **12. Multisite banner jargon.** `single-pta_knowledge.php:106-111` — "Shared by
+- [x] **12. Multisite banner jargon.** `single-pta_knowledge.php:106-111` — "Shared by
   the PTA Council" with no explanation of what that means for the reader.
 
-- [ ] **13. Wizard edit-mode warning is dense.** `class-content-wizard.php:587` —
+- [x] **13. Wizard edit-mode warning is dense.** `class-content-wizard.php:587` —
   accurate but one long sentence, uses "blocks" unexplained, doesn't bold the real
   risk (silent data loss). Also no per-field indicator of which fields parsed vs. blank.
 
-- [ ] **14. Feedback error is generic.** `assets/js/feedback.js:82-88` — "Something
+- [x] **14. Feedback error is generic.** `assets/js/feedback.js:82-88` — "Something
   went wrong." (The "already voted" path is handled well — extend that pattern.)
   No undo for votes (low stakes; note only).
 
-- [ ] **15. Minor a11y:** autocomplete dropdown lacks listbox/option roles +
+- [x] **15. Minor a11y:** autocomplete dropdown lacks listbox/option roles +
   aria-activedescendant (`search.js:699-738`); JS-built FAQ card secondary link
-  focusability differs from the (dead) PHP template's intent.
+  focusability differs from the (dead) PHP template's intent. *(Second clause mooted
+  by #16 — the dead PHP card templates were deleted.)*
 
 ## 🟠 Housekeeping / ops
 
-- [ ] **16. Dead code trap: `templates/cards/*.php` (all 7) are never used.**
+- [x] **16. Dead code trap: `templates/cards/*.php` (all 7) are never used.**
   Search results are built in `search.js` (`buildCard()`). Delete or mark
   `@deprecated` — edits there silently do nothing.
 
@@ -100,7 +101,7 @@ Status legend: `[ ]` open · `[x]` fixed · `[-]` won't fix
   pruning (>12 months) matching the preview-token cleanup pattern
   (`class-public-preview.php:263`).
 
-- [ ] **18. Leftover debug endpoint.** `?ptk_debug_terms=1`
+- [x] **18. Leftover debug endpoint.** `?ptk_debug_terms=1`
   (`class-search-engine.php:84-136`) — admin-gated but flagged "remove after
   troubleshooting" twice; hooks admin_init on every load.
 

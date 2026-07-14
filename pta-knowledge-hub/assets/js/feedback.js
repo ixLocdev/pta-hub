@@ -38,11 +38,11 @@
                     } else if (json.data && json.data.message === "already_voted") {
                         showAlreadyVoted(json.data.counts);
                     } else {
-                        showError();
+                        showError("Something went wrong saving your feedback. Please try again.");
                     }
                 })
                 .catch(function () {
-                    showError();
+                    showError("We couldn’t send your feedback — check your internet connection and try again.");
                 });
         });
     });
@@ -79,12 +79,15 @@
         container.appendChild(p);
     }
 
-    function showError() {
+    function showError(text) {
         buttons.forEach(function (b) { b.disabled = false; });
+        // Replace any previous error instead of stacking a new one per click.
+        var existing = container.querySelector(".ptk-feedback-error");
+        if (existing) existing.remove();
         var msg = document.createElement("p");
-        msg.className = "ptk-feedback-counts";
+        msg.className = "ptk-feedback-counts ptk-feedback-error";
         msg.style.color = "#dc2626";
-        msg.textContent = "Something went wrong. Please try again.";
+        msg.textContent = text;
         container.appendChild(msg);
     }
 
