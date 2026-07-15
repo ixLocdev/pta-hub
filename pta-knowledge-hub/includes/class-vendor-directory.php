@@ -272,6 +272,34 @@ class PTK_Vendor_Directory {
         ) );
     }
 
+    /**
+     * Backfill slugs for published vendors that have none.
+     *
+     * Vendors approved before v3.0.1 went live via wp_publish_post(), which
+     * transitions status without generating a slug — leaving pending-created
+     * vendors with an empty post_name and a dead ?vendor= directory link.
+     * wp_update_post() re-runs the full pipeline, which fills post_name.
+     * Runs on the main site from provisioning; idempotent and cheap (only
+     * touches rows whose post_name is empty).
+     */
+    public static function repair_missing_slugs() {
+        $vendors = get_posts( array(
+            'post_type'      => 'ptk_vendor',
+            'post_status'    => 'publish',
+            'posts_per_page' => -1,
+        ) );
+        $repaired = false;
+        foreach ( $vendors as $vendor ) {
+            if ( '' === $vendor->post_name ) {
+                wp_update_post( array( 'ID' => $vendor->ID ) );
+                $repaired = true;
+            }
+        }
+        if ( $repaired ) {
+            PTK_Network_Provisioning::bump_cache_version();
+        }
+    }
+
     /* -------------------------------------------------------------- */
     /*  Cached cross-site data layer (spec: Cross-site reads, Caching) */
     /* -------------------------------------------------------------- */

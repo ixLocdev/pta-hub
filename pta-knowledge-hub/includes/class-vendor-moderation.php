@@ -11,7 +11,9 @@
  * Semantics (plan Task 6 / spec "Moderation & notifications"):
  * - review approve  → status 'approved'
  * - review reject   → DELETE the row
- * - vendor approve  → wp_publish_post + approve ALL its pending reviews
+ * - vendor approve  → wp_update_post to publish (generates the slug that
+ *   pending posts lack — wp_publish_post would not) + approve ALL its
+ *   pending reviews
  * - vendor reject   → wp_trash_post + DELETE all its review rows
  * Every action bumps the network cache version.
  */
@@ -360,7 +362,17 @@ class PTK_Vendor_Moderation {
         $table = PTK_Vendor_Reviews::table();
 
         if ( 'approve' === $verdict ) {
-            wp_publish_post( $vendor_id );
+            // wp_update_post, NOT wp_publish_post: suggested vendors are
+            // created as 'pending', and pending posts have NO slug.
+            // wp_publish_post only flips the status ("does not do anything
+            // except transition the post status" — core docs) and would
+            // publish a vendor with an empty post_name, breaking the
+            // directory's ?vendor={slug} links. wp_update_post runs the
+            // full pipeline and generates the slug.
+            wp_update_post( array(
+                'ID'          => $vendor_id,
+                'post_status' => 'publish',
+            ) );
             // The bundle goes live together (spec: suggested vendor + first
             // review move through approval as one unit).
             $wpdb->query( $wpdb->prepare(

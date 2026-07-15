@@ -21,7 +21,7 @@ class PTK_Network_Provisioning {
     const PROVISION_VER_OPTION = 'ptk_provision_ver';
 
     /** Bump when provisioning requirements change. */
-    const PROVISION_VER = '1';
+    const PROVISION_VER = '2'; // 2: repair_missing_slugs (v3.0.1)
 
     public static function init() {
         // Late priority so core finishes initializing the new site first.
@@ -84,6 +84,9 @@ class PTK_Network_Provisioning {
         // would silently skip seeding there.
         if ( is_main_site() ) {
             PTK_Vendor_Directory::ensure_default_categories();
+            // One-time repair: vendors approved via wp_publish_post before
+            // v3.0.1 were published without a slug, breaking their links.
+            PTK_Vendor_Directory::repair_missing_slugs();
         }
 
         // Vendor Directory page with the shortcode.
