@@ -1,0 +1,669 @@
+/**
+ * PTA Knowledge Hub — Vendor Directory Styles
+ *
+ * Mobile-first, 44px+ touch targets, matches search-page.css idioms.
+ * Indigo #4f46e5 primary, star color #f5a623, amber pending chip.
+ * Detail view goes two-column at >= 900px, stacks below.
+ */
+
+/* ============================================
+   Wrapper
+   ============================================ */
+
+.ptk-vd-wrap {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 24px 16px 60px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #374151;
+    line-height: 1.5;
+}
+.ptk-vd-wrap *, .ptk-vd-wrap *::before, .ptk-vd-wrap *::after {
+    box-sizing: border-box;
+}
+
+/* JS toggles visibility via the hidden attribute — make it win over any display rule. */
+.ptk-vd-wrap [hidden] { display: none !important; }
+
+/* ============================================
+   Hero
+   ============================================ */
+
+.ptk-vd-hero {
+    text-align: center;
+    padding: 24px 0 16px;
+}
+.ptk-vd-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 6px;
+}
+.ptk-vd-subtitle {
+    font-size: 15px;
+    color: #6b7280;
+    margin: 0;
+}
+
+/* ============================================
+   Search
+   ============================================ */
+
+.ptk-vd-search-box {
+    max-width: 560px;
+    margin: 0 auto 16px;
+}
+.ptk-vd-search {
+    width: 100%;
+    min-height: 52px;
+    padding: 0 16px;
+    font-size: 16px; /* Prevents iOS zoom */
+    color: #111827;
+    background: #fff;
+    border: 2px solid #e5e7eb;
+    border-radius: 14px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    -webkit-appearance: none;
+}
+.ptk-vd-search:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+.ptk-vd-search::placeholder {
+    color: #9ca3af;
+}
+
+/* ============================================
+   Category tiles
+   ============================================ */
+
+.ptk-vd-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+    padding: 4px 0 20px;
+}
+.ptk-vd-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-height: 44px;
+    padding: 14px 10px;
+    font-family: inherit;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    cursor: pointer;
+    text-align: center;
+    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.ptk-vd-tile:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+}
+.ptk-vd-tile[aria-pressed="true"] {
+    background: #eef2ff;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 1px #4f46e5 inset;
+}
+.ptk-vd-tile-emoji {
+    font-size: 24px;
+    line-height: 1.2;
+}
+.ptk-vd-tile-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #111827;
+}
+.ptk-vd-tile-count {
+    font-size: 11px;
+    color: #6b7280;
+}
+
+/* ============================================
+   Vendor cards
+   ============================================ */
+
+.ptk-vd-cards {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding-bottom: 8px;
+}
+.ptk-vd-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 44px;
+    padding: 16px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    text-decoration: none;
+    color: inherit;
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.ptk-vd-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+.ptk-vd-card:active {
+    transform: scale(0.98);
+}
+.ptk-vd-card-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #111827;
+}
+.ptk-vd-card-verdict {
+    font-size: 13px;
+    color: #374151;
+}
+.ptk-vd-card-count {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+/* ============================================
+   Stars (display)
+   ============================================ */
+
+.ptk-vd-stars-display {
+    font-size: 16px;
+    letter-spacing: 2px;
+    line-height: 1;
+}
+.ptk-vd-star-on {
+    color: #f5a623;
+}
+.ptk-vd-star-off {
+    color: #d1d5db;
+}
+
+/* ============================================
+   Empty states
+   ============================================ */
+
+.ptk-vd-empty {
+    text-align: center;
+    padding: 40px 16px;
+}
+.ptk-vd-empty-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #374151;
+    margin: 0 0 6px;
+}
+.ptk-vd-empty-text {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0 0 12px;
+}
+
+/* ============================================
+   Buttons
+   ============================================ */
+
+.ptk-vd-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 10px 24px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    background: #4f46e5;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+.ptk-vd-btn-primary:hover {
+    background: #4338ca;
+    color: #fff;
+}
+.ptk-vd-btn-primary:disabled {
+    background: #a5b4fc;
+    cursor: default;
+}
+.ptk-vd-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 10px 20px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: #4f46e5;
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.ptk-vd-btn-secondary:hover {
+    background: #e0e7ff;
+    border-color: #a5b4fc;
+}
+
+.ptk-vd-suggest-section {
+    text-align: center;
+    padding-top: 12px;
+}
+.ptk-vd-suggest-section .ptk-vd-form {
+    text-align: left;
+}
+
+/* ============================================
+   Detail view — two-column >= 900px
+   ============================================ */
+
+.ptk-vd-back {
+    margin: 0 0 16px;
+}
+.ptk-vd-back-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    color: #4f46e5;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+}
+.ptk-vd-back-link:hover {
+    color: #4338ca;
+    text-decoration: underline;
+}
+
+.ptk-vd-detail {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    align-items: start;
+}
+@media (min-width: 900px) {
+    .ptk-vd-detail {
+        grid-template-columns: 2fr 1fr;
+    }
+}
+
+.ptk-vd-reviews-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 14px;
+}
+
+/* Sidebar card — the at-a-glance zone */
+.ptk-vd-sidebar-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 16px;
+}
+.ptk-vd-vendor-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 8px;
+}
+.ptk-vd-chip {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #3730a3;
+    background: #e0e7ff;
+    padding: 3px 10px;
+    border-radius: 999px;
+    margin-bottom: 12px;
+}
+.ptk-vd-verdict {
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0 0 12px;
+}
+.ptk-vd-avg-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 14px;
+}
+.ptk-vd-avg-label {
+    min-width: 56px;
+    color: #6b7280;
+}
+.ptk-vd-contacts {
+    list-style: none;
+    margin: 14px 0;
+    padding: 0;
+    font-size: 14px;
+}
+.ptk-vd-contacts li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    border-bottom: 1px solid #f3f4f6;
+    overflow-wrap: anywhere;
+}
+.ptk-vd-contacts li:last-child {
+    border-bottom: none;
+}
+.ptk-vd-contacts a {
+    color: #4f46e5;
+    text-decoration: none;
+}
+.ptk-vd-contacts a:hover {
+    text-decoration: underline;
+}
+.ptk-vd-write-btn {
+    width: 100%;
+}
+
+/* ============================================
+   Review cards
+   ============================================ */
+
+.ptk-vd-review {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 12px;
+}
+.ptk-vd-review-pending {
+    border-color: #fcd34d;
+    background: #fffbeb;
+}
+.ptk-vd-review-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 14px;
+    color: #111827;
+    margin-bottom: 6px;
+}
+.ptk-vd-pending-chip {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #92400e;
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+.ptk-vd-review-verdict {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 4px;
+}
+.ptk-vd-verdict-yes {
+    color: #065f46;
+}
+.ptk-vd-verdict-no {
+    color: #991b1b;
+}
+.ptk-vd-review-stars {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: #6b7280;
+    margin: 0 0 8px;
+}
+.ptk-vd-review-comment {
+    font-size: 14px;
+    color: #374151;
+    margin: 0 0 8px;
+    white-space: pre-line;
+}
+.ptk-vd-review-date {
+    font-size: 12px;
+    color: #9ca3af;
+    margin: 0;
+}
+
+/* ============================================
+   Forms (review + suggest)
+   ============================================ */
+
+.ptk-vd-form {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 20px;
+    margin-top: 16px;
+    position: relative; /* Anchors the off-screen honeypot */
+}
+.ptk-vd-form-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 12px;
+}
+.ptk-vd-form-subtitle {
+    font-size: 15px;
+    font-weight: 700;
+    color: #111827;
+    margin: 18px 0 4px;
+}
+.ptk-vd-posting-as {
+    background: #eef2ff;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    color: #374151;
+}
+.ptk-vd-field {
+    margin: 0 0 14px;
+}
+.ptk-vd-field-label {
+    display: block;
+    font-size: 14px;
+    color: #111827;
+    margin: 0 0 4px;
+}
+.ptk-vd-field-hint {
+    font-weight: 400;
+    font-size: 12px;
+    color: #6b7280;
+}
+.ptk-vd-contact-note {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 0 0 10px;
+}
+.ptk-vd-form input[type="text"],
+.ptk-vd-form input[type="tel"],
+.ptk-vd-form input[type="email"],
+.ptk-vd-form input[type="url"],
+.ptk-vd-form select {
+    width: 100%;
+    min-height: 44px;
+    padding: 8px 12px;
+    font-size: 16px; /* Prevents iOS zoom */
+    font-family: inherit;
+    color: #111827;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+}
+.ptk-vd-form textarea {
+    width: 100%;
+    min-height: 96px;
+    padding: 10px 12px;
+    font-size: 16px;
+    font-family: inherit;
+    color: #111827;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    resize: vertical;
+}
+.ptk-vd-form input:focus,
+.ptk-vd-form select:focus,
+.ptk-vd-form textarea:focus {
+    outline: none;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+.ptk-vd-count {
+    display: block;
+    text-align: right;
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 2px;
+}
+.ptk-vd-count-warn {
+    color: #b45309;
+    font-weight: 600;
+}
+
+/* Thumbs toggle */
+.ptk-vd-thumbs {
+    border: none;
+    margin: 0 0 14px;
+    padding: 0;
+}
+.ptk-vd-thumbs-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.ptk-vd-thumb {
+    flex: 1;
+    min-width: 140px;
+    min-height: 44px;
+    padding: 8px 12px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.ptk-vd-thumb:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
+}
+.ptk-vd-thumb[aria-pressed="true"] {
+    color: #fff;
+    background: #4f46e5;
+    border-color: #4f46e5;
+}
+
+/* Star input widget */
+.ptk-vd-star-field {
+    margin: 0 0 14px;
+}
+.ptk-vd-stars {
+    display: flex;
+    gap: 2px;
+}
+.ptk-vd-star {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    font-size: 26px;
+    line-height: 1;
+    color: #d1d5db;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: color 0.15s ease, transform 0.15s ease;
+}
+.ptk-vd-star:hover {
+    transform: scale(1.1);
+}
+.ptk-vd-star.ptk-vd-star-on {
+    color: #f5a623;
+}
+
+/* Expectation, errors, success */
+.ptk-vd-expectation {
+    font-size: 12px;
+    color: #6b7280;
+    margin: 4px 0 10px;
+}
+.ptk-vd-form-error {
+    font-size: 14px;
+    font-weight: 600;
+    color: #991b1b;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin: 0 0 12px;
+}
+.ptk-vd-form-success {
+    font-size: 15px;
+    font-weight: 600;
+    color: #065f46;
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-top: 16px;
+}
+.ptk-vd-form .ptk-vd-submit {
+    width: 100%;
+}
+
+/* ============================================
+   Focus Visible — keyboard accessibility
+   ============================================ */
+
+.ptk-vd-tile:focus-visible,
+.ptk-vd-thumb:focus-visible,
+.ptk-vd-star:focus-visible,
+.ptk-vd-btn-primary:focus-visible,
+.ptk-vd-btn-secondary:focus-visible,
+.ptk-vd-back-link:focus-visible,
+.ptk-vd-contacts a:focus-visible {
+    outline: 2px solid #4f46e5;
+    outline-offset: 2px;
+}
+.ptk-vd-card:focus-visible {
+    outline: 2px solid #4f46e5;
+    outline-offset: 2px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* ============================================
+   Reduced Motion
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+    .ptk-vd-card:active { transform: none; }
+    .ptk-vd-star:hover { transform: none; }
+    .ptk-vd-wrap * { transition-duration: 0.01ms !important; }
+}
+
+/* ============================================
+   Responsive — Tablet+
+   ============================================ */
+
+@media (min-width: 640px) {
+    .ptk-vd-title { font-size: 32px; }
+    .ptk-vd-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
