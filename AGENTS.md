@@ -22,8 +22,18 @@ PTA chapter (sibling project: `NEPTANewsletter`).
 **Live site:** https://montclairpta.org/ (WordPress multisite — the Montclair PTA
 Council site plus 10 school subsites). When debugging production behavior, that's
 the URL. Note: it sits behind a security plugin that blocks automated fetchers,
-so `WebFetch` / `curl` against it returns 403. Verify changes by uploading the
-zip to `ixcreations.com/PTAC Updates/` and using the auto-updater.
+so `WebFetch` / `curl` against it returns 403.
+
+**Deploy (how Lucas actually ships):** upload `pta-knowledge-hub.zip` directly in
+WordPress — Network Admin → Plugins → Add Plugin → Upload Plugin → "Replace
+current with uploaded". One upload updates all 11 sites (multisite shares one
+plugin copy). IMPORTANT: this path does NOT fire activation hooks — anything
+that must run after an update needs the version-gated `admin_init` provisioning
+pattern (`PTK_Network_Provisioning`), not `register_activation_hook`. The
+self-hosted auto-updater (`class-auto-updater.php` polling
+`ixcreations.com/PTAC Updates/update-info.json`) is a legacy/optional channel —
+unused as of v3.0.0; the manifest hosted there advertises an older version,
+which is harmless (sites never see an update offer from it).
 
 ## Stack & tooling
 
