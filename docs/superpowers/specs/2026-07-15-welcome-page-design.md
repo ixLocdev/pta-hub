@@ -36,8 +36,10 @@ WP-admin blue `#2271b1` primary action). Top to bottom:
      moderators only* (`edit_others_posts`), *main site only*.
    - **Topic suggestions from members** → the Suggestions list. *Editors who can
      process them* (`edit_posts`).
-   - **Entries due for a review** → the entries list filtered/sorted by review
-     status. *Content editors* (`edit_posts`).
+   - **Entries due for a review** → the entries list sorted with the oldest-reviewed
+     first (`edit.php?post_type=pta_knowledge&orderby=ptk_last_reviewed&order=asc` —
+     sort only; no overdue-only filter exists and none is in scope). *Content
+     editors* (`edit_posts`).
    Below the strip: "These only appear when something's actually waiting."
 
 3. **"What would you like to do?" cards** — 2-column grid of full-bordered cards,
@@ -48,7 +50,12 @@ WP-admin blue `#2271b1` primary action). Top to bottom:
      *Council only* (`edit_others_posts`), *main site only*.
    - **🔎 See the live Hub** → the front-end Knowledge Base page (`ptk_hub_url()`),
      opens in a new tab. Shown to everyone.
-   - **📖 Browse the glossary** → the front-end Glossary page, new tab. Everyone.
+   - **📖 Browse the glossary** → the front-end Glossary page (new tab). NOTE: unlike
+     the Hub, there is currently no glossary URL resolver — the plan must add a
+     `ptk_glossary_url()` helper mirroring `ptk_hub_url()` (option `ptk_glossary_slug`
+     default `'glossary'` + `ptk_glossary_url` filter; the activation routine already
+     creates the page at that slug, so the default works with no stored value).
+     Everyone.
 
 4. **Reassuring footer** — "New to all this? Everything here is safe to click
    around — you can't break anything, and nothing goes public until it's ready. 💛"
@@ -59,7 +66,11 @@ WP-admin blue `#2271b1` primary action). Top to bottom:
 |---|---|
 | Council admin (main site) | Everything: all three nudges + all four action cards |
 | School volunteer / editor (subsite) | Welcome, "Add an entry", "See the live Hub", "Browse glossary"; the "Topic suggestions" and "Entries due for review" nudges for their own site if they can `edit_posts`; NO vendor-management card and NO vendor-approval nudge (vendors are Council-managed) |
-| Low-privilege contributor | Welcome, "See the live Hub", "Browse glossary", and "Add an entry" if they hold `edit_posts` |
+| Low-privilege contributor | Welcome, "See the live Hub", "Browse glossary"; and — if they hold `edit_posts` — the "Add an entry" card plus the "Topic suggestions" / "Entries due for review" nudges (when counts > 0). A true `contributor` who lacks `edit_posts` sees only the everyone-items. |
+
+(The matrix rows are illustrative; the governing principle below is the source of
+truth — every card/nudge is capability-gated identically regardless of which row a
+viewer resembles.)
 
 Principle: **capability-gate every card and nudge; render a card only if the
 viewer can act on it.** A card whose count is zero, or whose capability the
@@ -75,8 +86,10 @@ The three counts already exist elsewhere; Start Here reads them:
 - **Topic suggestions:** count of published `ptk_suggestion` posts
   (`PTK_Suggestions::POST_TYPE`) via `wp_count_posts()` — per current site.
 - **Entries due for review:** overdue count from `PTK_Review_Reminders` (the plan
-  adds a small public `overdue_count()` helper alongside the existing dashboard
-  widget logic and `get_threshold()`). Per current site.
+  adds a small public `overdue_count()` helper that extracts the overdue query from
+  `render_dashboard_widget` but runs it with `posts_per_page => -1` /
+  `fields => 'ids'` — the widget caps at 20, which would under-count a large
+  backlog). Per current site.
 
 Counts are read live on page render (cheap; these are small tables) — no caching
 layer needed for a once-per-session admin screen.
@@ -86,8 +99,14 @@ layer needed for a once-per-session admin screen.
 - **New class `includes/class-welcome.php` (`PTK_Welcome`)** — owns:
   - The **Start Here submenu page** under `edit.php?post_type=pta_knowledge`,
     registered so it sorts to the TOP of the PTA Hub submenu (so clicking the
-    top-level "PTA Hub" opens it). Capability: `edit_posts` (any volunteer who
-    can contribute). Renders the screen described above.
+    top-level "PTA Hub" opens it — WP points a top-level menu at its first
+    submenu item). Capability: `edit_posts` (any volunteer who can contribute).
+    Renders the screen above. The reorder of `$submenu['edit.php?post_type=pta_knowledge']`
+    must run on `admin_menu` at a **late priority (e.g. 999)** so it executes
+    after core inserts the auto "All Entries" item and after the other classes
+    (Settings, Wizard, Vendor Approvals) register theirs — otherwise it races them.
+  - A `ptk_glossary_url()` helper (see Screen anatomy §3) mirroring the existing
+    `ptk_hub_url()` in `pta-knowledge-hub.php`.
   - The **Dashboard-home widget** (`wp_add_dashboard_widget` on
     `wp_dashboard_setup`): "PTA Hub — Start Here" — one friendly line, the single
     most urgent waiting-count if any, and a button to the Start Here screen.
@@ -101,7 +120,9 @@ layer needed for a once-per-session admin screen.
   alongside the other classes. No activation or DB changes.
 - **Multisite:** the screen and widget render on every site's admin (volunteers
   contribute from their own school site). Council-only pieces are gated by
-  capability AND `is_main_site()` so subsites never show vendor management.
+  capability AND **core `is_main_site()`** (true on single-site too, matching the
+  vendor queue's own guard — do NOT use `PTK_Multisite::is_main_site()`, which is
+  false on single-site and would wrongly hide the vendor card there).
 - **No front-end footprint** — this is entirely wp-admin; the members-facing side
   is unchanged.
 
@@ -123,5 +144,6 @@ layer needed for a once-per-session admin screen.
 3. Every card and nudge a viewer sees is something they can actually act on
    (correct capability + site); nothing they can't act on appears.
 4. No half/single-side accent borders anywhere in the UI.
-5. Zero new database tables, options, or front-end changes; existing behavior
-   untouched.
+5. Zero new database tables and no front-end behavior changes; existing behavior
+   untouched. (The only new option is `ptk_glossary_slug`, mirroring the existing
+   `ptk_hub_slug` — defaulted, so nothing is stored unless a site customizes it.)
