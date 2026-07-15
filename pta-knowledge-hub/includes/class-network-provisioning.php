@@ -67,6 +67,12 @@ class PTK_Network_Provisioning {
 
     /** Everything one site needs. Idempotent; safe to re-run. */
     public static function provision_site() {
+        // Shared reviews table. Also created at activation, but activation
+        // hooks do NOT fire on a manual "Replace current with uploaded" zip
+        // update — this version-gated path is what guarantees the table
+        // exists on manually-updated networks. Idempotent (IF NOT EXISTS).
+        self::create_reviews_table();
+
         // Per-site knowledge tables (audit #22 — previously activation-only).
         PTK_Analytics::create_table();
         PTK_Feedback::create_table();
