@@ -16,6 +16,7 @@ delete_option( 'ptk_starter_content_imported' );
 delete_option( 'ptk_show_importer' );
 delete_option( 'ptk_enable_network_sharing' );
 delete_option( 'ptk_provision_ver' );
+delete_option( 'ptk_vendor_notify_emails' );
 
 // Remove network-wide options (vendor directory cache version).
 delete_site_option( 'ptk_vendor_cache_ver' );

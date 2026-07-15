@@ -42,6 +42,15 @@ class PTK_Admin_Helpers {
             'default'           => false,
             'sanitize_callback' => 'rest_sanitize_boolean',
         ) );
+        // Who receives "new vendor submission waiting for approval" emails.
+        // Comma-separated; blank falls back to this site's admin email.
+        // Only meaningful on the main (Council) site — that's where
+        // PTK_Vendor_Moderation::notify_council() reads it from.
+        register_setting( 'ptk_settings', 'ptk_vendor_notify_emails', array(
+            'type'              => 'string',
+            'default'           => '',
+            'sanitize_callback' => array( __CLASS__, 'sanitize_email_list' ),
+        ) );
 
         if ( is_multisite() ) {
             register_setting( 'ptk_settings', 'ptk_enable_network_sharing', array(
@@ -50,6 +59,25 @@ class PTK_Admin_Helpers {
                 'sanitize_callback' => 'rest_sanitize_boolean',
             ) );
         }
+    }
+
+    /**
+     * Sanitize a comma-separated list of email addresses.
+     * Invalid entries are dropped silently; valid ones are kept, deduped,
+     * and re-joined with ", " for tidy display.
+     *
+     * @param string $value Raw input.
+     * @return string Clean comma-separated list (may be empty).
+     */
+    public static function sanitize_email_list( $value ) {
+        $clean = array();
+        foreach ( explode( ',', (string) $value ) as $addr ) {
+            $addr = sanitize_email( trim( $addr ) );
+            if ( $addr && is_email( $addr ) ) {
+                $clean[ strtolower( $addr ) ] = $addr;
+            }
+        }
+        return implode( ', ', array_values( $clean ) );
     }
 
     /**
@@ -112,6 +140,21 @@ class PTK_Admin_Helpers {
                             <p class="description">
                                 The importer is hidden automatically after the first import. Enable this to show it again
                                 (e.g., if you want to re-import on a fresh site).
+                            </p>
+                        </td>
+                    </tr>
+                    <?php endif; ?>
+                    <?php if ( is_main_site() ) : // Core is_main_site(): also true on single-site. Vendor emails are resolved from the main site's options. ?>
+                    <tr>
+                        <th scope="row">Vendor Approval Emails</th>
+                        <td>
+                            <input type="text" name="ptk_vendor_notify_emails" class="regular-text"
+                                value="<?php echo esc_attr( get_option( 'ptk_vendor_notify_emails', '' ) ); ?>"
+                                placeholder="e.g. president@yourpta.org, treasurer@yourpta.org">
+                            <p class="description">
+                                Who gets the email when a new vendor or review is waiting for approval.
+                                Separate multiple addresses with commas. Leave blank to use the site's
+                                administration email (currently <code><?php echo esc_html( get_option( 'admin_email' ) ); ?></code>).
                             </p>
                         </td>
                     </tr>

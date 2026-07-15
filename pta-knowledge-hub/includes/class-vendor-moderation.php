@@ -449,10 +449,8 @@ class PTK_Vendor_Moderation {
      * @param int $user_id   Submitting member.
      */
     public static function notify_council( $vendor_id, $user_id ) {
-        $to = is_multisite()
-            ? get_blog_option( get_main_site_id(), 'admin_email' )
-            : get_option( 'admin_email' );
-        if ( ! $to || ! is_email( $to ) ) {
+        $to = self::get_notification_recipients();
+        if ( empty( $to ) ) {
             return;
         }
 
@@ -486,5 +484,40 @@ class PTK_Vendor_Moderation {
         $body .= "— PTA Knowledge Hub";
 
         wp_mail( $to, $subject, $body );
+    }
+
+    /**
+     * Resolve who receives approval notifications.
+     *
+     * Reads the "Vendor Approval Emails" setting (comma-separated list,
+     * PTA Hub → Settings on the Council site); falls back to the Council
+     * site's admin email when unset. Always resolved from the MAIN site's
+     * options because submissions arrive in subsite AJAX context.
+     *
+     * @return string[] Valid recipient addresses (may be empty).
+     */
+    private static function get_notification_recipients() {
+        $configured = is_multisite()
+            ? get_blog_option( get_main_site_id(), 'ptk_vendor_notify_emails' )
+            : get_option( 'ptk_vendor_notify_emails' );
+
+        $recipients = array();
+        foreach ( explode( ',', (string) $configured ) as $addr ) {
+            $addr = trim( $addr );
+            if ( $addr && is_email( $addr ) ) {
+                $recipients[] = $addr;
+            }
+        }
+
+        if ( empty( $recipients ) ) {
+            $fallback = is_multisite()
+                ? get_blog_option( get_main_site_id(), 'admin_email' )
+                : get_option( 'admin_email' );
+            if ( $fallback && is_email( $fallback ) ) {
+                $recipients[] = $fallback;
+            }
+        }
+
+        return $recipients;
     }
 }
