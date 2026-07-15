@@ -38,7 +38,7 @@ which is harmless (sites never see an update offer from it).
 ## Stack & tooling
 
 - **WordPress plugin** (PHP). Plugin entry: `pta-knowledge-hub/pta-knowledge-hub.php`.
-- Plugin version: `3.0.1` (as of last edit).
+- Plugin version: `3.0.2` (as of last edit).
 - Custom post type backed by class files in `includes/`.
 - Front-end search via shortcode + page templates.
 - No node/build pipeline. PHP + a small amount of bundled CSS/JS in

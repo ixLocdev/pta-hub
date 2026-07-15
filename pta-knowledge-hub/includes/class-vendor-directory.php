@@ -49,6 +49,11 @@ class PTK_Vendor_Directory {
         add_action( 'wp_ajax_ptk_suggest_vendor', array( __CLASS__, 'handle_suggest' ) );
         // NO nopriv registration — members-only by construction.
 
+        // The shortcode draws its own centered header, so the theme's page
+        // title above it is redundant — hide it on the directory page only.
+        add_filter( 'the_title', array( __CLASS__, 'hide_directory_page_title' ), 10, 2 );
+        add_action( 'wp_head', array( __CLASS__, 'directory_page_title_css' ) );
+
         // Everything below is vendor-admin behavior. Vendor posts exist only
         // on the Council site (or the lone site of a single-site install),
         // so the hooks are pointless elsewhere — same guard as registration.
@@ -249,6 +254,69 @@ class PTK_Vendor_Directory {
             return;
         }
         PTK_Network_Provisioning::bump_cache_version();
+    }
+
+    /* -------------------------------------------------------------- */
+    /*  Redundant page-title suppression                              */
+    /* -------------------------------------------------------------- */
+
+    /** Per-request memo: does a given page hold the [pta_vendors] shortcode? */
+    private static $vendor_page_cache = array();
+
+    /**
+     * True if the page's content contains the [pta_vendors] shortcode.
+     *
+     * @param int $post_id Page ID.
+     * @return bool
+     */
+    private static function page_has_vendor_shortcode( $post_id ) {
+        $post_id = (int) $post_id;
+        if ( ! isset( self::$vendor_page_cache[ $post_id ] ) ) {
+            $content = get_post_field( 'post_content', $post_id );
+            self::$vendor_page_cache[ $post_id ] =
+                ( is_string( $content ) && has_shortcode( $content, 'pta_vendors' ) );
+        }
+        return self::$vendor_page_cache[ $post_id ];
+    }
+
+    /**
+     * Blank the theme's displayed page title on the Vendor Directory page.
+     *
+     * Tightly scoped: front-end only, main query, in the loop, and only the
+     * queried page's OWN title when that page holds the shortcode. Never
+     * affects the browser tab title, menus, breadcrumbs, admin, or any other
+     * page — those don't satisfy all four guards.
+     *
+     * @param string $title   The title.
+     * @param int    $post_id The post ID (WP passes this on the front end).
+     * @return string
+     */
+    public static function hide_directory_page_title( $title, $post_id = 0 ) {
+        if ( is_admin() || ! $post_id || ! is_main_query() || ! in_the_loop() ) {
+            return $title;
+        }
+        if ( (int) get_queried_object_id() === (int) $post_id
+            && self::page_has_vendor_shortcode( $post_id ) ) {
+            return '';
+        }
+        return $title;
+    }
+
+    /**
+     * Belt-and-suspenders: some themes still render an (now empty) title
+     * element, leaving a gap or a stray border. Hide the common title
+     * containers on the directory page. Printed ONLY on that page, so the
+     * blast radius is a single page; our own header uses .ptk-vd-* classes
+     * and is untouched.
+     */
+    public static function directory_page_title_css() {
+        if ( is_admin() || ! is_page() || ! is_main_query() ) {
+            return;
+        }
+        if ( ! self::page_has_vendor_shortcode( get_queried_object_id() ) ) {
+            return;
+        }
+        echo "<style id=\"ptk-vd-hide-title\">.entry-title,.page-title,.wp-block-post-title,header.entry-header{display:none!important}.ptk-vd-wrap .ptk-vd-title{display:block!important}</style>\n";
     }
 
     /* -------------------------------------------------------------- */
