@@ -140,6 +140,12 @@ Status legend: `[ ]` open · `[x]` fixed · `[-]` won't fix
 - [ ] **27. Meta-box gating quirk:** subsites always get the "Network Status" box even
   when sharing is off (`class-multisite.php:54`).
 
+- [ ] **31. Sweep out half/single-side accent borders (Lucas design rule).** Replace
+  `border-left`-accent styling with a full border or colored content. Known spots:
+  the PTA Hub meta-box accent strip (`assets/css/admin.css`) and the "already
+  imported" notice (`class-content-importer.php`). Do a grep for `border-left`
+  across `assets/css/` + inline admin styles to catch the rest.
+
 ## ✅ Already done well (don't re-recommend)
 
 Content Wizard flow (progressive steps, autosave + recovered-draft banner, draft-by-
