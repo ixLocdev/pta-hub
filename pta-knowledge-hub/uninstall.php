@@ -34,6 +34,7 @@ $ptk_cleanup_site = function () {
     delete_option( 'ptk_hub_slug' );
     delete_option( 'ptk_glossary_slug' );
     delete_option( 'ptk_rewrite_flushed' );
+    delete_option( 'ptk_rewrite_ver' );
 
     // Remove per-site tables if they exist.
     $search_table   = $wpdb->prefix . 'ptk_search_log';
