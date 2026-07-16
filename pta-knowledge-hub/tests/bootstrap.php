@@ -12,8 +12,22 @@ if ( ! function_exists( 'wp_kses_post' ) ) {
 }
 if ( ! function_exists( 'esc_html' ) ) { function esc_html( $s ) { return htmlspecialchars( (string) $s, ENT_QUOTES ); } }
 if ( ! function_exists( 'esc_attr' ) ) { function esc_attr( $s ) { return htmlspecialchars( (string) $s, ENT_QUOTES ); } }
-if ( ! function_exists( 'esc_url' ) ) { function esc_url( $s ) { return filter_var( (string) $s, FILTER_SANITIZE_URL ); } }
-if ( ! function_exists( 'esc_url_raw' ) ) { function esc_url_raw( $s ) { return filter_var( (string) $s, FILTER_SANITIZE_URL ); } }
+if ( ! function_exists( 'ptk_test_clean_url' ) ) {
+    // Faithful-enough stand-in for WP esc_url()/esc_url_raw(): strip illegal
+    // chars, then blank the URL if its scheme isn't in WP's default allowlist
+    // (so javascript:, vbscript:, data: etc. are neutralized, matching WP).
+    function ptk_test_clean_url( $s ) {
+        $s = trim( filter_var( (string) $s, FILTER_SANITIZE_URL ) );
+        if ( '' === $s ) { return ''; }
+        if ( preg_match( '#^([a-z][a-z0-9+.-]*):#i', $s, $m ) ) {
+            $allowed = array( 'http', 'https', 'ftp', 'ftps', 'mailto', 'tel' );
+            if ( ! in_array( strtolower( $m[1] ), $allowed, true ) ) { return ''; }
+        }
+        return $s;
+    }
+}
+if ( ! function_exists( 'esc_url' ) ) { function esc_url( $s ) { return ptk_test_clean_url( $s ); } }
+if ( ! function_exists( 'esc_url_raw' ) ) { function esc_url_raw( $s ) { return ptk_test_clean_url( $s ); } }
 if ( ! function_exists( 'absint' ) ) { function absint( $n ) { return abs( intval( $n ) ); } }
 
 function ptk_test_ok( $cond, $label ) {

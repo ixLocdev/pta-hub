@@ -62,4 +62,30 @@ ptk_test_ok( strpos( $full_html, 'What a year' ) !== false && strpos( $full_html
 ptk_test_ok( strpos( $full_html, 'Volunteers wanted' ) !== false, 'populated story card still renders' );
 ptk_test_ok( strpos( $full_html, 'Thanks' ) !== false && strpos( $full_html, 'Website' ) !== false, 'populated footer still renders' );
 
+// --- Hostile input must come out escaped in every context. -----------------
+$hostile_blocks = array(
+    array( 'type' => 'header', 'data' => array( 'school_name' => 'Demo PTA', 'greeting' => 'Hi' ) ),
+    array( 'type' => 'events', 'data' => array( 'rows' => array(
+        // Text node + attribute context: a script title and a date with a quote.
+        array( 'date' => '2026-06-25" onmouseover="alert(1)', 'title' => '<script>alert(1)</script>', 'desc' => 'x' ),
+    ) ) ),
+    array( 'type' => 'story_cards', 'data' => array( 'cards' => array(
+        // href context: a javascript: scheme must be neutralized by esc_url.
+        array( 'heading' => 'H', 'body' => 'B', 'image_id' => 0, 'link_url' => 'javascript:alert(1)', 'link_text' => 'Go' ),
+    ) ) ),
+);
+$hostile_html = PTK_Newsletter_Renderer::render( $hostile_blocks, $empty_opts );
+
+// Text-node escaping: raw <script> must not survive; escaped form must appear.
+ptk_test_ok( strpos( $hostile_html, '<script>alert(1)</script>' ) === false, 'hostile text node: raw <script> not present' );
+ptk_test_ok( strpos( $hostile_html, '&lt;script&gt;' ) !== false, 'hostile text node: escaped &lt;script&gt; present' );
+
+// Attribute escaping: the injected date lands in data-event-date="..."; the
+// quote must be escaped so it cannot break out of the attribute.
+ptk_test_ok( strpos( $hostile_html, 'onmouseover="alert(1)"' ) === false, 'hostile attribute: no attribute breakout' );
+ptk_test_ok( strpos( $hostile_html, '&quot;' ) !== false, 'hostile attribute: double-quote escaped to &quot;' );
+
+// href escaping: esc_url must strip the javascript: scheme.
+ptk_test_ok( strpos( $hostile_html, 'javascript:alert(1)' ) === false, 'hostile href: javascript: scheme neutralized' );
+
 ptk_test_done();

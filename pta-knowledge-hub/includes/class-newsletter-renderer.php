@@ -62,8 +62,11 @@ class PTK_Newsletter_Renderer {
                 continue;
             }
 
-            $type   = $block['type'];
+            $type   = self::str( $block['type'] );
             $data   = isset( $block['data'] ) && is_array( $block['data'] ) ? $block['data'] : array();
+            // Dynamic dispatch: only render_<blocktype> methods are reachable
+            // targets here. Do NOT name a private helper "render_<something>"
+            // unless <something> is meant to be a valid block type.
             $method = 'render_' . $type;
 
             if ( method_exists( __CLASS__, $method ) && is_callable( array( __CLASS__, $method ) ) ) {
@@ -80,11 +83,11 @@ class PTK_Newsletter_Renderer {
      * Masthead: optional logo, school name, issue/date, and greeting.
      */
     private static function render_header( array $data, array $opts ) {
-        $school_name = isset( $data['school_name'] ) ? (string) $data['school_name'] : '';
-        $greeting    = isset( $data['greeting'] ) ? (string) $data['greeting'] : '';
+        $school_name = isset( $data['school_name'] ) ? self::str( $data['school_name'] ) : '';
+        $greeting    = isset( $data['greeting'] ) ? self::str( $data['greeting'] ) : '';
         $issue       = isset( $opts['issue'] ) ? $opts['issue'] : '';
-        $date        = isset( $opts['date'] ) ? (string) $opts['date'] : '';
-        $logo_url    = isset( $opts['logo_url'] ) ? (string) $opts['logo_url'] : '';
+        $date        = isset( $opts['date'] ) ? self::str( $opts['date'] ) : '';
+        $logo_url    = isset( $opts['logo_url'] ) ? self::str( $opts['logo_url'] ) : '';
 
         $logo_html = '';
         if ( '' !== trim( $logo_url ) ) {
@@ -92,8 +95,8 @@ class PTK_Newsletter_Renderer {
         }
 
         $issue_html = '';
-        if ( '' !== trim( (string) $issue ) ) {
-            $issue_html = '<div style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:' . esc_attr( self::PALETTE['muted'] ) . ';font-weight:600;margin-bottom:10px;">No.&nbsp;' . esc_html( (string) $issue ) . '</div>';
+        if ( '' !== trim( self::str( $issue ) ) ) {
+            $issue_html = '<div style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:' . esc_attr( self::PALETTE['muted'] ) . ';font-weight:600;margin-bottom:10px;">No.&nbsp;' . esc_html( self::str( $issue ) ) . '</div>';
         }
 
         $html  = '<div style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:32px 20px;border-bottom:1px solid ' . esc_attr( self::PALETTE['hairline'] ) . ';box-sizing:border-box;">';
@@ -122,8 +125,8 @@ class PTK_Newsletter_Renderer {
      * Full-width navy announcement strip: pill badge + text.
      */
     private static function render_announcement( array $data ) {
-        $pill = isset( $data['pill'] ) ? (string) $data['pill'] : '';
-        $text = isset( $data['text'] ) ? (string) $data['text'] : '';
+        $pill = isset( $data['pill'] ) ? self::str( $data['pill'] ) : '';
+        $text = isset( $data['text'] ) ? self::str( $data['text'] ) : '';
 
         // Nothing to announce: emit nothing (no empty navy bar).
         if ( '' === trim( $pill ) && '' === trim( $text ) ) {
@@ -150,14 +153,22 @@ class PTK_Newsletter_Renderer {
      */
     private static function render_events( array $data, array $opts ) {
         $rows  = isset( $data['rows'] ) && is_array( $data['rows'] ) ? $data['rows'] : array();
-        $today = isset( $opts['today'] ) ? (string) $opts['today'] : '';
+        $today = isset( $opts['today'] ) ? self::str( $opts['today'] ) : '';
 
-        // No valid event rows: skip the whole block, heading included.
+        // Keep only rows that are arrays with at least one non-blank field.
+        // No content-bearing rows: skip the whole block, heading included.
         $valid_rows = array();
         foreach ( $rows as $row ) {
-            if ( is_array( $row ) ) {
-                $valid_rows[] = $row;
+            if ( ! is_array( $row ) ) {
+                continue;
             }
+            $date  = isset( $row['date'] ) ? self::str( $row['date'] ) : '';
+            $title = isset( $row['title'] ) ? self::str( $row['title'] ) : '';
+            $desc  = isset( $row['desc'] ) ? self::str( $row['desc'] ) : '';
+            if ( '' === trim( $date ) && '' === trim( $title ) && '' === trim( $desc ) ) {
+                continue;
+            }
+            $valid_rows[] = $row;
         }
         if ( empty( $valid_rows ) ) {
             return '';
@@ -170,13 +181,9 @@ class PTK_Newsletter_Renderer {
 
         $count = count( $rows );
         foreach ( $rows as $i => $row ) {
-            if ( ! is_array( $row ) ) {
-                continue;
-            }
-
-            $date  = isset( $row['date'] ) ? (string) $row['date'] : '';
-            $title = isset( $row['title'] ) ? (string) $row['title'] : '';
-            $desc  = isset( $row['desc'] ) ? (string) $row['desc'] : '';
+            $date  = isset( $row['date'] ) ? self::str( $row['date'] ) : '';
+            $title = isset( $row['title'] ) ? self::str( $row['title'] ) : '';
+            $desc  = isset( $row['desc'] ) ? self::str( $row['desc'] ) : '';
 
             $bucket = ( '' !== $date && class_exists( 'PTK_Newsletter_Data' ) )
                 ? PTK_Newsletter_Data::relabel_for_date( $date, $today )
@@ -214,9 +221,9 @@ class PTK_Newsletter_Renderer {
      * $opts['image_url_cb'] callback so real uploaded images render here.
      */
     private static function render_featured( array $data, array $opts ) {
-        $eyebrow  = isset( $data['eyebrow'] ) ? (string) $data['eyebrow'] : '';
-        $headline = isset( $data['headline'] ) ? (string) $data['headline'] : '';
-        $body     = isset( $data['body'] ) ? (string) $data['body'] : '';
+        $eyebrow  = isset( $data['eyebrow'] ) ? self::str( $data['eyebrow'] ) : '';
+        $headline = isset( $data['headline'] ) ? self::str( $data['headline'] ) : '';
+        $body     = isset( $data['body'] ) ? self::str( $data['body'] ) : '';
         $image_id = isset( $data['image_id'] ) ? (int) $data['image_id'] : 0;
 
         $image_html = self::maybe_image( $image_id, $opts, $headline );
@@ -256,23 +263,38 @@ class PTK_Newsletter_Renderer {
     private static function render_story_cards( array $data, array $opts ) {
         $cards = isset( $data['cards'] ) && is_array( $data['cards'] ) ? $data['cards'] : array();
 
-        if ( empty( $cards ) ) {
+        // Keep only cards that are arrays with some content: a non-blank
+        // heading/body/link, or an image. All-blank cards are dropped so an
+        // empty bordered box never renders.
+        $valid_cards = array();
+        foreach ( $cards as $card ) {
+            if ( ! is_array( $card ) ) {
+                continue;
+            }
+            $heading   = isset( $card['heading'] ) ? self::str( $card['heading'] ) : '';
+            $body      = isset( $card['body'] ) ? self::str( $card['body'] ) : '';
+            $image_id  = isset( $card['image_id'] ) ? (int) $card['image_id'] : 0;
+            $link_url  = isset( $card['link_url'] ) ? self::str( $card['link_url'] ) : '';
+            $link_text = isset( $card['link_text'] ) ? self::str( $card['link_text'] ) : '';
+            if ( '' === trim( $heading ) && '' === trim( $body ) && '' === trim( $link_url ) && '' === trim( $link_text ) && $image_id <= 0 ) {
+                continue;
+            }
+            $valid_cards[] = $card;
+        }
+
+        if ( empty( $valid_cards ) ) {
             return '';
         }
 
         $html  = '<div style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:24px 20px;box-sizing:border-box;">';
         $html .= '<div style="max-width:840px;margin:0 auto;">';
 
-        foreach ( $cards as $card ) {
-            if ( ! is_array( $card ) ) {
-                continue;
-            }
-
-            $heading   = isset( $card['heading'] ) ? (string) $card['heading'] : '';
-            $body      = isset( $card['body'] ) ? (string) $card['body'] : '';
+        foreach ( $valid_cards as $card ) {
+            $heading   = isset( $card['heading'] ) ? self::str( $card['heading'] ) : '';
+            $body      = isset( $card['body'] ) ? self::str( $card['body'] ) : '';
             $image_id  = isset( $card['image_id'] ) ? (int) $card['image_id'] : 0;
-            $link_url  = isset( $card['link_url'] ) ? (string) $card['link_url'] : '';
-            $link_text = isset( $card['link_text'] ) ? (string) $card['link_text'] : '';
+            $link_url  = isset( $card['link_url'] ) ? self::str( $card['link_url'] ) : '';
+            $link_text = isset( $card['link_text'] ) ? self::str( $card['link_text'] ) : '';
 
             $image_html = self::maybe_image( $image_id, $opts, $heading );
 
@@ -305,7 +327,7 @@ class PTK_Newsletter_Renderer {
      * Signoff footer: closing line + a list of links.
      */
     private static function render_footer( array $data ) {
-        $signoff = isset( $data['signoff'] ) ? (string) $data['signoff'] : '';
+        $signoff = isset( $data['signoff'] ) ? self::str( $data['signoff'] ) : '';
         $links   = isset( $data['links'] ) && is_array( $data['links'] ) ? $data['links'] : array();
 
         // Collect only links with both a label and a url.
@@ -314,8 +336,8 @@ class PTK_Newsletter_Renderer {
             if ( ! is_array( $link ) ) {
                 continue;
             }
-            $label = isset( $link['label'] ) ? (string) $link['label'] : '';
-            $url   = isset( $link['url'] ) ? (string) $link['url'] : '';
+            $label = isset( $link['label'] ) ? self::str( $link['label'] ) : '';
+            $url   = isset( $link['url'] ) ? self::str( $link['url'] ) : '';
             if ( '' === trim( $label ) || '' === trim( $url ) ) {
                 continue;
             }
@@ -373,6 +395,19 @@ class PTK_Newsletter_Renderer {
         }
 
         return '<img src="' . esc_url( $url ) . '" alt="' . esc_attr( $alt ) . '" style="width:100%;height:auto;display:block;border-radius:10px;margin:0 0 18px;" />';
+    }
+
+    /**
+     * Coerce a leaf value to a string, guarding against non-scalar (array or
+     * object) input that would otherwise warn on cast or FATAL on an object
+     * without __toString. Mirrors PTK_Newsletter_Data::str_field() so the
+     * renderer is safe to call standalone (e.g. a future email renderer).
+     *
+     * @param mixed $v Raw value.
+     * @return string
+     */
+    private static function str( $v ) {
+        return is_scalar( $v ) ? (string) $v : '';
     }
 
     /**
