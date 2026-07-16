@@ -16,10 +16,12 @@ delete_option( 'ptk_starter_content_imported' );
 delete_option( 'ptk_show_importer' );
 delete_option( 'ptk_enable_network_sharing' );
 delete_option( 'ptk_provision_ver' );
+delete_option( 'ptk_v4_audience_migrated' );
 delete_option( 'ptk_vendor_notify_emails' );
 
-// Remove network-wide options (vendor directory cache version).
+// Remove network-wide options (vendor directory cache version + school colors).
 delete_site_option( 'ptk_vendor_cache_ver' );
+delete_site_option( 'ptk_site_colors' );
 
 // Remove any transients created by the search engine and glossary.
 global $wpdb;
@@ -68,7 +70,7 @@ $vendor_reviews_table = $wpdb->base_prefix . 'ptk_vendor_reviews';
 $wpdb->query( "DROP TABLE IF EXISTS {$vendor_reviews_table}" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 
 // Clean up post meta added by new features.
-$wpdb->query( "DELETE FROM {$wpdb->postmeta} WHERE meta_key IN ('ptk_share_network', 'ptk_network_source', 'ptk_network_source_blog', 'ptk_suggested_from_blog', 'ptk_suggested_from_post', 'ptk_visible_roles')" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+$wpdb->query( "DELETE FROM {$wpdb->postmeta} WHERE meta_key IN ('ptk_share_network', 'ptk_network_source', 'ptk_network_source_blog', 'ptk_suggested_from_blog', 'ptk_suggested_from_post', 'ptk_visible_roles', 'ptk_audience_mode', 'ptk_share_sites')" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 
 // Clean up user meta for notifications.
 $wpdb->query( "DELETE FROM {$wpdb->usermeta} WHERE meta_key = 'ptk_last_kb_visit'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery

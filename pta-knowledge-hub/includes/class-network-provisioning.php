@@ -21,7 +21,7 @@ class PTK_Network_Provisioning {
     const PROVISION_VER_OPTION = 'ptk_provision_ver';
 
     /** Bump when provisioning requirements change. */
-    const PROVISION_VER = '3'; // 2: repair_missing_slugs (v3.0.1); 3: ensure KB+Glossary pages on subsites (v3.1.1)
+    const PROVISION_VER = '4'; // 2: repair_missing_slugs (v3.0.1); 3: ensure KB+Glossary pages on subsites (v3.1.1); 4: v4.0 audience migration (one-time flag, below)
 
     public static function init() {
         // Late priority so core finishes initializing the new site first.
@@ -87,6 +87,17 @@ class PTK_Network_Provisioning {
             // One-time repair: vendors approved via wp_publish_post before
             // v3.0.1 were published without a slug, breaking their links.
             PTK_Vendor_Directory::repair_missing_slugs();
+
+            // v4.0: normalize legacy ptk_share_network booleans into the new
+            // audience model. Guarded by its OWN one-time flag (NOT the
+            // provision-version gate) because migrate_audience_meta() also
+            // force-enables ptk_enable_network_sharing — a bare version gate
+            // would re-run it on any future PROVISION_VER bump and silently
+            // re-enable sharing an admin had deliberately turned off.
+            if ( ! get_option( 'ptk_v4_audience_migrated' ) ) {
+                PTK_Multisite::migrate_audience_meta();
+                update_option( 'ptk_v4_audience_migrated', 1 );
+            }
         }
 
         // The three PTA Hub front-end pages. The Knowledge Base + Glossary

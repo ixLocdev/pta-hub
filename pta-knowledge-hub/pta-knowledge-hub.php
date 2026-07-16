@@ -3,7 +3,7 @@
  * Plugin Name: PTA Knowledge Hub
  * Plugin URI:  https://github.com/your-pta/knowledge-hub
  * Description: A searchable knowledge base for your PTA. Volunteers add content through WordPress, parents and members find answers instantly via a smart search bar.
- * Version:     3.1.1
+ * Version:     4.0.0
  * Author:      Lucas Deichl
  * License:     GPL-2.0-or-later
  * Text Domain: pta-knowledge-hub
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'PTK_VERSION', '3.1.1' );
+define( 'PTK_VERSION', '4.0.0' );
 define( 'PTK_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PTK_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -71,6 +71,8 @@ require_once PTK_PLUGIN_DIR . 'includes/class-feedback.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-notifications.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-role-access.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-multisite.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-content-lock.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-site-colors.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-auto-updater.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-network-provisioning.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-vendor-directory.php';
@@ -146,6 +148,8 @@ function ptk_init() {
     PTK_Notifications::init();
     PTK_Role_Access::init();
     PTK_Multisite::init();
+    PTK_Content_Lock::init();
+    PTK_Site_Colors::init();
     PTK_Auto_Updater::init();
     PTK_Network_Provisioning::init();
     PTK_Vendor_Directory::init();

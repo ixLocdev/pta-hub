@@ -39,6 +39,7 @@ class PTK_Search_Engine {
     const SCORE_POPULARITY_MAX = 15;  // Max bonus for frequently clicked entries.
     const SCORE_FUZZY_TITLE    = 12;  // Fuzzy/typo match against a title word.
     const SCORE_FUZZY_TAG      = 8;   // Fuzzy/typo match against a tag.
+    const SCORE_LOCAL_BOOST    = 18;  // Bonus for a school's OWN (non-shared) entries on a subsite.
 
     /**
      * Cached synonyms data (loaded once per request).
@@ -642,6 +643,16 @@ class PTK_Search_Engine {
             // Logarithmic scale: 1 click = ~0, 10 clicks = ~half max, 100+ clicks = max.
             $pop_score = min( self::SCORE_POPULARITY_MAX, (int) round( self::SCORE_POPULARITY_MAX * log10( $popularity + 1 ) / 2 ) );
             $score += $pop_score;
+        }
+
+        // --- Layer 10: Local-first boost ---
+        // On a school site, a school's OWN entries (not Council copies) get a
+        // bonus so they usually rank above comparable shared ones — blended,
+        // not absolute (a much stronger Council match can still win).
+        if ( $score > 0 && is_multisite() && ! is_main_site()
+            && class_exists( 'PTK_Multisite' )
+            && ! PTK_Multisite::is_network_copy( $post->ID ) ) {
+            $score += self::SCORE_LOCAL_BOOST;
         }
 
         return $score;
