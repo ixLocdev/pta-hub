@@ -96,7 +96,7 @@ Status legend: `[ ]` open · `[x]` fixed · `[-]` won't fix
   Search results are built in `search.js` (`buildCard()`). Delete or mark
   `@deprecated` — edits there silently do nothing.
 
-- [ ] **17. Log tables grow forever.** `ptk_search_log` + `ptk_click_log` have no
+- [x] **17. Log tables grow forever.** `ptk_search_log` + `ptk_click_log` have no
   retention; nopriv inserts mean bots can bloat them, ×11 sites. Add daily cron
   pruning (>12 months) matching the preview-token cleanup pattern
   (`class-public-preview.php:263`).
@@ -105,48 +105,58 @@ Status legend: `[ ]` open · `[x]` fixed · `[-]` won't fix
   (`class-search-engine.php:84-136`) — admin-gated but flagged "remove after
   troubleshooting" twice; hooks admin_init on every load.
 
-- [ ] **19. Chart.js floating `@4` + pinned SRI hash** (`class-analytics.php:497`) —
+- [x] **19. Chart.js floating `@4` + pinned SRI hash** (`class-analytics.php:497`) —
   next jsDelivr 4.x bump silently breaks the analytics chart. Pin exact version or bundle.
 
 - [ ] **20. Transient invalidation breaks under persistent object caches.**
   `class-search-engine.php:141-148` (and uninstall.php:21-27) delete transients via
   SQL LIKE on wp_options — no-op under Redis/Memcached. Use a cache-version-salt key.
+  *Deferred (v4.0.1): robustness-at-scale — not biting at current size (no persistent
+  object cache in production); revisit if a Redis/Memcached backend is adopted.*
 
-- [ ] **21. Uninstall gaps.** Doesn't drop `ptk_click_log` (`drop_click_table()` never
+- [x] **21. Uninstall gaps.** Doesn't drop `ptk_click_log` (`drop_click_table()` never
   called); misses options `ptk_installed_version`, `ptk_hub_slug`, `ptk_rewrite_flushed`;
   misses `ptk_ac_*`/popularity/updater transients + preview-token postmeta; cleans only
   the current site on multisite.
 
-- [ ] **22. Activation doesn't provision subsites or new sites.** Tables created only
+- [x] **22. Activation doesn't provision subsites or new sites.** Tables created only
   via activation hook on one site (`pta-knowledge-hub.php:219-221`); inserts on
   table-less subsites fail silently (analytics/feedback). No `wp_initialize_site`
   hook for future schools. Required groundwork for the Vendor Directory.
+  *Shipped in v3.0/v3.1 — provisioning now creates the tables + pages on all sites
+  (existing subsites on next admin visit, new sites via the site-init hook).*
 
-- [ ] **23. Sync fidelity is partial.** `class-multisite.php:278-284` copies
+- [x] **23. Sync fidelity is partial.** `class-multisite.php:278-284` copies
   title/content/excerpt/terms only — no featured image, no custom meta, and
   **role restrictions (`ptk_visible_roles`) are not propagated** (restricted Council
   entries become unrestricted on subsites — borderline 🔴).
 
 - [ ] **24. Backfill sync is synchronous O(sites × posts)** (`class-multisite.php:400-430`)
   — will eventually hit PHP timeouts. Batch or cron it.
+  *Deferred (v4.0.1): robustness-at-scale — not biting at current size (~10 sites, modest
+  post counts run well within the PHP time limit); batch/cron it if the corpus grows.*
 
-- [ ] **25. `handle_suggest_to_council` checks `edit_posts` not `edit_post, $id`**
+- [x] **25. `handle_suggest_to_council` checks `edit_posts` not `edit_post, $id`**
   (`class-multisite.php:465`). Trivial here; do NOT copy this pattern into vendor reviews.
 
-- [ ] **26. Update zip has no integrity check** (`class-auto-updater.php:54-63`) —
+- [-] **26. Update zip has no integrity check** (`class-auto-updater.php:54-63`) —
   compromise of ixcreations.com = code exec on all sites. Standard for self-hosted
   updaters; consider a hash in update-info.json.
+  *Won't-fix — auto-updater unused as of v3.0; deploy is manual zip.*
 
-- [ ] **27. Meta-box gating quirk:** subsites always get the "Network Status" box even
+- [-] **27. Meta-box gating quirk:** subsites always get the "Network Status" box even
   when sharing is off (`class-multisite.php:54`).
+  *Mooted by v4.0 — sharing is always-on, network copies are unreachable via the
+  edit-lock, and the box on a school's own local article is the intended
+  Suggest-to-Council affordance.*
 
-- [ ] **32. Start Here "Start the guided form" button hover is low-contrast.**
+- [x] **32. Start Here "Start the guided form" button hover is low-contrast.**
   On hover the primary button shows dark-blue text on a medium-blue fill
   (`assets/css/welcome.css` — `.ptk-welcome-btn-primary` has no `:hover` rule, so
   admin defaults bleed through). Add explicit `:hover`/`:focus` states with legible
   contrast (e.g. darken the fill to `#135e96`, keep white text).
 
-- [ ] **31. Sweep out half/single-side accent borders (Lucas design rule).** Replace
+- [x] **31. Sweep out half/single-side accent borders (Lucas design rule).** Replace
   `border-left`-accent styling with a full border or colored content. Known spots:
   the PTA Hub meta-box accent strip (`assets/css/admin.css`) and the "already
   imported" notice (`class-content-importer.php`). Do a grep for `border-left`
