@@ -37,6 +37,7 @@ class PTK_Multisite {
 
         add_action( 'save_post_pta_knowledge', array( __CLASS__, 'maybe_sync_to_network' ), 20, 3 );
         add_action( 'before_delete_post', array( __CLASS__, 'maybe_delete_from_network' ) );
+        add_action( 'trashed_post', array( __CLASS__, 'maybe_delete_from_network' ) );
         add_action( 'add_meta_boxes', array( __CLASS__, 'register_meta_boxes' ) );
         add_action( 'admin_menu', array( __CLASS__, 'add_network_admin_page' ) );
         add_action( 'wp_ajax_ptk_suggest_to_council', array( __CLASS__, 'handle_suggest_to_council' ) );
@@ -77,30 +78,58 @@ class PTK_Multisite {
     }
 
     /**
-     * Render the "Share to All Schools" checkbox (main site only).
+     * Render the audience-targeting control (main site only).
+     *
+     * Three radios — All schools / Council only / Only these schools — plus a
+     * per-school checklist used only when "Only these schools" is selected.
      */
     public static function render_share_meta_box( $post ) {
         wp_nonce_field( 'ptk_network_share', 'ptk_network_share_nonce' );
-        $shared     = get_post_meta( $post->ID, 'ptk_share_network', true );
-        $is_shared  = self::is_shared_value( $shared );
+
+        // Current mode, with the same legacy fallback as audience_targets().
+        $mode = get_post_meta( $post->ID, 'ptk_audience_mode', true );
+        if ( '' === $mode ) {
+            $legacy = get_post_meta( $post->ID, 'ptk_share_network', true );
+            $mode   = ( '0' === (string) $legacy ) ? 'none' : 'all';
+        }
+
+        $chosen = array_map( 'intval', (array) get_post_meta( $post->ID, 'ptk_share_sites', true ) );
+        $subsites = self::get_subsites();
         ?>
+        <p style="margin:0 0 4px;font-size:13px;font-weight:600;">Who can see this entry?</p>
         <label style="display:block;padding:4px 0;font-size:13px;">
-            <input type="checkbox" name="ptk_share_network" value="1" <?php checked( $is_shared ); ?>>
-            <strong>Share to All Schools</strong>
+            <input type="radio" name="ptk_audience_mode" value="all" <?php checked( 'all', $mode ); ?>>
+            <strong>All schools</strong>
         </label>
-        <p class="description" style="margin-top:8px;">
-            New entries are shared to every school site by default. Uncheck to keep
-            this entry on the Council site only.
+        <label style="display:block;padding:4px 0;font-size:13px;">
+            <input type="radio" name="ptk_audience_mode" value="none" <?php checked( 'none', $mode ); ?>>
+            <strong>Council only</strong>
+        </label>
+        <label style="display:block;padding:4px 0;font-size:13px;">
+            <input type="radio" name="ptk_audience_mode" value="some" <?php checked( 'some', $mode ); ?>>
+            <strong>Only these schools</strong>
+        </label>
+
+        <?php if ( ! empty( $subsites ) ) : ?>
+        <div style="margin:4px 0 0 22px;">
+            <?php foreach ( $subsites as $site ) :
+                $details = get_blog_details( $site->blog_id );
+                $name    = $details ? $details->blogname : 'Site #' . $site->blog_id;
+            ?>
+            <label style="display:block;padding:3px 0;font-size:13px;text-wrap:balance;">
+                <input type="checkbox" name="ptk_share_sites[]" value="<?php echo esc_attr( $site->blog_id ); ?>" <?php checked( in_array( (int) $site->blog_id, $chosen, true ) ); ?>>
+                <?php echo esc_html( $name ); ?>
+            </label>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+
+        <p class="description" style="margin-top:8px;text-wrap:balance;">
+            New entries are shared to every school by default. Choose "Council only"
+            to keep this entry on the Council site, or "Only these schools" to target
+            the schools checked above.
         </p>
         <?php
-    }
-
-    /**
-     * Default-on interpretation of the share meta.
-     * Only an explicit '0' counts as opted-out.
-     */
-    private static function is_shared_value( $meta_value ) {
-        return '0' !== (string) $meta_value;
     }
 
     /**
@@ -201,62 +230,73 @@ class PTK_Multisite {
             return;
         }
 
+        // Capture the previous target set BEFORE any meta is written, on every
+        // save path (Quick Edit / programmatic saves carry no nonce), so the
+        // diff-remove below can drop copies from de-targeted schools.
+        $old_targets = self::audience_targets( $post_id );
+
         // Check nonce (only present when saving from the editor).
         if ( isset( $_POST['ptk_network_share_nonce'] ) ) {
             if ( ! wp_verify_nonce( $_POST['ptk_network_share_nonce'], 'ptk_network_share' ) ) {
                 return;
             }
 
-            // Save the share checkbox.
-            if ( ! empty( $_POST['ptk_share_network'] ) ) {
-                update_post_meta( $post_id, 'ptk_share_network', '1' );
-            } else {
-                // Explicitly opted out — record '0' and remove network copies.
-                $was_shared = self::is_shared_value( get_post_meta( $post_id, 'ptk_share_network', true ) );
-                update_post_meta( $post_id, 'ptk_share_network', '0' );
-                if ( $was_shared ) {
-                    self::unshare_from_network( $post_id );
-                }
-                return;
+            // Save the audience selection.
+            $mode = isset( $_POST['ptk_audience_mode'] ) ? sanitize_key( wp_unslash( $_POST['ptk_audience_mode'] ) ) : 'all';
+            if ( ! in_array( $mode, array( 'all', 'some', 'none' ), true ) ) {
+                $mode = 'all';
             }
+            $sites = isset( $_POST['ptk_share_sites'] ) ? array_map( 'intval', (array) $_POST['ptk_share_sites'] ) : array();
+            update_post_meta( $post_id, 'ptk_audience_mode', $mode );
+            update_post_meta( $post_id, 'ptk_share_sites', $sites );
+            delete_post_meta( $post_id, 'ptk_share_network' ); // retire legacy key
         }
 
-        // Only sync published posts that are marked for sharing.
-        if ( 'publish' !== $post->post_status ) {
-            return;
-        }
+        $sharing_enabled = get_option( 'ptk_enable_network_sharing', false );
 
-        $shared = get_post_meta( $post_id, 'ptk_share_network', true );
-        if ( ! self::is_shared_value( $shared ) ) {
-            return;
-        }
+        // Reconcile the school copies to the CURRENT audience. A non-published
+        // status (draft/trash) or sharing-off resolves to NO targets, so every
+        // existing copy is removed — unpublishing pulls it from the schools.
+        $new_targets = ( 'publish' === $post->post_status && $sharing_enabled )
+            ? self::audience_targets( $post_id )
+            : array();
 
-        // Network sharing must be enabled.
-        if ( ! get_option( 'ptk_enable_network_sharing', false ) ) {
-            return;
+        if ( $new_targets ) {
+            self::sync_to_targets( $post_id, $new_targets );
         }
-
-        self::sync_to_network( $post_id );
+        $dropped = array_diff( $old_targets, $new_targets );
+        if ( $dropped ) {
+            self::remove_from_blogs( $post_id, $dropped );
+        }
     }
 
     /**
-     * Push a post to all subsites.
+     * Push a post to a specific set of subsites.
      *
-     * @param int $post_id Post ID on the main site.
+     * @param int   $post_id    Post ID on the main site.
+     * @param int[] $target_ids Target subsite blog_ids.
      */
-    public static function sync_to_network( $post_id ) {
+    public static function sync_to_targets( $post_id, $target_ids ) {
+        if ( ! is_multisite() ) {
+            return;
+        }
+
+        $target_ids = array_map( 'intval', (array) $target_ids );
+        if ( empty( $target_ids ) ) {
+            return;
+        }
+
         self::$syncing = true;
 
         $post     = get_post( $post_id );
         $main_id  = get_main_site_id();
-        $subsites = self::get_subsites();
 
         // Get source post terms.
         $cat_terms = wp_get_post_terms( $post_id, 'knowledge_category' );
         $tag_terms = wp_get_post_terms( $post_id, 'post_tag' );
 
-        foreach ( $subsites as $site ) {
-            switch_to_blog( $site->blog_id );
+        foreach ( $target_ids as $blog_id ) {
+            switch_to_blog( $blog_id );
 
             // Find existing copy.
             $existing = get_posts( array(
@@ -320,18 +360,38 @@ class PTK_Multisite {
     }
 
     /**
-     * Remove network copies when unsharing a post.
+     * Push a post to every subsite in its resolved audience.
+     *
+     * Thin wrapper preserved for backward callers.
      *
      * @param int $post_id Post ID on the main site.
      */
-    public static function unshare_from_network( $post_id ) {
+    public static function sync_to_network( $post_id ) {
+        self::sync_to_targets( $post_id, self::audience_targets( $post_id ) );
+    }
+
+    /**
+     * Remove network copies of a post from a specific set of subsites.
+     *
+     * @param int   $post_id  Post ID on the main site.
+     * @param int[] $blog_ids Subsite blog_ids to remove the copy from.
+     */
+    public static function remove_from_blogs( $post_id, $blog_ids ) {
+        if ( ! is_multisite() ) {
+            return;
+        }
+
+        $blog_ids = array_map( 'intval', (array) $blog_ids );
+        if ( empty( $blog_ids ) ) {
+            return;
+        }
+
         self::$syncing = true;
 
-        $main_id  = get_main_site_id();
-        $subsites = self::get_subsites();
+        $main_id = get_main_site_id();
 
-        foreach ( $subsites as $site ) {
-            switch_to_blog( $site->blog_id );
+        foreach ( $blog_ids as $blog_id ) {
+            switch_to_blog( $blog_id );
 
             $copies = get_posts( array(
                 'post_type'      => 'pta_knowledge',
@@ -360,6 +420,17 @@ class PTK_Multisite {
     }
 
     /**
+     * Remove network copies of a post from every subsite.
+     *
+     * Wrapper over remove_from_blogs() used by the delete path.
+     *
+     * @param int $post_id Post ID on the main site.
+     */
+    public static function unshare_from_network( $post_id ) {
+        self::remove_from_blogs( $post_id, wp_list_pluck( self::get_subsites(), 'blog_id' ) );
+    }
+
+    /**
      * Delete network copies when a shared post is permanently deleted.
      *
      * @param int $post_id Post ID being deleted.
@@ -377,11 +448,7 @@ class PTK_Multisite {
             return;
         }
 
-        $shared = get_post_meta( $post_id, 'ptk_share_network', true );
-        if ( ! self::is_shared_value( $shared ) ) {
-            return;
-        }
-
+        // Clean up any copies unconditionally (no-op if the post had none).
         self::unshare_from_network( $post_id );
     }
 
@@ -414,16 +481,11 @@ class PTK_Multisite {
 
         $count = 0;
         foreach ( $ids as $id ) {
-            $shared = get_post_meta( $id, 'ptk_share_network', true );
-            if ( ! self::is_shared_value( $shared ) ) {
-                continue; // Editor explicitly opted this one out.
+            $targets = self::audience_targets( $id );
+            if ( $targets ) {
+                self::sync_to_targets( $id, $targets );
+                $count++;
             }
-            // Mark canonical '1' so the meta query in get_shared_post_ids() picks it up.
-            if ( '1' !== (string) $shared ) {
-                update_post_meta( $id, 'ptk_share_network', '1' );
-            }
-            self::sync_to_network( $id );
-            $count++;
         }
 
         return $count;
@@ -743,23 +805,82 @@ class PTK_Multisite {
     }
 
     /**
-     * Get IDs of all posts marked for network sharing.
+     * Resolve which subsite blog_ids a Council post is shared to.
+     * Reads the new metas; normalizes any legacy ptk_share_network inline so
+     * un-migrated posts still resolve correctly. This — not the migration — is
+     * the source of truth.
+     *
+     * @return int[] Target blog_ids (empty = Council only).
+     */
+    public static function audience_targets( $post_id ) {
+        $mode = get_post_meta( $post_id, 'ptk_audience_mode', true );
+
+        if ( '' === $mode ) {
+            // Legacy fallback: old boolean. '0' = none; anything else = all.
+            $legacy = get_post_meta( $post_id, 'ptk_share_network', true );
+            $mode   = ( '0' === (string) $legacy ) ? 'none' : 'all';
+        }
+
+        if ( 'none' === $mode ) {
+            return array();
+        }
+        $all = wp_list_pluck( self::get_subsites(), 'blog_id' );
+        $all = array_map( 'intval', $all );
+        if ( 'some' === $mode ) {
+            $chosen = (array) get_post_meta( $post_id, 'ptk_share_sites', true );
+            $chosen = array_map( 'intval', $chosen );
+            return array_values( array_intersect( $all, $chosen ) );
+        }
+        return $all; // 'all'
+    }
+
+    /**
+     * One-time normalizer: write ptk_audience_mode from legacy ptk_share_network
+     * for any post that lacks it. Idempotent; scans all post statuses.
+     */
+    public static function migrate_audience_meta() {
+        $ids = get_posts( array(
+            'post_type'      => 'pta_knowledge',
+            'post_status'    => 'any',
+            'posts_per_page' => -1,
+            'fields'         => 'ids',
+        ) );
+
+        foreach ( $ids as $id ) {
+            if ( '' !== get_post_meta( $id, 'ptk_audience_mode', true ) ) {
+                continue; // Already migrated.
+            }
+            $legacy = get_post_meta( $id, 'ptk_share_network', true );
+            $mode   = ( '0' === (string) $legacy ) ? 'none' : 'all';
+            update_post_meta( $id, 'ptk_audience_mode', $mode );
+        }
+
+        // Sharing is always on by design — no master switch to forget. Turn it
+        // on for good so audience targeting actually reaches the schools.
+        update_option( 'ptk_enable_network_sharing', true );
+    }
+
+    /**
+     * Get IDs of all published posts shared to at least one subsite.
      *
      * @return array Array of post IDs.
      */
     public static function get_shared_post_ids() {
-        return get_posts( array(
+        $ids = get_posts( array(
             'post_type'      => 'pta_knowledge',
             'post_status'    => 'publish',
             'posts_per_page' => -1,
             'fields'         => 'ids',
-            'meta_query'     => array(
-                array(
-                    'key'   => 'ptk_share_network',
-                    'value' => '1',
-                ),
-            ),
         ) );
+
+        $shared = array();
+        foreach ( $ids as $id ) {
+            if ( ! empty( self::audience_targets( $id ) ) ) {
+                $shared[] = $id;
+            }
+        }
+
+        return $shared;
     }
 
     /**
