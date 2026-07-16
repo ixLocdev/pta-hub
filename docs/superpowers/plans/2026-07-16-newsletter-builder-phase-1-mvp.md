@@ -577,11 +577,8 @@ load issue/date/blocks from meta and prefill. Redirect the default
 
 - [ ] **Step 2: Generalize public-preview to cover newsletters** (spec §3.10, §12, §13)
 
-`class-public-preview.php` is currently hard-coupled to `pta_knowledge` in four
-places: the query in `maybe_render_preview()` (`'post_type' => 'pta_knowledge'`), and
-the three `'pta_knowledge' !== $post->post_type` checks in `render_publish_box()`,
-`handle_generate()`, and `handle_revoke()`. Replace these with a filterable supported
-list:
+`class-public-preview.php` is hard-coupled to `pta_knowledge` in **five** places
+(verified against the current file). Add a filterable supported list:
 
 ```php
 public static function supported_post_types() {
@@ -589,21 +586,51 @@ public static function supported_post_types() {
 }
 ```
 
-Use `in_array( $post->post_type, self::supported_post_types(), true )` for the checks,
-and `'post_type' => self::supported_post_types()` in the query. This is a low-risk,
-additive change (existing `pta_knowledge` behavior is unchanged). Note: token render
-uses the post's normal single template — for `pta_newsletter` that already shows the
-rendered `post_content`, so no template work is needed.
+Then generalize each coupling:
+1. **Query** in `maybe_render_preview()` (~line 81): change
+   `'post_type' => 'pta_knowledge'` → `'post_type' => self::supported_post_types()`.
+   (The existing `post_status => [draft, pending, private, future]` is correct for
+   newsletters too — drafts are the target.)
+2. **Template selection** in `maybe_render_preview()` (~lines 121-124): this is the
+   trap — it currently **hard-codes** `get_query_template( 'single-pta_knowledge' )`
+   with a fallback to the plugin's `templates/single-pta_knowledge.php`. Rendering a
+   newsletter through the knowledge-base template would apply the wrong chrome
+   (TOC/meta). Replace with post-type-aware selection that uses the full template
+   hierarchy off the now-set-up global post:
+   ```php
+   $template = get_single_template(); // respects single-{post_type}.php → single.php → singular.php
+   if ( ! $template && 'pta_knowledge' === $post->post_type ) {
+       $template = PTK_PLUGIN_DIR . 'templates/single-pta_knowledge.php'; // keep KB fallback
+   }
+   ```
+   For `pta_newsletter` the theme's single template renders the post's already-built
+   `post_content` (the full newsletter HTML) — correct with no plugin template needed.
+3. **`render_publish_box()`** (~line 165): replace the `'pta_knowledge' !== $post->post_type`
+   guard with `! in_array( $post->post_type, self::supported_post_types(), true )`.
+4. **`guard_request()`** (~line 244): same replacement (this one shared check covers
+   BOTH `handle_generate()` and `handle_revoke()`).
+5. **`auto_revoke_on_publish()`** (~line 254): same replacement — **required**, or a
+   published newsletter's preview token/expiry meta never gets deleted (contradicting
+   Step 4's verify).
+
+All changes are additive; existing `pta_knowledge` behavior is unchanged.
 
 - [ ] **Step 3: Surface the preview link in the builder form**
 
-The existing UI hangs off `post_submitbox_misc_actions` (the classic editor publish
-box), which our custom form does not use. So in the builder, when editing a saved
-draft, render a small **"Share a preview link (no login needed)"** control that
-calls the same `admin_action_ptk_generate_preview` / `ptk_revoke_preview` handlers
-(reuse `PTK_Public_Preview`'s existing generate/revoke actions and the
-`ptk_preview_token`/expiry meta) and shows the copyable URL. Plain-English label; keep
-it visually tied to the draft it belongs to.
+The existing generate/revoke UI hangs off `post_submitbox_misc_actions` (the classic
+editor publish box), which our custom form does not use. In the builder, when editing
+a saved draft, render a small **"Share a preview link (no login needed)"** control
+that POSTs to the existing `admin_action_ptk_generate_preview` /
+`ptk_revoke_preview` handlers (reuse `PTK_Public_Preview`'s generate/revoke actions
+and the `ptk_preview_token` / expiry meta), then shows the copyable
+`?ptk_preview=<token>` URL. Plain-English label, visually tied to the draft.
+
+**Redirect caveat:** `handle_generate()`/`handle_revoke()` end with
+`wp_safe_redirect( get_edit_post_link( $post_id, 'raw' ) )`, which targets the default
+`post.php` editor — not the builder. Add a redirect that returns to the builder for
+newsletters: submit a hidden `ptk_preview_return` field (the builder edit URL) and
+have the handlers honor it via `wp_safe_redirect` when present and valid (fall back to
+`get_edit_post_link()` otherwise, preserving knowledge-entry behavior).
 
 - [ ] **Step 4: Functional verify**
 
