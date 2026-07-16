@@ -16,8 +16,11 @@
  * confirmation checkbox in the form; if it's unchecked the save is forced
  * to draft instead.
  *
- * A share-a-preview token link and the "Add New" redirect/edit-row-action
- * are a later task and not implemented here.
+ * "Add New" and row-list "Edit" are routed through this builder (see
+ * init()), and render_page() reconstructs an existing newsletter's exact
+ * saved section set + order when opened in edit mode.
+ *
+ * A share-a-preview token link is a later task and not implemented here.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -36,8 +39,87 @@ class PTK_Newsletter_Builder {
 
     public static function init() {
         add_action( 'admin_menu', array( __CLASS__, 'add_page' ) );
+        add_action( 'admin_menu', array( __CLASS__, 'remove_default_add_new' ), 99 );
         add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
         add_action( 'admin_init', array( __CLASS__, 'handle_submission' ) );
+        add_action( 'load-post-new.php', array( __CLASS__, 'redirect_add_new' ) );
+        add_action( 'load-post.php', array( __CLASS__, 'redirect_edit_to_builder' ) );
+        add_filter( 'post_row_actions', array( __CLASS__, 'add_edit_row_action' ), 10, 2 );
+    }
+
+    /**
+     * Route the pta_newsletter row-list "Edit" link to the builder instead
+     * of the block editor, so reopening a saved newsletter always goes
+     * through render_page()'s edit-mode reconstruction.
+     *
+     * @param array   $actions Row actions.
+     * @param WP_Post $post    The row's post.
+     * @return array
+     */
+    public static function add_edit_row_action( $actions, $post ) {
+        if ( 'pta_newsletter' !== $post->post_type ) {
+            return $actions;
+        }
+
+        if ( isset( $actions['edit'] ) ) {
+            $actions['edit'] = sprintf(
+                '<a href="%s">Edit</a>',
+                esc_url( self::url() . '&ptk_nl_edit_id=' . $post->ID )
+            );
+        }
+
+        return $actions;
+    }
+
+    /**
+     * Send "Add New" newsletter to the builder instead of the block editor.
+     */
+    public static function redirect_add_new() {
+        global $typenow;
+
+        if ( 'pta_newsletter' !== $typenow ) {
+            return;
+        }
+
+        if ( ! current_user_can( 'edit_posts' ) ) {
+            return;
+        }
+
+        wp_safe_redirect( self::url() );
+        exit;
+    }
+
+    /**
+     * If someone lands on the block/classic editor for an existing
+     * pta_newsletter (e.g. a bookmarked link, or a link from elsewhere in
+     * wp-admin), send them to the builder in edit mode instead — the
+     * builder is the only supported way to edit a newsletter.
+     */
+    public static function redirect_edit_to_builder() {
+        if ( ! isset( $_GET['action'], $_GET['post'] ) || 'edit' !== $_GET['action'] ) {
+            return;
+        }
+
+        $post_id = absint( $_GET['post'] );
+        if ( ! $post_id || 'pta_newsletter' !== get_post_type( $post_id ) ) {
+            return;
+        }
+
+        if ( ! current_user_can( 'edit_post', $post_id ) ) {
+            return;
+        }
+
+        wp_safe_redirect( self::url() . '&ptk_nl_edit_id=' . $post_id );
+        exit;
+    }
+
+    /**
+     * Remove the default "Add New" submenu (which points at the block
+     * editor's post-new.php) now that add_page() supplies a builder-backed
+     * "Add New" in its place.
+     */
+    public static function remove_default_add_new() {
+        remove_submenu_page( 'edit.php?post_type=pta_newsletter', 'post-new.php?post_type=pta_newsletter' );
     }
 
     /**
@@ -365,18 +447,44 @@ class PTK_Newsletter_Builder {
             wp_die( 'You do not have permission to create newsletters.', 'PTA Hub', array( 'back_link' => true ) );
         }
 
-        $blocks       = PTK_Newsletter_Data::default_blocks();
-        $issue_number = self::next_issue_number();
-        $today        = date_i18n( 'Y-m-d' );
+        // Validate the edit target: it must exist, be a pta_newsletter, and
+        // be editable by the current user. Anything else falls back to a
+        // brand-new newsletter rather than erroring out.
+        $edit_id = isset( $_GET['ptk_nl_edit_id'] ) ? absint( $_GET['ptk_nl_edit_id'] ) : 0;
+        if ( $edit_id ) {
+            $existing = get_post( $edit_id );
+            if ( ! $existing || 'pta_newsletter' !== $existing->post_type || ! current_user_can( 'edit_post', $edit_id ) ) {
+                $edit_id = 0;
+            }
+        }
+
+        // Choose the blocks to render server-side: for edit mode, reconstruct
+        // the SAVED section set + order (sanitize_blocks guarantees a valid
+        // header-first/footer-last shape and drops any junk). These render as
+        // empty shells only — blocks_for_js() returns this SAME saved data for
+        // the JS prefill, which fills in field values and repeatable rows.
+        // Rendering values here too would double-fill/duplicate rows.
+        if ( $edit_id ) {
+            $blocks       = PTK_Newsletter_Data::sanitize_blocks( json_decode( get_post_meta( $edit_id, 'ptk_nl_blocks', true ), true ) );
+            $issue_number = get_post_meta( $edit_id, 'ptk_nl_issue', true );
+            $issue_number = $issue_number ? absint( $issue_number ) : self::next_issue_number();
+            $date_value   = get_post_meta( $edit_id, 'ptk_nl_date', true );
+            $date_value   = $date_value ? $date_value : date_i18n( 'Y-m-d' );
+        } else {
+            $blocks       = PTK_Newsletter_Data::default_blocks();
+            $issue_number = self::next_issue_number();
+            $date_value   = date_i18n( 'Y-m-d' );
+        }
 
         ?>
         <div class="wrap ptk-nl-builder">
-            <h1>New Newsletter</h1>
+            <h1><?php echo $edit_id ? 'Edit Newsletter' : 'New Newsletter'; ?></h1>
             <?php self::render_notice(); ?>
-            <p class="ptk-nl-intro">Fill in the sections below — header and footer are always included, and you can add, remove, and reorder the sections in between.</p>
+            <p class="ptk-nl-intro"><?php echo $edit_id ? 'Update the sections below — header and footer are always included, and you can add, remove, and reorder the sections in between.' : 'Fill in the sections below — header and footer are always included, and you can add, remove, and reorder the sections in between.'; ?></p>
 
             <form method="post" id="ptk-nl-form">
                 <?php wp_nonce_field( 'ptk_nl_save', 'ptk_nl_nonce' ); ?>
+                <input type="hidden" name="ptk_nl_edit_id" value="<?php echo esc_attr( $edit_id ); ?>">
 
                 <div class="ptk-nl-meta-row">
                     <div class="ptk-nl-field-group">
@@ -385,7 +493,7 @@ class PTK_Newsletter_Builder {
                     </div>
                     <div class="ptk-nl-field-group">
                         <label for="ptk-nl-date">Issue date</label>
-                        <input type="date" id="ptk-nl-date" name="ptk_nl_date" value="<?php echo esc_attr( $today ); ?>">
+                        <input type="date" id="ptk-nl-date" name="ptk_nl_date" value="<?php echo esc_attr( $date_value ); ?>">
                     </div>
                 </div>
 
@@ -415,15 +523,21 @@ class PTK_Newsletter_Builder {
     }
 
     /**
-     * Render one server-side block section.
+     * Render one server-side block section as an empty shell (type + order
+     * only). Field values and repeatable rows are intentionally NOT rendered
+     * here even in edit mode — the JS prefill (ptkNlData.blocks, from
+     * blocks_for_js()) is the single source of truth for values, so it can
+     * fill every section the same way whether the layout came from
+     * default_blocks() or a saved newsletter. Rendering values here too
+     * would risk double-filling/duplicating rows.
      *
-     * @param array $block Block with 'type' and 'data' keys.
+     * @param array $block Block with a 'type' key ('data' is deliberately
+     *                      ignored — see above).
      */
     protected static function render_block_section( $block ) {
-        $type    = isset( $block['type'] ) ? $block['type'] : '';
-        $data    = isset( $block['data'] ) && is_array( $block['data'] ) ? $block['data'] : array();
-        $pinned  = in_array( $type, array( 'header', 'footer' ), true );
-        $label   = self::label_for_type( $type );
+        $type   = isset( $block['type'] ) ? $block['type'] : '';
+        $pinned = in_array( $type, array( 'header', 'footer' ), true );
+        $label  = self::label_for_type( $type );
         ?>
         <section class="ptk-nl-block" data-type="<?php echo esc_attr( $type ); ?>"<?php echo $pinned ? ' data-pinned="1"' : ''; ?>>
             <div class="ptk-nl-block-header">
@@ -440,7 +554,7 @@ class PTK_Newsletter_Builder {
             </div>
 
             <div class="ptk-nl-block-body">
-                <?php self::render_block_fields( $type, $data ); ?>
+                <?php self::render_block_fields( $type, array() ); ?>
             </div>
         </section>
         <?php
