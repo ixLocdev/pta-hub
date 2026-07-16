@@ -272,6 +272,42 @@ class PTK_Newsletter_Builder {
             array(),
             PTK_VERSION
         );
+
+        wp_enqueue_script(
+            'ptk-newsletter-builder',
+            PTK_PLUGIN_URL . 'assets/js/newsletter-builder.js',
+            array( 'jquery', 'media-upload' ),
+            PTK_VERSION,
+            true
+        );
+
+        wp_localize_script( 'ptk-newsletter-builder', 'ptkNlData', array(
+            'blocks' => self::blocks_for_js(),
+        ) );
+    }
+
+    /**
+     * The blocks array to hand to the front-end JS for prefilling the
+     * builder form: the saved ptk_nl_blocks meta when editing an existing
+     * newsletter the current user may edit, otherwise the suggested
+     * default layout for a brand-new one.
+     *
+     * @return array[]
+     */
+    private static function blocks_for_js() {
+        $edit_id = isset( $_GET['ptk_nl_edit_id'] ) ? absint( $_GET['ptk_nl_edit_id'] ) : 0;
+
+        if ( $edit_id ) {
+            $existing = get_post( $edit_id );
+            if ( $existing && 'pta_newsletter' === $existing->post_type && current_user_can( 'edit_post', $edit_id ) ) {
+                $raw = json_decode( get_post_meta( $edit_id, 'ptk_nl_blocks', true ), true );
+                if ( is_array( $raw ) ) {
+                    return $raw;
+                }
+            }
+        }
+
+        return PTK_Newsletter_Data::default_blocks();
     }
 
     /**
