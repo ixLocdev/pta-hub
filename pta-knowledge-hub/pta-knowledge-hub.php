@@ -76,6 +76,7 @@ require_once PTK_PLUGIN_DIR . 'includes/class-network-provisioning.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-vendor-directory.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-vendor-reviews.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-vendor-moderation.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-welcome.php';
 
 /**
  * Check whether the current visitor must log in to access the knowledge base.
@@ -150,6 +151,7 @@ function ptk_init() {
     PTK_Vendor_Directory::init();
     PTK_Vendor_Reviews::init();
     PTK_Vendor_Moderation::init();
+    PTK_Welcome::init();
 }
 add_action( 'plugins_loaded', 'ptk_init' );
 
