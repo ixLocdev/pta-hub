@@ -56,22 +56,40 @@ source; `save_post_pta_knowledge` copies them to subsites; copies carry
 and adds display/ranking:
 
 ### 1. Audience targeting (replaces the boolean)
-- `ptk_share_network` meta becomes an **audience value**: `'all'` · `'none'`
-  (Council-only) · a stored list of target blog_ids (specific schools).
+- **Storage — two clean metas** (avoids overloading one key with mixed
+  string/array types and the meta_query ambiguity that causes):
+  - `ptk_audience_mode` = `'all'` · `'some'` · `'none'` (Council-only).
+  - `ptk_share_sites` = array of target blog_ids, used only when mode is `'some'`.
+- **Accessor** `PTK_Multisite::audience_targets( $post_id )` returns the resolved
+  list of target blog_ids (all subsites for `'all'`, the stored list for
+  `'some'`, empty for `'none'`). It **normalizes legacy meta inline** — a post
+  still carrying old `ptk_share_network` (`'1'`/unset → `'all'`, `'0'` → `'none'`)
+  reads correctly even if the one-time migration missed it. So the accessor, not
+  the migration, is the source of truth.
 - Editor control (Council site only, in the existing Network Sharing meta box):
   radio **All schools / Council only / Only these schools** + a school checklist
   (populated from `get_sites()`, excluding the main site and any closed/archived).
-- Sync logic (`sync_to_network`): push copies **only to targeted schools**; on
-  save, **diff** against the previous target set and **remove** copies from
-  schools no longer targeted (extends the existing unshare path). Backfill
-  (`backfill_all`) respects each post's audience.
-- Migration: a version-gated one-time normalizer maps legacy meta →
-  audience: `'1'`/unset → `'all'`, `'0'` → `'none'`.
+- Sync logic (`sync_to_network` / `unshare_from_network`, parameterized by a
+  target blog_id set): the save handler **captures the previous target set
+  (`audience_targets`) BEFORE writing the new meta**, then pushes copies to the
+  new targets and **removes** copies from schools dropped out of the set. Backfill
+  (`backfill_all`) uses `audience_targets` per post. **`get_shared_post_ids()`
+  (feeds the Network Sync admin page) must be reworked** to select posts whose
+  mode ≠ `'none'` (its current `meta_value = '1'` query, and the `'1'`-stamping
+  in `backfill_all`, are removed).
+- Migration: a version-gated one-time normalizer (scanning **all post statuses**,
+  not just publish) writes `ptk_audience_mode`/`ptk_share_sites` from legacy
+  `ptk_share_network`. Mapping is one-way-safe; the inline accessor covers anything
+  it misses.
 
 ### 2. Lock the copies (net-new enforcement)
 - A `map_meta_cap` filter: on a **subsite**, for a `pta_knowledge` post that
-  `is_network_copy()`, deny `edit_post`/`delete_post`/`publish_posts` (return
-  `do_not_allow`). This is real permission-level enforcement, not just hidden UI.
+  `is_network_copy()`, deny the per-post meta caps `edit_post` and `delete_post`
+  (return `do_not_allow`). (Only these two — they're per-post caps that carry the
+  post ID in `$args`; primitive caps like `publish_posts` have no post to scope
+  to and aren't part of a per-post lock.) This is real permission-level
+  enforcement, not just hidden UI — and it's transparent to the sync process,
+  which writes copies via `wp_insert/update/trash_post` and never checks caps.
 - Row actions on the list: replace **Edit** with **View** for network copies;
   keep the existing "Managed by PTA Council — edit on Council site" notice on the
   edit screen (still reachable read-only / redirect as appropriate).
@@ -79,24 +97,33 @@ and adds display/ranking:
 ### 3. Owner column + filters (all sites)
 - Add an **Owner** column to the `pta_knowledge` list table: a colored dot +
   name — `is_network_copy()` → the Council's slate + "PTA Council" with a 🔒;
-  otherwise the **current site's** color + its name.
+  otherwise the **current site's** color + its name. (This is a second
+  `manage_pta_knowledge_posts_columns` filter alongside the existing ones in
+  admin-helpers/review-reminders — it must **append** to the columns array, not
+  replace it.)
 - Add filter views **Ours | From Council | All** (via the `views_edit-pta_knowledge`
   filter + a query var that filters on the presence/absence of `ptk_network_source`).
 
 ### 4. School color palette (Council)
 - New "School Colors" settings screen on the **Council site**: lists every site
   (`get_sites()`) with a color input, pre-filled from the default palette.
-- Stored network-wide as a single site option `ptk_site_colors` = `{ blog_id: hex }`.
+- Stored as a **network option** `ptk_site_colors` = `{ blog_id: hex }` via
+  `get_site_option`/`update_site_option` (NOT per-blog `get_option`), so every
+  subsite's Owner column reflects the Council-set colors. On single-site,
+  `get_site_option` falls back to `get_option` — still safe.
 - Helper `ptk_site_color( $blog_id )` returns the set color or the palette default;
   used by the Owner column (and available for future front-end use).
 
 ### 5. Local-first search boost
-- In `class-search-engine.php` scoring, on a subsite, give **local-origin** posts
-  (NOT `is_network_copy()`) a **relevance bonus** — enough that a school's own
-  articles usually outrank comparable Council ones, but NOT an absolute override
-  (a much-stronger Council match can still win). One tunable constant, applied in
-  the per-post score, documented as "blended local boost."
-- On the main (Council) site this bonus is inert (everything is local there).
+- In `class-search-engine.php` `score_post()`, give **local-origin** posts (NOT
+  `is_network_copy()`) a **relevance bonus** — enough that a school's own articles
+  usually outrank comparable Council ones, but NOT an absolute override (a
+  much-stronger Council match can still win). One tunable constant, added to the
+  per-post score alongside the existing recency/popularity layers.
+- **Gate it like the other layers:** apply only when the post's base `$score > 0`
+  (never surface a non-matching local post) and only under
+  `is_multisite() && ! is_main_site()` (inert on the Council site, where
+  everything is local anyway).
 
 ### Files (responsibilities; exact split finalized in the plan)
 - `class-multisite.php` — audience meta + editor control, targeted sync/diff-remove,
