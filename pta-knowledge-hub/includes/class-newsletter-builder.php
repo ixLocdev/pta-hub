@@ -31,6 +31,9 @@ class PTK_Newsletter_Builder {
 
     const PAGE_SLUG = 'ptk-newsletter-builder';
 
+    /** The only theme shipped in Phase 1. */
+    const DEFAULT_THEME = 'harbor-navy';
+
     public static function init() {
         add_action( 'admin_menu', array( __CLASS__, 'add_page' ) );
         add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
@@ -53,15 +56,31 @@ class PTK_Newsletter_Builder {
             wp_die( 'You do not have permission to create newsletters.', 'PTA Hub', array( 'back_link' => true ) );
         }
 
+        // Validate the edit target fully BEFORE the expensive sanitize/render:
+        // confirm it exists and is a pta_newsletter, then that this user may
+        // edit it. Fail fast so we never render HTML we'd throw away.
         $edit_id = isset( $_POST['ptk_nl_edit_id'] ) ? absint( $_POST['ptk_nl_edit_id'] ) : 0;
-        if ( $edit_id && ! current_user_can( 'edit_post', $edit_id ) ) {
-            wp_die( 'You do not have permission to edit this newsletter.', 'PTA Hub', array( 'back_link' => true ) );
+        if ( $edit_id ) {
+            $existing = get_post( $edit_id );
+            if ( ! $existing || 'pta_newsletter' !== $existing->post_type ) {
+                wp_die( 'That newsletter no longer exists — it may have been deleted.', 'PTA Hub', array( 'back_link' => true ) );
+            }
+            if ( ! current_user_can( 'edit_post', $edit_id ) ) {
+                wp_die( 'You do not have permission to edit this newsletter.', 'PTA Hub', array( 'back_link' => true ) );
+            }
         }
 
         $raw    = json_decode( wp_unslash( $_POST['ptk_nl_blocks'] ?? '' ), true );
         $blocks = PTK_Newsletter_Data::sanitize_blocks( $raw );
 
-        $issue       = absint( $_POST['ptk_nl_issue'] ?? 0 );
+        // Floor the issue number: absint() yields 0 on a missing/malformed
+        // value, which would produce a "Newsletter No. 0" title. Fall back to
+        // the next issue number instead.
+        $issue = absint( $_POST['ptk_nl_issue'] ?? 0 );
+        if ( $issue < 1 ) {
+            $issue = self::next_issue_number();
+        }
+
         $date_posted = isset( $_POST['ptk_nl_date'] ) ? sanitize_text_field( wp_unslash( $_POST['ptk_nl_date'] ) ) : '';
         $date        = preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date_posted ) ? $date_posted : current_time( 'Y-m-d' );
 
@@ -80,52 +99,10 @@ class PTK_Newsletter_Builder {
             $forced_draft = true;
         }
 
-        $rendered = PTK_Newsletter_Renderer::render( $blocks, array(
-            'issue'        => $issue,
-            'date'         => $date,
-            'today'        => current_time( 'Y-m-d' ),
-            'theme'        => 'harbor-navy',
-            'logo_url'     => get_site_icon_url() ?: '',
-            'school_name'  => self::school_name_from_blocks( $blocks ),
-            'image_url_cb' => function( $id ) {
-                return wp_get_attachment_image_url( $id, 'large' );
-            },
-        ) );
-
         $post_status = ( 'publish' === $status_req ) ? 'publish' : 'draft';
 
-        $title = sprintf( 'Newsletter No. %d — %s', $issue, date_i18n( 'F j, Y', strtotime( $date ) ) );
-
-        $post_data = array(
-            'post_type'    => 'pta_newsletter',
-            'post_title'   => $title,
-            'post_content' => $rendered,
-            'post_status'  => $post_status,
-        );
-
-        if ( $edit_id ) {
-            $existing = get_post( $edit_id );
-            if ( ! $existing || 'pta_newsletter' !== $existing->post_type ) {
-                wp_die( 'That newsletter no longer exists — it may have been deleted.', 'PTA Hub', array( 'back_link' => true ) );
-            }
-            $post_data['ID'] = $edit_id;
-            $post_id         = wp_update_post( $post_data, true );
-        } else {
-            $post_id = wp_insert_post( $post_data, true );
-        }
-
-        if ( is_wp_error( $post_id ) ) {
-            wp_die(
-                'Sorry — the newsletter could not be saved (' . esc_html( $post_id->get_error_message() ) . '). Please go back and try again.',
-                'PTA Hub',
-                array( 'back_link' => true )
-            );
-        }
-
-        update_post_meta( $post_id, 'ptk_nl_issue', $issue );
-        update_post_meta( $post_id, 'ptk_nl_date', $date );
-        update_post_meta( $post_id, 'ptk_nl_theme', 'harbor-navy' );
-        update_post_meta( $post_id, 'ptk_nl_blocks', wp_json_encode( $blocks ) );
+        // Build the post, write it, and persist the structured meta.
+        $post_id = self::persist_newsletter( $blocks, $issue, $date, $post_status, $edit_id );
 
         if ( 'preview' === $status_req ) {
             wp_safe_redirect( get_preview_post_link( $post_id ) );
@@ -141,6 +118,68 @@ class PTK_Newsletter_Builder {
             'ptk_nl_msg'     => $msg,
         ), admin_url( 'edit.php' ) ) );
         exit;
+    }
+
+    /**
+     * Render the blocks to HTML, create or update the pta_newsletter post,
+     * and save the structured meta. wp_die()s (never returns) on a failed
+     * insert/update. The caller is responsible for auth, the PII gate, and
+     * redirecting.
+     *
+     * @param array  $blocks      Sanitized blocks.
+     * @param int    $issue       Issue number (already floored to >= 1).
+     * @param string $date        Issue date 'YYYY-MM-DD'.
+     * @param string $post_status 'draft' or 'publish'.
+     * @param int    $edit_id     Existing post id to update, or 0 to insert.
+     * @return int The saved post id.
+     */
+    private static function persist_newsletter( array $blocks, $issue, $date, $post_status, $edit_id ) {
+        $rendered = PTK_Newsletter_Renderer::render( $blocks, array(
+            'issue'        => $issue,
+            'date'         => $date,
+            'today'        => current_time( 'Y-m-d' ),
+            'theme'        => self::DEFAULT_THEME,
+            'logo_url'     => get_site_icon_url() ?: '',
+            'school_name'  => self::school_name_from_blocks( $blocks ),
+            'image_url_cb' => function( $id ) {
+                return wp_get_attachment_image_url( $id, 'large' );
+            },
+        ) );
+
+        $title = sprintf( 'Newsletter No. %d — %s', $issue, date_i18n( 'F j, Y', strtotime( $date ) ) );
+
+        $post_data = array(
+            'post_type'    => 'pta_newsletter',
+            'post_title'   => $title,
+            'post_content' => $rendered,
+            'post_status'  => $post_status,
+        );
+
+        if ( $edit_id ) {
+            $post_data['ID'] = $edit_id;
+            $post_id         = wp_update_post( $post_data, true );
+        } else {
+            $post_id = wp_insert_post( $post_data, true );
+        }
+
+        // Guard both WP_Error and a falsy 0: a save_post filter can
+        // short-circuit the insert to 0, which must NOT fall through to a
+        // meta write on post 0 or a bogus "success" redirect.
+        if ( is_wp_error( $post_id ) || ! $post_id ) {
+            $detail = is_wp_error( $post_id ) ? $post_id->get_error_message() : 'the save was blocked.';
+            wp_die(
+                esc_html( 'Sorry — the newsletter could not be saved (' . $detail . '). Please go back and try again.' ),
+                'PTA Hub',
+                array( 'back_link' => true )
+            );
+        }
+
+        update_post_meta( $post_id, 'ptk_nl_issue', $issue );
+        update_post_meta( $post_id, 'ptk_nl_date', $date );
+        update_post_meta( $post_id, 'ptk_nl_theme', self::DEFAULT_THEME );
+        update_post_meta( $post_id, 'ptk_nl_blocks', wp_json_encode( $blocks ) );
+
+        return $post_id;
     }
 
     /**
