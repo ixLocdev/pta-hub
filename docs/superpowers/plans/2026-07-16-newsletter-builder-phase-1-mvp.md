@@ -112,7 +112,8 @@ class PTK_Newsletter_Post_Type {
 - [ ] **Step 2: Wire into the main plugin file**
 
 In `pta-knowledge-hub/pta-knowledge-hub.php`, add next to the other requires
-(after line ~54) and inits (after line ~131):
+(after the last `require_once`, ~line 81) and inits (after the last `::init();`,
+the init block begins ~line 131):
 
 ```php
 require_once PTK_PLUGIN_DIR . 'includes/class-newsletter-post-type.php';
@@ -364,6 +365,13 @@ value (`esc_html`/`esc_attr`/`esc_url`); allow limited inline HTML in body field
 via `wp_kses_post`. Follow the plugin design rule: **no single-side accent borders**
 — use full borders/fills only.
 
+Define the event-pill labels as an explicit key→display map so the server text and
+the Task 6 client script stay identical:
+`'past' => 'Past'`, `'this-week' => 'This week'`, `'next-week' => 'Next week'`,
+`'upcoming' => 'Upcoming'`. Emit each event pill with
+`data-event-date="YYYY-MM-DD"` and `data-default="<server label>"` so the client
+script can re-derive the label from the reader's date.
+
 Include an inline `<script>`-free static container; the reader's-date relabel
 enhancement script is added at render time by the plugin (Task 6, enqueued
 separately — not embedded in this pure output so tests stay script-free).
@@ -418,9 +426,11 @@ Keep copy in plain English per the spec's guiding principle.
 
 - [ ] **Step 3: Enqueue the CSS** (JS added in Task 7)
 
-Mirror the wizard enqueue; gate on the page hook
-(`'newsletters_page_ptk-newsletter-builder'` — verify the exact hook by logging
-`$hook` once). Enqueue `assets/css/newsletter-builder.css` with `PTK_VERSION`.
+Mirror the wizard enqueue; gate on the page hook. For a submenu under a CPT menu,
+WordPress builds the hook from the post type, so the expected value is
+**`pta_newsletter_page_ptk-newsletter-builder`** (not the archive slug). Confirm by
+logging `$hook` once, then hard-code it. Enqueue `assets/css/newsletter-builder.css`
+with `PTK_VERSION`.
 
 - [ ] **Step 4: Wire into main plugin file** (require + `PTK_Newsletter_Builder::init();`).
 
@@ -464,14 +474,26 @@ or `wp_update_post`. Persist meta: `ptk_nl_issue`, `ptk_nl_date`, `ptk_nl_theme`
 redirect to `get_preview_post_link()`; for draft/publish redirect back to the edit
 form with a success notice.
 
+- [ ] **Step 1b: Gate Publish behind the photo/PII consent checkbox** (spec §3.11, §13)
+
+In the builder form (Task 5), render a single plain-English required checkbox near
+the Publish button: **"These photos are OK to share publicly — no student faces or
+personal info."** (name `ptk_nl_pii_ok`). In `handle_submission()`, when
+`ptk_nl_status === 'publish'` and the box is not checked, do **not** publish: save as
+draft instead and redirect back with a clear notice ("Confirm the photo/privacy
+check before publishing."). Draft and Preview never require it. Keep the copy plain
+and the connection obvious (the checkbox sits with the Publish action, not buried).
+
 - [ ] **Step 2: Add the reader's-date relabel script for the public post**
 
 `newsletter-relabel.js`: on the published single view, find elements with
-`data-event-date` and set the pill text ("This week / Next week / Past / Upcoming")
-from the reader's *current* date (same behavior as the source newsletter's inline
-helper). The renderer already emits `data-event-date="YYYY-MM-DD"` and a
-`data-default` label; this script updates them client-side. Enqueue it only on
-`is_singular('pta_newsletter')`.
+`data-event-date` and set the pill text from the reader's *current* date. It must
+**reimplement the same Monday-week logic as `PTK_Newsletter_Data::relabel_for_date()`
+in JS**, mapping to the same labels ("Past / This week / Next week / Upcoming").
+Reference implementation to adapt: the inline `data-event-date` helper script at the
+bottom of `NEPTANewsletter/newsletter-038-week-of-6-22-26.html`. The renderer already
+emits `data-event-date="YYYY-MM-DD"` and a `data-default` server label; this script
+overrides them client-side. Enqueue only on `is_singular('pta_newsletter')`.
 
 - [ ] **Step 3: Functional verify (the core end-to-end)**
 
@@ -537,11 +559,12 @@ git commit -m "Add builder interactions: repeatable rows, move up/down, image pi
 
 ---
 
-## Task 8: Edit path + "Add New" redirect + polish
+## Task 8: Edit path + "Add New" redirect + share-a-preview link
 
 **Files:**
 - Modify: `pta-knowledge-hub/includes/class-newsletter-builder.php`
 - Modify: `pta-knowledge-hub/includes/class-newsletter-post-type.php`
+- Modify: `pta-knowledge-hub/includes/class-public-preview.php`
 
 - [ ] **Step 1: Route editing through the builder**
 
@@ -552,16 +575,48 @@ load issue/date/blocks from meta and prefill. Redirect the default
 `post-new.php?post_type=pta_newsletter` to the builder (mirror the wizard's
 `redirect_add_new_to_wizard` + `remove_default_add_new`).
 
-- [ ] **Step 2: Functional verify**
+- [ ] **Step 2: Generalize public-preview to cover newsletters** (spec §3.10, §12, §13)
 
-"Add New" and the list-table "Edit" both open the builder (never the block editor);
-editing an existing newsletter round-trips correctly.
+`class-public-preview.php` is currently hard-coupled to `pta_knowledge` in four
+places: the query in `maybe_render_preview()` (`'post_type' => 'pta_knowledge'`), and
+the three `'pta_knowledge' !== $post->post_type` checks in `render_publish_box()`,
+`handle_generate()`, and `handle_revoke()`. Replace these with a filterable supported
+list:
 
-- [ ] **Step 3: Commit**
+```php
+public static function supported_post_types() {
+    return apply_filters( 'ptk_preview_post_types', array( 'pta_knowledge', 'pta_newsletter' ) );
+}
+```
+
+Use `in_array( $post->post_type, self::supported_post_types(), true )` for the checks,
+and `'post_type' => self::supported_post_types()` in the query. This is a low-risk,
+additive change (existing `pta_knowledge` behavior is unchanged). Note: token render
+uses the post's normal single template — for `pta_newsletter` that already shows the
+rendered `post_content`, so no template work is needed.
+
+- [ ] **Step 3: Surface the preview link in the builder form**
+
+The existing UI hangs off `post_submitbox_misc_actions` (the classic editor publish
+box), which our custom form does not use. So in the builder, when editing a saved
+draft, render a small **"Share a preview link (no login needed)"** control that
+calls the same `admin_action_ptk_generate_preview` / `ptk_revoke_preview` handlers
+(reuse `PTK_Public_Preview`'s existing generate/revoke actions and the
+`ptk_preview_token`/expiry meta) and shows the copyable URL. Plain-English label; keep
+it visually tied to the draft it belongs to.
+
+- [ ] **Step 4: Functional verify**
+
+"Add New" and list-table "Edit" both open the builder (never the block editor);
+editing round-trips. On a saved draft, generating a preview link produces a
+`?ptk_preview=<token>` URL that renders the newsletter for a logged-out visitor and
+auto-revokes on publish.
+
+- [ ] **Step 5: Commit**
 
 ```bash
 git add -A
-git commit -m "Route newsletter add/edit through the builder form"
+git commit -m "Route newsletter add/edit through the builder; add no-login share-a-preview links"
 ```
 
 ---
@@ -608,8 +663,9 @@ git commit -m "Newsletter Builder MVP: build, draft-preview, and publish a websi
 
 - A non-technical admin can open **Newsletters → Add New**, get a pre-filled
   suggested layout, edit plain-English fields, add/remove/reorder middle blocks,
-  attach images, **save a draft, preview the real rendered newsletter**, and
-  **publish** it to `/newsletters/` on their school site — all without touching
+  attach images, **save a draft, preview the real rendered newsletter** (in-admin,
+  or via a **no-login share-a-preview link**), confirm the **photo/PII checkbox**,
+  and **publish** it to `/newsletters/` on their school site — all without touching
   HTML or the block editor.
 - Content is stored as structured meta and re-rendered on every save.
 - All pure-logic units have passing standalone tests.
