@@ -52,6 +52,7 @@ if ( ! function_exists( 'ptk_glossary_url' ) ) {
  * Load plugin classes.
  */
 require_once PTK_PLUGIN_DIR . 'includes/class-post-type.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-newsletter-post-type.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-search-engine.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-single-enhancements.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-qr-codes.php';
@@ -129,6 +130,7 @@ function ptk_check_access( $render_message = false ) {
  */
 function ptk_init() {
     PTK_Post_Type::init();
+    PTK_Newsletter_Post_Type::init();
     PTK_Search_Engine::init();
     PTK_Single_Enhancements::init();
     PTK_QR_Codes::init();
