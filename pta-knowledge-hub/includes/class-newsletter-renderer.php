@@ -216,9 +216,6 @@ class PTK_Newsletter_Renderer {
 
     /**
      * Featured hero: navy block with eyebrow, headline, body, optional image.
-     *
-     * TODO(Task 6/7): once an attachment URL resolver is wired up, pass an
-     * $opts['image_url_cb'] callback so real uploaded images render here.
      */
     private static function render_featured( array $data, array $opts ) {
         $eyebrow  = isset( $data['eyebrow'] ) ? self::str( $data['eyebrow'] ) : '';
