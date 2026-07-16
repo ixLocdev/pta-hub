@@ -76,7 +76,7 @@ class PTK_Vendor_Moderation {
 
     /** Pending vendors + pending reviews on published vendors (reviews on
      *  pending vendors are counted with their vendor, not double-counted). */
-    private static function pending_count() {
+    public static function pending_count() {
         global $wpdb;
 
         $counts          = wp_count_posts( 'ptk_vendor' );

@@ -32,6 +32,22 @@ if ( ! function_exists( 'ptk_hub_url' ) ) {
     }
 }
 
+if ( ! function_exists( 'ptk_glossary_url' ) ) {
+    /**
+     * Resolve the public Glossary URL.
+     *
+     * Defaults to /glossary on the current site (the slug the activation
+     * routine creates). Customizable via the `ptk_glossary_slug` option or
+     * the `ptk_glossary_url` filter — mirrors ptk_hub_url().
+     */
+    function ptk_glossary_url() {
+        return apply_filters(
+            'ptk_glossary_url',
+            home_url( '/' . ltrim( get_option( 'ptk_glossary_slug', 'glossary' ), '/' ) )
+        );
+    }
+}
+
 /**
  * Load plugin classes.
  */

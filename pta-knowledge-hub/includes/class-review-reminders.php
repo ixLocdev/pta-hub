@@ -191,20 +191,27 @@ class PTK_Review_Reminders {
         );
     }
 
-    public static function render_dashboard_widget() {
+    /**
+     * Query args for entries overdue for review: reviewed longer ago than the
+     * threshold, OR never reviewed and the entry itself is older than the
+     * threshold. Shared by overdue_count() and the dashboard widget so the
+     * count and the list always agree.
+     *
+     * Deliberately NO top-level meta_key/orderby: a bare meta_key adds an
+     * implicit "meta must exist" clause ANDed with meta_query, which silently
+     * drops the never-reviewed (NOT EXISTS) posts. Order via the named
+     * meta_query clause ('reviewed_old') instead.
+     */
+    private static function overdue_query_args() {
         $threshold_months = self::get_threshold();
         $threshold_date   = gmdate( 'Y-m-d', strtotime( '-' . $threshold_months . ' months' ) );
 
-        $args = array(
-            'post_type'      => 'pta_knowledge',
-            'post_status'    => 'publish',
-            'posts_per_page' => 20,
-            'orderby'        => 'meta_value',
-            'meta_key'       => self::META_KEY,
-            'order'          => 'ASC',
-            'meta_query'     => array(
+        return array(
+            'post_type'   => 'pta_knowledge',
+            'post_status' => 'publish',
+            'meta_query'  => array(
                 'relation' => 'OR',
-                array(
+                'reviewed_old' => array(
                     'key'     => self::META_KEY,
                     'value'   => $threshold_date,
                     'compare' => '<',
@@ -215,14 +222,35 @@ class PTK_Review_Reminders {
                     'compare' => 'NOT EXISTS',
                 ),
             ),
-            'date_query' => array(
+            'date_query'  => array(
                 array(
                     'before'    => $threshold_date,
                     'inclusive' => true,
                 ),
             ),
         );
+    }
 
+    /**
+     * Number of published entries overdue for review (same rule as the
+     * dashboard widget, but uncapped — the widget's 20-row cap would
+     * under-count). Used by the Welcome screen's "waiting for you" strip.
+     *
+     * @return int
+     */
+    public static function overdue_count() {
+        $args                   = self::overdue_query_args();
+        $args['posts_per_page'] = -1;
+        $args['fields']         = 'ids';
+        return count( get_posts( $args ) );
+    }
+
+    public static function render_dashboard_widget() {
+        $threshold_months = self::get_threshold();
+
+        $args                   = self::overdue_query_args();
+        $args['posts_per_page'] = 20;
+        $args['orderby']        = array( 'reviewed_old' => 'ASC' );
         $posts = get_posts( $args );
 
         if ( empty( $posts ) ) {
