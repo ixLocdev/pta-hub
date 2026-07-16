@@ -24,6 +24,24 @@ class PTK_Analytics {
         add_action( 'wp_dashboard_setup', array( __CLASS__, 'add_dashboard_widget' ) );
         add_action( 'admin_menu', array( __CLASS__, 'add_analytics_page' ) );
         add_action( 'admin_init', array( __CLASS__, 'handle_csv_export' ) );
+
+        add_action( 'ptk_prune_logs', array( __CLASS__, 'prune_logs' ) );
+        if ( ! wp_next_scheduled( 'ptk_prune_logs' ) ) {
+            wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'ptk_prune_logs' );
+        }
+    }
+
+    /**
+     * Delete search/click log rows older than 12 months. Runs daily via cron —
+     * these tables accept nopriv inserts and would otherwise grow unbounded.
+     */
+    public static function prune_logs() {
+        global $wpdb;
+        $cutoff       = gmdate( 'Y-m-d H:i:s', strtotime( '-12 months' ) );
+        $search_table = $wpdb->prefix . 'ptk_search_log';
+        $click_table  = $wpdb->prefix . 'ptk_click_log';
+        $wpdb->query( $wpdb->prepare( "DELETE FROM {$search_table} WHERE searched_at < %s", $cutoff ) ); // phpcs:ignore WordPress.DB
+        $wpdb->query( $wpdb->prepare( "DELETE FROM {$click_table} WHERE clicked_at < %s", $cutoff ) ); // phpcs:ignore WordPress.DB
     }
 
     /**

@@ -295,6 +295,15 @@ class PTK_Multisite {
         $cat_terms = wp_get_post_terms( $post_id, 'knowledge_category' );
         $tag_terms = wp_get_post_terms( $post_id, 'post_tag' );
 
+        // Read source meta on the MAIN (Council) site BEFORE the switch_to_blog
+        // loop — reading these while switched to a subsite would hit the
+        // subsite's DB, not the Council's.
+        $sync_meta_keys = array( 'ptk_visible_roles', 'ptk_difficulty', 'ptk_time_estimate', 'ptk_event_date', 'ptk_location', 'ptk_budget', 'ptk_last_reviewed', 'ptk_resource_url', 'ptk_file_type' );
+        $source_meta    = array();
+        foreach ( $sync_meta_keys as $mk ) {
+            $source_meta[ $mk ] = get_post_meta( $post_id, $mk, true );
+        }
+
         foreach ( $target_ids as $blog_id ) {
             switch_to_blog( $blog_id );
 
@@ -341,6 +350,19 @@ class PTK_Multisite {
             if ( $copy_id && ! is_wp_error( $copy_id ) ) {
                 self::sync_terms( $copy_id, $cat_terms, 'knowledge_category' );
                 self::sync_terms( $copy_id, $tag_terms, 'post_tag' );
+
+                // Propagate role restrictions (security — restricted Council
+                // entries must stay restricted on schools) + category meta.
+                // Featured-image sync is deferred: cross-site media (the
+                // attachment lives in the Council's library and its ID won't
+                // resolve on a subsite) is a separate, larger effort.
+                foreach ( $sync_meta_keys as $mk ) {
+                    if ( isset( $source_meta[ $mk ] ) && '' !== $source_meta[ $mk ] && array() !== $source_meta[ $mk ] ) {
+                        update_post_meta( $copy_id, $mk, $source_meta[ $mk ] );
+                    } else {
+                        delete_post_meta( $copy_id, $mk );
+                    }
+                }
 
                 // Auto-flush rewrite rules on first sync to this subsite
                 // so /knowledge/ URLs work without manual permalink save.

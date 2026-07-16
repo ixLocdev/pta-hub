@@ -318,5 +318,6 @@ add_action( 'wp_enqueue_scripts', 'ptk_single_assets' );
  */
 function ptk_deactivate() {
     flush_rewrite_rules();
+    wp_clear_scheduled_hook( 'ptk_prune_logs' );
 }
 register_deactivation_hook( __FILE__, 'ptk_deactivate' );
