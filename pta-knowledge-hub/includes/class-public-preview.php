@@ -130,9 +130,13 @@ class PTK_Public_Preview {
         self::$banner_html = self::build_banner( $expires );
 
         // Post-type-aware template selection: single-{post_type}-{slug}.php →
-        // single-{post_type}.php → single.php, falling back to the bundled
-        // KB template for pta_knowledge (preserving prior behavior) and
-        // finally to the theme's index template for a bare theme.
+        // single-{post_type}.php → single.php. For pta_knowledge the bundled
+        // KB template is already supplied by the plugin's pre-existing
+        // `single_template` filter (ptk_single_template()), which
+        // get_single_template() invokes — so $template is normally already
+        // truthy here. The next block is only a last-resort safety net for
+        // the unexpected case where get_single_template() returns nothing for
+        // a pta_knowledge post; the final block covers a bare theme.
         $template = get_single_template();
         if ( ! $template && 'pta_knowledge' === $post->post_type ) {
             $template = PTK_PLUGIN_DIR . 'templates/single-pta_knowledge.php';

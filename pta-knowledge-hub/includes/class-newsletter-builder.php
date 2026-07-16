@@ -542,8 +542,9 @@ class PTK_Newsletter_Builder {
      * Render the "share a preview link" panel for an existing newsletter,
      * backed by the same no-login token system used for knowledge entries
      * (PTK_Public_Preview). This is a SEPARATE <form> from the main builder
-     * form above — it posts to admin-post.php's generate/revoke actions,
-     * not the builder's own save handler — and only appears in edit mode,
+     * form above — it posts to admin.php's generate/revoke actions (see the
+     * inline note by $post_action below), not the builder's own save
+     * handler — and only appears in edit mode,
      * since a brand-new (unsaved) newsletter has no post id to attach a
      * token to.
      *
