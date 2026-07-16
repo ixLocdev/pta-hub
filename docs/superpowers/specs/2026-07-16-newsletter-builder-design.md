@@ -245,6 +245,18 @@ truth: `NEPTANewsletter/newsletter-038-week-of-6-22-26.html` and
   (`class-notifications.php`).
 - Additional template *styles* beyond the default.
 - Email renderer + Givebacks paste-in flow (then investigate Givebacks API).
+- **Typography presets** (decided 2026-07-16): the plugin deliberately does NOT
+  load web fonts. Font stacks are `'Inter', <system sans>` and
+  `'Fraunces', Georgia, serif` — a school whose theme already provides those
+  fonts (e.g. Northeast) gets the intended design for free; everyone else
+  degrades to a clean system sans + Georgia. No external request, no privacy
+  question, nothing forced on schools with their own type. When theme presets
+  (§8) are built, bundle typography INTO each preset so a school picks a whole
+  look (colors + type together) rather than choosing fonts à la carte.
+- **Theme chrome fit:** a school's theme renders its own post title above the
+  newsletter and may constrain the content width. Decide how the newsletter
+  should sit inside an arbitrary theme (full-bleed vs. constrained, title
+  suppression) once real school themes are in play.
 
 ## 16. Open Questions
 

@@ -52,6 +52,8 @@ if ( ! function_exists( 'ptk_glossary_url' ) ) {
  * Load plugin classes.
  */
 require_once PTK_PLUGIN_DIR . 'includes/class-post-type.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-newsletter-post-type.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-newsletter-builder.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-search-engine.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-single-enhancements.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-qr-codes.php';
@@ -129,6 +131,8 @@ function ptk_check_access( $render_message = false ) {
  */
 function ptk_init() {
     PTK_Post_Type::init();
+    PTK_Newsletter_Post_Type::init();
+    PTK_Newsletter_Builder::init();
     PTK_Search_Engine::init();
     PTK_Single_Enhancements::init();
     PTK_QR_Codes::init();
@@ -173,12 +177,32 @@ function ptk_maybe_clear_cache_on_update() {
 add_action( 'init', 'ptk_maybe_clear_cache_on_update' );
 
 /**
+ * Flush rewrite rules once after the plugin's rewrite-affecting version changes.
+ *
+ * The activation hook does not fire when a plugin is UPDATED, so a new custom
+ * post type (e.g. Newsletters and its /newsletters/ archive) would 404 until
+ * someone manually re-saved Settings → Permalinks. PTA volunteers will never
+ * know to do that, so we flush for them, once, automatically.
+ *
+ * Runs late on `init` (priority 99) so every post type is registered first.
+ */
+function ptk_maybe_flush_rewrites_on_update() {
+    if ( get_option( 'ptk_rewrite_ver', '' ) !== PTK_VERSION ) {
+        flush_rewrite_rules();
+        update_option( 'ptk_rewrite_ver', PTK_VERSION );
+    }
+}
+add_action( 'init', 'ptk_maybe_flush_rewrites_on_update', 99 );
+
+/**
  * On activation: create default categories and a Knowledge Base page.
  */
 function ptk_activate() {
-    // Register post type first so taxonomy exists.
+    // Register post types first so the taxonomy exists and every rewrite rule
+    // (including the Newsletters archive) is present for the flush below.
     PTK_Post_Type::register_post_type();
     PTK_Post_Type::register_taxonomy();
+    PTK_Newsletter_Post_Type::register();
 
     // Insert default categories.
     $defaults = array(
