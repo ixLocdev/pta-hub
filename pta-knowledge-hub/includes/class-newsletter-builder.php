@@ -402,7 +402,32 @@ class PTK_Newsletter_Builder {
             return PTK_Newsletter_Data::sanitize_blocks( json_decode( get_post_meta( $edit_id, 'ptk_nl_blocks', true ), true ) );
         }
 
-        return PTK_Newsletter_Data::default_blocks();
+        return self::default_blocks_for_site();
+    }
+
+    /**
+     * The suggested layout for a NEW newsletter, pre-filled with what this
+     * school's own site already knows about itself — one less thing for a
+     * volunteer to type. On the network each school is its own sub-site, so
+     * get_bloginfo() resolves to that school's name.
+     *
+     * Everything stays editable; this only supplies a sensible starting value.
+     */
+    private static function default_blocks_for_site() {
+        $blocks = PTK_Newsletter_Data::default_blocks();
+
+        // Decode entities (e.g. "Smith &amp; Jones") so the form shows the real
+        // name rather than the encoded one — it gets re-escaped on render.
+        $school_name = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
+
+        foreach ( $blocks as $i => $block ) {
+            if ( isset( $block['type'] ) && PTK_Newsletter_Data::TYPE_HEADER === $block['type'] ) {
+                $blocks[ $i ]['data']['school_name'] = $school_name;
+                break;
+            }
+        }
+
+        return $blocks;
     }
 
     /**
