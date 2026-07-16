@@ -657,6 +657,11 @@ class PTK_Newsletter_Builder {
                     <input type="text" id="ptk-nl-header-school_name" data-field="school_name" value="<?php echo esc_attr( isset( $data['school_name'] ) ? $data['school_name'] : '' ); ?>">
                 </div>
                 <div class="ptk-nl-field-group">
+                    <label for="ptk-nl-header-headline">Headline</label>
+                    <input type="text" id="ptk-nl-header-headline" data-field="headline" value="<?php echo esc_attr( isset( $data['headline'] ) ? $data['headline'] : '' ); ?>">
+                    <p class="description">The big title at the top — for example "Week of July 16." Leave blank and we'll use the week of your issue date.</p>
+                </div>
+                <div class="ptk-nl-field-group">
                     <label for="ptk-nl-header-greeting">Greeting</label>
                     <textarea id="ptk-nl-header-greeting" data-field="greeting" rows="2"><?php echo esc_textarea( isset( $data['greeting'] ) ? $data['greeting'] : '' ); ?></textarea>
                 </div>

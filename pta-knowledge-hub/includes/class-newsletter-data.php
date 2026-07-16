@@ -51,6 +51,7 @@ class PTK_Newsletter_Data {
                 'type' => self::TYPE_HEADER,
                 'data' => array(
                     'school_name' => '',
+                    'headline'    => '',
                     'greeting'    => '',
                 ),
             ),
@@ -173,6 +174,7 @@ class PTK_Newsletter_Data {
             case self::TYPE_HEADER:
                 return array(
                     'school_name' => sanitize_text_field( self::str_field( isset( $data['school_name'] ) ? $data['school_name'] : '' ) ),
+                    'headline'    => sanitize_text_field( self::str_field( isset( $data['headline'] ) ? $data['headline'] : '' ) ),
                     'greeting'    => wp_kses_post( self::str_field( isset( $data['greeting'] ) ? $data['greeting'] : '' ) ),
                 );
 

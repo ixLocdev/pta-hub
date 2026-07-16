@@ -22,6 +22,31 @@ ptk_test_ok( strpos( $html, '#1a2f5c' ) !== false, 'uses Harbor Navy primary col
 ptk_test_ok( strpos( $html, 'No.&nbsp;39' ) !== false || strpos( $html, '39' ) !== false, 'renders issue number' );
 ptk_test_ok( strpos( $html, '<script' ) === false, 'no raw script tags in output' );
 
+// --- Masthead: a provided headline renders as the big H1. ------------------
+$headline_blocks = array(
+    array( 'type' => 'header', 'data' => array( 'school_name' => 'Northeast PTA', 'headline' => 'Week of June 22', 'greeting' => 'Hi families' ) ),
+);
+$headline_html = PTK_Newsletter_Renderer::render( $headline_blocks, array(
+    'issue' => 39, 'date' => '2026-06-22', 'today' => '2026-06-22',
+    'theme' => 'harbor-navy', 'logo_url' => '', 'school_name' => 'Northeast PTA',
+) );
+ptk_test_ok( strpos( $headline_html, 'Week of June 22' ) !== false, 'provided headline renders' );
+ptk_test_ok( strpos( $headline_html, 'Northeast PTA' ) !== false, 'school name still renders as the eyebrow' );
+
+// --- Masthead: a blank headline auto-derives "Week of {Month} {day}". ------
+$blank_headline_blocks = array(
+    array( 'type' => 'header', 'data' => array( 'school_name' => 'Northeast PTA', 'headline' => '', 'greeting' => 'Hi families' ) ),
+);
+$blank_headline_html = PTK_Newsletter_Renderer::render( $blank_headline_blocks, array(
+    'issue' => 39, 'date' => '2026-07-16', 'today' => '2026-07-16',
+    'theme' => 'harbor-navy', 'logo_url' => '', 'school_name' => 'Northeast PTA',
+) );
+ptk_test_ok( strpos( $blank_headline_html, 'Week of July 16' ) !== false, 'blank headline auto-derives "Week of {Month} {day}"' );
+
+// --- Masthead: the issue date renders friendly, not raw ISO. ---------------
+ptk_test_ok( strpos( $blank_headline_html, 'July 16, 2026' ) !== false, 'friendly formatted issue date renders' );
+ptk_test_ok( strpos( $blank_headline_html, '2026-07-16' ) === false, 'raw ISO date is not shown as the date line' );
+
 // --- Empty blocks must render nothing (no empty bars). ---------------------
 // The default layout is entirely empty; only the header should render.
 $empty_opts  = array(

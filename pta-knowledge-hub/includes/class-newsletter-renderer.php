@@ -84,10 +84,21 @@ class PTK_Newsletter_Renderer {
      */
     private static function render_header( array $data, array $opts ) {
         $school_name = isset( $data['school_name'] ) ? self::str( $data['school_name'] ) : '';
+        $headline    = isset( $data['headline'] ) ? self::str( $data['headline'] ) : '';
         $greeting    = isset( $data['greeting'] ) ? self::str( $data['greeting'] ) : '';
         $issue       = isset( $opts['issue'] ) ? $opts['issue'] : '';
         $date        = isset( $opts['date'] ) ? self::str( $opts['date'] ) : '';
         $logo_url    = isset( $opts['logo_url'] ) ? self::str( $opts['logo_url'] ) : '';
+
+        // Blank headline: auto-derive "Week of {Month} {day}" from the issue
+        // date so the masthead works out of the box with zero effort. If the
+        // date can't be parsed, omit the H1 entirely rather than print
+        // something broken.
+        if ( '' === trim( $headline ) ) {
+            $headline = ( '' !== trim( $date ) ) ? self::derive_week_of_headline( $date ) : '';
+        }
+
+        $date_display = ( '' !== trim( $date ) ) ? self::format_issue_date( $date ) : '';
 
         $logo_html = '';
         if ( '' !== trim( $logo_url ) ) {
@@ -99,6 +110,16 @@ class PTK_Newsletter_Renderer {
             $issue_html = '<div style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:' . esc_attr( self::PALETTE['muted'] ) . ';font-weight:600;margin-bottom:10px;">No.&nbsp;' . esc_html( self::str( $issue ) ) . '</div>';
         }
 
+        $headline_html = '';
+        if ( '' !== trim( $headline ) ) {
+            $headline_html = '<h1 style="font-family:' . self::FONT_SANS . ';font-weight:800;font-size:clamp(30px,7vw,44px);line-height:1.02;letter-spacing:-0.025em;margin:0;color:' . esc_attr( self::PALETTE['text'] ) . ';">' . esc_html( $headline ) . '</h1>';
+        }
+
+        $date_html = '';
+        if ( '' !== trim( $date_display ) ) {
+            $date_html = '<div style="font-weight:600;color:' . esc_attr( self::PALETTE['text'] ) . ';">' . esc_html( $date_display ) . '</div>';
+        }
+
         $html  = '<div style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:32px 20px;border-bottom:1px solid ' . esc_attr( self::PALETTE['hairline'] ) . ';box-sizing:border-box;">';
         $html .= '<div style="max-width:840px;margin:0 auto;">';
         $html .= '<div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap;">';
@@ -108,10 +129,10 @@ class PTK_Newsletter_Renderer {
         $html .= '<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;border-top:1px solid ' . esc_attr( self::PALETTE['text'] ) . ';padding-top:20px;">';
         $html .= '<div style="flex:1 1 240px;min-width:240px;">';
         $html .= $issue_html;
-        $html .= '<h1 style="font-family:' . self::FONT_SANS . ';font-weight:800;font-size:clamp(30px,7vw,44px);line-height:1.02;letter-spacing:-0.025em;margin:0;color:' . esc_attr( self::PALETTE['text'] ) . ';">' . esc_html( $school_name ) . '</h1>';
+        $html .= $headline_html;
         $html .= '</div>';
         $html .= '<div style="font-size:13px;color:' . esc_attr( self::PALETTE['muted'] ) . ';line-height:1.5;">';
-        $html .= '<div style="font-weight:600;color:' . esc_attr( self::PALETTE['text'] ) . ';">' . esc_html( $date ) . '</div>';
+        $html .= $date_html;
         $html .= '</div>';
         $html .= '</div>';
         $html .= '<p style="font-size:16px;line-height:1.65;color:' . esc_attr( self::PALETTE['muted'] ) . ';margin:24px 0 0;max-width:620px;">' . wp_kses_post( $greeting ) . '</p>';
@@ -419,5 +440,35 @@ class PTK_Newsletter_Renderer {
             return $date;
         }
         return $dt->format( 'M j' );
+    }
+
+    /**
+     * Format a 'YYYY-MM-DD' date as "Thursday, July 16, 2026" for the
+     * masthead's friendly issue date line.
+     *
+     * @param string $date 'YYYY-MM-DD'.
+     * @return string Formatted date, or '' if unparseable.
+     */
+    private static function format_issue_date( $date ) {
+        $dt = DateTime::createFromFormat( '!Y-m-d', $date );
+        if ( ! $dt ) {
+            return '';
+        }
+        return $dt->format( 'l, F j, Y' );
+    }
+
+    /**
+     * Derive the default masthead headline "Week of {Month} {day}" from a
+     * 'YYYY-MM-DD' issue date.
+     *
+     * @param string $date 'YYYY-MM-DD'.
+     * @return string Derived headline, or '' if the date is unparseable.
+     */
+    private static function derive_week_of_headline( $date ) {
+        $dt = DateTime::createFromFormat( '!Y-m-d', $date );
+        if ( ! $dt ) {
+            return '';
+        }
+        return 'Week of ' . $dt->format( 'F j' );
     }
 }
