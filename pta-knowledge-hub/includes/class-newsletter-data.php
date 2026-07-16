@@ -14,6 +14,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class PTK_Newsletter_Data {
 
+    const DATE_PATTERN = '/^\d{4}-\d{2}-\d{2}$/';
+
     const TYPE_HEADER       = 'header';
     const TYPE_ANNOUNCEMENT = 'announcement';
     const TYPE_EVENTS       = 'events';
@@ -262,7 +264,7 @@ class PTK_Newsletter_Data {
      */
     protected static function sanitize_date( $date ) {
         $date = sanitize_text_field( self::str_field( $date ) );
-        return preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date ) ? $date : '';
+        return preg_match( self::DATE_PATTERN, $date ) ? $date : '';
     }
 
     /**
@@ -272,7 +274,7 @@ class PTK_Newsletter_Data {
      * @return int
      */
     public static function compute_next_issue( $last ) {
-        return max( 1, intval( $last ) + 1 );
+        return max( 1, intval( self::str_field( $last ) ) + 1 );
     }
 
     /**
@@ -291,6 +293,9 @@ class PTK_Newsletter_Data {
             return 'upcoming';
         }
 
+        // The "past" check runs BEFORE the week-window check on purpose: an
+        // event earlier than $today but in the same Monday–Sunday week is
+        // labeled 'past', not 'this-week'. Keep this ordering in the JS port.
         if ( $event_dt < $today_dt ) {
             return 'past';
         }
@@ -332,7 +337,7 @@ class PTK_Newsletter_Data {
         }
 
         $value = trim( (string) $value );
-        if ( '' === $value || ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $value ) ) {
+        if ( '' === $value || ! preg_match( self::DATE_PATTERN, $value ) ) {
             return null;
         }
 
