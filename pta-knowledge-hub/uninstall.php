@@ -65,6 +65,13 @@ $ptk_cleanup_site = function () {
     delete_transient( 'ptk_glossary_terms' );
 
     // Clean up post meta added by plugin features (posts themselves preserved).
+    //
+    // Newsletters (pta_newsletter) follow the same policy as knowledge and vendor
+    // posts: the posts AND their structured content meta (ptk_nl_blocks / ptk_nl_issue
+    // / ptk_nl_date / ptk_nl_theme) are intentionally preserved so a newsletter stays
+    // viewable and re-editable if the plugin is reinstalled. Their share-a-preview
+    // tokens ARE cleared here via the shared ptk_preview_token / ptk_preview_expires
+    // keys below (the same keys knowledge entries use).
     $wpdb->query( "DELETE FROM {$wpdb->postmeta} WHERE meta_key IN ('ptk_share_network', 'ptk_network_source', 'ptk_network_source_blog', 'ptk_suggested_from_blog', 'ptk_suggested_from_post', 'ptk_visible_roles', 'ptk_audience_mode', 'ptk_share_sites', 'ptk_preview_token', 'ptk_preview_expires')" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 
     // Clean up user meta for notifications.
