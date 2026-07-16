@@ -1,0 +1,73 @@
+/**
+ * School colors: Owner-column dots + the Council "School Colors" settings screen.
+ *
+ * Design rule: full borders, fills, and colored dots ONLY — never half/single-side
+ * accent borders. Colors come from inline styles (the Council-set palette), escaped
+ * in PHP; this file only lays out shape and spacing.
+ */
+
+/* Colored dot — used in the Owner column and the settings preview. */
+.ptk-color-dot {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    vertical-align: middle;
+    margin-right: 8px;
+    border: 1px solid rgba( 0, 0, 0, 0.12 );
+}
+
+/* Owner column badge (dot + name). */
+.ptk-owner-badge {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.ptk-owner-badge strong {
+    font-weight: 600;
+}
+
+.ptk-owner-lock {
+    margin-right: 4px;
+}
+
+/* Owner filter view links reuse the core .subsubsub styling; nothing needed. */
+
+/* Settings screen. */
+.ptk-school-colors .ptk-colors-table th,
+.ptk-school-colors .ptk-colors-table td {
+    vertical-align: middle;
+    padding: 10px 12px;
+}
+
+.ptk-school-colors .ptk-colors-table .ptk-color-dot {
+    width: 16px;
+    height: 16px;
+    margin-right: 0;
+}
+
+.ptk-school-colors input[type="color"] {
+    width: 52px;
+    height: 30px;
+    padding: 2px;
+    border: 1px solid #8c8f94;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+    vertical-align: middle;
+}
+
+.ptk-school-colors .ptk-council-tag {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #50575e;
+    background: #f0f0f1;
+    border: 1px solid #dcdcde;
+    border-radius: 10px;
+}
