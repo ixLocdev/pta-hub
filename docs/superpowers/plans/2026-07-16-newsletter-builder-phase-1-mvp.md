@@ -1,5 +1,23 @@
 # Newsletter Builder — Phase 1 (MVP) Implementation Plan
 
+> **STATUS: COMPLETE** (2026-07-16, branch `newsletter-builder-mvp`). All 9 tasks
+> implemented, each spec- and quality-reviewed, plus a whole-feature review.
+> Verified end-to-end against a real WordPress (WordPress Playground, PHP-WASM):
+> build → save draft → preview → publish → view, PII gate, edit round-trip,
+> auto-titling/issue increment, event-pill relabeling, and label accessibility.
+>
+> **Four issues that only real-WordPress testing found, now fixed:**
+> 1. KSES stripped `data-event-date` + flexbox inline styles for authors without
+>    `unfiltered_html` (every non-super-admin) — trusted-content bypass added.
+> 2. `update_post_meta()` unslashed the stored JSON, corrupting em dashes /
+>    curly quotes / accents / emoji into literal `u2014` — `wp_slash()` added.
+> 3. `/newsletters/` URLs 404'd after a plugin update (activation hook doesn't
+>    run on update) — automatic one-time rewrite flush added.
+> 4. The masthead duplicated the school name and showed a raw ISO date — a real
+>    `headline` field (auto-defaulting to "Week of …") + friendly date added.
+>
+> **Deliberately deferred:** version bump + zip/update-info release artifacts.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** A school admin can build a newsletter from a guided form (default layout pre-filled), save it as a draft, preview the real rendered result, and publish it as a public post on their school's WordPress site — using the default Northeast-style template.
