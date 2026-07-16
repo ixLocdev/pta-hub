@@ -76,9 +76,12 @@ belongs to and quotes the actual text. Never give the user mental overload.
 - **Data model — structured content, then render (decision #6):**
   - The newsletter's **structured content** (ordered list of blocks + each
     block's fields) is stored as **post meta**, not baked only into HTML.
-  - On save/publish, the plugin **renders** that structured data into the post's
-    `post_content` (or an equivalent front-end render) using the default
-    template's styles.
+  - **Render target (decided):** post meta is the single source of truth; on
+    every save the plugin **regenerates** the post's `post_content` from that
+    structured data using the default template's styles. `post_content` is always
+    machine-generated, never hand-edited — so there is no drift, the newsletter
+    behaves like a normal post (feeds, search, and later a Givebacks copy-paste
+    all work), and editing always reloads the form from meta, not from HTML.
   - Rationale: (a) "duplicate last issue" and "edit" reconstruct the form from
     structured data; (b) the deferred email version becomes a *second renderer*
     over the same data instead of a rebuild; (c) the carried-over guard can
@@ -94,6 +97,11 @@ belongs to and quotes the actual text. Never give the user mental overload.
     from `ptk_site_colors`.
   - Council default push handled via the existing multisite/sync layer
     (`class-multisite.php` / `class-network-provisioning.php`).
+- **Suggested build sequence** (for the implementation plan): CPT + renderer
+  first (a newsletter that renders from structured meta), then the guided-form UI
+  as the spine, then the carried-over guard, then themes + Council push. Each is
+  part of one coherent feature, but this order keeps every step independently
+  testable.
 
 ## 5. The Building Blocks
 
@@ -144,9 +152,11 @@ publish** review.
   with clear actions (e.g. Update date / Remove / Keep anyway; Edit / Keep as-is).
 - **Publish stays locked** until every flagged item is confirmed; then the button
   unlocks. No stale content can slip out unreviewed.
-- **Reuse:** build on `class-review-reminders.php`, which already implements
-  "auto-stamp reviewed on publish/update, **except during Council sync**," plus
-  green/amber/red freshness indicators — the same philosophy this guard needs.
+- **Reuse vs. new logic:** the field-level diff between issues and the
+  publish-blocking gate are **genuinely new logic** — not a thin wrapper. What we
+  borrow from `class-review-reminders.php` is its proven *patterns*: stamping
+  state on publish/update **except during Council sync**, and the green/amber/red
+  indicator vocabulary. Plan for real new code here, reusing those patterns.
 
 ## 8. Color Theming
 
