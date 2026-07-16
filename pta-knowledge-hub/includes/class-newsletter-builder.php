@@ -212,12 +212,12 @@ class PTK_Newsletter_Builder {
             case 'header':
                 ?>
                 <div class="ptk-nl-field-group">
-                    <label>School name</label>
-                    <input type="text" data-field="school_name" value="<?php echo esc_attr( isset( $data['school_name'] ) ? $data['school_name'] : '' ); ?>">
+                    <label for="ptk-nl-header-school_name">School name</label>
+                    <input type="text" id="ptk-nl-header-school_name" data-field="school_name" value="<?php echo esc_attr( isset( $data['school_name'] ) ? $data['school_name'] : '' ); ?>">
                 </div>
                 <div class="ptk-nl-field-group">
-                    <label>Greeting</label>
-                    <textarea data-field="greeting" rows="2"><?php echo esc_textarea( isset( $data['greeting'] ) ? $data['greeting'] : '' ); ?></textarea>
+                    <label for="ptk-nl-header-greeting">Greeting</label>
+                    <textarea id="ptk-nl-header-greeting" data-field="greeting" rows="2"><?php echo esc_textarea( isset( $data['greeting'] ) ? $data['greeting'] : '' ); ?></textarea>
                 </div>
                 <?php
                 break;
@@ -225,21 +225,22 @@ class PTK_Newsletter_Builder {
             case 'announcement':
                 ?>
                 <div class="ptk-nl-field-group">
-                    <label>Pill label</label>
-                    <input type="text" data-field="pill" value="<?php echo esc_attr( isset( $data['pill'] ) ? $data['pill'] : '' ); ?>">
+                    <label for="ptk-nl-announcement-pill">Pill label</label>
+                    <input type="text" id="ptk-nl-announcement-pill" data-field="pill" value="<?php echo esc_attr( isset( $data['pill'] ) ? $data['pill'] : '' ); ?>">
                 </div>
                 <div class="ptk-nl-field-group">
-                    <label>Announcement text</label>
-                    <textarea data-field="text" rows="3"><?php echo esc_textarea( isset( $data['text'] ) ? $data['text'] : '' ); ?></textarea>
+                    <label for="ptk-nl-announcement-text">Announcement text</label>
+                    <textarea id="ptk-nl-announcement-text" data-field="text" rows="3"><?php echo esc_textarea( isset( $data['text'] ) ? $data['text'] : '' ); ?></textarea>
                 </div>
                 <?php
                 break;
 
             case 'events':
                 ?>
-                <div class="ptk-nl-rows" data-rows></div>
+                <div class="ptk-nl-rows" data-rows data-rows-for="rows"></div>
                 <button type="button" class="button ptk-nl-add">+ Add event</button>
                 <template data-row-template>
+                    <!-- Row fields intentionally have no static ids: the later JS task assigns a unique id per cloned row and points each label's for at it. -->
                     <div class="ptk-nl-row" data-row>
                         <div class="ptk-nl-field-group">
                             <label>Date</label>
@@ -262,16 +263,16 @@ class PTK_Newsletter_Builder {
             case 'featured':
                 ?>
                 <div class="ptk-nl-field-group">
-                    <label>Eyebrow</label>
-                    <input type="text" data-field="eyebrow" value="<?php echo esc_attr( isset( $data['eyebrow'] ) ? $data['eyebrow'] : '' ); ?>">
+                    <label for="ptk-nl-featured-eyebrow">Eyebrow</label>
+                    <input type="text" id="ptk-nl-featured-eyebrow" data-field="eyebrow" value="<?php echo esc_attr( isset( $data['eyebrow'] ) ? $data['eyebrow'] : '' ); ?>">
                 </div>
                 <div class="ptk-nl-field-group">
-                    <label>Headline</label>
-                    <input type="text" data-field="headline" value="<?php echo esc_attr( isset( $data['headline'] ) ? $data['headline'] : '' ); ?>">
+                    <label for="ptk-nl-featured-headline">Headline</label>
+                    <input type="text" id="ptk-nl-featured-headline" data-field="headline" value="<?php echo esc_attr( isset( $data['headline'] ) ? $data['headline'] : '' ); ?>">
                 </div>
                 <div class="ptk-nl-field-group">
-                    <label>Story</label>
-                    <textarea data-field="body" rows="4"><?php echo esc_textarea( isset( $data['body'] ) ? $data['body'] : '' ); ?></textarea>
+                    <label for="ptk-nl-featured-body">Story</label>
+                    <textarea id="ptk-nl-featured-body" data-field="body" rows="4"><?php echo esc_textarea( isset( $data['body'] ) ? $data['body'] : '' ); ?></textarea>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label>Image</label>
@@ -283,9 +284,10 @@ class PTK_Newsletter_Builder {
 
             case 'story_cards':
                 ?>
-                <div class="ptk-nl-rows" data-rows></div>
+                <div class="ptk-nl-rows" data-rows data-rows-for="cards"></div>
                 <button type="button" class="button ptk-nl-add">+ Add story</button>
                 <template data-row-template>
+                    <!-- Row fields intentionally have no static ids: the later JS task assigns a unique id per cloned row and points each label's for at it. -->
                     <div class="ptk-nl-row" data-row>
                         <div class="ptk-nl-field-group">
                             <label>Heading</label>
@@ -317,14 +319,15 @@ class PTK_Newsletter_Builder {
             case 'footer':
                 ?>
                 <div class="ptk-nl-field-group">
-                    <label>Sign-off</label>
-                    <textarea data-field="signoff" rows="2"><?php echo esc_textarea( isset( $data['signoff'] ) ? $data['signoff'] : '' ); ?></textarea>
+                    <label for="ptk-nl-footer-signoff">Sign-off</label>
+                    <textarea id="ptk-nl-footer-signoff" data-field="signoff" rows="2"><?php echo esc_textarea( isset( $data['signoff'] ) ? $data['signoff'] : '' ); ?></textarea>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label>Links</label>
                     <div class="ptk-nl-rows" data-rows data-rows-for="links"></div>
                     <button type="button" class="button ptk-nl-add">+ Add link</button>
                     <template data-row-template>
+                        <!-- Row fields intentionally have no static ids: the later JS task assigns a unique id per cloned row and points each label's for at it. -->
                         <div class="ptk-nl-row" data-row>
                             <div class="ptk-nl-field-group">
                                 <label>Label</label>
