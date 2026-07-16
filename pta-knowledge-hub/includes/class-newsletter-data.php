@@ -170,14 +170,14 @@ class PTK_Newsletter_Data {
         switch ( $type ) {
             case self::TYPE_HEADER:
                 return array(
-                    'school_name' => sanitize_text_field( isset( $data['school_name'] ) ? $data['school_name'] : '' ),
-                    'greeting'    => wp_kses_post( isset( $data['greeting'] ) ? $data['greeting'] : '' ),
+                    'school_name' => sanitize_text_field( self::str_field( isset( $data['school_name'] ) ? $data['school_name'] : '' ) ),
+                    'greeting'    => wp_kses_post( self::str_field( isset( $data['greeting'] ) ? $data['greeting'] : '' ) ),
                 );
 
             case self::TYPE_ANNOUNCEMENT:
                 return array(
-                    'pill' => sanitize_text_field( isset( $data['pill'] ) ? $data['pill'] : '' ),
-                    'text' => wp_kses_post( isset( $data['text'] ) ? $data['text'] : '' ),
+                    'pill' => sanitize_text_field( self::str_field( isset( $data['pill'] ) ? $data['pill'] : '' ) ),
+                    'text' => wp_kses_post( self::str_field( isset( $data['text'] ) ? $data['text'] : '' ) ),
                 );
 
             case self::TYPE_EVENTS:
@@ -189,17 +189,17 @@ class PTK_Newsletter_Data {
                     }
                     $clean_rows[] = array(
                         'date'  => self::sanitize_date( isset( $row['date'] ) ? $row['date'] : '' ),
-                        'title' => sanitize_text_field( isset( $row['title'] ) ? $row['title'] : '' ),
-                        'desc'  => wp_kses_post( isset( $row['desc'] ) ? $row['desc'] : '' ),
+                        'title' => sanitize_text_field( self::str_field( isset( $row['title'] ) ? $row['title'] : '' ) ),
+                        'desc'  => wp_kses_post( self::str_field( isset( $row['desc'] ) ? $row['desc'] : '' ) ),
                     );
                 }
                 return array( 'rows' => $clean_rows );
 
             case self::TYPE_FEATURED:
                 return array(
-                    'eyebrow'  => sanitize_text_field( isset( $data['eyebrow'] ) ? $data['eyebrow'] : '' ),
-                    'headline' => sanitize_text_field( isset( $data['headline'] ) ? $data['headline'] : '' ),
-                    'body'     => wp_kses_post( isset( $data['body'] ) ? $data['body'] : '' ),
+                    'eyebrow'  => sanitize_text_field( self::str_field( isset( $data['eyebrow'] ) ? $data['eyebrow'] : '' ) ),
+                    'headline' => sanitize_text_field( self::str_field( isset( $data['headline'] ) ? $data['headline'] : '' ) ),
+                    'body'     => wp_kses_post( self::str_field( isset( $data['body'] ) ? $data['body'] : '' ) ),
                     'image_id' => absint( isset( $data['image_id'] ) ? $data['image_id'] : 0 ),
                 );
 
@@ -211,11 +211,11 @@ class PTK_Newsletter_Data {
                         continue;
                     }
                     $clean_cards[] = array(
-                        'heading'   => sanitize_text_field( isset( $card['heading'] ) ? $card['heading'] : '' ),
-                        'body'      => wp_kses_post( isset( $card['body'] ) ? $card['body'] : '' ),
+                        'heading'   => sanitize_text_field( self::str_field( isset( $card['heading'] ) ? $card['heading'] : '' ) ),
+                        'body'      => wp_kses_post( self::str_field( isset( $card['body'] ) ? $card['body'] : '' ) ),
                         'image_id'  => absint( isset( $card['image_id'] ) ? $card['image_id'] : 0 ),
-                        'link_url'  => esc_url_raw( isset( $card['link_url'] ) ? $card['link_url'] : '' ),
-                        'link_text' => sanitize_text_field( isset( $card['link_text'] ) ? $card['link_text'] : '' ),
+                        'link_url'  => esc_url_raw( self::str_field( isset( $card['link_url'] ) ? $card['link_url'] : '' ) ),
+                        'link_text' => sanitize_text_field( self::str_field( isset( $card['link_text'] ) ? $card['link_text'] : '' ) ),
                     );
                 }
                 return array( 'cards' => $clean_cards );
@@ -228,12 +228,12 @@ class PTK_Newsletter_Data {
                         continue;
                     }
                     $clean_links[] = array(
-                        'label' => sanitize_text_field( isset( $link['label'] ) ? $link['label'] : '' ),
-                        'url'   => esc_url_raw( isset( $link['url'] ) ? $link['url'] : '' ),
+                        'label' => sanitize_text_field( self::str_field( isset( $link['label'] ) ? $link['label'] : '' ) ),
+                        'url'   => esc_url_raw( self::str_field( isset( $link['url'] ) ? $link['url'] : '' ) ),
                     );
                 }
                 return array(
-                    'signoff' => wp_kses_post( isset( $data['signoff'] ) ? $data['signoff'] : '' ),
+                    'signoff' => wp_kses_post( self::str_field( isset( $data['signoff'] ) ? $data['signoff'] : '' ) ),
                     'links'   => $clean_links,
                 );
 
@@ -243,13 +243,25 @@ class PTK_Newsletter_Data {
     }
 
     /**
+     * Coerce a submitted leaf value to a string, guarding against non-scalar
+     * (array/object) input that would otherwise trigger an "Array to string
+     * conversion" warning inside the WP sanitizers.
+     *
+     * @param mixed $v Raw value.
+     * @return string
+     */
+    protected static function str_field( $v ) {
+        return is_scalar( $v ) ? (string) $v : '';
+    }
+
+    /**
      * Validate a YYYY-MM-DD date string; blank it if it doesn't match.
      *
      * @param mixed $date Raw date value.
      * @return string
      */
     protected static function sanitize_date( $date ) {
-        $date = sanitize_text_field( $date );
+        $date = sanitize_text_field( self::str_field( $date ) );
         return preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date ) ? $date : '';
     }
 }
