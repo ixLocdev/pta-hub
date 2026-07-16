@@ -264,4 +264,88 @@ class PTK_Newsletter_Data {
         $date = sanitize_text_field( self::str_field( $date ) );
         return preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date ) ? $date : '';
     }
+
+    /**
+     * Bump a "last issue number" to the next issue, flooring at 1.
+     *
+     * @param mixed $last Last issue number (expected numeric).
+     * @return int
+     */
+    public static function compute_next_issue( $last ) {
+        return max( 1, intval( $last ) + 1 );
+    }
+
+    /**
+     * Classify an event date relative to today into a display bucket, with
+     * the calendar week starting on Monday.
+     *
+     * @param mixed $event Event date (expected 'YYYY-MM-DD').
+     * @param mixed $today Reference "today" date (expected 'YYYY-MM-DD').
+     * @return string One of 'past', 'this-week', 'next-week', 'upcoming'.
+     */
+    public static function relabel_for_date( $event, $today ) {
+        $event_dt = self::parse_date( $event );
+        $today_dt = self::parse_date( $today );
+
+        if ( ! $event_dt || ! $today_dt ) {
+            return 'upcoming';
+        }
+
+        if ( $event_dt < $today_dt ) {
+            return 'past';
+        }
+
+        // ISO-8601 day-of-week: Monday = 1 ... Sunday = 7.
+        $dow           = (int) $today_dt->format( 'N' );
+        $this_monday   = clone $today_dt;
+        $this_monday->modify( '-' . ( $dow - 1 ) . ' days' );
+        $this_sunday   = clone $this_monday;
+        $this_sunday->modify( '+6 days' );
+
+        if ( $event_dt >= $this_monday && $event_dt <= $this_sunday ) {
+            return 'this-week';
+        }
+
+        $next_monday = clone $this_monday;
+        $next_monday->modify( '+7 days' );
+        $next_sunday = clone $this_sunday;
+        $next_sunday->modify( '+7 days' );
+
+        if ( $event_dt >= $next_monday && $event_dt <= $next_sunday ) {
+            return 'next-week';
+        }
+
+        return 'upcoming';
+    }
+
+    /**
+     * Parse a 'YYYY-MM-DD' string into a midnight DateTime, or null if it
+     * isn't a valid date. No WordPress calls; safe against empty/garbage
+     * input.
+     *
+     * @param mixed $value Raw date value.
+     * @return DateTime|null
+     */
+    protected static function parse_date( $value ) {
+        if ( ! is_scalar( $value ) ) {
+            return null;
+        }
+
+        $value = trim( (string) $value );
+        if ( '' === $value || ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $value ) ) {
+            return null;
+        }
+
+        $dt = DateTime::createFromFormat( '!Y-m-d', $value );
+        if ( ! $dt ) {
+            return null;
+        }
+
+        $errors = DateTime::getLastErrors();
+        if ( ! empty( $errors['warning_count'] ) || ! empty( $errors['error_count'] ) ) {
+            return null;
+        }
+
+        return $dt;
+    }
 }
