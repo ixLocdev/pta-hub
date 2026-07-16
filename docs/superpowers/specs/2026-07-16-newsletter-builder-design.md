@@ -239,6 +239,38 @@ truth: `NEPTANewsletter/newsletter-038-week-of-6-22-26.html` and
   offers an API to push a newsletter directly is **unverified** and logged as an
   open research item for the email phase (see §16). It does not affect v1.
 
+## 15a. Roadmap — queued phases (added 2026-07-16, after Phase 1 shipped)
+
+Each gets its own spec → plan cycle. Recommended order, highest value first:
+
+1. **Ease-of-use pass — the stepped wizard + live preview.** Phase 1 renders every
+   block and field on ONE long page. The original design (and the approved mockup)
+   showed a **stepped wizard** — "Step 2 of 4", one thing at a time — and building
+   the single-page form instead is the main reason the screen reads as daunting.
+   This directly contradicts the spec's own guiding principle (§1: plain English,
+   low cognitive load, never mental overload), so it is a gap to close, not a
+   nice-to-have. Pair it with a **live preview** (see 2) — the fastest way to make
+   a volunteer feel safe is to let them see what they're making as they make it.
+   Prioritized FIRST because usability is this feature's entire value proposition:
+   if volunteers find it intimidating, nothing else on this list matters.
+2. **Live preview while building.** Show the rendered newsletter beside/below the
+   form, updating as they type (the renderer is already a pure function of the
+   block data, and the JS already serializes that data on every change — so the
+   pieces exist). Phase 1 only offers a save-then-preview round trip.
+3. **Duplicate last issue + the carried-over guard** (§6, §7) — these ship
+   together: the guard exists precisely because duplicating carries stale content.
+4. **Theme presets + typography** (§8, and the typography note below).
+5. **Council network push** (§10).
+6. **Email renderer + Givebacks** (§14).
+
+Already delivered in Phase 1 without needing a phase of their own: issue number
+auto-increments from the last issue (editable), issue date defaults to today, the
+masthead headline auto-derives to "Week of …", and the school name pre-fills from
+the school's own sub-site name.
+
+Possible smaller wins to fold into a future phase: remember the footer (sign-off +
+links) from the school's last issue so it isn't retyped each time.
+
 ## 15. Fast-follows (post-v1)
 
 - Feed published newsletters into the "What's New" notifier
