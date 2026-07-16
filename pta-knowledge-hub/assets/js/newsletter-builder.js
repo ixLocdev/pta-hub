@@ -33,6 +33,13 @@
     // avoid collisions between rows, so this file owns id assignment.
     var uidCounter = 0;
 
+    // One reusable wp.media frame for the whole session (created lazily on
+    // first use). Recreating it per click leaks detached frame views, so we
+    // keep a single instance and just re-point it at whichever image field
+    // was clicked via mediaTargetField.
+    var mediaFrame = null;
+    var mediaTargetField = null;
+
     /* ──────────────────────────────────────────
      * Boot
      * ────────────────────────────────────────── */
@@ -293,28 +300,39 @@
 
     /**
      * Open the WP media library for a single image and write the chosen
-     * attachment id into the sibling hidden [data-field="image_id"] input.
+     * attachment id into the hidden [data-field="image_id"] input that was
+     * clicked. The frame is created once and reused across the whole
+     * session (recreating it per click leaks detached frame views) — we
+     * just re-point mediaTargetField at whichever field triggered it, and
+     * the single select handler reads that.
      */
     function openImagePicker($hidden) {
         if (typeof wp === 'undefined' || !wp.media) {
             return; // media-upload script not loaded — nothing we can do.
         }
 
-        var frame = wp.media({
-            title: 'Choose image',
-            button: { text: 'Use this image' },
-            library: { type: 'image' },
-            multiple: false
-        });
+        mediaTargetField = $hidden;
 
-        frame.on('select', function () {
-            var attachment = frame.state().get('selection').first().toJSON();
-            $hidden.val(attachment.id);
-            refreshImageChip($hidden);
-            serialize();
-        });
+        if (!mediaFrame) {
+            mediaFrame = wp.media({
+                title: 'Choose image',
+                button: { text: 'Use this image' },
+                library: { type: 'image' },
+                multiple: false
+            });
 
-        frame.open();
+            mediaFrame.on('select', function () {
+                if (!mediaTargetField || !mediaTargetField.length) {
+                    return;
+                }
+                var attachment = mediaFrame.state().get('selection').first().toJSON();
+                mediaTargetField.val(attachment.id);
+                refreshImageChip(mediaTargetField);
+                serialize();
+            });
+        }
+
+        mediaFrame.open();
     }
 
     /**

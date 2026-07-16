@@ -160,6 +160,21 @@
     margin-top: 4px;
 }
 
+/* ── Selected-image chip ── */
+.ptk-nl-image-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+    padding: 6px 12px;
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #3730a3;
+}
+
 /* ── Photo/privacy consent gate ── */
 .ptk-nl-pii-gate {
     background: #fffbeb;
