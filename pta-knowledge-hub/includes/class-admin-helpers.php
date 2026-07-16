@@ -484,7 +484,7 @@ class PTK_Admin_Helpers {
         }
         $wizard_url = PTK_Content_Wizard::url();
         ?>
-        <div class="notice notice-info ptk-wizard-banner" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-left-color:#2271b1;">
+        <div class="notice notice-info ptk-wizard-banner" style="display:flex;align-items:center;gap:12px;padding:12px 16px;">
             <span class="dashicons dashicons-welcome-learn-more" style="font-size:24px;color:#2271b1;"></span>
             <div style="flex:1;">
                 <strong>Want an easier way to add content?</strong>

@@ -68,7 +68,7 @@
 #ptk_network_share,
 #ptk_network_notice,
 #ptk_qr_code {
-    border-left: 3px solid #2563eb;
+    border: 1px solid #e5e7eb;
 }
 #ptk_category_fields .inside,
 #ptk_role_access .inside,

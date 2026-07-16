@@ -18,6 +18,12 @@
 .ptk-welcome-card-desc { font-size: 13px; color: #50575e; margin-bottom: 12px; }
 .ptk-welcome-btn { display: inline-block; font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 5px; text-decoration: none; border: 1px solid #2271b1; }
 .ptk-welcome-btn-primary { background: #2271b1; color: #fff; }
+.ptk-welcome-btn-primary:hover,
+.ptk-welcome-btn-primary:focus {
+    background: #135e96; /* WP admin darker blue */
+    color: #fff;
+    border-color: #135e96;
+}
 .ptk-welcome-btn-secondary { background: #fff; color: #2271b1; }
 .ptk-welcome-btn:focus { outline: 2px solid #2271b1; outline-offset: 1px; }
 .ptk-welcome-footer { font-size: 13px; color: #646970; margin: 24px 0 0; }

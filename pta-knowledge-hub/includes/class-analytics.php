@@ -494,7 +494,7 @@ class PTK_Analytics {
         </div>
 
         <?php if ( ! empty( $chart_labels ) ) : ?>
-        <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" integrity="sha384-61Bnyi97sV1DUcSP5RB2GIjaHVMFaXCp2mLfSfPUhW9R3gzHGFgiQ0FFouqxN33w" crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
         <script>
         document.addEventListener('DOMContentLoaded', function() {
             var ctx = document.getElementById('ptk-search-chart');
