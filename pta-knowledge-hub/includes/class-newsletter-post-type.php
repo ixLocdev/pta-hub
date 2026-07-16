@@ -16,6 +16,25 @@ class PTK_Newsletter_Post_Type {
 
     public static function init() {
         add_action( 'init', array( __CLASS__, 'register' ) );
+        add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_public' ) );
+    }
+
+    /**
+     * Enqueue the reader's-date relabel script on the public single
+     * newsletter view only.
+     */
+    public static function enqueue_public() {
+        if ( ! is_singular( self::POST_TYPE ) ) {
+            return;
+        }
+
+        wp_enqueue_script(
+            'ptk-newsletter-relabel',
+            PTK_PLUGIN_URL . 'assets/js/newsletter-relabel.js',
+            array(),
+            PTK_VERSION,
+            true
+        );
     }
 
     public static function register() {

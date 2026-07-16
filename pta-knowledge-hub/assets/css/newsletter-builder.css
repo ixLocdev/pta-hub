@@ -160,6 +160,29 @@
     margin-top: 4px;
 }
 
+/* ── Photo/privacy consent gate ── */
+.ptk-nl-pii-gate {
+    background: #fffbeb;
+    border: 1px solid #fbbf24;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 16px;
+}
+
+.ptk-nl-pii-gate label {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #78350f;
+    cursor: pointer;
+}
+
+.ptk-nl-pii-gate input[type="checkbox"] {
+    margin-top: 2px;
+}
+
 /* ── Submit row ── */
 .ptk-nl-submit-row {
     display: flex;

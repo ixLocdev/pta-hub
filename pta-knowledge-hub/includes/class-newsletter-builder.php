@@ -4,14 +4,20 @@
  *
  * Renders the "Add New" screen for the pta_newsletter post type as a
  * plain-English, section-by-section form instead of the block editor.
- * This is the FORM SKELETON only: the fixed fields (Header/Announcement/
- * Featured/Footer) and the repeatable-row placeholders (Events/Story
- * Cards) are rendered server-side with a `data-field` scheme a later JS
- * task will read/write, and a hidden `ptk_nl_blocks` field carries the
- * default layout as JSON for a later save handler to consume.
+ * The fixed fields (Header/Announcement/Featured/Footer) and the
+ * repeatable-row placeholders (Events/Story Cards) are rendered
+ * server-side with a `data-field` scheme a client-side JS task
+ * reads/writes, and a hidden `ptk_nl_blocks` field carries the layout as
+ * JSON for handle_submission() to consume on save.
  *
- * No submission handling, no JS, and no PII controls live here yet —
- * those are separate, later tasks.
+ * handle_submission() renders the blocks to HTML via PTK_Newsletter_Renderer
+ * and creates/updates a pta_newsletter post as draft, preview (saved as
+ * draft), or published — publishing is gated behind a photo/PII
+ * confirmation checkbox in the form; if it's unchecked the save is forced
+ * to draft instead.
+ *
+ * A share-a-preview token link and the "Add New" redirect/edit-row-action
+ * are a later task and not implemented here.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -19,6 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 require_once PTK_PLUGIN_DIR . 'includes/class-newsletter-data.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-newsletter-renderer.php';
 
 class PTK_Newsletter_Builder {
 
@@ -27,6 +34,162 @@ class PTK_Newsletter_Builder {
     public static function init() {
         add_action( 'admin_menu', array( __CLASS__, 'add_page' ) );
         add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
+        add_action( 'admin_init', array( __CLASS__, 'handle_submission' ) );
+    }
+
+    /**
+     * Handle the builder form submission: sanitize + render the blocks,
+     * gate Publish behind the photo/PII confirmation, and create/update the
+     * pta_newsletter post (draft, preview-as-draft, or published).
+     */
+    public static function handle_submission() {
+        if ( ! isset( $_POST['ptk_nl_status'] ) || ! isset( $_POST['ptk_nl_nonce'] ) ) {
+            return;
+        }
+
+        check_admin_referer( 'ptk_nl_save', 'ptk_nl_nonce' );
+
+        if ( ! current_user_can( 'edit_posts' ) ) {
+            wp_die( 'You do not have permission to create newsletters.', 'PTA Hub', array( 'back_link' => true ) );
+        }
+
+        $edit_id = isset( $_POST['ptk_nl_edit_id'] ) ? absint( $_POST['ptk_nl_edit_id'] ) : 0;
+        if ( $edit_id && ! current_user_can( 'edit_post', $edit_id ) ) {
+            wp_die( 'You do not have permission to edit this newsletter.', 'PTA Hub', array( 'back_link' => true ) );
+        }
+
+        $raw    = json_decode( wp_unslash( $_POST['ptk_nl_blocks'] ?? '' ), true );
+        $blocks = PTK_Newsletter_Data::sanitize_blocks( $raw );
+
+        $issue       = absint( $_POST['ptk_nl_issue'] ?? 0 );
+        $date_posted = isset( $_POST['ptk_nl_date'] ) ? sanitize_text_field( wp_unslash( $_POST['ptk_nl_date'] ) ) : '';
+        $date        = preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date_posted ) ? $date_posted : current_time( 'Y-m-d' );
+
+        $status_req = sanitize_key( $_POST['ptk_nl_status'] );
+        if ( ! in_array( $status_req, array( 'draft', 'preview', 'publish' ), true ) ) {
+            $status_req = 'draft';
+        }
+
+        // PII gate: never publish without the photo/privacy confirmation.
+        // Silently downgrade to draft and flag it so the redirect notice can
+        // explain why nothing went live.
+        $pii_ok       = ! empty( $_POST['ptk_nl_pii_ok'] );
+        $forced_draft = false;
+        if ( 'publish' === $status_req && ! $pii_ok ) {
+            $status_req   = 'draft';
+            $forced_draft = true;
+        }
+
+        $rendered = PTK_Newsletter_Renderer::render( $blocks, array(
+            'issue'        => $issue,
+            'date'         => $date,
+            'today'        => current_time( 'Y-m-d' ),
+            'theme'        => 'harbor-navy',
+            'logo_url'     => get_site_icon_url() ?: '',
+            'school_name'  => self::school_name_from_blocks( $blocks ),
+            'image_url_cb' => function( $id ) {
+                return wp_get_attachment_image_url( $id, 'large' );
+            },
+        ) );
+
+        $post_status = ( 'publish' === $status_req ) ? 'publish' : 'draft';
+
+        $title = sprintf( 'Newsletter No. %d — %s', $issue, date_i18n( 'F j, Y', strtotime( $date ) ) );
+
+        $post_data = array(
+            'post_type'    => 'pta_newsletter',
+            'post_title'   => $title,
+            'post_content' => $rendered,
+            'post_status'  => $post_status,
+        );
+
+        if ( $edit_id ) {
+            $existing = get_post( $edit_id );
+            if ( ! $existing || 'pta_newsletter' !== $existing->post_type ) {
+                wp_die( 'That newsletter no longer exists — it may have been deleted.', 'PTA Hub', array( 'back_link' => true ) );
+            }
+            $post_data['ID'] = $edit_id;
+            $post_id         = wp_update_post( $post_data, true );
+        } else {
+            $post_id = wp_insert_post( $post_data, true );
+        }
+
+        if ( is_wp_error( $post_id ) ) {
+            wp_die(
+                'Sorry — the newsletter could not be saved (' . esc_html( $post_id->get_error_message() ) . '). Please go back and try again.',
+                'PTA Hub',
+                array( 'back_link' => true )
+            );
+        }
+
+        update_post_meta( $post_id, 'ptk_nl_issue', $issue );
+        update_post_meta( $post_id, 'ptk_nl_date', $date );
+        update_post_meta( $post_id, 'ptk_nl_theme', 'harbor-navy' );
+        update_post_meta( $post_id, 'ptk_nl_blocks', wp_json_encode( $blocks ) );
+
+        if ( 'preview' === $status_req ) {
+            wp_safe_redirect( get_preview_post_link( $post_id ) );
+            exit;
+        }
+
+        $msg = $forced_draft ? 'pii' : ( 'publish' === $post_status ? 'published' : 'saved' );
+
+        wp_safe_redirect( add_query_arg( array(
+            'page'           => self::PAGE_SLUG,
+            'post_type'      => 'pta_newsletter',
+            'ptk_nl_edit_id' => $post_id,
+            'ptk_nl_msg'     => $msg,
+        ), admin_url( 'edit.php' ) ) );
+        exit;
+    }
+
+    /**
+     * The school name to render into the header: the header block's
+     * school_name field if set, else the site name.
+     *
+     * @param array $blocks Sanitized blocks.
+     * @return string
+     */
+    private static function school_name_from_blocks( array $blocks ) {
+        foreach ( $blocks as $block ) {
+            if ( isset( $block['type'] ) && PTK_Newsletter_Data::TYPE_HEADER === $block['type'] ) {
+                $name = isset( $block['data']['school_name'] ) ? trim( (string) $block['data']['school_name'] ) : '';
+                if ( '' !== $name ) {
+                    return $name;
+                }
+                break;
+            }
+        }
+
+        return get_bloginfo( 'name' );
+    }
+
+    /**
+     * Render an admin notice for ?ptk_nl_msg= after a save/publish redirect.
+     */
+    private static function render_notice() {
+        if ( empty( $_GET['ptk_nl_msg'] ) ) {
+            return;
+        }
+
+        $msg     = sanitize_key( wp_unslash( $_GET['ptk_nl_msg'] ) );
+        $notices = array(
+            'saved'     => array( 'success', 'Draft saved.' ),
+            'published' => array( 'success', 'Newsletter published.' ),
+            'pii'       => array( 'warning', 'Confirm the photo/privacy check before publishing. Your newsletter was saved as a draft instead.' ),
+        );
+
+        if ( ! isset( $notices[ $msg ] ) ) {
+            return;
+        }
+
+        list( $type, $text ) = $notices[ $msg ];
+
+        printf(
+            '<div class="notice notice-%1$s is-dismissible"><p>%2$s</p></div>',
+            esc_attr( $type ),
+            esc_html( $text )
+        );
     }
 
     /**
@@ -134,6 +297,7 @@ class PTK_Newsletter_Builder {
         ?>
         <div class="wrap ptk-nl-builder">
             <h1>New Newsletter</h1>
+            <?php self::render_notice(); ?>
             <p class="ptk-nl-intro">Fill in the sections below — header and footer are always included, and you can add, remove, and reorder the sections in between.</p>
 
             <form method="post" id="ptk-nl-form">
@@ -157,6 +321,13 @@ class PTK_Newsletter_Builder {
                 </div>
 
                 <input type="hidden" name="ptk_nl_blocks" id="ptk-nl-blocks-json" value="<?php echo esc_attr( wp_json_encode( $blocks ) ); ?>">
+
+                <div class="ptk-nl-pii-gate">
+                    <label>
+                        <input type="checkbox" name="ptk_nl_pii_ok" value="1">
+                        These photos are OK to share publicly — no student faces or personal info.
+                    </label>
+                </div>
 
                 <div class="ptk-nl-submit-row">
                     <button type="submit" name="ptk_nl_status" value="draft" class="button button-secondary">Save draft</button>
