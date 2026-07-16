@@ -269,7 +269,13 @@ class PTK_Newsletter_Builder {
         update_post_meta( $post_id, 'ptk_nl_issue', $issue );
         update_post_meta( $post_id, 'ptk_nl_date', $date );
         update_post_meta( $post_id, 'ptk_nl_theme', self::DEFAULT_THEME );
-        update_post_meta( $post_id, 'ptk_nl_blocks', wp_json_encode( $blocks ) );
+
+        // wp_slash() is REQUIRED here: update_post_meta() runs the value through
+        // wp_unslash() internally, which would strip the backslashes out of the
+        // JSON's \uXXXX escapes (wp_json_encode escapes non-ASCII by default).
+        // Without this, an em dash saves as the literal text "u2014" and every
+        // curly quote, accent, or emoji in a newsletter gets corrupted on reopen.
+        update_post_meta( $post_id, 'ptk_nl_blocks', wp_slash( wp_json_encode( $blocks ) ) );
 
         return $post_id;
     }
