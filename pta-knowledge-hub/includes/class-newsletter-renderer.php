@@ -125,6 +125,11 @@ class PTK_Newsletter_Renderer {
         $pill = isset( $data['pill'] ) ? (string) $data['pill'] : '';
         $text = isset( $data['text'] ) ? (string) $data['text'] : '';
 
+        // Nothing to announce: emit nothing (no empty navy bar).
+        if ( '' === trim( $pill ) && '' === trim( $text ) ) {
+            return '';
+        }
+
         $pill_html = '';
         if ( '' !== trim( $pill ) ) {
             $pill_html = '<span style="font-size:10px;letter-spacing:0.18em;text-transform:uppercase;font-weight:700;background:rgba(255,255,255,0.18);padding:5px 10px;border-radius:4px;">' . esc_html( $pill ) . '</span>';
@@ -146,6 +151,18 @@ class PTK_Newsletter_Renderer {
     private static function render_events( array $data, array $opts ) {
         $rows  = isset( $data['rows'] ) && is_array( $data['rows'] ) ? $data['rows'] : array();
         $today = isset( $opts['today'] ) ? (string) $opts['today'] : '';
+
+        // No valid event rows: skip the whole block, heading included.
+        $valid_rows = array();
+        foreach ( $rows as $row ) {
+            if ( is_array( $row ) ) {
+                $valid_rows[] = $row;
+            }
+        }
+        if ( empty( $valid_rows ) ) {
+            return '';
+        }
+        $rows = $valid_rows;
 
         $html  = '<div style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:20px 20px 40px;box-sizing:border-box;">';
         $html .= '<div style="max-width:840px;margin:0 auto;">';
@@ -203,6 +220,11 @@ class PTK_Newsletter_Renderer {
         $image_id = isset( $data['image_id'] ) ? (int) $data['image_id'] : 0;
 
         $image_html = self::maybe_image( $image_id, $opts, $headline );
+
+        // Nothing to feature (no text and no rendered image): skip the hero.
+        if ( '' === trim( $eyebrow ) && '' === trim( $headline ) && '' === trim( $body ) && '' === $image_html ) {
+            return '';
+        }
 
         $html  = '<div style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['primary'] ) . ';padding:48px 20px;box-sizing:border-box;">';
         $html .= '<div style="max-width:840px;margin:0 auto;">';
@@ -286,6 +308,25 @@ class PTK_Newsletter_Renderer {
         $signoff = isset( $data['signoff'] ) ? (string) $data['signoff'] : '';
         $links   = isset( $data['links'] ) && is_array( $data['links'] ) ? $data['links'] : array();
 
+        // Collect only links with both a label and a url.
+        $valid_links = array();
+        foreach ( $links as $link ) {
+            if ( ! is_array( $link ) ) {
+                continue;
+            }
+            $label = isset( $link['label'] ) ? (string) $link['label'] : '';
+            $url   = isset( $link['url'] ) ? (string) $link['url'] : '';
+            if ( '' === trim( $label ) || '' === trim( $url ) ) {
+                continue;
+            }
+            $valid_links[] = array( 'label' => $label, 'url' => $url );
+        }
+
+        // Nothing to sign off with and no usable links: skip the footer bar.
+        if ( '' === trim( $signoff ) && empty( $valid_links ) ) {
+            return '';
+        }
+
         $html  = '<div style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:40px 20px 32px;border-top:1px solid ' . esc_attr( self::PALETTE['hairline'] ) . ';box-sizing:border-box;">';
         $html .= '<div style="max-width:840px;margin:0 auto;">';
 
@@ -293,18 +334,10 @@ class PTK_Newsletter_Renderer {
             $html .= '<p style="font-size:17px;line-height:1.65;color:' . esc_attr( self::PALETTE['text'] ) . ';margin:0 0 28px;">' . wp_kses_post( $signoff ) . '</p>';
         }
 
-        if ( ! empty( $links ) ) {
+        if ( ! empty( $valid_links ) ) {
             $html .= '<div style="border-top:1px solid ' . esc_attr( self::PALETTE['hairline'] ) . ';padding-top:24px;display:flex;flex-wrap:wrap;gap:24px;font-size:13px;color:' . esc_attr( self::PALETTE['muted'] ) . ';line-height:1.55;">';
-            foreach ( $links as $link ) {
-                if ( ! is_array( $link ) ) {
-                    continue;
-                }
-                $label = isset( $link['label'] ) ? (string) $link['label'] : '';
-                $url   = isset( $link['url'] ) ? (string) $link['url'] : '';
-                if ( '' === trim( $label ) || '' === trim( $url ) ) {
-                    continue;
-                }
-                $html .= '<div><a href="' . esc_url( $url ) . '" style="color:' . esc_attr( self::PALETTE['primary'] ) . ';text-decoration:none;border-bottom:1px solid ' . esc_attr( self::PALETTE['primary'] ) . ';word-break:break-word;">' . esc_html( $label ) . '</a></div>';
+            foreach ( $valid_links as $link ) {
+                $html .= '<div><a href="' . esc_url( $link['url'] ) . '" style="color:' . esc_attr( self::PALETTE['primary'] ) . ';text-decoration:none;border-bottom:1px solid ' . esc_attr( self::PALETTE['primary'] ) . ';word-break:break-word;">' . esc_html( $link['label'] ) . '</a></div>';
             }
             $html .= '</div>';
         }
