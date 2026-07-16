@@ -546,15 +546,17 @@ class PTK_Multisite {
     public static function handle_suggest_to_council() {
         check_ajax_referer( 'ptk_suggest_nonce', '_wpnonce' );
 
-        if ( ! current_user_can( 'edit_posts' ) ) {
-            wp_send_json_error( array( 'message' => 'Permission denied.' ) );
-        }
-
         $post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
         $post    = get_post( $post_id );
 
         if ( ! $post || 'pta_knowledge' !== $post->post_type ) {
             wp_send_json_error( array( 'message' => 'Invalid entry.' ) );
+        }
+
+        // Object-level capability check — the user must be able to edit THIS
+        // specific entry, not merely posts in general.
+        if ( ! current_user_can( 'edit_post', $post_id ) ) {
+            wp_send_json_error( array( 'message' => 'Permission denied.' ) );
         }
 
         $source_blog = get_current_blog_id();
