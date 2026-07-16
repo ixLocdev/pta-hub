@@ -140,6 +140,12 @@ Status legend: `[ ]` open · `[x]` fixed · `[-]` won't fix
 - [ ] **27. Meta-box gating quirk:** subsites always get the "Network Status" box even
   when sharing is off (`class-multisite.php:54`).
 
+- [ ] **32. Start Here "Start the guided form" button hover is low-contrast.**
+  On hover the primary button shows dark-blue text on a medium-blue fill
+  (`assets/css/welcome.css` — `.ptk-welcome-btn-primary` has no `:hover` rule, so
+  admin defaults bleed through). Add explicit `:hover`/`:focus` states with legible
+  contrast (e.g. darken the fill to `#135e96`, keep white text).
+
 - [ ] **31. Sweep out half/single-side accent borders (Lucas design rule).** Replace
   `border-left`-accent styling with a full border or colored content. Known spots:
   the PTA Hub meta-box accent strip (`assets/css/admin.css`) and the "already

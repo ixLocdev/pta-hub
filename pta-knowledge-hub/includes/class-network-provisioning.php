@@ -21,7 +21,7 @@ class PTK_Network_Provisioning {
     const PROVISION_VER_OPTION = 'ptk_provision_ver';
 
     /** Bump when provisioning requirements change. */
-    const PROVISION_VER = '2'; // 2: repair_missing_slugs (v3.0.1)
+    const PROVISION_VER = '3'; // 2: repair_missing_slugs (v3.0.1); 3: ensure KB+Glossary pages on subsites (v3.1.1)
 
     public static function init() {
         // Late priority so core finishes initializing the new site first.
@@ -89,10 +89,45 @@ class PTK_Network_Provisioning {
             PTK_Vendor_Directory::repair_missing_slugs();
         }
 
-        // Vendor Directory page with the shortcode.
+        // The three PTA Hub front-end pages. The Knowledge Base + Glossary
+        // pages were previously created ONLY by the activation hook (main
+        // site only), so subsites 404'd on /knowledge-base and /glossary
+        // (and the Welcome screen's "See the live Hub" / "Open glossary"
+        // buttons). Create all three here so every site has them.
+        self::ensure_content_pages();
         PTK_Vendor_Directory::ensure_directory_page();
 
         update_option( self::PROVISION_VER_OPTION, self::PROVISION_VER );
+    }
+
+    /**
+     * Create this site's Knowledge Base + Glossary pages if missing, at the
+     * slugs ptk_hub_url()/ptk_glossary_url() resolve to (so the links work).
+     * Idempotent — skips any page that already exists.
+     */
+    public static function ensure_content_pages() {
+        $pages = array(
+            ltrim( (string) get_option( 'ptk_hub_slug', 'knowledge-base' ), '/' ) => array(
+                'title'   => 'Knowledge Base',
+                'content' => '<!-- wp:shortcode -->[pta_search]<!-- /wp:shortcode -->',
+            ),
+            ltrim( (string) get_option( 'ptk_glossary_slug', 'glossary' ), '/' ) => array(
+                'title'   => 'Glossary',
+                'content' => '<!-- wp:shortcode -->[pta_glossary]<!-- /wp:shortcode -->',
+            ),
+        );
+        foreach ( $pages as $slug => $page ) {
+            if ( '' === $slug || get_page_by_path( $slug ) ) {
+                continue;
+            }
+            wp_insert_post( array(
+                'post_title'   => $page['title'],
+                'post_name'    => $slug,
+                'post_content' => $page['content'],
+                'post_status'  => 'publish',
+                'post_type'    => 'page',
+            ) );
+        }
     }
 
     /** wp_initialize_site handler — runs in the network-admin request context. */
