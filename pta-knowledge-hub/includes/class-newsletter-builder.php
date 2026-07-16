@@ -64,7 +64,7 @@ class PTK_Newsletter_Builder {
         if ( isset( $actions['edit'] ) ) {
             $actions['edit'] = sprintf(
                 '<a href="%s">Edit</a>',
-                esc_url( self::url() . '&ptk_nl_edit_id=' . $post->ID )
+                esc_url( add_query_arg( 'ptk_nl_edit_id', $post->ID, self::url() ) )
             );
         }
 
@@ -100,16 +100,12 @@ class PTK_Newsletter_Builder {
             return;
         }
 
-        $post_id = absint( $_GET['post'] );
-        if ( ! $post_id || 'pta_newsletter' !== get_post_type( $post_id ) ) {
+        $post_id = self::validate_edit_id( $_GET['post'] );
+        if ( ! $post_id ) {
             return;
         }
 
-        if ( ! current_user_can( 'edit_post', $post_id ) ) {
-            return;
-        }
-
-        wp_safe_redirect( self::url() . '&ptk_nl_edit_id=' . $post_id );
+        wp_safe_redirect( add_query_arg( 'ptk_nl_edit_id', $post_id, self::url() ) );
         exit;
     }
 
@@ -377,19 +373,39 @@ class PTK_Newsletter_Builder {
      * @return array[]
      */
     private static function blocks_for_js() {
-        $edit_id = isset( $_GET['ptk_nl_edit_id'] ) ? absint( $_GET['ptk_nl_edit_id'] ) : 0;
+        $edit_id = self::validate_edit_id( isset( $_GET['ptk_nl_edit_id'] ) ? $_GET['ptk_nl_edit_id'] : 0 );
 
         if ( $edit_id ) {
-            $existing = get_post( $edit_id );
-            if ( $existing && 'pta_newsletter' === $existing->post_type && current_user_can( 'edit_post', $edit_id ) ) {
-                $raw = json_decode( get_post_meta( $edit_id, 'ptk_nl_blocks', true ), true );
-                if ( is_array( $raw ) ) {
-                    return $raw;
-                }
-            }
+            // Sanitize the saved meta the same way render_page() does, so the
+            // JS prefill data and the server-rendered shell set are provably
+            // identical rather than merely identical-by-construction.
+            return PTK_Newsletter_Data::sanitize_blocks( json_decode( get_post_meta( $edit_id, 'ptk_nl_blocks', true ), true ) );
         }
 
         return PTK_Newsletter_Data::default_blocks();
+    }
+
+    /**
+     * Validate a candidate newsletter edit id: returns the id as an int when
+     * it points at an existing pta_newsletter the current user may edit,
+     * otherwise 0. Central home for the check shared by
+     * redirect_edit_to_builder(), blocks_for_js(), and render_page().
+     *
+     * @param mixed $id Candidate id (raw request value or int).
+     * @return int Validated post id, or 0.
+     */
+    private static function validate_edit_id( $id ) {
+        $id = absint( $id );
+        if ( ! $id ) {
+            return 0;
+        }
+
+        $post = get_post( $id );
+        if ( ! $post || 'pta_newsletter' !== $post->post_type || ! current_user_can( 'edit_post', $id ) ) {
+            return 0;
+        }
+
+        return $id;
     }
 
     /**
@@ -450,13 +466,7 @@ class PTK_Newsletter_Builder {
         // Validate the edit target: it must exist, be a pta_newsletter, and
         // be editable by the current user. Anything else falls back to a
         // brand-new newsletter rather than erroring out.
-        $edit_id = isset( $_GET['ptk_nl_edit_id'] ) ? absint( $_GET['ptk_nl_edit_id'] ) : 0;
-        if ( $edit_id ) {
-            $existing = get_post( $edit_id );
-            if ( ! $existing || 'pta_newsletter' !== $existing->post_type || ! current_user_can( 'edit_post', $edit_id ) ) {
-                $edit_id = 0;
-            }
-        }
+        $edit_id = self::validate_edit_id( isset( $_GET['ptk_nl_edit_id'] ) ? $_GET['ptk_nl_edit_id'] : 0 );
 
         // Choose the blocks to render server-side: for edit mode, reconstruct
         // the SAVED section set + order (sanitize_blocks guarantees a valid
