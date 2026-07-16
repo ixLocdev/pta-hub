@@ -20,7 +20,9 @@
  * init()), and render_page() reconstructs an existing newsletter's exact
  * saved section set + order when opened in edit mode.
  *
- * A share-a-preview token link is a later task and not implemented here.
+ * In edit mode, render_page() also renders a small "share a preview link"
+ * panel backed by PTK_Public_Preview — the same no-login token system used
+ * for knowledge entries.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -528,6 +530,62 @@ class PTK_Newsletter_Builder {
                     <button type="submit" name="ptk_nl_status" value="publish" class="button button-primary">Publish</button>
                 </div>
             </form>
+
+            <?php if ( $edit_id ) : ?>
+                <?php self::render_preview_panel( $edit_id ); ?>
+            <?php endif; ?>
+        </div>
+        <?php
+    }
+
+    /**
+     * Render the "share a preview link" panel for an existing newsletter,
+     * backed by the same no-login token system used for knowledge entries
+     * (PTK_Public_Preview). This is a SEPARATE <form> from the main builder
+     * form above — it posts to admin-post.php's generate/revoke actions,
+     * not the builder's own save handler — and only appears in edit mode,
+     * since a brand-new (unsaved) newsletter has no post id to attach a
+     * token to.
+     *
+     * @param int $edit_id Existing, validated pta_newsletter post id.
+     */
+    protected static function render_preview_panel( $edit_id ) {
+        $preview_url = PTK_Public_Preview::active_preview_url( $edit_id );
+        $return_url  = add_query_arg( 'ptk_nl_edit_id', $edit_id, self::url() );
+        // Matches render_publish_box()'s form action exactly: the generate/
+        // revoke handlers are registered on the `admin_action_{$action}`
+        // hooks, which are only fired by wp-admin/admin.php (NOT
+        // admin-post.php, whose corresponding hooks are named
+        // `admin_post_{$action}` and are never registered here).
+        $post_action = admin_url( 'admin.php' );
+        ?>
+        <div class="ptk-nl-preview-panel" style="margin-top:24px;padding:16px;border:1px solid #ddd;border-radius:8px;background:#fff;max-width:640px;">
+            <h2 style="margin-top:0;"><?php esc_html_e( 'Share a preview link', 'pta-knowledge-hub' ); ?></h2>
+            <p class="description">
+                <?php esc_html_e( 'Let someone — like a principal or PTA president — see this draft before it\'s published, without needing a login. The link stops working after 7 days.', 'pta-knowledge-hub' ); ?>
+            </p>
+
+            <?php if ( $preview_url ) : ?>
+                <p class="description"><?php esc_html_e( 'This link is live right now:', 'pta-knowledge-hub' ); ?></p>
+                <input type="text" readonly value="<?php echo esc_attr( $preview_url ); ?>" id="ptk-nl-preview-url" style="width:100%;font-size:12px;margin-bottom:8px;" onclick="this.select();" />
+                <button type="button" class="button" onclick="navigator.clipboard.writeText(document.getElementById('ptk-nl-preview-url').value);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy link',1500);"><?php esc_html_e( 'Copy link', 'pta-knowledge-hub' ); ?></button>
+
+                <form method="post" action="<?php echo esc_url( $post_action ); ?>" style="display:inline;margin-left:6px;">
+                    <?php wp_nonce_field( 'ptk_revoke_preview_' . $edit_id ); ?>
+                    <input type="hidden" name="action" value="ptk_revoke_preview">
+                    <input type="hidden" name="post" value="<?php echo esc_attr( $edit_id ); ?>">
+                    <input type="hidden" name="ptk_preview_return" value="<?php echo esc_attr( $return_url ); ?>">
+                    <button type="submit" class="button button-link-delete"><?php esc_html_e( 'Stop sharing', 'pta-knowledge-hub' ); ?></button>
+                </form>
+            <?php else : ?>
+                <form method="post" action="<?php echo esc_url( $post_action ); ?>">
+                    <?php wp_nonce_field( 'ptk_generate_preview_' . $edit_id ); ?>
+                    <input type="hidden" name="action" value="ptk_generate_preview">
+                    <input type="hidden" name="post" value="<?php echo esc_attr( $edit_id ); ?>">
+                    <input type="hidden" name="ptk_preview_return" value="<?php echo esc_attr( $return_url ); ?>">
+                    <button type="submit" class="button"><?php esc_html_e( 'Create a preview link (no login needed)', 'pta-knowledge-hub' ); ?></button>
+                </form>
+            <?php endif; ?>
         </div>
         <?php
     }

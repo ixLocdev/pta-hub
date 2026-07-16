@@ -22,6 +22,16 @@ class PTK_Public_Preview {
     private static $is_preview = false;
     private static $banner_html = '';
 
+    /**
+     * Post types the no-login preview system supports. Filterable so other
+     * post types can opt in without further changes to this class.
+     *
+     * @return string[]
+     */
+    public static function supported_post_types() {
+        return apply_filters( 'ptk_preview_post_types', array( 'pta_knowledge', 'pta_newsletter' ) );
+    }
+
     public static function init() {
         // Query var registration — without this, ?ptk_preview=... gets stripped.
         add_filter( 'query_vars', array( __CLASS__, 'register_query_var' ) );
@@ -78,7 +88,7 @@ class PTK_Public_Preview {
         }
 
         $found = get_posts( array(
-            'post_type'      => 'pta_knowledge',
+            'post_type'      => self::supported_post_types(),
             'post_status'    => array( 'draft', 'pending', 'private', 'future' ),
             'posts_per_page' => 1,
             'meta_query'     => array(
@@ -119,11 +129,18 @@ class PTK_Public_Preview {
         self::$is_preview  = true;
         self::$banner_html = self::build_banner( $expires );
 
-        $template = get_query_template( 'single-pta_knowledge' );
-        if ( ! $template ) {
+        // Post-type-aware template selection: single-{post_type}-{slug}.php →
+        // single-{post_type}.php → single.php, falling back to the bundled
+        // KB template for pta_knowledge (preserving prior behavior) and
+        // finally to the theme's index template for a bare theme.
+        $template = get_single_template();
+        if ( ! $template && 'pta_knowledge' === $post->post_type ) {
             $template = PTK_PLUGIN_DIR . 'templates/single-pta_knowledge.php';
         }
-        if ( file_exists( $template ) ) {
+        if ( ! $template ) {
+            $template = get_index_template();
+        }
+        if ( $template && file_exists( $template ) ) {
             include $template;
         }
         exit;
@@ -157,12 +174,29 @@ class PTK_Public_Preview {
         return $html;
     }
 
+    /**
+     * The active preview URL for a post, or '' if none is active. Mirrors
+     * the URL shape built inline in render_publish_box() so other callers
+     * (e.g. the Newsletter Builder) can reuse it.
+     *
+     * @param int $post_id Post ID.
+     * @return string
+     */
+    public static function active_preview_url( $post_id ) {
+        $token   = get_post_meta( $post_id, self::META_TOKEN, true );
+        $expires = (int) get_post_meta( $post_id, self::META_EXPIRES, true );
+        if ( $token && $expires > time() ) {
+            return add_query_arg( 'ptk_preview', $token, home_url( '/' ) );
+        }
+        return '';
+    }
+
     /* ------------------------------------------------------------- */
     /*  Publish meta box UI                                          */
     /* ------------------------------------------------------------- */
 
     public static function render_publish_box( $post ) {
-        if ( 'pta_knowledge' !== $post->post_type ) {
+        if ( ! in_array( $post->post_type, self::supported_post_types(), true ) ) {
             return;
         }
         if ( ! current_user_can( 'edit_post', $post->ID ) ) {
@@ -220,7 +254,7 @@ class PTK_Public_Preview {
         update_post_meta( $post_id, self::META_TOKEN, $token );
         update_post_meta( $post_id, self::META_EXPIRES, time() + self::TTL_SECONDS );
 
-        wp_safe_redirect( get_edit_post_link( $post_id, 'raw' ) );
+        wp_safe_redirect( self::redirect_target( $post_id ) );
         exit;
     }
 
@@ -231,8 +265,27 @@ class PTK_Public_Preview {
         delete_post_meta( $post_id, self::META_TOKEN );
         delete_post_meta( $post_id, self::META_EXPIRES );
 
-        wp_safe_redirect( get_edit_post_link( $post_id, 'raw' ) );
+        wp_safe_redirect( self::redirect_target( $post_id ) );
         exit;
+    }
+
+    /**
+     * Where to send the browser after generate/revoke: an explicit
+     * `ptk_preview_return` posted by the caller (e.g. the Newsletter
+     * Builder), validated as a safe same-site redirect, or the classic
+     * block-editor edit link as before when no such field was posted
+     * (this is the case for pta_knowledge, whose publish box doesn't send
+     * one — so its behavior is unchanged).
+     *
+     * @param int $post_id Post ID.
+     * @return string
+     */
+    private static function redirect_target( $post_id ) {
+        $return = isset( $_POST['ptk_preview_return'] ) ? esc_url_raw( wp_unslash( $_POST['ptk_preview_return'] ) ) : '';
+        if ( $return && wp_validate_redirect( $return, '' ) ) {
+            return $return;
+        }
+        return get_edit_post_link( $post_id, 'raw' );
     }
 
     private static function guard_request( $post_id, $nonce_action ) {
@@ -241,7 +294,7 @@ class PTK_Public_Preview {
         }
         check_admin_referer( $nonce_action );
         $post = get_post( $post_id );
-        if ( ! $post || 'pta_knowledge' !== $post->post_type ) {
+        if ( ! $post || ! in_array( $post->post_type, self::supported_post_types(), true ) ) {
             wp_die( 'Entry not found.', '', array( 'response' => 404 ) );
         }
     }
@@ -251,7 +304,7 @@ class PTK_Public_Preview {
     /* ------------------------------------------------------------- */
 
     public static function auto_revoke_on_publish( $new_status, $old_status, $post ) {
-        if ( ! $post || 'pta_knowledge' !== $post->post_type ) {
+        if ( ! $post || ! in_array( $post->post_type, self::supported_post_types(), true ) ) {
             return;
         }
         if ( 'publish' === $new_status && 'publish' !== $old_status ) {
