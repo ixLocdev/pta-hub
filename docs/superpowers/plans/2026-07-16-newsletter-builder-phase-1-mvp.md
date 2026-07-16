@@ -598,9 +598,12 @@ Then generalize each coupling:
    (TOC/meta). Replace with post-type-aware selection that uses the full template
    hierarchy off the now-set-up global post:
    ```php
-   $template = get_single_template(); // respects single-{post_type}.php → single.php → singular.php
+   $template = get_single_template(); // hierarchy: single-{post_type}-{slug}.php → single-{post_type}.php → single.php
    if ( ! $template && 'pta_knowledge' === $post->post_type ) {
        $template = PTK_PLUGIN_DIR . 'templates/single-pta_knowledge.php'; // keep KB fallback
+   }
+   if ( ! $template ) {
+       $template = get_index_template(); // last-resort for a bare theme with no single.php
    }
    ```
    For `pta_newsletter` the theme's single template renders the post's already-built
