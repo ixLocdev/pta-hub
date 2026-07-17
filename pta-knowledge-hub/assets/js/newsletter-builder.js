@@ -50,6 +50,32 @@
     var FIRST_STEP = 1;
     var LAST_STEP = 4;
 
+    // Live preview. The iframe is a REAL 840px-wide viewport — the width the
+    // newsletter design is built for — so the design's clamp(..., Nvw, ...)
+    // type resolves exactly as it will in a family's inbox/browser. It is
+    // then scaled down to whatever width the preview column has. Injecting
+    // the HTML into this page instead would resolve vw against the admin
+    // window and quietly lie about the type.
+    var PREVIEW_WIDTH = 840;
+    var PREVIEW_DEBOUNCE = 400;
+    var previewTimer = null;
+    var resizeTimer = null;
+
+    // Every request gets a number; only the newest one's reply is allowed to
+    // touch the iframe. Without this, two edits in quick succession whose
+    // replies land out of order would leave the older HTML on screen.
+    var previewSeq = 0;
+
+    // Block types currently outlined in the preview (the step you're on, or
+    // the field you're in). Re-applied after every refresh because the iframe
+    // document is rebuilt from scratch each time.
+    var highlightTypes = [];
+
+    // Injected into the preview document, not the newsletter HTML — the
+    // outline is a builder affordance and never reaches what's published.
+    var PREVIEW_STYLE =
+        '.ptk-nl-hi{outline:3px solid #2271b1;outline-offset:-3px;}';
+
     /* ──────────────────────────────────────────
      * Boot
      * ────────────────────────────────────────── */
@@ -63,6 +89,7 @@
         bindStepNav();
         bindArrangeList();
         bindArrangeSortable();
+        bindPreviewTriggers();
 
         renderArrangeList();
         serialize();
@@ -72,6 +99,10 @@
         // the top of the document, where the admin notices are (see
         // showStep()'s moveFocus param).
         showStep(FIRST_STEP, false);
+
+        // Straight away, not debounced: the preview column must never sit
+        // blank while a volunteer wonders whether it's broken.
+        refreshPreview();
     });
 
     /* ──────────────────────────────────────────
@@ -132,6 +163,11 @@
             renderArrangeList();
         }
 
+        // Point the preview at what this step is about, so the connection
+        // between "the form here" and "the newsletter there" is visible
+        // rather than something the volunteer has to work out.
+        setHighlight(typesForStep(n));
+
         // Focus management: land keyboard/screen-reader users on the new
         // step's heading so they know where they ended up. Must stay after
         // the toggle loop above — focusing a hidden element no-ops.
@@ -159,6 +195,361 @@
             var dir = $(this).attr('data-step-nav') === 'prev' ? -1 : 1;
             showStep(currentStep + dir, true);
         });
+    }
+
+    /* ──────────────────────────────────────────
+     * Live preview
+     *
+     * The newsletter builds itself beside the form: every edit re-renders
+     * it through the REAL renderer server-side (see
+     * PTK_Newsletter_Builder::handle_preview_ajax), so what's on screen is
+     * what families will get — not a JS approximation that could disagree
+     * with the saved article.
+     * ────────────────────────────────────────── */
+
+    /** The preview iframe element, or null if the page has no preview column. */
+    function previewFrame() {
+        return document.getElementById('ptk-nl-preview-frame');
+    }
+
+    /** The preview iframe's document, or null before it's writable. */
+    function previewDoc() {
+        var frame = previewFrame();
+        if (!frame) {
+            return null;
+        }
+        try {
+            return frame.contentDocument || (frame.contentWindow && frame.contentWindow.document) || null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
+     * Wrap the iframe once in a box we're allowed to size. The iframe itself
+     * has to stay a full 840px wide (that's the point — see PREVIEW_WIDTH);
+     * `transform: scale()` shrinks how it LOOKS but not the space it claims,
+     * so without this wrapper the scaled-down preview would leave a column of
+     * dead space the size of the unscaled frame. The wrapper is the one that
+     * gets the scaled-down height.
+     *
+     * Wraps ONCE and then leaves the iframe alone: re-parenting an iframe
+     * reloads it, which would blank a preview we'd already written. Hence
+     * writePreview() wraps BEFORE it opens the document, never after.
+     *
+     * @return {jQuery} The wrapper, or an empty set if there's no iframe.
+     */
+    function previewWrap() {
+        var frame = previewFrame();
+        if (!frame) {
+            return $();
+        }
+
+        var $frame = $(frame);
+        var $wrap = $frame.parent('.ptk-nl-preview-scale');
+
+        if (!$wrap.length) {
+            $frame.wrap('<div class="ptk-nl-preview-scale" style="overflow:hidden;"></div>');
+            $wrap = $frame.parent('.ptk-nl-preview-scale');
+            $frame.css({
+                width: PREVIEW_WIDTH + 'px',
+                border: '0',
+                display: 'block',
+                transformOrigin: 'top left'
+            });
+        }
+
+        return $wrap;
+    }
+
+    /**
+     * Fit the 840px preview into however much room the column has, and give
+     * the wrapper the height the scaled preview actually occupies.
+     * Recomputed after every refresh (the content's height changes as the
+     * newsletter grows) and whenever the column's width changes.
+     */
+    function scalePreview() {
+        var frame = previewFrame();
+        if (!frame) {
+            return;
+        }
+
+        var $wrap = previewWrap();
+        var $panel = $('.ptk-nl-preview');
+        var panelWidth = $panel.width();
+
+        if (!panelWidth || panelWidth <= 0) {
+            return; // Column not laid out yet (or hidden) — nothing to fit to.
+        }
+
+        // Never scale UP past the design's own width: 840px is what the
+        // newsletter is drawn for, and stretching it would just blur it.
+        var scale = Math.min(1, panelWidth / PREVIEW_WIDTH);
+        var height = previewContentHeight();
+
+        frame.style.width = PREVIEW_WIDTH + 'px';
+        frame.style.height = height + 'px';
+        frame.style.transformOrigin = 'top left';
+        frame.style.transform = 'scale(' + scale + ')';
+
+        $wrap.css('height', Math.ceil(height * scale) + 'px');
+    }
+
+    /**
+     * How tall the rendered newsletter is at 840px wide. The iframe is sized
+     * to its whole content rather than scrolled internally, so the preview
+     * reads as one continuous newsletter — a scrollbar inside a scaled-down
+     * frame is a fiddly target and hides how long the newsletter got.
+     */
+    function previewContentHeight() {
+        var doc = previewDoc();
+        if (!doc || !doc.body) {
+            return 600;
+        }
+        return Math.max(doc.body.scrollHeight, doc.body.offsetHeight, 1);
+    }
+
+    /**
+     * Replace the preview document with freshly rendered newsletter HTML.
+     *
+     * The body is pinned to 840px so the render is measured against the
+     * width the design targets, regardless of how small the column is.
+     */
+    function writePreview(html) {
+        var frame = previewFrame();
+        var doc = previewDoc();
+        if (!frame || !doc) {
+            return;
+        }
+
+        previewWrap();
+
+        doc.open();
+        doc.write(
+            '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+            '<style>' + PREVIEW_STYLE + '</style></head>' +
+            '<body style="margin:0;width:' + PREVIEW_WIDTH + 'px">' + html + '</body></html>'
+        );
+        doc.close();
+
+        // The document was just rebuilt, so the outline went with it.
+        applyHighlight();
+        scalePreview();
+
+        // Images finish loading after the write returns and make the
+        // newsletter taller; re-fit once they're in rather than leaving the
+        // bottom of the preview clipped.
+        try {
+            $(frame.contentWindow).one('load', scalePreview);
+        } catch (e) {
+            // Cross-document access blocked — the height we already have
+            // stands; not worth breaking the preview over.
+        }
+    }
+
+    /** Whether the preview endpoint is available (it's localized by PHP). */
+    function previewConfigured() {
+        return typeof ptkNlData !== 'undefined' && ptkNlData &&
+            ptkNlData.ajaxUrl && ptkNlData.previewNonce && previewFrame();
+    }
+
+    /**
+     * Re-render the preview from the form as it stands right now.
+     *
+     * Issue and date live OUTSIDE the blocks JSON, so they're posted
+     * separately. They're read by NAME (`ptk_nl_issue` / `ptk_nl_date`) —
+     * the element ids are hyphenated (`ptk-nl-issue`), so an id selector
+     * here would match nothing, post nothing, and let the endpoint's
+     * fallbacks render a confident "issue 1, today" preview that lies about
+     * the exact two fields step 1 exists to set.
+     */
+    function refreshPreview() {
+        if (!previewConfigured()) {
+            return;
+        }
+
+        // The hidden field is the request body — make sure it's current
+        // before reading it, not one edit behind.
+        serialize();
+
+        var seq = ++previewSeq;
+
+        $.post(ptkNlData.ajaxUrl, {
+            action: 'ptk_nl_preview',
+            nonce: ptkNlData.previewNonce,
+            blocks: $('#ptk-nl-blocks-json').val(),
+            issue: $('[name="ptk_nl_issue"]').val(),
+            date: $('[name="ptk_nl_date"]').val()
+        }).done(function (response) {
+            if (seq !== previewSeq) {
+                return; // A newer edit is already in flight — this reply is stale.
+            }
+            if (!response || !response.success || !response.data || typeof response.data.html !== 'string') {
+                showPreviewNote(true);
+                return;
+            }
+            showPreviewNote(false);
+            writePreview(response.data.html);
+        }).fail(function () {
+            if (seq !== previewSeq) {
+                return;
+            }
+            // Keep the last good preview on screen. Blanking it would read as
+            // "your newsletter is gone", which is never what happened.
+            showPreviewNote(true);
+        });
+    }
+
+    /** Queue a refresh, collapsing a burst of typing into one request. */
+    function schedulePreview() {
+        if (previewTimer) {
+            clearTimeout(previewTimer);
+        }
+        previewTimer = setTimeout(function () {
+            previewTimer = null;
+            refreshPreview();
+        }, PREVIEW_DEBOUNCE);
+    }
+
+    /** Keep the hidden field current AND queue a preview refresh. */
+    function serializeAndPreview() {
+        serialize();
+        schedulePreview();
+    }
+
+    /**
+     * Say — quietly — that the preview is behind, without taking anything
+     * away. The note sits beside a still-correct preview of the last render;
+     * nothing the volunteer typed is lost, and the next edit retries.
+     */
+    function showPreviewNote(show) {
+        var $panel = $('.ptk-nl-preview');
+        if (!$panel.length) {
+            return;
+        }
+
+        var $note = $panel.find('.ptk-nl-preview-note');
+
+        if (!show) {
+            $note.remove();
+            return;
+        }
+
+        if (!$note.length) {
+            $panel.prepend(
+                $('<p class="ptk-nl-preview-note" role="status"></p>')
+                    .css({ margin: '0 0 8px', fontSize: '12px' })
+                    .text('Preview couldn\'t update just now — this is your last version. Keep going; it\'ll catch up.')
+            );
+        }
+    }
+
+    /* ── Preview highlighting ── */
+
+    /**
+     * The block types a step owns, taken from the sections themselves
+     * (PHP stamps each one with its step) rather than a second copy of the
+     * mapping over here that could drift out of agreement with it. Excluded
+     * sections are left out: they aren't in the newsletter, so there's
+     * nothing of theirs in the preview to outline.
+     */
+    function typesForStep(n) {
+        var types = [];
+        $('#ptk-nl-blocks > .ptk-nl-block[data-step="' + n + '"]').not('[data-excluded]').each(function () {
+            types.push($(this).attr('data-type'));
+        });
+        return types;
+    }
+
+    /** Outline these block types in the preview (replacing any previous). */
+    function setHighlight(types) {
+        highlightTypes = types || [];
+        applyHighlight();
+    }
+
+    /**
+     * Paint the current highlight onto the preview document. Safe to call
+     * before the first render — an empty document simply has nothing to
+     * match, and writePreview() calls this again on every refresh.
+     */
+    function applyHighlight() {
+        var doc = previewDoc();
+        if (!doc || !doc.body) {
+            return;
+        }
+
+        var all = doc.querySelectorAll('[data-ptk-block]');
+        for (var i = 0; i < all.length; i++) {
+            var type = all[i].getAttribute('data-ptk-block');
+            var on = highlightTypes.indexOf(type) !== -1;
+            // classList over a class attribute rewrite: the renderer may put
+            // its own classes on a block, and they're not ours to drop.
+            all[i].classList.toggle('ptk-nl-hi', on);
+        }
+    }
+
+    /* ── Preview triggers ── */
+
+    /**
+     * Everything that can change what the newsletter looks like refreshes it.
+     *
+     * The issue/date inputs need their own binding: bindSerializeTriggers()
+     * is scoped to `#ptk-nl-blocks`, and these two live in the meta row
+     * outside it — so without this, step 1 (the step whose entire purpose is
+     * the issue number and the date) would show a preview that never moves.
+     *
+     * Add/remove row, image pick/remove, reorder and include/skip refresh
+     * from their own handlers via serializeAndPreview().
+     */
+    function bindPreviewTriggers() {
+        $(document).on('input change', '[name="ptk_nl_issue"], [name="ptk_nl_date"]', function () {
+            schedulePreview();
+        });
+
+        // Focusing a field points the preview at the matching section — a
+        // finer-grained answer to "which bit is this?" than the step alone.
+        $(document).on('focusin', '#ptk-nl-blocks [data-field]', function () {
+            var type = $(this).closest('.ptk-nl-block').attr('data-type');
+            setHighlight(type ? [type] : []);
+        });
+
+        // Leaving a field hands the highlight back to the step, so the
+        // preview never keeps pointing at a section you've moved on from.
+        $(document).on('focusout', '#ptk-nl-blocks [data-field]', function () {
+            setHighlight(typesForStep(currentStep));
+        });
+
+        $(window).on('resize', function () {
+            if (resizeTimer) {
+                clearTimeout(resizeTimer);
+            }
+            resizeTimer = setTimeout(function () {
+                resizeTimer = null;
+                scalePreview();
+            }, 150);
+        });
+
+        // The column's width can change without the window's doing so (the
+        // wizard's own layout, an admin menu collapse). Watch the column
+        // itself where the browser lets us; the resize handler above is the
+        // floor for browsers that don't.
+        if (typeof window.ResizeObserver === 'function') {
+            var panel = document.querySelector('.ptk-nl-preview');
+            if (panel) {
+                var lastWidth = 0;
+                new window.ResizeObserver(function () {
+                    // Width only: scalePreview() sets the wrapper's HEIGHT,
+                    // which changes this element's height, which would call
+                    // us straight back. Width is the only thing we react to,
+                    // and nothing here changes it.
+                    var width = panel.clientWidth;
+                    if (width !== lastWidth) {
+                        lastWidth = width;
+                        scalePreview();
+                    }
+                }).observe(panel);
+            }
+        }
     }
 
     /* ──────────────────────────────────────────
@@ -239,7 +630,7 @@
                 return;
             }
             addRow($rowsContainer, null);
-            serialize();
+            serializeAndPreview();
         });
     }
 
@@ -249,7 +640,7 @@
         $(document).on('click', '.ptk-nl-remove-row', function (e) {
             e.preventDefault();
             $(this).closest('[data-row]').remove();
-            serialize();
+            serializeAndPreview();
         });
     }
 
@@ -505,7 +896,7 @@
         }
 
         renderArrangeList();
-        serialize();
+        serializeAndPreview();
 
         // The re-render above replaced the button that was just clicked, so
         // put focus back and say what happened — this is the whole keyboard
@@ -635,7 +1026,7 @@
     function afterInclusionChange() {
         renderArrangeList();
         showStep(currentStep, false);
-        serialize();
+        serializeAndPreview();
     }
 
     /**
@@ -659,7 +1050,7 @@
             stop: function () {
                 applyRowOrderToSections();
                 renderArrangeList();
-                serialize();
+                serializeAndPreview();
             }
         });
     }
@@ -710,7 +1101,7 @@
             if ($hidden.length) {
                 $hidden.val(0);
                 refreshImageChip($hidden);
-                serialize();
+                serializeAndPreview();
             }
         });
     }
@@ -745,7 +1136,7 @@
                 var attachment = mediaFrame.state().get('selection').first().toJSON();
                 mediaTargetField.val(attachment.id);
                 refreshImageChip(mediaTargetField);
-                serialize();
+                serializeAndPreview();
             });
         }
 
@@ -811,7 +1202,7 @@
      */
     function bindSerializeTriggers() {
         $(document).on('input change', '#ptk-nl-blocks [data-field]', function () {
-            serialize();
+            serializeAndPreview();
         });
 
         $('#ptk-nl-form').on('submit', function () {
