@@ -510,6 +510,14 @@ So:
 
 **The same trap applies to `.ptk-nl-excluded`** (the "Not included" list), even though it has no `data-step`: `renderArrangeList()` toggles it with jQuery `.toggle()`. If CSS gives it `display:flex`/`grid`, jQuery's `.show()` will stamp inline `display:block` and clobber the layout. **Style its children instead**, or give it a plain (non-flex) outer element. Rule of thumb: **any element the JS toggles must not be given a non-`block` display by CSS.** Grep the JS for `.toggle(` / `.show(` / `.hide(` before styling anything.
 
+### ⚠ What the preview JS already owns — do not fight it
+
+Task 8 landed; these are facts about the live DOM, not suggestions:
+- **`.ptk-nl-preview-scale`** is a wrapper **created by JS** between `.ptk-nl-preview` and the iframe, carrying inline `overflow:hidden` + a computed `height`. **JS owns that height — never set `height` on it in CSS.**
+- **`#ptk-nl-preview-frame`** gets inline `width`/`height`/`transform`/`transform-origin`/`border`/`display` from JS. **Inline styles win — CSS width/height on the iframe will be ignored.**
+- **`.ptk-nl-preview` MUST have a real, nonzero width at boot.** `scalePreview()` early-returns on a zero width, and the preview then renders unscaled at 840px and gets clipped. **Never start the panel in a `display:none` or zero-width container.**
+- **Don't `display:none` the panel at a breakpoint** without triggering a refresh on return — a zero width skips scaling and the wrapper keeps a stale height. For the responsive collapse, prefer moving/resizing the column over hiding it, or wire the toggle to re-run the scale.
+
 - [ ] **Step 1: Layout**
 
 `.ptk-nl-wizard` = flex row: `.ptk-nl-steps` sidebar (~170px) | fields column (min ~420px, flex 1) | `.ptk-nl-preview` (flex, the widest that fits). Style the active step (`.is-active` / `[aria-current="step"]`), the pinned/arrange rows, the drag handle, the excluded list, and the placeholder look. Follow the project rule: **full borders/fills, never single-side accent stripes.**
