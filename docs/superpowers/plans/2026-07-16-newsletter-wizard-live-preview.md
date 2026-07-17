@@ -496,9 +496,9 @@ git add -A && git commit -m "Show the newsletter building itself beside the form
 
 `.ptk-nl-wizard` = flex row: `.ptk-nl-steps` sidebar (~170px) | fields column (min ~420px, flex 1) | `.ptk-nl-preview` (flex, the widest that fits). Style the active step, the pinned/arrange rows, the drag handle, the excluded list, and the placeholder look. Follow the project rule: **full borders/fills, never single-side accent stripes.**
 
-- [ ] **Step 1b: Place the share-a-preview panel**
+- [ ] **Step 1b: Verify the share-a-preview panel reads as part of the finish column**
 
-It lives **outside** `.ptk-nl-wizard` (a sibling of the form inside `.wrap`), so `data-step="4"` alone will show it *below the whole wizard, full width* rather than in the fields column where it belongs. Fix with CSS/placement so on step 4 it reads as part of the finish column. Verify in the Playground pass — don't guess.
+**Premise updated (Task 5 already moved it):** Task 5 placed the share-a-preview panel inside `.ptk-nl-fields` — still a sibling of `#ptk-nl-form`, so no nested forms — and gave it `data-step="4"`. So it no longer sits below the whole wizard, and **it does not need "fixing" again**. Just style it so it reads as part of the finish column, and confirm in the Playground pass.
 
 - [ ] **Step 2: Responsive**
 
