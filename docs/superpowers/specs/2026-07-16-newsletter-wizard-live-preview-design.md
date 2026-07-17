@@ -154,12 +154,12 @@ newsletter order, the step-4 arrange list reorders the **actual sections** in
 - **Placement:** a panel to the right of the step fields. It gets the widest
   column that fits; the fields column stays comfortably readable (~420px min).
 - **Render it in an `<iframe>`, not injected into the admin DOM (decided).** Two
-  reasons, both real: (a) the newsletter's type uses viewport units
-  (`clamp(…, 7vw, …)` appears in the header, events, featured and story-card
-  renderers) — `vw` resolves against the **admin window**, not against a scaled
-  `<div>`, so injected markup would misreport proportions and make "840px design
-  width" a lie; an iframe is a real 840px viewport, so `vw` and `clamp()` behave
-  exactly as they will for families. (b) It isolates the newsletter from wp-admin's
+  reasons, both real: (a) the newsletter's type uses **`clamp()` with `vw` units**
+  in the header, events, featured and story-card renderers (`7vw`, `5vw`, `6vw`,
+  `4.5vw` respectively) — `vw` resolves against the **admin window**, not against a
+  scaled `<div>`, so injected markup would misreport proportions and make "840px
+  design width" a lie; an iframe is a real 840px viewport, so `vw` and `clamp()`
+  behave exactly as they will for families. (b) It isolates the newsletter from wp-admin's
   stylesheets in both directions. Set the iframe body to 840px and scale the whole
   iframe (`transform: scale()`) to fit the panel.
 - **Fidelity:** proportions are then literally honest, though the text is small.
@@ -182,6 +182,10 @@ newsletter order, the step-4 arrange list reorders the **actual sections** in
   they've written it. The save path never sets this opt, so **published output is
   unchanged** and Phase 1's "empty blocks render nothing" guarantee still holds
   (its existing tests must keep passing untouched).
+  *Implementation note:* `render_announcement()` and `render_footer()` currently
+  take `( array $data )` only — `render()` dispatches with `$data, $opts` and PHP
+  silently drops the extra arg — so both need an `$opts` parameter added before
+  they can honour this flag.
 - **Narrow screens:** below ~1100px the preview collapses to a "Show preview"
   toggle (or drops beneath the fields) rather than crushing the form. wp-admin on
   a laptop must stay usable.
@@ -197,6 +201,12 @@ than no preview.
 
 - On change (debounced ~400ms), the JS POSTs to a new authenticated
   `wp_ajax_ptk_nl_preview` endpoint (nonce + `edit_posts`).
+- **The refresh trigger must cover issue/date too.** `bindSerializeTriggers()`
+  currently binds `'#ptk-nl-blocks [data-field]'` — scoped *inside* the blocks
+  container — so the `ptk_nl_issue` / `ptk_nl_date` inputs fire nothing today. The
+  debounced preview refresh must also listen on those two inputs, or **step 1 —
+  the step whose entire purpose is the issue number and date — would show a preview
+  that never moves.**
 - **The payload is NOT just `serialize()` output.** Issue number and issue date
   live in `ptk_nl_issue` / `ptk_nl_date` inputs **outside** `#ptk-nl-blocks`, and
   `render()` reads them from `$opts` — not from block data. Posting blocks alone
@@ -240,8 +250,9 @@ This is a re-layout, not a rebuild. Reused as-is:
   KSES bypass, `wp_slash` fix, redirects, notices.
 - The JS `serialize()` / `prefillFromData()` contract (`[data-field]`,
   `[data-rows-for]`, `<template>` rows, the hidden `ptk_nl_blocks` JSON). Fields
-  are redistributed across steps **without nesting them** (§5a), so serialize
-  keeps working untouched.
+  are redistributed across steps **without nesting them** (§5a), so serialize is
+  untouched *by the step redistribution* — its only change is skipping excluded
+  sections (§8a).
 - `wp.media` image picking, share-a-preview, edit routing, `validate_edit_id()`.
 
 **What DOES change (do not let §8 read as "no work"):**
