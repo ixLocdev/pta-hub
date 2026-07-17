@@ -3,8 +3,14 @@
  * Newsletter Builder — guided form for creating a newsletter issue.
  *
  * Renders the "Add New" screen for the pta_newsletter post type as a
- * plain-English, section-by-section form instead of the block editor.
- * The fixed fields (Header/Announcement/Featured/Footer) and the
+ * plain-English, four-step wizard instead of the block editor. The steps
+ * are presentation only: every step-owned element carries `data-step` and
+ * the JS shows/hides by that attribute, so the six block sections stay a
+ * FLAT list of direct children of #ptk-nl-blocks — the JS reads
+ * '#ptk-nl-blocks > .ptk-nl-block' and takes the newsletter's order from
+ * DOM order. Which step edits a section is a property of its TYPE
+ * (step_for_type()); its position in the newsletter is separate and
+ * mutable. The fixed fields (Header/Announcement/Featured/Footer) and the
  * repeatable-row placeholders (Events/Story Cards) are rendered
  * server-side with a `data-field` scheme a client-side JS task
  * reads/writes, and a hidden `ptk_nl_blocks` field carries the layout as
@@ -553,6 +559,117 @@ class PTK_Newsletter_Builder {
     }
 
     /**
+     * Which wizard step edits a given block type. Step is a property of the
+     * TYPE — never of position — so a section dragged to the bottom of the
+     * newsletter on step 4 is still edited on its own step.
+     *
+     * @param string $type Block type slug.
+     * @return int Step number.
+     */
+    protected static function step_for_type( $type ) {
+        $map = array(
+            PTK_Newsletter_Data::TYPE_HEADER       => 1,
+            PTK_Newsletter_Data::TYPE_ANNOUNCEMENT => 2,
+            PTK_Newsletter_Data::TYPE_EVENTS       => 2,
+            PTK_Newsletter_Data::TYPE_FEATURED     => 3,
+            PTK_Newsletter_Data::TYPE_STORY_CARDS  => 3,
+            PTK_Newsletter_Data::TYPE_FOOTER       => 4,
+        );
+
+        return isset( $map[ $type ] ) ? $map[ $type ] : 2;
+    }
+
+    /**
+     * The wizard's steps, in order: the sidebar entries and the heading that
+     * opens each step. Plain English — this is the first thing a first-time
+     * volunteer reads.
+     *
+     * @return array[] Step number => array( 'title' => string, 'blurb' => string ).
+     */
+    protected static function steps() {
+        return array(
+            1 => array(
+                'title' => 'The basics',
+                'blurb' => "Who it's from and how you say hello. Most of this is filled in already.",
+            ),
+            2 => array(
+                'title' => "What's happening",
+                'blurb' => "The dates, and the one big thing families shouldn't miss. Skip anything you don't need.",
+            ),
+            3 => array(
+                'title' => 'Stories',
+                'blurb' => 'The longer bits — a featured story and any shorter articles. All optional.',
+            ),
+            4 => array(
+                'title' => 'Finish & publish',
+                'blurb' => 'Put it in order, check the photos, and send it out.',
+            ),
+        );
+    }
+
+    /**
+     * The sections to render into #ptk-nl-blocks, in DOM order.
+     *
+     * Edit mode hands us only the types the saved newsletter includes, but
+     * every type needs a DOM node: a type with no node could never be listed
+     * under "Not included" on step 4, so removing a section and saving would
+     * make it unrecoverable forever.
+     *
+     * The saved blocks supply the order of what IS included; every absent type
+     * is inserted immediately BEFORE the footer — the end of the movable run —
+     * in default order, marked excluded. Inserting after the footer instead
+     * would strand it below the pinned footer, where "Add back" would restore
+     * it in a spot Move up could never rescue it from.
+     *
+     * @param array $blocks Sanitized blocks (header first, footer last).
+     * @return array[] Each: array( 'block' => array, 'excluded' => bool ).
+     */
+    protected static function sections_to_render( array $blocks ) {
+        $sections = array();
+        $present  = array();
+
+        foreach ( $blocks as $block ) {
+            if ( empty( $block['type'] ) ) {
+                continue;
+            }
+            $present[]  = $block['type'];
+            $sections[] = array(
+                'block'    => $block,
+                'excluded' => false,
+            );
+        }
+
+        $missing = array();
+        foreach ( PTK_Newsletter_Data::default_blocks() as $default ) {
+            if ( ! in_array( $default['type'], $present, true ) ) {
+                $missing[] = array(
+                    'block'    => $default,
+                    'excluded' => true,
+                );
+            }
+        }
+
+        if ( ! $missing ) {
+            return $sections;
+        }
+
+        // Splice in before the footer so the excluded shells sit at the end of
+        // the movable run. sanitize_blocks() always emits a footer, so the
+        // count() fallback is belt-and-braces only.
+        $footer_at = count( $sections );
+        foreach ( $sections as $i => $section ) {
+            if ( PTK_Newsletter_Data::TYPE_FOOTER === $section['block']['type'] ) {
+                $footer_at = $i;
+                break;
+            }
+        }
+
+        array_splice( $sections, $footer_at, 0, $missing );
+
+        return $sections;
+    }
+
+    /**
      * Render the Newsletter Builder page.
      */
     public static function render_page() {
@@ -583,52 +700,102 @@ class PTK_Newsletter_Builder {
             $date_value   = date_i18n( 'Y-m-d' );
         }
 
+        $steps     = self::steps();
+        $step_last = count( $steps );
+        $sections  = self::sections_to_render( $blocks );
         ?>
         <div class="wrap ptk-nl-builder">
             <h1><?php echo $edit_id ? 'Edit Newsletter' : 'New Newsletter'; ?></h1>
             <?php self::render_notice(); ?>
-            <p class="ptk-nl-intro"><?php echo $edit_id ? 'Update the sections below — header and footer are always included, and you can add, remove, and reorder the sections in between.' : 'Fill in the sections below — header and footer are always included, and you can add, remove, and reorder the sections in between.'; ?></p>
+            <p class="ptk-nl-intro">Four short steps. We&#8217;ve filled in what we can — you write the news.</p>
 
-            <form method="post" id="ptk-nl-form">
-                <?php wp_nonce_field( 'ptk_nl_save', 'ptk_nl_nonce' ); ?>
-                <input type="hidden" name="ptk_nl_edit_id" value="<?php echo esc_attr( $edit_id ); ?>">
+            <div class="ptk-nl-wizard">
+                <nav class="ptk-nl-steps" aria-label="Newsletter steps">
+                    <ul>
+                        <?php foreach ( $steps as $step_number => $step ) : ?>
+                            <li>
+                                <button type="button" class="ptk-nl-step-link" data-goto-step="<?php echo (int) $step_number; ?>"<?php echo 1 === $step_number ? ' aria-current="step"' : ''; ?>>
+                                    <span class="ptk-nl-step-num"><?php echo (int) $step_number; ?></span>
+                                    <span class="ptk-nl-step-name"><?php echo esc_html( $step['title'] ); ?></span>
+                                </button>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                </nav>
 
-                <div class="ptk-nl-meta-row">
-                    <div class="ptk-nl-field-group">
-                        <label for="ptk-nl-issue">Issue number</label>
-                        <input type="number" id="ptk-nl-issue" name="ptk_nl_issue" value="<?php echo esc_attr( $issue_number ); ?>" min="1">
-                    </div>
-                    <div class="ptk-nl-field-group">
-                        <label for="ptk-nl-date">Issue date</label>
-                        <input type="date" id="ptk-nl-date" name="ptk_nl_date" value="<?php echo esc_attr( $date_value ); ?>">
-                    </div>
+                <div class="ptk-nl-fields">
+                    <form method="post" id="ptk-nl-form">
+                        <?php wp_nonce_field( 'ptk_nl_save', 'ptk_nl_nonce' ); ?>
+                        <input type="hidden" name="ptk_nl_edit_id" value="<?php echo esc_attr( $edit_id ); ?>">
+
+                        <?php foreach ( $steps as $step_number => $step ) : ?>
+                            <?php /* One step head is visible at a time, so it always reads as the heading for the fields below it. */ ?>
+                            <div class="ptk-nl-step-head" data-step="<?php echo (int) $step_number; ?>">
+                                <h2 tabindex="-1">
+                                    <?php echo esc_html( $step['title'] ); ?>
+                                    <span class="ptk-nl-step-count"><?php echo esc_html( sprintf( 'Step %d of %d', $step_number, $step_last ) ); ?></span>
+                                </h2>
+                                <p class="ptk-nl-step-blurb"><?php echo esc_html( $step['blurb'] ); ?></p>
+                            </div>
+                        <?php endforeach; ?>
+
+                        <div class="ptk-nl-meta-row" data-step="1">
+                            <div class="ptk-nl-field-group">
+                                <label for="ptk-nl-issue">Issue number</label>
+                                <input type="number" id="ptk-nl-issue" name="ptk_nl_issue" value="<?php echo esc_attr( $issue_number ); ?>" min="1">
+                            </div>
+                            <div class="ptk-nl-field-group">
+                                <label for="ptk-nl-date">Issue date</label>
+                                <input type="date" id="ptk-nl-date" name="ptk_nl_date" value="<?php echo esc_attr( $date_value ); ?>">
+                            </div>
+                        </div>
+
+                        <?php /* The six sections MUST stay direct children of #ptk-nl-blocks: serialize() reads
+                                '#ptk-nl-blocks > .ptk-nl-block' and takes the newsletter's order from DOM order.
+                                Steps are presentation only — each section carries data-step and the JS shows/hides
+                                by that attribute. Never wrap these in per-step parents. */ ?>
+                        <div id="ptk-nl-blocks">
+                            <?php foreach ( $sections as $section ) : ?>
+                                <?php self::render_block_section( $section['block'], $section['excluded'] ); ?>
+                            <?php endforeach; ?>
+                        </div>
+
+                        <input type="hidden" name="ptk_nl_blocks" id="ptk-nl-blocks-json" value="<?php echo esc_attr( wp_json_encode( $blocks ) ); ?>">
+
+                        <div class="ptk-nl-finish" data-step="<?php echo (int) $step_last; ?>">
+                            <div class="ptk-nl-pii-gate">
+                                <label>
+                                    <input type="checkbox" name="ptk_nl_pii_ok" value="1">
+                                    These photos are OK to share publicly — no student faces or personal info.
+                                </label>
+                            </div>
+
+                            <div class="ptk-nl-submit-row">
+                                <button type="submit" name="ptk_nl_status" value="draft" class="button button-secondary">Save draft</button>
+                                <button type="submit" name="ptk_nl_status" value="preview" class="button button-secondary">Preview</button>
+                                <button type="submit" name="ptk_nl_status" value="publish" class="button button-primary">Publish</button>
+                            </div>
+                        </div>
+
+                        <?php /* No data-step: the JS shows/hides these per step. */ ?>
+                        <div class="ptk-nl-step-nav">
+                            <button type="button" class="button ptk-nl-step-back" data-step-nav="prev">Back</button>
+                            <button type="button" class="button button-primary ptk-nl-step-next" data-step-nav="next">Next</button>
+                        </div>
+                    </form>
+
+                    <?php if ( $edit_id ) : ?>
+                        <?php /* Rendered outside #ptk-nl-form on purpose: it has its own <form>s, and forms can't nest. */ ?>
+                        <?php self::render_preview_panel( $edit_id ); ?>
+                    <?php endif; ?>
                 </div>
 
-                <div id="ptk-nl-blocks">
-                    <?php foreach ( $blocks as $block ) : ?>
-                        <?php self::render_block_section( $block ); ?>
-                    <?php endforeach; ?>
+                <?php /* The live preview is a COLUMN of the wizard, visible on every step — it must never carry
+                        data-step, or the JS's "hide every non-current [data-step]" would hide it on steps 1-3. */ ?>
+                <div class="ptk-nl-preview">
+                    <iframe id="ptk-nl-preview-frame" title="Preview of your newsletter"></iframe>
                 </div>
-
-                <input type="hidden" name="ptk_nl_blocks" id="ptk-nl-blocks-json" value="<?php echo esc_attr( wp_json_encode( $blocks ) ); ?>">
-
-                <div class="ptk-nl-pii-gate">
-                    <label>
-                        <input type="checkbox" name="ptk_nl_pii_ok" value="1">
-                        These photos are OK to share publicly — no student faces or personal info.
-                    </label>
-                </div>
-
-                <div class="ptk-nl-submit-row">
-                    <button type="submit" name="ptk_nl_status" value="draft" class="button button-secondary">Save draft</button>
-                    <button type="submit" name="ptk_nl_status" value="preview" class="button button-secondary">Preview</button>
-                    <button type="submit" name="ptk_nl_status" value="publish" class="button button-primary">Publish</button>
-                </div>
-            </form>
-
-            <?php if ( $edit_id ) : ?>
-                <?php self::render_preview_panel( $edit_id ); ?>
-            <?php endif; ?>
+            </div>
         </div>
         <?php
     }
@@ -643,6 +810,12 @@ class PTK_Newsletter_Builder {
      * since a brand-new (unsaved) newsletter has no post id to attach a
      * token to.
      *
+     * Sharing a preview is part of finishing up, so the panel carries
+     * data-step="4" and the wizard's JS shows it with the rest of that step.
+     * It can't live inside .ptk-nl-finish (that's inside #ptk-nl-form, and
+     * forms can't nest), so it sits alongside the form in the fields column
+     * with its own data-step instead.
+     *
      * @param int $edit_id Existing, validated pta_newsletter post id.
      */
     protected static function render_preview_panel( $edit_id ) {
@@ -655,8 +828,8 @@ class PTK_Newsletter_Builder {
         // `admin_post_{$action}` and are never registered here).
         $post_action = admin_url( 'admin.php' );
         ?>
-        <div class="ptk-nl-preview-panel" style="margin-top:24px;padding:16px;border:1px solid #ddd;border-radius:8px;background:#fff;max-width:640px;">
-            <h2 style="margin-top:0;"><?php esc_html_e( 'Share a preview link', 'pta-knowledge-hub' ); ?></h2>
+        <div class="ptk-nl-preview-panel" data-step="4" style="margin-top:24px;padding:16px;border:1px solid #ddd;border-radius:8px;background:#fff;max-width:640px;">
+            <h3 style="margin-top:0;"><?php esc_html_e( 'Share a preview link', 'pta-knowledge-hub' ); ?></h3>
             <p class="description">
                 <?php esc_html_e( 'Let someone — like a principal or PTA president — see this draft before it\'s published, without needing a login. The link stops working after 7 days.', 'pta-knowledge-hub' ); ?>
             </p>
@@ -695,25 +868,26 @@ class PTK_Newsletter_Builder {
      * default_blocks() or a saved newsletter. Rendering values here too
      * would risk double-filling/duplicating rows.
      *
-     * @param array $block Block with a 'type' key ('data' is deliberately
-     *                      ignored — see above).
+     * Ordering and inclusion are NOT edited here — they live on step 4's
+     * arrange list — so this renders no Move/Remove controls. The section
+     * carries data-step for the type that owns it; it stays a direct child of
+     * #ptk-nl-blocks either way.
+     *
+     * @param array $block    Block with a 'type' key ('data' is deliberately
+     *                        ignored — see above).
+     * @param bool  $excluded Whether this section is left out of the newsletter
+     *                        (rendered anyway so it can be added back).
      */
-    protected static function render_block_section( $block ) {
+    protected static function render_block_section( $block, $excluded = false ) {
         $type   = isset( $block['type'] ) ? $block['type'] : '';
         $pinned = in_array( $type, array( 'header', 'footer' ), true );
         $label  = self::label_for_type( $type );
         ?>
-        <section class="ptk-nl-block" data-type="<?php echo esc_attr( $type ); ?>"<?php echo $pinned ? ' data-pinned="1"' : ''; ?>>
+        <section class="ptk-nl-block" data-type="<?php echo esc_attr( $type ); ?>" data-step="<?php echo (int) self::step_for_type( $type ); ?>"<?php echo $pinned ? ' data-pinned="1"' : ''; ?><?php echo $excluded ? ' data-excluded="1"' : ''; ?>>
             <div class="ptk-nl-block-header">
-                <h2><?php echo esc_html( $label ); ?></h2>
+                <h3><?php echo esc_html( $label ); ?></h3>
                 <?php if ( $pinned ) : ?>
                     <span class="ptk-nl-pinned-note">Always shown</span>
-                <?php else : ?>
-                    <div class="ptk-nl-block-actions">
-                        <button type="button" class="button ptk-nl-move-up">Move up</button>
-                        <button type="button" class="button ptk-nl-move-down">Move down</button>
-                        <button type="button" class="button ptk-nl-remove-block">Remove</button>
-                    </div>
                 <?php endif; ?>
             </div>
 
