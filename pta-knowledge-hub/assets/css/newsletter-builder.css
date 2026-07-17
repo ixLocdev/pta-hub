@@ -591,18 +591,36 @@
 }
 
 /* ── Share a preview link (step 4) ──
-   Already inside .ptk-nl-fields with data-step="4", so it reads as part of
-   the finish column. Its box (padding/border/background/max-width) is set
-   INLINE by render_preview_panel(), so only the bits it doesn't set are
-   worth styling here. */
+   Inside .ptk-nl-fields with data-step="4", so it reads as part of the
+   finish column — and it's a card like every other one here.
+   [data-step] element: toggled by showStep(), so it must never be hidden
+   from CSS and keeps its default block display. */
+.ptk-nl-preview-panel {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-top: 24px;
+}
+
+.ptk-nl-preview-panel h3 {
+    margin: 0 0 4px;
+    font-size: 17px;
+}
+
 .ptk-nl-preview-panel .description {
     font-size: 13px;
     line-height: 1.5;
     color: #6b7280;
 }
 
+/* The read-only share URL. Small type: it's a long link meant to be copied,
+   not read. */
 .ptk-nl-preview-panel input[type="text"] {
+    width: 100%;
+    margin-bottom: 8px;
     padding: 8px 10px;
+    font-size: 12px;
     border: 1px solid #d1d5db;
     border-radius: 6px;
     background: #f9fafb;
@@ -622,10 +640,12 @@
     padding: 16px;
 }
 
-.ptk-nl-preview::before {
-    content: "Live preview";
-    display: block;
-    margin-bottom: 10px;
+/* Real markup (render_page()), not a ::before: a generated label isn't
+   reliably announced, selectable or translatable. It's aria-hidden — the
+   iframe's own title already names the region — so this is purely what
+   sighted volunteers read. */
+.ptk-nl-preview-label {
+    margin: 0 0 10px;
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.06em;

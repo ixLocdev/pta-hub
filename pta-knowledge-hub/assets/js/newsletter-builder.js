@@ -447,11 +447,22 @@
         }
 
         if (!$note.length) {
-            $panel.prepend(
-                $('<p class="ptk-nl-preview-note" role="status"></p>')
-                    .css({ margin: '0 0 8px', fontSize: '12px' })
-                    .text('Preview couldn\'t update just now — this is your last version. Keep going; it\'ll catch up.')
-            );
+            $note = $('<p class="ptk-nl-preview-note" role="status"></p>')
+                .css({ margin: '0 0 8px', fontSize: '12px' })
+                .text('Preview couldn\'t update just now — this is your last version. Keep going; it\'ll catch up.');
+
+            // Below the "Live preview" label, above the preview itself: the
+            // note is about the preview, so it reads after the thing it's
+            // qualifying and before the stale render it's warning about.
+            // Prepending would put it above the label, orphaning it from
+            // both. Falls back to prepend if the label ever goes away.
+            var $label = $panel.find('.ptk-nl-preview-label').first();
+
+            if ($label.length) {
+                $label.after($note);
+            } else {
+                $panel.prepend($note);
+            }
         }
     }
 

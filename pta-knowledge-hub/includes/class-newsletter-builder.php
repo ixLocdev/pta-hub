@@ -829,6 +829,12 @@ class PTK_Newsletter_Builder {
                 <?php /* The live preview is a COLUMN of the wizard, visible on every step — it must never carry
                         data-step, or the JS's "hide every non-current [data-step]" would hide it on steps 1-3. */ ?>
                 <div class="ptk-nl-preview">
+                    <?php /* Decorative on purpose: the iframe's own title ("Preview of your newsletter")
+                            already names this region for a screen reader, so labelling it a second time
+                            here would just make it say the same thing twice. This <p> is what SIGHTED
+                            volunteers read — real markup rather than a CSS ::before, which isn't
+                            reliably announced and can't be selected or translated. */ ?>
+                    <p class="ptk-nl-preview-label" aria-hidden="true">Live preview</p>
                     <iframe id="ptk-nl-preview-frame" title="Preview of your newsletter"></iframe>
                 </div>
             </div>
@@ -864,15 +870,15 @@ class PTK_Newsletter_Builder {
         // `admin_post_{$action}` and are never registered here).
         $post_action = admin_url( 'admin.php' );
         ?>
-        <div class="ptk-nl-preview-panel" data-step="4" style="margin-top:24px;padding:16px;border:1px solid #ddd;border-radius:8px;background:#fff;max-width:640px;">
-            <h3 style="margin-top:0;"><?php esc_html_e( 'Share a preview link', 'pta-knowledge-hub' ); ?></h3>
+        <div class="ptk-nl-preview-panel" data-step="4">
+            <h3><?php esc_html_e( 'Share a preview link', 'pta-knowledge-hub' ); ?></h3>
             <p class="description">
                 <?php esc_html_e( 'Let someone — like a principal or PTA president — see this draft before it\'s published, without needing a login. The link stops working after 7 days.', 'pta-knowledge-hub' ); ?>
             </p>
 
             <?php if ( $preview_url ) : ?>
                 <p class="description"><?php esc_html_e( 'This link is live right now:', 'pta-knowledge-hub' ); ?></p>
-                <input type="text" readonly value="<?php echo esc_attr( $preview_url ); ?>" id="ptk-nl-preview-url" style="width:100%;font-size:12px;margin-bottom:8px;" onclick="this.select();" />
+                <input type="text" readonly value="<?php echo esc_attr( $preview_url ); ?>" id="ptk-nl-preview-url" onclick="this.select();" />
                 <button type="button" class="button" onclick="navigator.clipboard.writeText(document.getElementById('ptk-nl-preview-url').value);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy link',1500);"><?php esc_html_e( 'Copy link', 'pta-knowledge-hub' ); ?></button>
 
                 <form method="post" action="<?php echo esc_url( $post_action ); ?>" style="display:inline;margin-left:6px;">
