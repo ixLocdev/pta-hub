@@ -308,14 +308,35 @@ protected static function steps() {
 
 - [ ] **Step 2: Add `data-step` to every step-owned element**
 
+**Naming — two different things, do not conflate them:**
+- **"live preview"** = the new `<iframe>` (Task 8). It is a **column of the wizard** and must be visible on EVERY step. It must **NOT** carry `data-step` — `showStep()` hides every `[data-step]` that isn't current, so tagging it would hide the entire feature on the writing steps.
+- **"share-a-preview panel"** = the EXISTING `render_preview_panel()` / `.ptk-nl-preview-panel` (no-login token link, builder line ~577). It belongs on step 4 (spec §3.4).
+
+Then:
 - `render_block_section()`: add `data-step="<?php echo (int) self::step_for_type( $type ); ?>"` to the `<section class="ptk-nl-block">`.
 - The `.ptk-nl-meta-row` (issue/date, ~line 544): add `data-step="1"`.
-- Wrap the PII gate + submit buttons + preview panel in a `<div class="ptk-nl-finish" data-step="4">`.
+- Wrap the PII gate + submit buttons in a `<div class="ptk-nl-finish" data-step="4">`.
+- The share-a-preview panel is rendered **outside** `<form id="ptk-nl-form">` (~:577) and contains its **own** `<form>`s, so it **cannot** be nested inside `.ptk-nl-finish` (nested forms are invalid). Leave it where it is and put `data-step="4"` on its own wrapper.
 - **Do NOT move `#ptk-nl-blocks` or nest its children.** The sections stay direct children (see constraints).
+
+- [ ] **Step 2b: Edit mode must render ALL SIX sections (or Remove is a permanent trap)**
+
+`render_page()` (~:522-532) currently builds `$blocks` from `sanitize_blocks( saved meta )` — which contains **only the included types**. So after Remove → Save → reopen, an excluded section has **no DOM node at all**: the "Not included" list would be empty and there would be **no way to add it back, ever**. That defeats the entire point of §8a.
+
+Fix: in edit mode, render the full set of six sections —
+- Start from the saved blocks (they give the **order** of what's included).
+- Append any type from `PTK_Newsletter_Data::default_blocks()` that is **absent** from the saved blocks, in default order, each rendered with **`data-excluded="1"`** (hidden, empty fields).
+- Result: every type always has a DOM node, so "Not included" is populated on reopen and Add back works (returning an empty section — the honest limitation spec §8a already states).
+
+Keep header/footer pinned and in place. Do this for the **rendered sections**; `blocks_for_js()` needs no change (a type absent from saved data simply prefills nothing).
+
+- [ ] **Step 2c: Fix the intro copy**
+
+The line at ~:538 ("Fill in the sections below — header and footer are always included, and you can add, remove, and reorder the sections in between") describes the old one-page form and contradicts the wizard. Replace with something that matches: e.g. *"Four short steps. We've filled in what we can — you write the news."*
 
 - [ ] **Step 3: Remove the in-section reorder controls**
 
-Delete the Move up / Move down / Remove buttons from `render_block_section()` (~lines 660-664). Steps 1–3 must have **no** reorder controls. (Their JS handlers are rewired in Task 7 — expect the buttons to be gone and the old handlers to be dead until then.)
+Delete the Move up / Move down / Remove buttons from `render_block_section()` (~lines 660-664). Steps 1–3 must have **no** reorder controls.
 
 - [ ] **Step 4: Render the sidebar + step headers**
 
@@ -381,7 +402,9 @@ Inside the `.ptk-nl-finish[data-step=4]` block, above the PII gate, render:
 - A pinned row for Header ("🔒 Header — always first").
 - `<ul class="ptk-nl-arrange" data-arrange>` — **empty**; the JS builds its rows from the live DOM (so it always reflects real order). 
 - A pinned row for Footer ("🔒 Footer — always last").
-- `<div class="ptk-nl-excluded" data-excluded><h4>Not included</h4><ul></ul></div>`.
+- `<div class="ptk-nl-excluded" data-excluded-list><h4>Not included</h4><ul></ul></div>`.
+
+**Visual order note:** the footer's *fields* are a child of `#ptk-nl-blocks`, which sits **before** `.ptk-nl-finish` in the DOM — so on step 4 the footer fields will appear **above** the arrange list. That's probably not what you want. Use CSS `order` on the step-4 children (or place `.ptk-nl-finish` accordingly) so step 4 reads: arrange list → footer fields → photo check → buttons → share-a-preview. **Do not fix this by moving the footer section out of `#ptk-nl-blocks`** (that breaks the flat-DOM constraint).
 
 - [ ] **Step 2: Build the rows from the DOM (JS)**
 
@@ -390,7 +413,11 @@ Re-run `renderArrangeList()` whenever order/inclusion changes, and when entering
 
 - [ ] **Step 3: Handlers — target by type, NOT by DOM ancestry**
 
-The old handlers used `$(this).closest('.ptk-nl-block')`, which cannot work from an arrange row that lives outside the section. New handlers resolve the target with
+**First: delete the old `bindMoveAndRemoveBlock()` (js ~:216-259) and stop calling it.** It binds delegated `document` handlers on `.ptk-nl-move-up` / `.ptk-nl-move-down` / `.ptk-nl-remove-block` that resolve via `closest('.ptk-nl-block')`. If the new arrange rows reuse those class names and the old function survives, **both handlers fire**: the user gets **two confirm dialogs**, and the old `.remove()` path destroys the section outright — precisely the data loss §8a exists to prevent. Also give the new rows **distinct class names** (e.g. `.ptk-nl-arr-up` / `.ptk-nl-arr-down` / `.ptk-nl-arr-remove` / `.ptk-nl-arr-addback`) so a stale handler can't match them.
+
+Also delete or repurpose `updateMoveButtonStates()` (~:266-273): once the in-section buttons are gone it matches an empty set. Port its "disable at the boundary" behaviour to the new arrange rows (Move up disabled on the first movable, Move down on the last) — that affordance is worth keeping.
+
+New handlers resolve the target with
 `var $section = $('#ptk-nl-blocks > .ptk-nl-block[data-type="' + type + '"]').first();`
 - **Move up/down:** swap `$section` with its previous/next non-pinned sibling (guard against crossing the pinned header/footer), then `renderArrangeList()` + `serialize()`.
 - **Drag:** `jquery-ui-sortable` on `[data-arrange]` (add `'jquery-ui-sortable'` to the script's deps in `enqueue_assets()`); on `stop`, reorder the real `$section`s in `#ptk-nl-blocks` to match the row order, then `renderArrangeList()` + `serialize()`.
@@ -421,7 +448,13 @@ git add -A && git commit -m "Add a finish step where you can drag sections into 
 
 - [ ] **Step 1: Debounced refresh**
 
-`refreshPreview()`: POST to `ptkNlData.ajaxUrl` with `{ action:'ptk_nl_preview', nonce: ptkNlData.previewNonce, blocks: <the hidden field's JSON>, issue: <#ptk_nl_issue value>, date: <#ptk_nl_date value> }`. Debounce ~400ms.
+`refreshPreview()`: POST to `ptkNlData.ajaxUrl` with
+`{ action:'ptk_nl_preview', nonce: ptkNlData.previewNonce, blocks: $('#ptk-nl-blocks-json').val(), issue: $('[name="ptk_nl_issue"]').val(), date: $('[name="ptk_nl_date"]').val() }`.
+Debounce ~400ms.
+
+**Selector warning:** the element **ids** are `ptk-nl-issue` / `ptk-nl-date` (hyphens); `ptk_nl_issue` / `ptk_nl_date` are the **name** attributes. Use the `[name="…"]` selectors above (or the hyphenated ids) — `#ptk_nl_issue` matches nothing, would post `undefined`, and the endpoint's floors would silently render "issue 1 / today": a plausible-looking preview that lies about the exact two fields step 1 owns.
+
+Call `serialize()` before reading the hidden field so the JSON is current.
 
 - [ ] **Step 2: Trigger it on ALL edits — including issue/date**
 
@@ -503,6 +536,8 @@ Check, and report anything that fails:
 6. Add an event / a story card; both appear in the preview.
 7. Step 4: drag reorders (and the preview follows); **Move up/down do the same via keyboard**; pinned header/footer can't move.
 8. Remove a written section → confirm prompt → it leaves the newsletter but **Add back restores the text**.
+8b. **The round-trip that matters:** remove a section → **Save draft** → **reopen from the list** → it must still appear under "Not included" with a working **Add back** (returning an empty section). If "Not included" is empty on reopen, Step 2b wasn't done and Remove is a permanent trap.
+8c. Only ONE confirmation dialog appears when removing (two means the old `bindMoveAndRemoveBlock()` handlers are still bound — Task 7 Step 3).
 9. PII gate still blocks Publish; checking it publishes.
 10. Published newsletter still looks right, and `data-event-date` still survives (Phase 1's KSES fix).
 11. Reopen for edit: the saved layout, order, and every value come back.
