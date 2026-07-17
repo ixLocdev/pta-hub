@@ -3,11 +3,42 @@
  *
  * Plain, readable, non-technical-friendly layout: clear section cards,
  * generous spacing, obvious labels, big tap targets.
+ *
+ * ── TWO RULES THIS FILE MUST NEVER BREAK ──
+ *
+ * 1. NEVER hide a JS-toggled element from this stylesheet.
+ *    showStep() and renderArrangeList() use jQuery .toggle(). jQuery's
+ *    .show() clears the INLINE display and lets the cascade win — but if a
+ *    stylesheet rule hides the element, jQuery falls through to
+ *    getDefaultDisplay() and stamps inline `display:block`, clobbering the
+ *    layout (e.g. .ptk-nl-meta-row's flex). So: no `display:none` and no
+ *    media-query hiding on ANY of these, ever:
+ *      - every [data-step] element: .ptk-nl-step-head, .ptk-nl-meta-row,
+ *        .ptk-nl-arrange-panel, .ptk-nl-block, .ptk-nl-finish,
+ *        .ptk-nl-preview-panel
+ *      - the [data-step-nav] Back/Next buttons
+ *      - .ptk-nl-excluded (toggled by renderArrangeList(); no data-step)
+ *    .ptk-nl-meta-row is display:flex AND toggled — that only works because
+ *    nothing here hides it. Keep it that way.
+ *    .ptk-nl-excluded's OUTER stays a plain block; its children are styled.
+ *    .ptk-nl-wizard / .ptk-nl-steps / .ptk-nl-fields / .ptk-nl-preview carry
+ *    no data-step and are never toggled — flex on them is safe.
+ *
+ * 2. The preview JS owns some properties — don't fight it.
+ *    - .ptk-nl-preview-scale is created by JS with inline overflow:hidden and
+ *      a computed height. NEVER set height (or a border/padding, which would
+ *      eat into that height under wp-admin's border-box) on it.
+ *    - #ptk-nl-preview-frame gets inline width/height/transform/border/
+ *      display from JS. Inline wins; CSS sizing there is ignored.
+ *    - .ptk-nl-preview MUST have a real, nonzero width at boot, or
+ *      scalePreview() early-returns and the preview renders unscaled at
+ *      840px and gets clipped. It is never hidden or zero-width here — the
+ *      responsive rule below STACKS the column instead of hiding it.
  */
 
-/* ── Layout ── */
+/* ── Page shell ── */
 .ptk-nl-builder {
-    max-width: 820px;
+    max-width: 1440px;
     margin: 20px auto;
     padding: 0 20px;
 }
@@ -23,7 +54,150 @@
     margin: 0 0 24px;
 }
 
-/* ── Issue meta row ── */
+/* ── Wizard: sidebar | fields | live preview ──
+   The fields column keeps a readable floor (420px) and the preview takes
+   whatever width is left over, so it's the widest that fits. */
+.ptk-nl-wizard {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+}
+
+.ptk-nl-steps {
+    flex: 0 0 170px;
+    position: sticky;
+    top: 46px;
+}
+
+.ptk-nl-fields {
+    flex: 1 1 460px;
+    min-width: 420px;
+    max-width: 640px;
+}
+
+.ptk-nl-preview {
+    flex: 2 1 400px;
+    min-width: 300px;
+}
+
+/* ── Step sidebar ── */
+.ptk-nl-steps ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ptk-nl-steps li {
+    margin: 0;
+}
+
+.ptk-nl-step-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 44px;
+    padding: 8px 12px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 1.3;
+    color: #1f2937;
+    text-align: left;
+    cursor: pointer;
+}
+
+.ptk-nl-step-link:hover {
+    background: #f3f4f6;
+}
+
+.ptk-nl-step-link:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+.ptk-nl-step-link[aria-current="step"],
+.ptk-nl-step-link.is-active {
+    background: #eef2ff;
+    border-color: #c7d2fe;
+    color: #1e3a8a;
+    font-weight: 600;
+}
+
+.ptk-nl-step-num {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: #e5e7eb;
+    color: #374151;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.ptk-nl-step-link[aria-current="step"] .ptk-nl-step-num,
+.ptk-nl-step-link.is-active .ptk-nl-step-num {
+    background: #2563eb;
+    color: #fff;
+}
+
+.ptk-nl-step-name {
+    min-width: 0;
+}
+
+/* ── Step heads ──
+   The <h2> is focused on navigation (tabindex="-1"). That focus is
+   deliberate, so nothing here suppresses its outline; a keyboard-only ring
+   is added on top. */
+.ptk-nl-step-head {
+    margin: 0 0 20px;
+}
+
+.ptk-nl-step-head h2 {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 0 0 6px;
+    padding: 0;
+    font-size: 20px;
+    color: #111827;
+}
+
+.ptk-nl-step-head h2:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 4px;
+    border-radius: 4px;
+}
+
+.ptk-nl-step-count {
+    background: #f3f4f6;
+    border-radius: 999px;
+    padding: 3px 9px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #6b7280;
+}
+
+.ptk-nl-step-blurb {
+    margin: 0;
+    max-width: 60ch;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #4b5563;
+}
+
+/* ── Issue meta row ──
+   display:flex AND toggled by showStep() — see rule 1 at the top. */
 .ptk-nl-meta-row {
     display: flex;
     flex-wrap: wrap;
@@ -81,7 +255,9 @@
     border-color: #2563eb;
 }
 
-/* ── Blocks ── */
+/* ── Blocks ──
+   #ptk-nl-blocks is never toggled; its .ptk-nl-block children are. A hidden
+   flex item is hidden by INLINE display:none from jQuery, never from here. */
 #ptk-nl-blocks {
     display: flex;
     flex-direction: column;
@@ -110,7 +286,7 @@
     margin-bottom: 18px;
 }
 
-.ptk-nl-block-header h2 {
+.ptk-nl-block-header h3 {
     font-size: 17px;
     margin: 0;
 }
@@ -123,16 +299,6 @@
     font-weight: 600;
     padding: 4px 10px;
     border-radius: 999px;
-}
-
-.ptk-nl-block-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.ptk-nl-block-actions .button {
-    min-height: 34px;
 }
 
 /* ── Repeatable rows ── */
@@ -175,6 +341,193 @@
     color: #3730a3;
 }
 
+/* ── Arrange panel (step 4) ── */
+.ptk-nl-arrange-panel {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.ptk-nl-arrange-panel h3 {
+    margin: 0 0 4px;
+    font-size: 17px;
+}
+
+.ptk-nl-arrange-panel .description {
+    margin: 0 0 14px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #6b7280;
+}
+
+.ptk-nl-arrange-panel > .description:last-child {
+    margin: 16px 0 0;
+}
+
+/* The header/footer rows: tinted, locked, and plainly not a drag target. */
+.ptk-nl-arrange-pinned {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f5f7fb;
+    border: 1px solid #c7d2e8;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e3a8a;
+    cursor: default;
+}
+
+/* The movable list. Never toggled — only emptied and re-filled — so flex is
+   safe here. */
+.ptk-nl-arrange {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 8px 0;
+    padding: 0;
+}
+
+.ptk-nl-arrange-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 52px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 8px 12px;
+}
+
+.ptk-nl-arrange-row.ui-sortable-helper {
+    background: #fff;
+    border-color: #c7d2e8;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.18);
+}
+
+.ptk-nl-arrange-empty {
+    margin: 0;
+    background: #f9fafb;
+    border: 1px dashed #d1d5db;
+    border-radius: 8px;
+    padding: 14px;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.ptk-nl-arrange-handle {
+    flex: none;
+    padding: 6px 4px;
+    font-size: 16px;
+    line-height: 1;
+    color: #9ca3af;
+    cursor: grab;
+    user-select: none;
+}
+
+.ptk-nl-arrange-handle:active {
+    cursor: grabbing;
+}
+
+.ptk-nl-arrange-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+    overflow-wrap: anywhere;
+}
+
+.ptk-nl-arrange-actions {
+    flex: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.ptk-nl-arrange-row .button,
+.ptk-nl-excluded-row .button {
+    min-height: 32px;
+}
+
+/* A move button at the end of the list stays put and LOOKS unavailable,
+   rather than disappearing. */
+.ptk-nl-arrange-row .button:disabled,
+.ptk-nl-arrange-row .button[disabled] {
+    background: #f6f7f7;
+    border-color: #e5e7eb;
+    color: #9ca3af;
+    cursor: not-allowed;
+}
+
+.ptk-nl-arr-remove {
+    color: #b32d2e;
+}
+
+.ptk-nl-arr-remove:hover {
+    border-color: #b32d2e;
+    color: #8a2224;
+}
+
+/* The aria-live line. Reserves its own line so an announcement doesn't
+   shove the list around. */
+.ptk-nl-arrange-status {
+    margin: 12px 0 0;
+    min-height: 20px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #4b5563;
+}
+
+/* "Not included".
+   OUTER MUST STAY A PLAIN BLOCK — renderArrangeList() toggles it, and a
+   non-block display here would be clobbered by jQuery's .show(). Style the
+   children instead. */
+.ptk-nl-excluded {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.ptk-nl-excluded h4 {
+    margin: 0 0 8px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #6b7280;
+}
+
+.ptk-nl-excluded ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+}
+
+.ptk-nl-excluded-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 48px;
+    background: #f9fafb;
+    border: 1px dashed #d1d5db;
+    border-radius: 8px;
+    padding: 8px 12px;
+}
+
+.ptk-nl-excluded-row .ptk-nl-arrange-label {
+    font-weight: 600;
+    color: #6b7280;
+}
+
 /* ── Photo/privacy consent gate ── */
 .ptk-nl-pii-gate {
     background: #fffbeb;
@@ -213,4 +566,122 @@
     min-height: 40px;
     font-size: 14px;
     padding: 0 18px;
+}
+
+/* ── Back / Next ──
+   The buttons themselves are toggled by showStep(); nothing here sets a
+   display on them, so jQuery's .show() finds the .button default and leaves
+   it alone. The wrapper carries no data-step and is safe to make flex. */
+.ptk-nl-step-nav {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.ptk-nl-step-nav .button {
+    min-height: 40px;
+    font-size: 14px;
+    padding: 0 18px;
+}
+
+.ptk-nl-step-next {
+    margin-left: auto;
+}
+
+/* ── Share a preview link (step 4) ──
+   Already inside .ptk-nl-fields with data-step="4", so it reads as part of
+   the finish column. Its box (padding/border/background/max-width) is set
+   INLINE by render_preview_panel(), so only the bits it doesn't set are
+   worth styling here. */
+.ptk-nl-preview-panel .description {
+    font-size: 13px;
+    line-height: 1.5;
+    color: #6b7280;
+}
+
+.ptk-nl-preview-panel input[type="text"] {
+    padding: 8px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #f9fafb;
+    color: #4b5563;
+}
+
+.ptk-nl-preview-panel .button {
+    min-height: 34px;
+}
+
+/* ── Live preview column ──
+   Must keep a real, nonzero width at all times (rule 2 at the top). */
+.ptk-nl-preview {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 16px;
+}
+
+.ptk-nl-preview::before {
+    content: "Live preview";
+    display: block;
+    margin-bottom: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #6b7280;
+}
+
+/* JS owns this wrapper's height (and the iframe's size/transform). No
+   height, border or padding here — under wp-admin's border-box they'd eat
+   into that computed height and clip the newsletter. */
+.ptk-nl-preview-scale {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+/* "Preview couldn't update" — quiet, never alarming. The JS sets this
+   element's margin and font-size inline; those win. */
+.ptk-nl-preview-note {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 6px;
+    padding: 6px 10px;
+    line-height: 1.4;
+    color: #78350f;
+}
+
+/* ── Narrow screens ──
+   STACK, never hide: the preview drops below the fields at full width, so it
+   keeps a real width and scalePreview() keeps working. align-items must go
+   back to stretch here — flex-start would shrink-wrap the columns and starve
+   the preview of width. */
+@media (max-width: 1200px) {
+    .ptk-nl-wizard {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .ptk-nl-steps {
+        flex: 0 0 auto;
+        position: static;
+    }
+
+    .ptk-nl-steps ul {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .ptk-nl-step-link {
+        width: auto;
+    }
+
+    .ptk-nl-fields,
+    .ptk-nl-preview {
+        flex: 0 0 auto;
+        min-width: 0;
+        max-width: none;
+    }
 }
