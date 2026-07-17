@@ -492,9 +492,19 @@ git add -A && git commit -m "Show the newsletter building itself beside the form
 
 **Files:** Modify `pta-knowledge-hub/assets/css/newsletter-builder.css`
 
+### ⚠ CSS CONSTRAINT — never hide a `[data-step]` element from a stylesheet
+
+`showStep()` uses jQuery `.toggle(bool)`. jQuery's `.show()` clears the **inline** display and lets the cascade win — **but only if the element isn't hidden by a stylesheet rule.** If CSS hides it, jQuery falls into `getDefaultDisplay()` and stamps inline **`display:block`**, which would clobber e.g. `.ptk-nl-meta-row`'s `display:flex`.
+
+So:
+- **DO NOT** write `[data-step] { display: none }` + an `.is-active` reveal.
+- **DO NOT** hide any `[data-step]` element in a media query.
+- Let the JS own show/hide entirely; CSS only styles.
+- `.ptk-nl-wizard` / `.ptk-nl-steps` / `.ptk-nl-preview` carry no `data-step` and are never toggled — making them flex is safe.
+
 - [ ] **Step 1: Layout**
 
-`.ptk-nl-wizard` = flex row: `.ptk-nl-steps` sidebar (~170px) | fields column (min ~420px, flex 1) | `.ptk-nl-preview` (flex, the widest that fits). Style the active step, the pinned/arrange rows, the drag handle, the excluded list, and the placeholder look. Follow the project rule: **full borders/fills, never single-side accent stripes.**
+`.ptk-nl-wizard` = flex row: `.ptk-nl-steps` sidebar (~170px) | fields column (min ~420px, flex 1) | `.ptk-nl-preview` (flex, the widest that fits). Style the active step (`.is-active` / `[aria-current="step"]`), the pinned/arrange rows, the drag handle, the excluded list, and the placeholder look. Follow the project rule: **full borders/fills, never single-side accent stripes.**
 
 - [ ] **Step 1b: Verify the share-a-preview panel reads as part of the finish column**
 
