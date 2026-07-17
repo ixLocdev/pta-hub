@@ -65,8 +65,10 @@
         serialize();
 
         // Prefill first so step 1's fields are already populated before
-        // anything is shown/hidden.
-        showStep(FIRST_STEP);
+        // anything is shown/hidden. No focus move on boot: focus belongs at
+        // the top of the document, where the admin notices are (see
+        // showStep()'s moveFocus param).
+        showStep(FIRST_STEP, false);
     });
 
     /* ──────────────────────────────────────────
@@ -88,8 +90,15 @@
      * without the exclusion check it would reappear, blank, on that step.
      *
      * @param {number} n Step to show (1-based).
+     * @param {boolean} moveFocus Whether to pull focus to the new step's
+     *   heading. True for real navigation (the volunteer asked to move, so
+     *   they should land on what they asked for); false on first load,
+     *   where focus belongs at the top of the document — moving it here
+     *   scrolls past the WP admin notices, including the one explaining
+     *   that an unchecked photo/privacy box downgraded a publish to a
+     *   draft.
      */
-    function showStep(n) {
+    function showStep(n, moveFocus) {
         n = Math.min(LAST_STEP, Math.max(FIRST_STEP, n));
         currentStep = n;
 
@@ -115,8 +124,11 @@
         $wizard.find('[data-step-nav="next"]').toggle(n !== LAST_STEP);
 
         // Focus management: land keyboard/screen-reader users on the new
-        // step's heading so they know where they ended up.
-        $wizard.find('.ptk-nl-step-head[data-step="' + n + '"] h2').first().focus();
+        // step's heading so they know where they ended up. Must stay after
+        // the toggle loop above — focusing a hidden element no-ops.
+        if (moveFocus) {
+            $wizard.find('.ptk-nl-step-head[data-step="' + n + '"] h2').first().focus();
+        }
     }
 
     /**
@@ -129,14 +141,14 @@
             e.preventDefault();
             var target = parseInt($(this).attr('data-goto-step'), 10);
             if (!isNaN(target)) {
-                showStep(target);
+                showStep(target, true);
             }
         });
 
         $(document).on('click', '[data-step-nav]', function (e) {
             e.preventDefault();
             var dir = $(this).attr('data-step-nav') === 'prev' ? -1 : 1;
-            showStep(currentStep + dir);
+            showStep(currentStep + dir, true);
         });
     }
 
