@@ -40,6 +40,14 @@
     var mediaFrame = null;
     var mediaTargetField = null;
 
+    // The step currently shown in the wizard (1-based). Kept in a
+    // module-scoped var rather than read back from the DOM so showStep()
+    // has a single source of truth for "where we're coming from" (e.g.
+    // which sidebar button currently owns aria-current).
+    var currentStep = 1;
+    var FIRST_STEP = 1;
+    var LAST_STEP = 4;
+
     /* ──────────────────────────────────────────
      * Boot
      * ────────────────────────────────────────── */
@@ -51,10 +59,86 @@
         bindMoveAndRemoveBlock();
         bindImagePicker();
         bindSerializeTriggers();
+        bindStepNav();
 
         updateMoveButtonStates();
         serialize();
+
+        // Prefill first so step 1's fields are already populated before
+        // anything is shown/hidden.
+        showStep(FIRST_STEP);
     });
+
+    /* ──────────────────────────────────────────
+     * Wizard step navigation
+     * ────────────────────────────────────────── */
+
+    /**
+     * Show step `n` of the wizard and hide every other step, everywhere in
+     * the wizard (sidebar current-step marker, step heading, meta row,
+     * block sections, the finish/publish step, and the preview-link
+     * panel). The live preview column (`.ptk-nl-preview`) carries no
+     * data-step and is therefore never touched here — it stays visible on
+     * every step by construction.
+     *
+     * Visibility rule: an element is shown iff it is `[data-step="n"]`
+     * AND is NOT also `[data-excluded]`. A section that was excluded from
+     * this newsletter still carries its type's step (e.g. an excluded
+     * Events block keeps data-step="2") so it can be re-included later —
+     * without the exclusion check it would reappear, blank, on that step.
+     *
+     * @param {number} n Step to show (1-based).
+     */
+    function showStep(n) {
+        n = Math.min(LAST_STEP, Math.max(FIRST_STEP, n));
+        currentStep = n;
+
+        var $wizard = $('.ptk-nl-wizard');
+
+        $wizard.find('[data-step]').each(function () {
+            var $el = $(this);
+            var isCurrent = parseInt($el.attr('data-step'), 10) === n;
+            var isExcluded = $el.is('[data-excluded]');
+            $el.toggle(isCurrent && !isExcluded);
+        });
+
+        // Sidebar: move aria-current, don't duplicate it.
+        var $stepLinks = $wizard.find('[data-goto-step]');
+        $stepLinks.removeAttr('aria-current').removeClass('is-active');
+        $stepLinks.filter('[data-goto-step="' + n + '"]')
+            .attr('aria-current', 'step')
+            .addClass('is-active');
+
+        // Back/Next: hide the ends of the road rather than leaving a
+        // control that can't do anything.
+        $wizard.find('[data-step-nav="prev"]').toggle(n !== FIRST_STEP);
+        $wizard.find('[data-step-nav="next"]').toggle(n !== LAST_STEP);
+
+        // Focus management: land keyboard/screen-reader users on the new
+        // step's heading so they know where they ended up.
+        $wizard.find('.ptk-nl-step-head[data-step="' + n + '"] h2').first().focus();
+    }
+
+    /**
+     * Wire the sidebar "jump to step" buttons and the Back/Next controls.
+     * Steps are never locked — a weekly editor must be able to jump
+     * straight to step 4 without walking through 2 and 3 first.
+     */
+    function bindStepNav() {
+        $(document).on('click', '[data-goto-step]', function (e) {
+            e.preventDefault();
+            var target = parseInt($(this).attr('data-goto-step'), 10);
+            if (!isNaN(target)) {
+                showStep(target);
+            }
+        });
+
+        $(document).on('click', '[data-step-nav]', function (e) {
+            e.preventDefault();
+            var dir = $(this).attr('data-step-nav') === 'prev' ? -1 : 1;
+            showStep(currentStep + dir);
+        });
+    }
 
     /* ──────────────────────────────────────────
      * Prefill (edit mode)
