@@ -406,7 +406,13 @@ Inside the `.ptk-nl-finish[data-step=4]` block, above the PII gate, render:
 - A pinned row for Footer ("🔒 Footer — always last").
 - `<div class="ptk-nl-excluded" data-excluded-list><h4>Not included</h4><ul></ul></div>`.
 
-**Visual order note:** the footer's *fields* are a child of `#ptk-nl-blocks`, which sits **before** `.ptk-nl-finish` in the DOM — so on step 4 the footer fields will appear **above** the arrange list. That's probably not what you want. Use CSS `order` on the step-4 children (or place `.ptk-nl-finish` accordingly) so step 4 reads: arrange list → footer fields → photo check → buttons → share-a-preview. **Do not fix this by moving the footer section out of `#ptk-nl-blocks`** (that breaks the flat-DOM constraint).
+**Visual order — RESOLVED by placement, no CSS `order` needed.** The footer's *fields* are a child of `#ptk-nl-blocks`, so if the arrange list lived inside `.ptk-nl-finish` the footer fields would appear above it — and CSS `order` couldn't fix it, because `order` only sorts *siblings* and those two live in different parents.
+
+Instead, render the arrange panel as **its own `<div class="ptk-nl-arrange-panel" data-step="4">`, a sibling of `#ptk-nl-blocks`, placed immediately BEFORE it** (right after `.ptk-nl-meta-row`). `.ptk-nl-finish` then holds only the PII gate + submit buttons. On step 4 the visible elements fall in natural DOM order:
+
+> arrange panel → footer fields (inside `#ptk-nl-blocks`) → photo check + buttons (`.ptk-nl-finish`) → share-a-preview panel
+
+which is exactly the wanted reading order, with no CSS trickery. (`.ptk-nl-meta-row` is `data-step="1"`, so it's hidden on step 4 and doesn't interfere.) This does **not** touch the flat-DOM constraint — that governs `#ptk-nl-blocks`'s *children*; the arrange panel is a sibling of the container. **Do not** use `display:contents` on `.ptk-nl-finish` — it risks the jQuery `getDefaultDisplay()` clobbering described in the Task 9 CSS constraint. **Do not** move the footer section out of `#ptk-nl-blocks`.
 
 - [ ] **Step 2: Build the rows from the DOM (JS)**
 
