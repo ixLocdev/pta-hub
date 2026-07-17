@@ -113,4 +113,18 @@ ptk_test_ok( strpos( $hostile_html, '&quot;' ) !== false, 'hostile attribute: do
 // href escaping: esc_url must strip the javascript: scheme.
 ptk_test_ok( strpos( $hostile_html, 'javascript:alert(1)' ) === false, 'hostile href: javascript: scheme neutralized' );
 
+// Every rendered block carries a data-ptk-block hook for the preview highlight.
+$blocks2 = array(
+    array( 'type' => 'header', 'data' => array( 'school_name' => 'NE PTA', 'headline' => 'Week of X', 'greeting' => 'Hi' ) ),
+    array( 'type' => 'announcement', 'data' => array( 'pill' => 'Thu', 'text' => 'Last day' ) ),
+    array( 'type' => 'footer', 'data' => array( 'signoff' => 'Bye', 'links' => array() ) ),
+);
+$html2 = PTK_Newsletter_Renderer::render( $blocks2, array(
+    'issue' => 5, 'date' => '2026-07-16', 'today' => '2026-07-16',
+    'theme' => 'harbor-navy', 'logo_url' => '', 'school_name' => 'NE PTA',
+) );
+ptk_test_ok( strpos( $html2, 'data-ptk-block="header"' ) !== false, 'header carries data-ptk-block' );
+ptk_test_ok( strpos( $html2, 'data-ptk-block="announcement"' ) !== false, 'announcement carries data-ptk-block' );
+ptk_test_ok( strpos( $html2, 'data-ptk-block="footer"' ) !== false, 'footer carries data-ptk-block' );
+
 ptk_test_done();

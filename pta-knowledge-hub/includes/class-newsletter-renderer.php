@@ -120,7 +120,7 @@ class PTK_Newsletter_Renderer {
             $date_html = '<div style="font-weight:600;color:' . esc_attr( self::PALETTE['text'] ) . ';">' . esc_html( $date_display ) . '</div>';
         }
 
-        $html  = '<div style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:32px 20px;border-bottom:1px solid ' . esc_attr( self::PALETTE['hairline'] ) . ';box-sizing:border-box;">';
+        $html  = '<div data-ptk-block="' . esc_attr( 'header' ) . '" style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:32px 20px;border-bottom:1px solid ' . esc_attr( self::PALETTE['hairline'] ) . ';box-sizing:border-box;">';
         $html .= '<div style="max-width:840px;margin:0 auto;">';
         $html .= '<div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap;">';
         $html .= $logo_html;
@@ -145,7 +145,7 @@ class PTK_Newsletter_Renderer {
     /**
      * Full-width navy announcement strip: pill badge + text.
      */
-    private static function render_announcement( array $data ) {
+    private static function render_announcement( array $data, array $opts ) {
         $pill = isset( $data['pill'] ) ? self::str( $data['pill'] ) : '';
         $text = isset( $data['text'] ) ? self::str( $data['text'] ) : '';
 
@@ -159,7 +159,7 @@ class PTK_Newsletter_Renderer {
             $pill_html = '<span style="font-size:10px;letter-spacing:0.18em;text-transform:uppercase;font-weight:700;background:rgba(255,255,255,0.18);padding:5px 10px;border-radius:4px;">' . esc_html( $pill ) . '</span>';
         }
 
-        $html  = '<div style="font-family:' . self::FONT_SANS . ';background:' . esc_attr( self::PALETTE['primary'] ) . ';color:#ffffff;padding:16px 20px;box-sizing:border-box;">';
+        $html  = '<div data-ptk-block="' . esc_attr( 'announcement' ) . '" style="font-family:' . self::FONT_SANS . ';background:' . esc_attr( self::PALETTE['primary'] ) . ';color:#ffffff;padding:16px 20px;box-sizing:border-box;">';
         $html .= '<div style="max-width:840px;margin:0 auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">';
         $html .= $pill_html;
         $html .= '<span style="font-size:15px;font-weight:500;line-height:1.5;flex:1 1 240px;min-width:200px;">' . wp_kses_post( $text ) . '</span>';
@@ -196,7 +196,7 @@ class PTK_Newsletter_Renderer {
         }
         $rows = $valid_rows;
 
-        $html  = '<div style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:20px 20px 40px;box-sizing:border-box;">';
+        $html  = '<div data-ptk-block="' . esc_attr( 'events' ) . '" style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:20px 20px 40px;box-sizing:border-box;">';
         $html .= '<div style="max-width:840px;margin:0 auto;">';
         $html .= '<h2 style="font-family:' . self::FONT_SANS . ';font-weight:800;font-size:clamp(24px,5vw,30px);line-height:1.05;letter-spacing:-0.02em;margin:0 0 28px;color:' . esc_attr( self::PALETTE['text'] ) . ';">Upcoming</h2>';
 
@@ -251,7 +251,7 @@ class PTK_Newsletter_Renderer {
             return '';
         }
 
-        $html  = '<div style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['primary'] ) . ';padding:48px 20px;box-sizing:border-box;">';
+        $html  = '<div data-ptk-block="' . esc_attr( 'featured' ) . '" style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['primary'] ) . ';padding:48px 20px;box-sizing:border-box;">';
         $html .= '<div style="max-width:840px;margin:0 auto;">';
 
         if ( '' !== trim( $eyebrow ) ) {
@@ -304,7 +304,7 @@ class PTK_Newsletter_Renderer {
             return '';
         }
 
-        $html  = '<div style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:24px 20px;box-sizing:border-box;">';
+        $html  = '<div data-ptk-block="' . esc_attr( 'story_cards' ) . '" style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:24px 20px;box-sizing:border-box;">';
         $html .= '<div style="max-width:840px;margin:0 auto;">';
 
         foreach ( $valid_cards as $card ) {
@@ -344,7 +344,7 @@ class PTK_Newsletter_Renderer {
     /**
      * Signoff footer: closing line + a list of links.
      */
-    private static function render_footer( array $data ) {
+    private static function render_footer( array $data, array $opts ) {
         $signoff = isset( $data['signoff'] ) ? self::str( $data['signoff'] ) : '';
         $links   = isset( $data['links'] ) && is_array( $data['links'] ) ? $data['links'] : array();
 
@@ -367,7 +367,7 @@ class PTK_Newsletter_Renderer {
             return '';
         }
 
-        $html  = '<div style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:40px 20px 32px;border-top:1px solid ' . esc_attr( self::PALETTE['hairline'] ) . ';box-sizing:border-box;">';
+        $html  = '<div data-ptk-block="' . esc_attr( 'footer' ) . '" style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:40px 20px 32px;border-top:1px solid ' . esc_attr( self::PALETTE['hairline'] ) . ';box-sizing:border-box;">';
         $html .= '<div style="max-width:840px;margin:0 auto;">';
 
         if ( '' !== trim( $signoff ) ) {
