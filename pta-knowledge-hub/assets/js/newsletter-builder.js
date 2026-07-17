@@ -233,9 +233,12 @@
      * dead space the size of the unscaled frame. The wrapper is the one that
      * gets the scaled-down height.
      *
-     * Wraps ONCE and then leaves the iframe alone: re-parenting an iframe
-     * reloads it, which would blank a preview we'd already written. Hence
-     * writePreview() wraps BEFORE it opens the document, never after.
+     * Wraps ONCE, and any document reference must be taken AFTER it: .wrap()
+     * detaches and re-inserts the iframe, and removing an iframe from the
+     * document discards its browsing context — re-inserting it builds a fresh
+     * one at about:blank. A `document` captured before the wrap is therefore
+     * dead, and writing into it puts the newsletter in a document nobody can
+     * see. Callers wrap first, then ask for the document.
      *
      * @return {jQuery} The wrapper, or an empty set if there's no iframe.
      */
@@ -257,6 +260,16 @@
                 display: 'block',
                 transformOrigin: 'top left'
             });
+
+            // Bound once, here, to the iframe ELEMENT rather than per-write to
+            // its contentWindow: the element outlives every document we write,
+            // so one handler covers them all instead of accumulating a dead
+            // one per refresh (i.e. per keystroke-batch) all session.
+            //
+            // Fires when each written document finishes loading, which is when
+            // its images have landed and made the newsletter taller — re-fit
+            // then, or the bottom of the preview stays clipped.
+            $frame.on('load', scalePreview);
         }
 
         return $wrap;
@@ -316,13 +329,18 @@
      * width the design targets, regardless of how small the column is.
      */
     function writePreview(html) {
+        // Wrap FIRST, then read the document — never the other way round. The
+        // first write is the one that matters: previewWrap() re-parents the
+        // iframe, which throws away whatever document existed before it, so a
+        // reference taken any earlier would be stale and this whole render
+        // would land somewhere detached and invisible. See previewWrap().
+        previewWrap();
+
         var frame = previewFrame();
         var doc = previewDoc();
         if (!frame || !doc) {
             return;
         }
-
-        previewWrap();
 
         doc.open();
         doc.write(
@@ -334,17 +352,10 @@
 
         // The document was just rebuilt, so the outline went with it.
         applyHighlight();
-        scalePreview();
 
-        // Images finish loading after the write returns and make the
-        // newsletter taller; re-fit once they're in rather than leaving the
-        // bottom of the preview clipped.
-        try {
-            $(frame.contentWindow).one('load', scalePreview);
-        } catch (e) {
-            // Cross-document access blocked — the height we already have
-            // stands; not worth breaking the preview over.
-        }
+        // First fit is from the text alone; the iframe's load handler (bound
+        // once in previewWrap()) fits again once images are in.
+        scalePreview();
     }
 
     /** Whether the preview endpoint is available (it's localized by PHP). */
