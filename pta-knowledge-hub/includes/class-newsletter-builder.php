@@ -776,6 +776,13 @@ class PTK_Newsletter_Builder {
                                 <ul></ul>
                             </div>
 
+                            <?php /* Says what just happened after a Move up/down — "Featured story moved
+                                    down. Now 3 of 4." A screen reader announces it because it's aria-live,
+                                    and everyone else can simply read it. Must be in the page from the
+                                    start: a live region added at the moment of the change isn't announced.
+                                    Empty until the JS has something to say. */ ?>
+                            <p class="ptk-nl-arrange-status" data-arrange-status role="status" aria-live="polite"></p>
+
                             <p class="description">Once you save, a section you&#8217;ve left out won&#8217;t keep its text.</p>
                         </div>
 

@@ -366,6 +366,11 @@
         $list.empty();
         $excludedList.empty();
 
+        // Whatever the status line last said is about an order that no
+        // longer exists. Clear it here; moveSection() re-fills it straight
+        // after this returns, so a move still gets announced.
+        $('[data-arrange-status]').empty();
+
         var $movable = $('#ptk-nl-blocks > .ptk-nl-block').not('[data-pinned]');
         var $included = $movable.not('[data-excluded]');
         var $excluded = $movable.filter('[data-excluded]');
@@ -491,6 +496,8 @@
             return;
         }
 
+        var label = sectionLabel($section);
+
         if (dir < 0) {
             $section.insertBefore($neighbour);
         } else {
@@ -499,6 +506,73 @@
 
         renderArrangeList();
         serialize();
+
+        // The re-render above replaced the button that was just clicked, so
+        // put focus back and say what happened — this is the whole keyboard
+        // path, and re-tabbing into the list for every single move would
+        // make it the worse way to do the same job.
+        restoreMoveFocus(type, dir);
+        announceMove(type, dir, label);
+    }
+
+    /**
+     * Put focus back on the moved row's button after the list is rebuilt.
+     *
+     * If the move landed the row at an end of the list, the button that was
+     * pressed is now disabled — and focusing a disabled button drops focus
+     * to the body all over again. Fall back to the row's other move button,
+     * which is necessarily still enabled, so the user stays where they are.
+     *
+     * @param {string} type Block type that moved.
+     * @param {number} dir -1 for up, 1 for down.
+     */
+    function restoreMoveFocus(type, dir) {
+        var $row = arrangeRowByType(type);
+        if (!$row.length) {
+            return;
+        }
+
+        var pressed = dir < 0 ? '.ptk-nl-arr-up' : '.ptk-nl-arr-down';
+        var other = dir < 0 ? '.ptk-nl-arr-down' : '.ptk-nl-arr-up';
+
+        var $button = $row.find(pressed).first();
+        if (!$button.length || $button.prop('disabled')) {
+            $button = $row.find(other).first();
+        }
+
+        $button.focus();
+    }
+
+    /**
+     * Say where a section ended up, in plain positional English — "Featured
+     * story moved down. Now 3 of 4." The status element is aria-live, so a
+     * screen reader announces it; everyone else can just read it.
+     *
+     * @param {string} type Block type that moved.
+     * @param {number} dir -1 for up, 1 for down.
+     * @param {string} label The section's plain-English name.
+     */
+    function announceMove(type, dir, label) {
+        var $status = $('[data-arrange-status]');
+        if (!$status.length) {
+            return;
+        }
+
+        var $rows = $('[data-arrange] > .ptk-nl-arrange-row');
+        var position = $rows.index(arrangeRowByType(type)) + 1;
+        if (!position) {
+            return;
+        }
+
+        $status.text(
+            label + ' moved ' + (dir < 0 ? 'up' : 'down') + '. ' +
+            'Now ' + position + ' of ' + $rows.length + '.'
+        );
+    }
+
+    /** The arrange-list row standing for a block type, if it's listed. */
+    function arrangeRowByType(type) {
+        return $('[data-arrange] > .ptk-nl-arrange-row[data-type="' + type + '"]').first();
     }
 
     /**
