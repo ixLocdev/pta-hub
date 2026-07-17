@@ -508,6 +508,8 @@ So:
 - Let the JS own show/hide entirely; CSS only styles.
 - `.ptk-nl-wizard` / `.ptk-nl-steps` / `.ptk-nl-preview` carry no `data-step` and are never toggled — making them flex is safe.
 
+**The same trap applies to `.ptk-nl-excluded`** (the "Not included" list), even though it has no `data-step`: `renderArrangeList()` toggles it with jQuery `.toggle()`. If CSS gives it `display:flex`/`grid`, jQuery's `.show()` will stamp inline `display:block` and clobber the layout. **Style its children instead**, or give it a plain (non-flex) outer element. Rule of thumb: **any element the JS toggles must not be given a non-`block` display by CSS.** Grep the JS for `.toggle(` / `.show(` / `.hide(` before styling anything.
+
 - [ ] **Step 1: Layout**
 
 `.ptk-nl-wizard` = flex row: `.ptk-nl-steps` sidebar (~170px) | fields column (min ~420px, flex 1) | `.ptk-nl-preview` (flex, the widest that fits). Style the active step (`.is-active` / `[aria-current="step"]`), the pinned/arrange rows, the drag handle, the excluded list, and the placeholder look. Follow the project rule: **full borders/fills, never single-side accent stripes.**
