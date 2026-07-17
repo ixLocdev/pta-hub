@@ -430,7 +430,10 @@ class PTK_Newsletter_Builder {
         wp_enqueue_script(
             'ptk-newsletter-builder',
             PTK_PLUGIN_URL . 'assets/js/newsletter-builder.js',
-            array( 'jquery', 'media-upload' ),
+            // jquery-ui-sortable powers step 4's drag-to-reorder. Dragging is
+            // never the only way to reorder — the arrange list's Move up/down
+            // buttons do the same thing from the keyboard.
+            array( 'jquery', 'media-upload', 'jquery-ui-sortable' ),
             PTK_VERSION,
             true
         );
@@ -762,7 +765,34 @@ class PTK_Newsletter_Builder {
 
                         <input type="hidden" name="ptk_nl_blocks" id="ptk-nl-blocks-json" value="<?php echo esc_attr( wp_json_encode( $blocks ) ); ?>">
 
+                        <?php /* Step 4's children read in DOM order: the footer's FIELDS live in
+                                #ptk-nl-blocks (a sibling above this), so without help they'd sit above the
+                                arrange list. The class hooks here (.ptk-nl-arrange-panel and the existing
+                                #ptk-nl-blocks / .ptk-nl-finish / .ptk-nl-step-nav) let the CSS task make
+                                #ptk-nl-form a flex column and re-order them. Do NOT fix this by moving the
+                                footer section out of #ptk-nl-blocks — serialize() reads that container's
+                                direct children and takes the newsletter's order from their DOM order. */ ?>
                         <div class="ptk-nl-finish" data-step="<?php echo (int) $step_last; ?>">
+                            <div class="ptk-nl-arrange-panel">
+                                <h3>Order of your newsletter</h3>
+                                <p class="description">Drag to change the order, or use the arrows.</p>
+
+                                <div class="ptk-nl-arrange-pinned"><span aria-hidden="true">&#128274;</span> Header — always first</div>
+
+                                <?php /* Deliberately empty: the JS builds these rows from the live sections in
+                                        #ptk-nl-blocks, so the list always shows the real order. */ ?>
+                                <ul class="ptk-nl-arrange" data-arrange></ul>
+
+                                <div class="ptk-nl-arrange-pinned"><span aria-hidden="true">&#128274;</span> Footer — always last</div>
+
+                                <div class="ptk-nl-excluded" data-excluded-list>
+                                    <h4>Not included</h4>
+                                    <ul></ul>
+                                </div>
+
+                                <p class="description">Once you save, a section you&#8217;ve left out won&#8217;t keep its text.</p>
+                            </div>
+
                             <div class="ptk-nl-pii-gate">
                                 <label>
                                     <input type="checkbox" name="ptk_nl_pii_ok" value="1">

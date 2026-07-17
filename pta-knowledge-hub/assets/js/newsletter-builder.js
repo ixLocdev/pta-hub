@@ -8,8 +8,10 @@
  *     for a brand-new newsletter, whose blocks are already empty).
  *   - Lets volunteers add/remove repeatable rows (events, story cards,
  *     footer links) and pick images via the WP media library.
- *   - Lets volunteers move or remove whole middle sections, without ever
- *     touching the pinned header/footer.
+ *   - Builds step 4's arrange list from the live sections, so volunteers can
+ *     drag (or use Move up/down) to order the newsletter, take a section out
+ *     without losing what they typed in it, and add it back — never touching
+ *     the pinned header/footer.
  *   - Keeps the hidden #ptk-nl-blocks-json field in sync with the DOM on
  *     every change, and once more on submit, so the PHP save handler
  *     always receives a current, well-formed blocks array. (PHP
@@ -56,12 +58,13 @@
         prefillFromData();
         bindAddRow();
         bindRemoveRow();
-        bindMoveAndRemoveBlock();
         bindImagePicker();
         bindSerializeTriggers();
         bindStepNav();
+        bindArrangeList();
+        bindArrangeSortable();
 
-        updateMoveButtonStates();
+        renderArrangeList();
         serialize();
 
         // Prefill first so step 1's fields are already populated before
@@ -122,6 +125,12 @@
         // control that can't do anything.
         $wizard.find('[data-step-nav="prev"]').toggle(n !== FIRST_STEP);
         $wizard.find('[data-step-nav="next"]').toggle(n !== LAST_STEP);
+
+        // Arriving at the finish step: rebuild the arrange list so it shows
+        // the order as it stands right now.
+        if (n === LAST_STEP) {
+            renderArrangeList();
+        }
 
         // Focus management: land keyboard/screen-reader users on the new
         // step's heading so they know where they ended up. Must stay after
@@ -306,65 +315,303 @@
     }
 
     /* ──────────────────────────────────────────
-     * Middle blocks: move up / move down / remove
+     * Step 4: the arrange list (order, remove, add back)
+     *
+     * The rows here are a VIEW of the real sections in #ptk-nl-blocks —
+     * they're rebuilt from that container on every change, so the list can
+     * never drift from the order the newsletter will actually save in. A
+     * row's only link back to its section is its block type (data-type):
+     * the row is nowhere near the section in the DOM, so nothing here may
+     * resolve a section by ancestry.
      * ────────────────────────────────────────── */
 
-    function bindMoveAndRemoveBlock() {
-        $(document).on('click', '.ptk-nl-move-up', function (e) {
-            e.preventDefault();
-            var $section = $(this).closest('.ptk-nl-block');
-            if ($section.is('[data-pinned]')) {
-                return;
-            }
-            var $prev = $section.prev('.ptk-nl-block');
-            // Guard against crossing the pinned header boundary.
-            if ($prev.length && !$prev.is('[data-pinned]')) {
-                $section.insertBefore($prev);
-                updateMoveButtonStates();
-                serialize();
-            }
+    /**
+     * The section for a block type. `.first()` because a type is
+     * single-instance by construction, and because a duplicate would
+     * otherwise silently move/exclude two sections at once.
+     */
+    function sectionByType(type) {
+        return $('#ptk-nl-blocks > .ptk-nl-block[data-type="' + type + '"]').first();
+    }
+
+    /** The block type a clicked arrange-row control belongs to. */
+    function rowType(el) {
+        return $(el).closest('[data-type]').attr('data-type');
+    }
+
+    /**
+     * A section's plain-English name, reusing the heading the volunteer
+     * already reads on its own step so the two never disagree.
+     */
+    function sectionLabel($section) {
+        var text = $.trim($section.find('.ptk-nl-block-header h3').first().text());
+        return text || $section.attr('data-type');
+    }
+
+    /**
+     * Rebuild step 4's arrange list and "Not included" list from the live
+     * sections in #ptk-nl-blocks, in DOM order (= newsletter order). The
+     * pinned header/footer are never listed — they can't move and can't be
+     * removed, so PHP renders them as static rows around this list.
+     */
+    function renderArrangeList() {
+        var $list = $('[data-arrange]');
+        if (!$list.length) {
+            return;
+        }
+
+        var $excludedPanel = $('[data-excluded-list]');
+        var $excludedList = $excludedPanel.find('ul').first();
+
+        $list.empty();
+        $excludedList.empty();
+
+        var $movable = $('#ptk-nl-blocks > .ptk-nl-block').not('[data-pinned]');
+        var $included = $movable.not('[data-excluded]');
+        var $excluded = $movable.filter('[data-excluded]');
+
+        $included.each(function (index) {
+            $list.append(buildArrangeRow($(this), index === 0, index === $included.length - 1));
         });
 
-        $(document).on('click', '.ptk-nl-move-down', function (e) {
-            e.preventDefault();
-            var $section = $(this).closest('.ptk-nl-block');
-            if ($section.is('[data-pinned]')) {
-                return;
-            }
-            var $next = $section.next('.ptk-nl-block');
-            // Guard against crossing the pinned footer boundary.
-            if ($next.length && !$next.is('[data-pinned]')) {
-                $section.insertAfter($next);
-                updateMoveButtonStates();
-                serialize();
-            }
+        if (!$included.length) {
+            $list.append(
+                $('<li class="ptk-nl-arrange-empty"></li>')
+                    .text('Nothing between the header and footer right now.')
+            );
+        }
+
+        $excluded.each(function () {
+            $excludedList.append(buildExcludedRow($(this)));
         });
 
-        $(document).on('click', '.ptk-nl-remove-block', function (e) {
+        // Nothing left out: don't leave an empty "Not included" heading
+        // sitting there implying something is missing. (No data-step on this
+        // panel, so toggling it here doesn't fight showStep().)
+        $excludedPanel.toggle($excluded.length > 0);
+    }
+
+    /**
+     * One row of the arrange list: drag handle, name, and the buttons that
+     * do the same job from the keyboard.
+     *
+     * @param {jQuery} $section The section this row stands for.
+     * @param {boolean} isFirst Whether it's the topmost included section.
+     * @param {boolean} isLast Whether it's the bottommost included section.
+     */
+    function buildArrangeRow($section, isFirst, isLast) {
+        var label = sectionLabel($section);
+
+        var $row = $('<li class="ptk-nl-arrange-row"></li>')
+            .attr('data-type', $section.attr('data-type'));
+
+        $row.append($('<span class="ptk-nl-arrange-handle" aria-hidden="true">&#9776;</span>'));
+        $row.append($('<span class="ptk-nl-arrange-label"></span>').text(label));
+
+        var $actions = $('<span class="ptk-nl-arrange-actions"></span>');
+
+        // Disabled at the boundaries rather than hidden: a control that
+        // vanishes is more confusing than one that's plainly unavailable.
+        $actions.append(
+            $('<button type="button" class="button button-small ptk-nl-arr-up">Move up</button>')
+                .attr('aria-label', 'Move ' + label + ' up')
+                .prop('disabled', isFirst)
+        );
+        $actions.append(
+            $('<button type="button" class="button button-small ptk-nl-arr-down">Move down</button>')
+                .attr('aria-label', 'Move ' + label + ' down')
+                .prop('disabled', isLast)
+        );
+        $actions.append(
+            $('<button type="button" class="button button-small ptk-nl-arr-remove">Remove</button>')
+                .attr('aria-label', 'Remove ' + label)
+        );
+
+        $row.append($actions);
+
+        return $row;
+    }
+
+    /** One row of the "Not included" list: a section's name and a way back. */
+    function buildExcludedRow($section) {
+        var label = sectionLabel($section);
+
+        var $row = $('<li class="ptk-nl-excluded-row"></li>')
+            .attr('data-type', $section.attr('data-type'));
+
+        $row.append($('<span class="ptk-nl-arrange-label"></span>').text(label));
+        $row.append(
+            $('<button type="button" class="button button-small ptk-nl-arr-addback">Add back</button>')
+                .attr('aria-label', 'Add back ' + label)
+        );
+
+        return $row;
+    }
+
+    /**
+     * The nearest sibling section a move should swap with: the next one in
+     * `dir` that's actually in the newsletter. Excluded sections are skipped
+     * (they aren't in the list, so swapping with one would look like the
+     * button did nothing), and the pinned header/footer are a hard stop —
+     * they always bookend the newsletter.
+     *
+     * @param {jQuery} $section Section being moved.
+     * @param {number} dir -1 for up, 1 for down.
+     * @return {jQuery} The neighbour, or an empty set if there isn't one.
+     */
+    function movableNeighbour($section, dir) {
+        var $sibling = dir < 0 ? $section.prev('.ptk-nl-block') : $section.next('.ptk-nl-block');
+
+        while ($sibling.length && $sibling.is('[data-excluded]') && !$sibling.is('[data-pinned]')) {
+            $sibling = dir < 0 ? $sibling.prev('.ptk-nl-block') : $sibling.next('.ptk-nl-block');
+        }
+
+        if (!$sibling.length || $sibling.is('[data-pinned]')) {
+            return $();
+        }
+
+        return $sibling;
+    }
+
+    /**
+     * Move a section one place up or down in the real newsletter, then
+     * rebuild the list from the result.
+     *
+     * @param {string} type Block type to move.
+     * @param {number} dir -1 for up, 1 for down.
+     */
+    function moveSection(type, dir) {
+        var $section = sectionByType(type);
+        if (!$section.length || $section.is('[data-pinned]') || $section.is('[data-excluded]')) {
+            return;
+        }
+
+        var $neighbour = movableNeighbour($section, dir);
+        if (!$neighbour.length) {
+            return;
+        }
+
+        if (dir < 0) {
+            $section.insertBefore($neighbour);
+        } else {
+            $section.insertAfter($neighbour);
+        }
+
+        renderArrangeList();
+        serialize();
+    }
+
+    /**
+     * Wire the arrange list's buttons. Delegated on document because the
+     * rows are rebuilt on every change — and each handler finds its section
+     * by TYPE, never by walking up from the row.
+     */
+    function bindArrangeList() {
+        $(document).on('click', '.ptk-nl-arr-up', function (e) {
             e.preventDefault();
-            var $section = $(this).closest('.ptk-nl-block');
-            if ($section.is('[data-pinned]')) {
-                return; // Header/footer are never removable.
+            moveSection(rowType(this), -1);
+        });
+
+        $(document).on('click', '.ptk-nl-arr-down', function (e) {
+            e.preventDefault();
+            moveSection(rowType(this), 1);
+        });
+
+        $(document).on('click', '.ptk-nl-arr-remove', function (e) {
+            e.preventDefault();
+
+            var $section = sectionByType(rowType(this));
+            if (!$section.length || $section.is('[data-pinned]')) {
+                return; // Header/footer are always in the newsletter.
             }
-            if (window.confirm('Remove this section from the newsletter?')) {
-                $section.remove();
-                updateMoveButtonStates();
+
+            var label = sectionLabel($section);
+            if (!window.confirm('Remove the ' + label + '? Anything you typed in it won\'t be published.')) {
+                return;
+            }
+
+            // Mark it, never remove it: the section keeps everything typed
+            // into it so Add back can hand it straight back.
+            $section.attr('data-excluded', '1');
+            afterInclusionChange();
+        });
+
+        $(document).on('click', '.ptk-nl-arr-addback', function (e) {
+            e.preventDefault();
+
+            var $section = sectionByType(rowType(this));
+            if (!$section.length) {
+                return;
+            }
+
+            $section.removeAttr('data-excluded');
+            afterInclusionChange();
+        });
+    }
+
+    /**
+     * Re-sync everything after a section is removed from or added back to
+     * the newsletter.
+     *
+     * showStep() — not this — owns section visibility. Add back happens on
+     * step 4, so showing the section here would drop (say) the
+     * announcement's fields into the middle of the finish step; handing the
+     * decision back to showStep() puts them where they belong, on step 2.
+     */
+    function afterInclusionChange() {
+        renderArrangeList();
+        showStep(currentStep, false);
+        serialize();
+    }
+
+    /**
+     * Drag-to-reorder for the arrange list. Additive only: the Move up/down
+     * buttons are the equal path for anyone not using a mouse, and they keep
+     * working whether or not jQuery UI loaded.
+     */
+    function bindArrangeSortable() {
+        var $list = $('[data-arrange]');
+        if (!$list.length || !$.fn.sortable) {
+            return;
+        }
+
+        // Bound to the <ul>, which survives every re-render (only its rows
+        // are replaced), so this never needs re-initialising.
+        $list.sortable({
+            items: '> .ptk-nl-arrange-row',
+            handle: '.ptk-nl-arrange-handle',
+            axis: 'y',
+            tolerance: 'pointer',
+            stop: function () {
+                applyRowOrderToSections();
+                renderArrangeList();
                 serialize();
             }
         });
     }
 
     /**
-     * Disable Move up on the topmost movable (non-pinned) section and
-     * Move down on the bottommost movable section, so volunteers never see
-     * a control that can't actually do anything.
+     * Push the arrange rows' order onto the real sections after a drag.
+     *
+     * Each included section is re-inserted immediately before the pinned
+     * footer in row order, which keeps the header first and the footer last
+     * by construction — the sections never leave #ptk-nl-blocks, and never
+     * cross the pinned rows.
      */
-    function updateMoveButtonStates() {
-        var $movable = $('#ptk-nl-blocks > .ptk-nl-block').not('[data-pinned]');
-        $movable.each(function (index) {
-            var $section = $(this);
-            $section.find('.ptk-nl-move-up').prop('disabled', index === 0);
-            $section.find('.ptk-nl-move-down').prop('disabled', index === $movable.length - 1);
+    function applyRowOrderToSections() {
+        var $blocks = $('#ptk-nl-blocks');
+        var $footer = $blocks.children('.ptk-nl-block[data-type="footer"]').first();
+
+        $('[data-arrange] > .ptk-nl-arrange-row').each(function () {
+            var $section = sectionByType($(this).attr('data-type'));
+            if (!$section.length) {
+                return;
+            }
+            if ($footer.length) {
+                $section.insertBefore($footer);
+            } else {
+                $blocks.append($section);
+            }
         });
     }
 
@@ -505,11 +752,16 @@
      * (keyed by data-rows-for, e.g. events -> data.rows, story_cards ->
      * data.cards, footer -> data.links). Writes the result into
      * #ptk-nl-blocks-json as JSON.
+     *
+     * Sections the volunteer left out ([data-excluded]) are skipped: they
+     * stay in the DOM, holding whatever was typed into them so step 4's
+     * "Add back" can return it, but they're not part of the newsletter and
+     * must not be saved into it.
      */
     function serialize() {
         var blocks = [];
 
-        $('#ptk-nl-blocks > .ptk-nl-block').each(function () {
+        $('#ptk-nl-blocks > .ptk-nl-block').not('[data-excluded]').each(function () {
             var $section = $(this);
             var data = {};
 
