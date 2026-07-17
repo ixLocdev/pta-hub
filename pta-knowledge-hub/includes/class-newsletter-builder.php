@@ -44,6 +44,7 @@ class PTK_Newsletter_Builder {
         add_action( 'admin_menu', array( __CLASS__, 'remove_default_add_new' ), 99 );
         add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
         add_action( 'admin_init', array( __CLASS__, 'handle_submission' ) );
+        add_action( 'wp_ajax_ptk_nl_preview', array( __CLASS__, 'handle_preview_ajax' ) );
         add_action( 'load-post-new.php', array( __CLASS__, 'redirect_add_new' ) );
         add_action( 'load-post.php', array( __CLASS__, 'redirect_edit_to_builder' ) );
         add_filter( 'post_row_actions', array( __CLASS__, 'add_edit_row_action' ), 10, 2 );
@@ -198,6 +199,40 @@ class PTK_Newsletter_Builder {
             'ptk_nl_msg'     => $msg,
         ), admin_url( 'edit.php' ) ) );
         exit;
+    }
+
+    /**
+     * Render the live preview for the builder. Runs the SAME sanitize + render
+     * path as a real save, so what the volunteer sees is what families will get.
+     */
+    public static function handle_preview_ajax() {
+        check_ajax_referer( 'ptk_nl_preview', 'nonce' );
+
+        if ( ! current_user_can( 'edit_posts' ) ) {
+            wp_send_json_error( array( 'message' => 'Permission denied.' ), 403 );
+        }
+
+        $raw    = json_decode( wp_unslash( isset( $_POST['blocks'] ) ? $_POST['blocks'] : '' ), true );
+        $blocks = PTK_Newsletter_Data::sanitize_blocks( $raw );
+
+        // Issue + date live OUTSIDE the blocks JSON and the renderer reads them
+        // from opts, so they must be posted separately or the masthead would show
+        // no issue number, no date, and no auto-derived "Week of ..." headline.
+        $issue = absint( isset( $_POST['issue'] ) ? $_POST['issue'] : 0 );
+        if ( $issue < 1 ) {
+            $issue = 1;
+        }
+        $date = isset( $_POST['date'] ) ? sanitize_text_field( wp_unslash( $_POST['date'] ) ) : '';
+        if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date ) ) {
+            $date = current_time( 'Y-m-d' );
+        }
+
+        $html = PTK_Newsletter_Renderer::render(
+            $blocks,
+            self::render_opts( $blocks, $issue, $date, array( 'preview_placeholders' => true ) )
+        );
+
+        wp_send_json_success( array( 'html' => $html ) );
     }
 
     /**
@@ -395,7 +430,9 @@ class PTK_Newsletter_Builder {
         );
 
         wp_localize_script( 'ptk-newsletter-builder', 'ptkNlData', array(
-            'blocks' => self::blocks_for_js(),
+            'blocks'       => self::blocks_for_js(),
+            'ajaxUrl'      => admin_url( 'admin-ajax.php' ),
+            'previewNonce' => wp_create_nonce( 'ptk_nl_preview' ),
         ) );
     }
 
