@@ -149,9 +149,10 @@ class PTK_Newsletter_Renderer {
         $pill = isset( $data['pill'] ) ? self::str( $data['pill'] ) : '';
         $text = isset( $data['text'] ) ? self::str( $data['text'] ) : '';
 
-        // Nothing to announce: emit nothing (no empty navy bar).
+        // Nothing to announce: emit nothing (no empty navy bar), unless
+        // preview mode wants an outlinable placeholder.
         if ( '' === trim( $pill ) && '' === trim( $text ) ) {
-            return '';
+            return self::placeholder( 'announcement', 'Your key announcement will appear here.', $opts );
         }
 
         $pill_html = '';
@@ -192,7 +193,7 @@ class PTK_Newsletter_Renderer {
             $valid_rows[] = $row;
         }
         if ( empty( $valid_rows ) ) {
-            return '';
+            return self::placeholder( 'events', 'Your upcoming events will appear here.', $opts );
         }
         $rows = $valid_rows;
 
@@ -248,7 +249,7 @@ class PTK_Newsletter_Renderer {
 
         // Nothing to feature (no text and no rendered image): skip the hero.
         if ( '' === trim( $eyebrow ) && '' === trim( $headline ) && '' === trim( $body ) && '' === $image_html ) {
-            return '';
+            return self::placeholder( 'featured', 'Your featured story will appear here.', $opts );
         }
 
         $html  = '<div data-ptk-block="' . esc_attr( 'featured' ) . '" style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['primary'] ) . ';padding:48px 20px;box-sizing:border-box;">';
@@ -301,7 +302,7 @@ class PTK_Newsletter_Renderer {
         }
 
         if ( empty( $valid_cards ) ) {
-            return '';
+            return self::placeholder( 'story_cards', 'Your story cards will appear here.', $opts );
         }
 
         $html  = '<div data-ptk-block="' . esc_attr( 'story_cards' ) . '" style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:24px 20px;box-sizing:border-box;">';
@@ -364,7 +365,7 @@ class PTK_Newsletter_Renderer {
 
         // Nothing to sign off with and no usable links: skip the footer bar.
         if ( '' === trim( $signoff ) && empty( $valid_links ) ) {
-            return '';
+            return self::placeholder( 'footer', 'Your sign-off and links will appear here.', $opts );
         }
 
         $html  = '<div data-ptk-block="' . esc_attr( 'footer' ) . '" style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:40px 20px 32px;border-top:1px solid ' . esc_attr( self::PALETTE['hairline'] ) . ';box-sizing:border-box;">';
@@ -386,6 +387,21 @@ class PTK_Newsletter_Renderer {
         $html .= '</div>';
 
         return $html;
+    }
+
+    /**
+     * Preview-only stub for a block the user hasn't written yet, so the builder can
+     * outline it and show where it will land. NEVER used by the save path — the
+     * published newsletter still renders nothing for an empty block.
+     */
+    private static function placeholder( $type, $label, array $opts ) {
+        if ( empty( $opts['preview_placeholders'] ) ) {
+            return '';
+        }
+        return '<div data-ptk-block="' . esc_attr( $type ) . '" style="font-family:' . self::FONT_SANS
+            . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';color:#9a9482;padding:26px 20px;'
+            . 'box-sizing:border-box;border:2px dashed ' . esc_attr( self::PALETTE['hairline'] ) . ';'
+            . 'text-align:center;font-size:14px;">' . esc_html( $label ) . '</div>';
     }
 
     /**

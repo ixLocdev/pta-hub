@@ -127,4 +127,23 @@ ptk_test_ok( strpos( $html2, 'data-ptk-block="header"' ) !== false, 'header carr
 ptk_test_ok( strpos( $html2, 'data-ptk-block="announcement"' ) !== false, 'announcement carries data-ptk-block' );
 ptk_test_ok( strpos( $html2, 'data-ptk-block="footer"' ) !== false, 'footer carries data-ptk-block' );
 
+// Preview mode: empty blocks become outlinable placeholder stubs...
+$empty = PTK_Newsletter_Data::default_blocks(); // all fields blank
+$opts_base = array( 'issue' => 1, 'date' => '2026-07-16', 'today' => '2026-07-16',
+    'theme' => 'harbor-navy', 'logo_url' => '', 'school_name' => 'Demo PTA' );
+
+$preview = PTK_Newsletter_Renderer::render( $empty, array_merge( $opts_base, array( 'preview_placeholders' => true ) ) );
+ptk_test_ok( strpos( $preview, 'data-ptk-block="announcement"' ) !== false, 'preview mode: empty announcement still outlinable' );
+ptk_test_ok( strpos( $preview, 'data-ptk-block="events"' ) !== false, 'preview mode: empty events still outlinable' );
+ptk_test_ok( strpos( $preview, 'data-ptk-block="featured"' ) !== false, 'preview mode: empty featured still outlinable' );
+ptk_test_ok( strpos( $preview, 'data-ptk-block="story_cards"' ) !== false, 'preview mode: empty story cards still outlinable' );
+ptk_test_ok( strpos( $preview, 'data-ptk-block="footer"' ) !== false, 'preview mode: empty footer still outlinable' );
+ptk_test_ok( stripos( $preview, 'will appear here' ) !== false, 'preview mode: placeholder tells the user what goes here' );
+
+// ...but published output is UNCHANGED — empty blocks still render nothing.
+$published = PTK_Newsletter_Renderer::render( $empty, $opts_base );
+ptk_test_ok( strpos( $published, 'data-ptk-block="featured"' ) === false, 'published: empty featured renders nothing' );
+ptk_test_ok( strpos( $published, 'data-ptk-block="story_cards"' ) === false, 'published: empty story cards render nothing' );
+ptk_test_ok( stripos( $published, 'will appear here' ) === false, 'published: no placeholder text leaks out' );
+
 ptk_test_done();
