@@ -1,5 +1,39 @@
 # Newsletter Wizard + Live Preview — Implementation Plan
 
+> **STATUS: COMPLETE** (2026-07-17, branch `newsletter-wizard`). All 10 tasks
+> implemented, each spec- and quality-reviewed, then driven end-to-end in a real
+> WordPress (Playground).
+>
+> **Verified in the browser, not just by tests:**
+> - The wizard renders: sidebar, one step at a time, "Step 1 of 4", auto-filled
+>   issue/date/school name, and the auto-derived "Week of July 17" headline.
+> - **The live preview works**, showing placeholder stubs for unwritten sections
+>   and outlining the section being edited (the highlight follows the step).
+> - **The issue/date trigger fires** — typing `42` moved the preview from "NO. 3"
+>   to "NO. 42". This was the plan's most-warned-about silent failure.
+> - Boot preview renders immediately (the discarded-document race fix holds).
+> - Remove shows **exactly one** confirm dialog, keeps the section in the DOM, and
+>   preserves its text; Add back restores it to its original slot and does NOT
+>   leak its step-3 fields onto step 4.
+> - **Remove → Save → reopen → the section is still in "Not included" with a
+>   working Add back** (returning an empty section — the documented limitation).
+>   Without Task 5's Step 2b this list would be empty and removal permanent.
+> - Keyboard Move up/down keeps focus in the list, and at the boundary falls back
+>   to the row's other enabled button; the live region announces
+>   "Key announcement moved up. Now 1 of 4."
+> - Responsive: at 950px the wizard stacks (preview below, keeps real width); at
+>   1500px it's the three-column layout.
+> - **Published output is unaffected:** no placeholder text or stub markup leaks,
+>   the removed section is absent, empty blocks still render nothing, and Phase 1's
+>   guarantees hold (`data-event-date` survives KSES; em dash + "Café" round-trip).
+>
+> **No code bugs were found by this pass** — the per-task reviews caught them
+> upstream (the discarded iframe document, the append-vs-splice that would have
+> stranded excluded sections below the footer, the boot-focus stealing the admin
+> notices, and two ways CSS could have silently broken the layout).
+>
+> **Deliberately deferred:** version bump + zip/update-info release artifacts.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Turn the Newsletter Builder's single long form into a 4-step wizard with a live preview, so a first-time PTA volunteer isn't daunted — without changing the newsletter's published output, data model, or save path.
