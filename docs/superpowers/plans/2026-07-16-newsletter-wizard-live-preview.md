@@ -325,10 +325,12 @@ Then:
 
 Fix: in edit mode, render the full set of six sections —
 - Start from the saved blocks (they give the **order** of what's included).
-- Append any type from `PTK_Newsletter_Data::default_blocks()` that is **absent** from the saved blocks, in default order, each rendered with **`data-excluded="1"`** (hidden, empty fields).
+- Take any type from `PTK_Newsletter_Data::default_blocks()` that is **absent** from the saved blocks and **insert it immediately BEFORE the footer block** (i.e. at the end of the movable run), in default order, each rendered with **`data-excluded="1"`** (hidden, empty fields).
 - Result: every type always has a DOM node, so "Not included" is populated on reopen and Add back works (returning an empty section — the honest limitation spec §8a already states).
 
-Keep header/footer pinned and in place. Do this for the **rendered sections**; `blocks_for_js()` needs no change (a type absent from saved data simply prefills nothing).
+**Do NOT simply append to the array.** `sanitize_blocks()` always emits `[header, …middles…, footer]`, so appending would place excluded sections **after the pinned footer**. Published output would survive (save re-sanitizes and forces footer last), but **Add back would be quietly broken**: the restored section would sit below the footer, and Task 7's move guard ("never cross the pinned footer") would see the footer as its previous sibling — so **Move up could never rescue it**, failing the keyboard-equal path spec §5 calls non-negotiable, for exactly the section this step exists to make recoverable. Task 10's check 8b would still look like it passed.
+
+Keep header first and footer last. Do this for the **rendered sections**; `blocks_for_js()` needs no change (a type absent from saved data simply prefills nothing).
 
 - [ ] **Step 2c: Fix the intro copy**
 
@@ -342,7 +344,7 @@ Delete the Move up / Move down / Remove buttons from `render_block_section()` (~
 
 In `render_page()`, inside `.wrap`, wrap the form area in a `.ptk-nl-wizard` flex container:
 - A `<nav class="ptk-nl-steps" aria-label="Newsletter steps">` listing the 4 steps as `<button type="button" data-goto-step="N">` with the title; the active one gets `aria-current="step"`.
-- For each step, a `<div class="ptk-nl-step-head" data-step="N">` with an `<h2>` (the title, and "Step N of 4") and the blurb in plain English.
+- For each step, a `<div class="ptk-nl-step-head" data-step="N">` with an `<h2>` (the title, and "Step N of 4") and the blurb in plain English. **Demote the per-section headings in `render_block_section()` (currently `<h2>`, builder:656) to `<h3>`** so a step outranks the sections inside it (spec §9: steps are real headings, not styled divs).
 - A Back / Next pair (`data-step-nav="prev|next"`), hidden appropriately at the ends.
 - The preview panel container: `<div class="ptk-nl-preview"><iframe id="ptk-nl-preview-frame" title="Preview of your newsletter"></iframe></div>`.
 
@@ -417,6 +419,8 @@ Re-run `renderArrangeList()` whenever order/inclusion changes, and when entering
 
 Also delete or repurpose `updateMoveButtonStates()` (~:266-273): once the in-section buttons are gone it matches an empty set. Port its "disable at the boundary" behaviour to the new arrange rows (Move up disabled on the first movable, Move down on the last) — that affordance is worth keeping.
 
+**Delete their BOOT CALLS too — `bindMoveAndRemoveBlock()` at js:51 and `updateMoveButtonStates()` at js:55**, inside the `$(function(){…})` boot block. Deleting a function but leaving its call throws a `ReferenceError` on boot, before `serialize()` at :56 — **the entire builder goes dead, and `node --check` will NOT catch it** (it's valid syntax). If you see a blank/inert form in Playground, look here first.
+
 New handlers resolve the target with
 `var $section = $('#ptk-nl-blocks > .ptk-nl-block[data-type="' + type + '"]').first();`
 - **Move up/down:** swap `$section` with its previous/next non-pinned sibling (guard against crossing the pinned header/footer), then `renderArrangeList()` + `serialize()`.
@@ -426,8 +430,9 @@ New handlers resolve the target with
 - [ ] **Step 4: Include/skip + add back (NOT destroy)**
 
 Phase 1's Remove did `$section.remove()`, destroying typed content. Instead:
-- **Remove:** `window.confirm()` naming the section ("Remove the Featured story? Anything you typed in it won't be published."), then mark `$section.attr('data-excluded','1')` and hide it (do **not** remove from the DOM). Re-render lists + `serialize()`.
-- **Add back:** clear `data-excluded`, unhide → its text is still there (within the session). Re-render + `serialize()`.
+- **Remove:** `window.confirm()` naming the section ("Remove the Featured story? Anything you typed in it won't be published."), then mark `$section.attr('data-excluded','1')` (do **not** remove from the DOM). Re-render lists + `serialize()`.
+- **Add back:** clear `data-excluded` → its text is still there (within the session). Re-render + `serialize()`.
+- **Let `showStep()` own visibility — do NOT `.show()`/`.hide()` sections here.** A section is visible **iff `!excluded && data-step === currentStep`**. Remove/Add back only toggle the attribute, then call `renderArrangeList()` + `showStep(current)`. (Otherwise Add back — which happens on step 4 — would `.show()` a `data-step="2"` announcement's fields *on step 4*.)
 - **`serialize()` must skip excluded sections** — change its loop to `.not('[data-excluded]')`. This is `serialize()`'s ONLY change; do not touch its `#ptk-nl-blocks > .ptk-nl-block` selector.
 - Also skip excluded sections in `showStep()` (a hidden-because-excluded section must not reappear when its step opens).
 - Copy must be honest: note in the UI that once saved, an excluded section's text isn't kept.
@@ -490,6 +495,10 @@ git add -A && git commit -m "Show the newsletter building itself beside the form
 - [ ] **Step 1: Layout**
 
 `.ptk-nl-wizard` = flex row: `.ptk-nl-steps` sidebar (~170px) | fields column (min ~420px, flex 1) | `.ptk-nl-preview` (flex, the widest that fits). Style the active step, the pinned/arrange rows, the drag handle, the excluded list, and the placeholder look. Follow the project rule: **full borders/fills, never single-side accent stripes.**
+
+- [ ] **Step 1b: Place the share-a-preview panel**
+
+It lives **outside** `.ptk-nl-wizard` (a sibling of the form inside `.wrap`), so `data-step="4"` alone will show it *below the whole wizard, full width* rather than in the fields column where it belongs. Fix with CSS/placement so on step 4 it reads as part of the finish column. Verify in the Playground pass — don't guess.
 
 - [ ] **Step 2: Responsive**
 
