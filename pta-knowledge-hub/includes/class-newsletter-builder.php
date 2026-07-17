@@ -214,17 +214,7 @@ class PTK_Newsletter_Builder {
      * @return int The saved post id.
      */
     private static function persist_newsletter( array $blocks, $issue, $date, $post_status, $edit_id ) {
-        $rendered = PTK_Newsletter_Renderer::render( $blocks, array(
-            'issue'        => $issue,
-            'date'         => $date,
-            'today'        => current_time( 'Y-m-d' ),
-            'theme'        => self::DEFAULT_THEME,
-            'logo_url'     => get_site_icon_url() ?: '',
-            'school_name'  => self::school_name_from_blocks( $blocks ),
-            'image_url_cb' => function( $id ) {
-                return wp_get_attachment_image_url( $id, 'large' );
-            },
-        ) );
+        $rendered = PTK_Newsletter_Renderer::render( $blocks, self::render_opts( $blocks, $issue, $date ) );
 
         $title = sprintf( 'Newsletter No. %d — %s', $issue, date_i18n( 'F j, Y', strtotime( $date ) ) );
 
@@ -278,6 +268,31 @@ class PTK_Newsletter_Builder {
         update_post_meta( $post_id, 'ptk_nl_blocks', wp_slash( wp_json_encode( $blocks ) ) );
 
         return $post_id;
+    }
+
+    /**
+     * The render options for a newsletter — ONE definition, used by both the
+     * save path and the live-preview endpoint so the preview can never drift
+     * from what actually gets published.
+     *
+     * @param array  $blocks Sanitized blocks.
+     * @param int    $issue  Issue number.
+     * @param string $date   Issue date 'YYYY-MM-DD'.
+     * @param array  $extra  Preview-only additions (e.g. preview_placeholders => true).
+     * @return array
+     */
+    private static function render_opts( array $blocks, $issue, $date, array $extra = array() ) {
+        return array_merge( array(
+            'issue'        => $issue,
+            'date'         => $date,
+            'today'        => current_time( 'Y-m-d' ),
+            'theme'        => self::DEFAULT_THEME,
+            'logo_url'     => get_site_icon_url() ?: '',
+            'school_name'  => self::school_name_from_blocks( $blocks ),
+            'image_url_cb' => function( $id ) {
+                return wp_get_attachment_image_url( $id, 'large' );
+            },
+        ), $extra );
     }
 
     /**
