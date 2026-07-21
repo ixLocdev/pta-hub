@@ -325,6 +325,43 @@ The whole point is approachability, so these are requirements, not polish:
   Remove works; the PII gate still blocks publish; edit round-trip still
   reconstructs a saved newsletter; nothing regresses on save.
 
+## 10a. Plain-language pass (added 2026-07-17, after user testing)
+
+Testing the shipped wizard surfaced a distinction worth keeping: it was **easy to
+operate but hard to understand.** Those are separate problems, and the wizard only
+solved the first. In Lucas's words: *"the actual clicking ease of use is good, but
+the servicing of what they are and how they work is not — I have no idea what a key
+announcement is or what a pill label is if this is my first time here."*
+
+Two failures, both ours:
+
+1. **Our own jargon leaked onto a volunteer's screen.** "Pill label" is UI-designer
+   vocabulary; "Eyebrow" is editorial-typography vocabulary. Neither means anything
+   to a parent who volunteered last week. **Fixed by renaming, not explaining** —
+   per the rule *don't explain a term you could simply replace*:
+   Pill label → **Short label**, Eyebrow → **Small line above**,
+   Link URL/text → **Link address / Link wording** (and the footer's own
+   "Label"/"URL", found during the pass, unified to match).
+2. **No examples.** Of ~26 field labels exactly ONE had a hint (Headline) — and it
+   was the only field nobody had to ask about. That pattern was simply never
+   applied anywhere else.
+
+**The affordance, and why:** a muted hint line under each field, plus a one-line
+"what is this" under each section heading — **not** hover tooltips. Hover doesn't
+exist on a phone or tablet (where PTA volunteers often are) and is invisible to
+keyboard users; a hint line costs zero clicks and needs no discovery.
+
+**Examples are real content from actual NEPTA issues** ("Thursday · Jun 25",
+"— To our teachers & staff 💙", "Congratulations to our 5th graders."), so they
+show what *good* looks like rather than what's merely valid.
+
+The Image hint ("Optional. Please don't use photos of students' faces.") teaches the
+PII rule at the moment the decision is made, not only at the publish gate.
+
+**Constraint honoured:** visible text only — zero `data-field` / `data-type` /
+`data-step` / `data-rows-for` / `name=` attributes changed (verified against the
+diff). Changing one would silently drop that field's content on save.
+
 ## 11. Open Questions
 
 1. **Preview panel width on a typical school admin's screen** — needs a look at
