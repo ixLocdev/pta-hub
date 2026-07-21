@@ -248,6 +248,18 @@
     resize: vertical;
 }
 
+/* The hint line under a field ("what do I type here?"). Always static markup
+   below the input, never a hover tooltip: hover doesn't exist on a phone and
+   is invisible to keyboard users. Same look as the arrange/preview panels'
+   .description. */
+.ptk-nl-field-group .description {
+    margin: 6px 0 0;
+    max-width: 560px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #6b7280;
+}
+
 .ptk-nl-field-group input:focus,
 .ptk-nl-field-group textarea:focus {
     outline: 2px solid #2563eb;
@@ -283,12 +295,27 @@
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 10px;
-    margin-bottom: 18px;
 }
 
 .ptk-nl-block-header h3 {
     font-size: 17px;
     margin: 0;
+}
+
+/* The one-line "what this section is" under the heading. The 18px gap that
+   used to live on the header now lives on the body, so a section reads the
+   same whether or not it has an intro line. Static markup — nothing here is
+   toggled, so no display property. */
+.ptk-nl-block-intro {
+    margin: 6px 0 0;
+    max-width: 620px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #6b7280;
+}
+
+.ptk-nl-block-body {
+    margin-top: 18px;
 }
 
 .ptk-nl-pinned-note {

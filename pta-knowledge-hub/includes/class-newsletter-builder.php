@@ -562,6 +562,28 @@ class PTK_Newsletter_Builder {
     }
 
     /**
+     * One plain-English line saying what a section is and when you'd use one.
+     * The section names alone don't tell a first-timer that, so this renders
+     * under each heading. Returned as plain text (curly quotes and dashes
+     * included) — the caller escapes it, so never put HTML entities here.
+     *
+     * @param string $type Block type slug.
+     * @return string Empty string if the type has nothing to say.
+     */
+    protected static function intro_for_type( $type ) {
+        $intros = array(
+            'header'       => 'The top of every newsletter — your school name, the week, and a hello.',
+            'announcement' => 'The one thing families shouldn\'t miss this week. It shows as a colored bar near the top. Skip it if there isn\'t one.',
+            'events'       => 'Dates coming up. Each one shows with a “This week” or “Next week” tag that updates itself.',
+            'featured'     => 'The big story of the week, in its own colored block. Optional.',
+            'story_cards'  => 'Shorter articles — a heading, a paragraph, an optional link. Add as many as you need.',
+            'footer'       => 'Your sign-off and links. Set it once and it\'ll be here next time.',
+        );
+
+        return isset( $intros[ $type ] ) ? $intros[ $type ] : '';
+    }
+
+    /**
      * Which wizard step edits a given block type. Step is a property of the
      * TYPE — never of position — so a section dragged to the bottom of the
      * newsletter on step 4 is still edited on its own step.
@@ -933,6 +955,14 @@ class PTK_Newsletter_Builder {
                 <?php endif; ?>
             </div>
 
+            <?php /* Sibling of the header, never inside it: the arrange list reads
+                    '.ptk-nl-block-header h3' for this section's name, so nothing but
+                    the name belongs in there. */ ?>
+            <?php $intro = self::intro_for_type( $type ); ?>
+            <?php if ( $intro ) : ?>
+                <p class="description ptk-nl-block-intro"><?php echo esc_html( $intro ); ?></p>
+            <?php endif; ?>
+
             <div class="ptk-nl-block-body">
                 <?php self::render_block_fields( $type, array() ); ?>
             </div>
@@ -954,6 +984,7 @@ class PTK_Newsletter_Builder {
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-header-school_name">School name</label>
                     <input type="text" id="ptk-nl-header-school_name" data-field="school_name" value="<?php echo esc_attr( isset( $data['school_name'] ) ? $data['school_name'] : '' ); ?>">
+                    <p class="description">Shown at the top of every newsletter.</p>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-header-headline">Headline</label>
@@ -963,6 +994,7 @@ class PTK_Newsletter_Builder {
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-header-greeting">Greeting</label>
                     <textarea id="ptk-nl-header-greeting" data-field="greeting" rows="2"><?php echo esc_textarea( isset( $data['greeting'] ) ? $data['greeting'] : '' ); ?></textarea>
+                    <p class="description">A friendly hello and what&#8217;s coming up. For example: Hi Northeast families &#8212; it&#8217;s the last week of school!</p>
                 </div>
                 <?php
                 break;
@@ -970,12 +1002,14 @@ class PTK_Newsletter_Builder {
             case 'announcement':
                 ?>
                 <div class="ptk-nl-field-group">
-                    <label for="ptk-nl-announcement-pill">Pill label</label>
+                    <label for="ptk-nl-announcement-pill">Short label</label>
                     <input type="text" id="ptk-nl-announcement-pill" data-field="pill" value="<?php echo esc_attr( isset( $data['pill'] ) ? $data['pill'] : '' ); ?>">
+                    <p class="description">The little tag in the colored bar &#8212; usually when it happens. For example: Thursday &middot; Jun 25</p>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-announcement-text">Announcement text</label>
                     <textarea id="ptk-nl-announcement-text" data-field="text" rows="3"><?php echo esc_textarea( isset( $data['text'] ) ? $data['text'] : '' ); ?></textarea>
+                    <p class="description">The one sentence families shouldn&#8217;t miss. For example: The last day of school is this Thursday, June 25.</p>
                 </div>
                 <?php
                 break;
@@ -990,14 +1024,17 @@ class PTK_Newsletter_Builder {
                         <div class="ptk-nl-field-group">
                             <label>Date</label>
                             <input type="date" data-field="date">
+                            <p class="description">When it happens.</p>
                         </div>
                         <div class="ptk-nl-field-group">
                             <label>Title</label>
                             <input type="text" data-field="title">
+                            <p class="description">What it&#8217;s called. For example: Last Day of School</p>
                         </div>
                         <div class="ptk-nl-field-group">
                             <label>Description</label>
                             <textarea data-field="desc" rows="2"></textarea>
+                            <p class="description">One short line. For example: Early dismissal for students.</p>
                         </div>
                         <button type="button" class="button ptk-nl-remove-row">Remove</button>
                     </div>
@@ -1008,20 +1045,26 @@ class PTK_Newsletter_Builder {
             case 'featured':
                 ?>
                 <div class="ptk-nl-field-group">
-                    <label for="ptk-nl-featured-eyebrow">Eyebrow</label>
+                    <label for="ptk-nl-featured-eyebrow">Small line above</label>
                     <input type="text" id="ptk-nl-featured-eyebrow" data-field="eyebrow" value="<?php echo esc_attr( isset( $data['eyebrow'] ) ? $data['eyebrow'] : '' ); ?>">
+                    <p class="description">A short lead-in above the big headline. For example: &#8212; To our teachers &amp; staff &#128153;</p>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-featured-headline">Headline</label>
                     <input type="text" id="ptk-nl-featured-headline" data-field="headline" value="<?php echo esc_attr( isset( $data['headline'] ) ? $data['headline'] : '' ); ?>">
+                    <p class="description">The big headline for this story. For example: Congratulations to our 5th graders.</p>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-featured-body">Story</label>
                     <textarea id="ptk-nl-featured-body" data-field="body" rows="4"><?php echo esc_textarea( isset( $data['body'] ) ? $data['body'] : '' ); ?></textarea>
+                    <p class="description">A paragraph or two in your own words.</p>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label>Image</label>
                     <input type="hidden" data-field="image_id" value="<?php echo esc_attr( isset( $data['image_id'] ) ? $data['image_id'] : 0 ); ?>">
+                    <?php /* Above the button, not below it: refreshImageChip() appends the
+                            "Image #N selected" chip to the END of this group. */ ?>
+                    <p class="description">Optional. Please don&#8217;t use photos of students&#8217; faces.</p>
                     <button type="button" class="button ptk-nl-add-image">Add image</button>
                 </div>
                 <?php
@@ -1037,23 +1080,30 @@ class PTK_Newsletter_Builder {
                         <div class="ptk-nl-field-group">
                             <label>Heading</label>
                             <input type="text" data-field="heading">
+                            <p class="description">A short headline for this article. For example: Volunteers needed: Book Fair</p>
                         </div>
                         <div class="ptk-nl-field-group">
                             <label>Story</label>
                             <textarea data-field="body" rows="3"></textarea>
+                            <p class="description">A paragraph or two in your own words.</p>
                         </div>
                         <div class="ptk-nl-field-group">
                             <label>Image</label>
                             <input type="hidden" data-field="image_id" value="0">
+                            <?php /* Above the button, not below it: refreshImageChip() appends the
+                                    "Image #N selected" chip to the END of this group. */ ?>
+                            <p class="description">Optional. Please don&#8217;t use photos of students&#8217; faces.</p>
                             <button type="button" class="button ptk-nl-add-image">Add image</button>
                         </div>
                         <div class="ptk-nl-field-group">
-                            <label>Link URL</label>
+                            <label>Link address</label>
                             <input type="url" data-field="link_url">
+                            <p class="description">Where the link goes. For example: https://northeastpta.org/volunteer/</p>
                         </div>
                         <div class="ptk-nl-field-group">
-                            <label>Link text</label>
+                            <label>Link wording</label>
                             <input type="text" data-field="link_text">
+                            <p class="description">What the link says. For example: Sign up for a shift</p>
                         </div>
                         <button type="button" class="button ptk-nl-remove-row">Remove</button>
                     </div>
@@ -1066,6 +1116,7 @@ class PTK_Newsletter_Builder {
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-footer-signoff">Sign-off</label>
                     <textarea id="ptk-nl-footer-signoff" data-field="signoff" rows="2"><?php echo esc_textarea( isset( $data['signoff'] ) ? $data['signoff'] : '' ); ?></textarea>
+                    <p class="description">How you sign off. For example: With gratitude, Your PTA Board</p>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label>Links</label>
@@ -1075,12 +1126,14 @@ class PTK_Newsletter_Builder {
                         <!-- Row fields intentionally have no static ids: the later JS task assigns a unique id per cloned row and points each label's for at it. -->
                         <div class="ptk-nl-row" data-row>
                             <div class="ptk-nl-field-group">
-                                <label>Label</label>
+                                <label>Link wording</label>
                                 <input type="text" data-field="label">
+                                <p class="description">What it says. For example: Full calendar</p>
                             </div>
                             <div class="ptk-nl-field-group">
-                                <label>URL</label>
+                                <label>Link address</label>
                                 <input type="url" data-field="url">
+                                <p class="description">Where it goes.</p>
                             </div>
                             <button type="button" class="button ptk-nl-remove-row">Remove</button>
                         </div>
