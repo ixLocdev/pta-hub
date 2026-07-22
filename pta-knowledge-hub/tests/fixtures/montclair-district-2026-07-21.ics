@@ -1,0 +1,1584 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+NAME:Calendar
+X-WR-CALNAME:Calendar
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+PRODID:-//ddaysoftware.com//NONSGML DDay.iCal 1.0//EN
+BEGIN:VTIMEZONE
+TZID:US Eastern
+BEGIN:STANDARD
+DTSTART:20261102T020000
+RRULE:FREQ=YEARLY;BYDAY=1SU;BYHOUR=2;BYMINUTE=0;BYMONTH=11
+TZNAME:US Eastern Standard
+TZOFFSETFROM:-0400
+TZOFFSETTO:-0500
+END:STANDARD
+BEGIN:DAYLIGHT
+DTSTART:20260301T020000
+RRULE:FREQ=YEARLY;BYDAY=2SU;BYHOUR=2;BYMINUTE=0;BYMONTH=3
+TZNAME:US Eastern Daylight
+TZOFFSETFROM:-0500
+TZOFFSETTO:-0400
+END:DAYLIGHT
+END:VTIMEZONE
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260425
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260420
+LAST-MODIFIED:20260415T131452Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:CHB Book Fair
+UID:110128280
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260422
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260421
+LAST-MODIFIED:20260309T173252Z
+LOCATION:Nishuane
+SEQUENCE:0
+SUMMARY:Nishuane Cycle 3 CI/Aesthetics begin
+UID:109753990
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260422T223000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260422T190000Z
+LAST-MODIFIED:20260415T131707Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:CHB Family Book Fair Shop
+UID:110128284
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:<p class="cvGsUA direction-ltr align-center para-style-body" st
+ yle="color: rgba(0\,0\,0\,var(--O42jJQ\,1))\; caret-color: rgb(0\, 0\, 0)\
+ ; --8sD0Kg: none\; font-family: YAFdJjTk5UU_0\, _fb_\, auto\; --cyV3ZQ: 34
+ .6666px\; --gJPlXQ: 1.4\; --s8NbEA: p\; line-height: 48px\;"><span class="
+ a_GcMg font-feature-liga-off font-feature-clig-off font-feature-calt-off t
+ ext-decoration-none text-strikethrough-none" style="color: rgba(0\,0\,0\,v
+ ar(--O42jJQ\,1))\; --Ys-XuQ: none\; font-weight: 700\; font-kerning: norma
+ l\;">This meeting is an opportunity for the community to gain an understan
+ ding of the district’s special education programs and student needs.&nbsp\
+ ;</span><span style="color: rgba(0\,0\,0\,var(--O42jJQ\,1))\; font-weight:
+  700\; font-size: 10pt\;">There will also be a Q&amp\;A session following 
+ the presentation to allow for community input and engagement.&nbsp\;<span 
+ style="font-size: 13.3333px\;">Submit&nbsp\;</span><span style="font-size:
+  13.3333px\;">questions here&nbsp\;</span><span style="font-size: 13.3333p
+ x\;"><a href="https://tinyurl.com/AskMPS" title="file opens in new tab">ht
+ tps://tinyurl.com/</a></span><span style="font-size: 13.3333px\;"><a href=
+ "https://tinyurl.com/AskMPS" title="file opens in new tab">AskMPS</a></spa
+ n></span></p>
+DTEND:20260423T000000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260422T223000Z
+LAST-MODIFIED:20260409T162554Z
+LOCATION:Montclair High School LGI Auditorium
+SEQUENCE:0
+SUMMARY:Special Education Town Hall
+UID:110125039
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260425
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260424
+LAST-MODIFIED:20250922T015912Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Professional Development - Abbreviated Day
+UID:Ical60a750351bf2fa5264d0fd92f8b58548-109882948
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:<font size="3">The Renaissance MS 8th Gr. students will go on a
+  field trip to the NY Federal Reserve Bank $10.</font>
+DTEND:20260424T180000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260424T123000Z
+LAST-MODIFIED:20251120T172655Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Ren 8th Gr. NY Federal Reserve Bank Trip
+UID:109904124
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260424T175500Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260424T165500Z
+LAST-MODIFIED:20251016T165604Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:CHB - Abbrev. Day (1:40 dismissal) - Staff PD
+UID:109860660
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:This will be a Zoom meeting with information regarding the next
+  steps in selecting Aesthetics courses for the 2026-2027 school year.&nbsp
+ \; All Kindergarten and First grade students must select Aesthetics for th
+ e 2026-2027 school year.<br>\n<br>\nZoom information will be provided at a
+  later date.
+DTEND:20260428T231500Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260428T223000Z
+LAST-MODIFIED:20250831T180017Z
+LOCATION:Nishuane
+SEQUENCE:0
+SUMMARY:Nishuane Parents 2026-2026 Aesthetics Info Meeting
+UID:109753988
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Aesthetics requests for 2026-2027 are open in Genesis during th
+ is window of time.&nbsp\; ALL Kindergarten and 1st Grade students must req
+ uests Aesthetics at this time.
+DTEND:20260515T200000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260429T200000Z
+LAST-MODIFIED:20250831T180047Z
+LOCATION:Nishuane
+SEQUENCE:0
+SUMMARY:Nishuane Aesthetics Requests for 2026-2027 open in Genesis
+UID:109753994
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260501T000000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260430T220000Z
+LAST-MODIFIED:20260226T145938Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:International Food Night
+UID:110030119
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260501T000000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260430T220000Z
+LAST-MODIFIED:20260210T160107Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:CHB International Food Night
+UID:110013920
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:<div class="x_elementToProof" style="border: 0px\; font-variant
+ -numeric: inherit\; font-variant-east-asian: inherit\; font-variant-altern
+ ates: inherit\; font-variant-position: inherit\; font-variant-emoji: inher
+ it\; font-stretch: inherit\; font-size: 12pt\; line-height: 1.2\; font-fam
+ ily: &quot\;Calibri Light&quot\;\, &quot\;Helvetica Light&quot\;\, sans-se
+ rif\; font-optical-sizing: inherit\; font-size-adjust: inherit\; font-kern
+ ing: inherit\; font-feature-settings: inherit\; font-variation-settings: i
+ nherit\; margin: 0pt 0px 0pt 36pt\; padding: 0px\; vertical-align: baselin
+ e\; direction: ltr\;"><span data-olk-copy-source="MessageBody" style="bord
+ er: 0px\; font-style: inherit\; font-variant: inherit\; font-weight: 700\;
+  font-stretch: inherit\; font-size: inherit\; line-height: inherit\; font-
+ family: inherit\; font-optical-sizing: inherit\; font-size-adjust: inherit
+ \; font-kerning: inherit\; font-feature-settings: inherit\; font-variation
+ -settings: inherit\; margin: 0px\; padding: 0px\; vertical-align: baseline
+ \; color: inherit\;"><a href="https://mpsdnj.zoom.us/j/8137333502" target=
+ "_blank" title="Zoom link">Zoom&nbsp\;</a>Information:</span><span style="
+ border: 0px\; font-style: inherit\; font-variant: inherit\; font-weight: 7
+ 00\; font-stretch: inherit\; font-size: inherit\; line-height: inherit\; f
+ ont-family: inherit\; font-optical-sizing: inherit\; font-size-adjust: inh
+ erit\; font-kerning: inherit\; font-feature-settings: inherit\; font-varia
+ tion-settings: inherit\; margin: 0px\; padding: 0px\; vertical-align: base
+ line\; color: inherit\;"></span></div>\n<div class="x_elementToProof" styl
+ e="border: 0px\; font-variant-numeric: inherit\; font-variant-east-asian: 
+ inherit\; font-variant-alternates: inherit\; font-variant-position: inheri
+ t\; font-variant-emoji: inherit\; font-stretch: inherit\; font-size: 12pt\
+ ; line-height: 1.2\; font-family: &quot\;Calibri Light&quot\;\, &quot\;Hel
+ vetica Light&quot\;\, sans-serif\; font-optical-sizing: inherit\; font-siz
+ e-adjust: inherit\; font-kerning: inherit\; font-feature-settings: inherit
+ \; font-variation-settings: inherit\; margin: 0pt 0px\; padding: 0px\; ver
+ tical-align: baseline\; direction: ltr\;">&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbs
+ p\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;<span style="border: 0px\; font-styl
+ e: inherit\; font-variant: inherit\; font-weight: 700\; font-stretch: inhe
+ rit\; font-size: inherit\; line-height: inherit\; font-family: inherit\; f
+ ont-optical-sizing: inherit\; font-size-adjust: inherit\; font-kerning: in
+ herit\; font-feature-settings: inherit\; font-variation-settings: inherit\
+ ; margin: 0px\; padding: 0px\; vertical-align: baseline\; color: inherit\;
+ ">&nbsp\;&nbsp\;&nbsp\;Meeting ID: 813 733 3502</span></div>\n<div class="
+ x_elementToProof" style="border: 0px\; font-variant-numeric: inherit\; fon
+ t-variant-east-asian: inherit\; font-variant-alternates: inherit\; font-va
+ riant-position: inherit\; font-variant-emoji: inherit\; font-stretch: inhe
+ rit\; font-size: 12pt\; line-height: 1.2\; font-family: &quot\;Calibri Lig
+ ht&quot\;\, &quot\;Helvetica Light&quot\;\, sans-serif\; font-optical-sizi
+ ng: inherit\; font-size-adjust: inherit\; font-kerning: inherit\; font-fea
+ ture-settings: inherit\; font-variation-settings: inherit\; margin: 0pt 0p
+ x\; padding: 0px\; vertical-align: baseline\; direction: ltr\;"><span styl
+ e="border: 0px\; font-style: inherit\; font-variant: inherit\; font-weight
+ : 700\; font-stretch: inherit\; font-size: inherit\; line-height: inherit\
+ ; font-family: inherit\; font-optical-sizing: inherit\; font-size-adjust: 
+ inherit\; font-kerning: inherit\; font-feature-settings: inherit\; font-va
+ riation-settings: inherit\; margin: 0px\; padding: 0px\; vertical-align: b
+ aseline\; color: inherit\;">&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbs
+ p\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;Passcode: 9SJt7M</span></div>
+ \n<div class="x_elementToProof" style="border: 0px\; font-variant-numeric:
+  inherit\; font-variant-east-asian: inherit\; font-variant-alternates: inh
+ erit\; font-variant-position: inherit\; font-variant-emoji: inherit\; font
+ -stretch: inherit\; font-size: 12pt\; line-height: 1.2\; font-family: &quo
+ t\;Calibri Light&quot\;\, &quot\;Helvetica Light&quot\;\, sans-serif\; fon
+ t-optical-sizing: inherit\; font-size-adjust: inherit\; font-kerning: inhe
+ rit\; font-feature-settings: inherit\; font-variation-settings: inherit\; 
+ margin: 0pt 0px\; padding: 0px\; vertical-align: baseline\; direction: ltr
+ \;">&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;
+ &nbsp\;&nbsp\;&nbsp\;One tap mobile</div>\n<div class="x_elementToProof" s
+ tyle="border: 0px\; font-variant-numeric: inherit\; font-variant-east-asia
+ n: inherit\; font-variant-alternates: inherit\; font-variant-position: inh
+ erit\; font-variant-emoji: inherit\; font-stretch: inherit\; font-size: 12
+ pt\; line-height: 1.2\; font-family: &quot\;Calibri Light&quot\;\, &quot\;
+ Helvetica Light&quot\;\, sans-serif\; font-optical-sizing: inherit\; font-
+ size-adjust: inherit\; font-kerning: inherit\; font-feature-settings: inhe
+ rit\; font-variation-settings: inherit\; margin: 0pt 0px\; padding: 0px\; 
+ vertical-align: baseline\; direction: ltr\;">&nbsp\;&nbsp\;&nbsp\;&nbsp\;&
+ nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;+1646
+ 5588656\,\,8137333502# US (New York)</div>\n<div class="x_elementToProof" 
+ style="border: 0px\; font-variant-numeric: inherit\; font-variant-east-asi
+ an: inherit\; font-variant-alternates: inherit\; font-variant-position: in
+ herit\; font-variant-emoji: inherit\; font-stretch: inherit\; font-size: 1
+ 2pt\; line-height: 1.2\; font-family: &quot\;Calibri Light&quot\;\, &quot\
+ ;Helvetica Light&quot\;\, sans-serif\; font-optical-sizing: inherit\; font
+ -size-adjust: inherit\; font-kerning: inherit\; font-feature-settings: inh
+ erit\; font-variation-settings: inherit\; margin: 0pt 0px\; padding: 0px\;
+  vertical-align: baseline\; direction: ltr\;">&nbsp\;&nbsp\;&nbsp\;&nbsp\;
+ &nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;+164
+ 69313860\,\,8137333502# US</div>
+DTEND:20260430T233000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260430T223000Z
+LAST-MODIFIED:20251030T034600Z
+LOCATION:Bradford Library & Zoom
+SEQUENCE:0
+SUMMARY:Bradford SATp Meeting
+UID:109883485
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260501T013000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260501T000000Z
+LAST-MODIFIED:20250727T185247Z
+LOCATION:Virtual (Zoom)
+SEQUENCE:0
+SUMMARY:EDGEMONT General PTA Meeting (Zoom)
+UID:109688999
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260509
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260504
+LAST-MODIFIED:20250727T185302Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:EDGEMONT Teacher/Staff Appreciation Week
+UID:109689019
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260509
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260504
+LAST-MODIFIED:20260413T190442Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:CHB Eco Action Walk-a-Thon
+UID:109768199
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260509
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260504
+LAST-MODIFIED:20260210T162533Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:CHB Teacher Appreciation Week
+UID:110014024
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Northeast PTA is inviting you to a scheduled Zoom meeting.\nJoi
+ n Zoom Meeting\nhttps://us02web.zoom.us/j/85806171057?pwd=3VMUk6FRLTEQUWU2
+ JVn5bhJkgdr9Ug.1\n\nView meeting insights with Zoom AI Companion\nhttps://
+ us02web.zoom.us/launch/edl?muid=10ac9da7-7663-4fc5-94f5-61fa6d55e5a4\n\nMe
+ eting ID: 858 0617 1057\nPasscode: 257596\n\n---\n\nOne tap mobile\n+13126
+ 266799\,\,85806171057#\,\,\,\,*257596# US (Chicago)\n+16469313860\,\,85806
+ 171057#\,\,\,\,*257596# US\n\n\n---\n\nJoin by SIP\n• 85806171057@zoomcrc.
+ com\n\nJoin instructions\nhttps://us02web.zoom.us/meetings/85806171057/inv
+ itations?signature=A_BJTT2QrHN-mlc489pnMMCs20M6cqLLk4kHLwmsgkg\n\n
+DTEND:20260505T010000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260505T000000Z
+LAST-MODIFIED:20260501T160542Z
+LOCATION:https://us02web.zoom.us/j/85806171057?pwd=3VMUk6FRLTEQUWU2JVn5bhJk
+ gdr9Ug.1
+SEQUENCE:0
+SUMMARY:PTA Virtual Meeting!
+UID:20260430T195406Z-85806171057@web-prod-us02-va1-webok-dfb8885c8-cwdst-11
+ 0159607
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:<strong></strong>
+DTEND:20260506T013000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260506T000000Z
+LAST-MODIFIED:20250727T185315Z
+LOCATION:Virtual (Zoom)
+SEQUENCE:0
+SUMMARY:EDGEMONT PTA Board Meeting (Zoom)
+UID:109689001
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260508T124500Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260508T120000Z
+LAST-MODIFIED:20250727T185333Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:EDGEMONT Walk & Roll
+UID:109689003
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260511
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260510
+LAST-MODIFIED:20260210T162554Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Mother's Day
+UID:110014026
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260514T000000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260513T230000Z
+LAST-MODIFIED:20260505T163123Z
+LOCATION:virtual
+SEQUENCE:0
+SUMMARY:Glenfield General PTA Meeting
+UID:110161501
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260515
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260514
+LAST-MODIFIED:20260210T162642Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:CHB Abbreviated Day
+UID:110014028
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260515
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260514
+LAST-MODIFIED:20250922T015912Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Curriculum Meetings - Abbreviated Day
+UID:Ical2b61d190cfbf50ea30f24ae1c180f9ba-109882926
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:<span style="font-size: large\;">The 7th gr. students will go o
+ n a field trip to Camp Mason (All HR's). - $50/$120.&nbsp\; This will be t
+ heir EOY overnight trip.</span>
+DTEND:20260515T180000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260514T124500Z
+LAST-MODIFIED:20251218T181642Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Ren 7th Gr Trip
+UID:109930329
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260515T233000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260515T223000Z
+LAST-MODIFIED:20260508T183718Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Talent Show 
+UID:2809165B-1991-4370-8599-F79CDC430A7B-109948232
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260518T150000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260518T120000Z
+LAST-MODIFIED:20260512T210448Z
+LOCATION:MHS
+SEQUENCE:0
+SUMMARY:NJSLA Testing 
+UID:110167261
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Northeast PTA is inviting you to a scheduled Zoom meeting.\nJoi
+ n Zoom Meeting\nhttps://us02web.zoom.us/j/87070259980?pwd=HsBJDQHrfSqSlg2J
+ QvyxJ0Vw2EaKjX.1\n\nMeeting chat link\nhttps://us02web.zoom.us/launch/jc/8
+ 7070259980\n\nView meeting insights with Zoom AI Companion\nhttps://us02we
+ b.zoom.us/launch/edl?muid=3e526002-acd3-4045-97c2-ea08bb7a3f07\n\nMeeting 
+ ID: 870 7025 9980\nPasscode: 843732\n\n---\n\nOne tap mobile\n+13092053325
+ \,\,87070259980#\,\,\,\,*843732# US\n+13126266799\,\,87070259980#\,\,\,\,*
+ 843732# US (Chicago)\n\n\n---\n\nJoin by SIP\n• 87070259980@zoomcrc.com\n\
+ nJoin instructions\nhttps://us02web.zoom.us/meetings/87070259980/invitatio
+ ns?signature=gdyEyn1phKva-40bj1bUyYNVhIbGHbWNJesARnGU5t4\n\n
+DTEND:20260519T003000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260518T233000Z
+LAST-MODIFIED:20260511T233531Z
+LOCATION:https://us02web.zoom.us/j/87070259980?pwd=HsBJDQHrfSqSlg2JQvyxJ0Vw
+ 2EaKjX.1
+SEQUENCE:0
+SUMMARY:4th Grade Kickoff! Next years 5th grade!
+UID:20260511T233438Z-87070259980@web-prod-us02-va1-webok-dfb8885c8-xsj8s-11
+ 0165444
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260519T150000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260519T120000Z
+LAST-MODIFIED:20260512T210332Z
+LOCATION:MHS
+SEQUENCE:0
+SUMMARY:NJSLA Testing 
+UID:110167257
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260521
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260520
+LAST-MODIFIED:20260309T171622Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:CHB Field Day
+UID:110042694
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260520T150000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260520T120000Z
+LAST-MODIFIED:20260512T210407Z
+LOCATION:MHS 
+SEQUENCE:0
+SUMMARY:NJSLA Testing 
+UID:110167259
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260526
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260525
+LAST-MODIFIED:20251016T165705Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:CHB - District closed - Memorial Day 
+UID:109860678
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260526
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260525
+LAST-MODIFIED:20250922T015912Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Memorial Day - Schools Closed
+UID:Ical8624c9ade8f6893f85052ee8de541ae8-109882956
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260527
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260526
+LAST-MODIFIED:20260406T132425Z
+LOCATION:Nishuane
+SEQUENCE:0
+SUMMARY:Nishuane Cycle 3 CI/Aesthetics end
+UID:109753992
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260530
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260526
+LAST-MODIFIED:20250905T132145Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:CHB Eco Action Week 3
+UID:109768194
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260529T013000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260528T223000Z
+LAST-MODIFIED:20260130T114835Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:MFEE's
+UID:109979458
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:<font size="3">The Renaissance MS 6th Gr. students will travel 
+ to Medieval Times $50.</font>
+DTEND:20260529T180000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260529T123000Z
+LAST-MODIFIED:20251120T173048Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Ren 6th Gr. Medieval Times Trip
+UID:109904330
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260531
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260530
+LAST-MODIFIED:20250826T135223Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:CHB Eco-Fair
+UID:109743956
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260602T001500Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260601T221500Z
+LAST-MODIFIED:20250826T135317Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:CHB Final PTA Meeting
+UID:109743960
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260603
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260602
+LAST-MODIFIED:20250922T015912Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Election Day / PD - Schools Closed
+UID:Icalbb3bc9f9d4a28f102a7d4e15e280ef33-109882980
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260603
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260602
+LAST-MODIFIED:20251016T165745Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:CHB - School closed - Election Day/Staff PD
+UID:109860680
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260603T013000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260603T000000Z
+LAST-MODIFIED:20250727T185440Z
+LOCATION:Virtual (Zoom)
+SEQUENCE:0
+SUMMARY:EDGEMONT PTA Board Meeting (Zoom)
+UID:109689007
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Students come in costume + bring something to change into after
+ wards
+DTEND:20260604T150000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260604T130000Z
+LAST-MODIFIED:20260601T024505Z
+LOCATION:Northeast Elementary School\n603 CR-623\, Montclair\, NJ 07042\, U
+ nited States
+SEQUENCE:0
+SUMMARY:Oliver Jr. Dress Rehearsal.
+UID:C1A70B82-9FBE-4B3F-9E08-E19EFC631FB4-110181863
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260605T190000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260605T120000Z
+LAST-MODIFIED:20250727T185454Z
+LOCATION:20 Edgemont Rd\, Montclair\, NJ 07042
+SEQUENCE:0
+SUMMARY:EDGEMONT Fun Day
+UID:109689009
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:<span style="font-size: large\;">The 7th gr. students will go o
+ n a field trip to The Poetry Cafe @ Tierny's (All HR's). - $10</span>
+DTEND:20260605T180000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260605T140000Z
+LAST-MODIFIED:20251218T181948Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Ren 7th Gr Trip
+UID:109930332
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260605T233000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260605T220000Z
+LAST-MODIFIED:20260526T222227Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Oliver Jr. first show. 
+UID:A36D6999-0ADC-4597-8AD9-E9635D0E31AB-110181861
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260606T183000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260606T170000Z
+LAST-MODIFIED:20260526T222344Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Oliver Jr. Matinee 
+UID:1B9FF0E1-085E-4947-A1D7-FA8B645186BA-110181857
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260606T233000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260606T220000Z
+LAST-MODIFIED:20260526T222421Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Oliver Jr. Evening show. 
+UID:F1C6FF11-2CB5-40FE-87C4-5738F5B1184A-110181859
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Northeast PTA is inviting you to a scheduled Zoom meeting.\nJoi
+ n Zoom Meeting\nhttps://us02web.zoom.us/j/88283141446?pwd=If0QDrNkH0Vs9rZ3
+ EuuMJu8ypBCujz.1\n\nMeeting chat link\nhttps://us02web.zoom.us/launch/jc/8
+ 8283141446\n\nView meeting insights with Zoom AI Companion\nhttps://us02we
+ b.zoom.us/launch/edl?muid=d26a4b53-b31b-4ad7-af4c-e19b64253239\n\nMeeting 
+ ID: 882 8314 1446\nPasscode: 014712\n\n---\n\nOne tap mobile\n+13092053325
+ \,\,88283141446#\,\,\,\,*014712# US\n+13126266799\,\,88283141446#\,\,\,\,*
+ 014712# US (Chicago)\n\n\n---\n\nJoin by SIP\n• 88283141446@zoomcrc.com\n\
+ nJoin instructions\nhttps://us02web.zoom.us/meetings/88283141446/invitatio
+ ns?signature=9eU1sIiplWIzJfa_un4VJADRnzniXnjcSqCJZ41I1bU\n\n
+DTEND:20260608T230000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260608T220000Z
+LAST-MODIFIED:20260608T023054Z
+LOCATION:https://us02web.zoom.us/j/88283141446?pwd=If0QDrNkH0Vs9rZ3EuuMJu8y
+ pBCujz.1
+SEQUENCE:0
+SUMMARY:PTA In Person Meeting! VOTE for NEW BOARD!
+UID:20260608T023016Z-88283141446@web-prod-us02-va1-webok-76db9bd55d-ktx67-1
+ 10200288
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260609T001500Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260608T221500Z
+LAST-MODIFIED:20260601T144252Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:CHB Final PTA Meeting
+UID:110184957
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Tentative:<br>\nThe Renaissance MS 8th Gr. Graduation Awards Ce
+ remony will take place at the MHS Annex Atrium.
+DTEND:20260609T173100Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260609T163100Z
+LAST-MODIFIED:20251120T173337Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Ren Grad Awards Ceremony
+UID:109904334
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260612
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260611
+LAST-MODIFIED:20260415T145317Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:CHB Glenfield Auditions
+UID:110128372
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260611T233000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260611T220000Z
+LAST-MODIFIED:20250727T185514Z
+LOCATION:20 Edgemont Rd\, Montclair\, NJ 07042
+SEQUENCE:0
+SUMMARY:EDGEMONT General PTA Meeting (in person)
+UID:109689011
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:<div class="x_elementToProof" style="border: 0px\; font-variant
+ -numeric: inherit\; font-variant-east-asian: inherit\; font-variant-altern
+ ates: inherit\; font-variant-position: inherit\; font-variant-emoji: inher
+ it\; font-stretch: inherit\; font-size: 12pt\; line-height: 1.2\; font-fam
+ ily: &quot\;Calibri Light&quot\;\, &quot\;Helvetica Light&quot\;\, sans-se
+ rif\; font-optical-sizing: inherit\; font-size-adjust: inherit\; font-kern
+ ing: inherit\; font-feature-settings: inherit\; font-variation-settings: i
+ nherit\; margin: 0pt 0px 0pt 36pt\; padding: 0px\; vertical-align: baselin
+ e\; direction: ltr\;"><span data-olk-copy-source="MessageBody" style="bord
+ er: 0px\; font-style: inherit\; font-variant: inherit\; font-weight: 700\;
+  font-stretch: inherit\; font-size: inherit\; line-height: inherit\; font-
+ family: inherit\; font-optical-sizing: inherit\; font-size-adjust: inherit
+ \; font-kerning: inherit\; font-feature-settings: inherit\; font-variation
+ -settings: inherit\; margin: 0px\; padding: 0px\; vertical-align: baseline
+ \; color: inherit\;"><a href="https://mpsdnj.zoom.us/j/8137333502" target=
+ "_blank" title="Zoom link">Zoom&nbsp\;</a>Information:</span><span style="
+ border: 0px\; font-style: inherit\; font-variant: inherit\; font-weight: 7
+ 00\; font-stretch: inherit\; font-size: inherit\; line-height: inherit\; f
+ ont-family: inherit\; font-optical-sizing: inherit\; font-size-adjust: inh
+ erit\; font-kerning: inherit\; font-feature-settings: inherit\; font-varia
+ tion-settings: inherit\; margin: 0px\; padding: 0px\; vertical-align: base
+ line\; color: inherit\;"></span></div>\n<div class="x_elementToProof" styl
+ e="border: 0px\; font-variant-numeric: inherit\; font-variant-east-asian: 
+ inherit\; font-variant-alternates: inherit\; font-variant-position: inheri
+ t\; font-variant-emoji: inherit\; font-stretch: inherit\; font-size: 12pt\
+ ; line-height: 1.2\; font-family: &quot\;Calibri Light&quot\;\, &quot\;Hel
+ vetica Light&quot\;\, sans-serif\; font-optical-sizing: inherit\; font-siz
+ e-adjust: inherit\; font-kerning: inherit\; font-feature-settings: inherit
+ \; font-variation-settings: inherit\; margin: 0pt 0px\; padding: 0px\; ver
+ tical-align: baseline\; direction: ltr\;">&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbs
+ p\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;<span style="border: 0px\; font-styl
+ e: inherit\; font-variant: inherit\; font-weight: 700\; font-stretch: inhe
+ rit\; font-size: inherit\; line-height: inherit\; font-family: inherit\; f
+ ont-optical-sizing: inherit\; font-size-adjust: inherit\; font-kerning: in
+ herit\; font-feature-settings: inherit\; font-variation-settings: inherit\
+ ; margin: 0px\; padding: 0px\; vertical-align: baseline\; color: inherit\;
+ ">&nbsp\;&nbsp\;&nbsp\;Meeting ID: 813 733 3502</span></div>\n<div class="
+ x_elementToProof" style="border: 0px\; font-variant-numeric: inherit\; fon
+ t-variant-east-asian: inherit\; font-variant-alternates: inherit\; font-va
+ riant-position: inherit\; font-variant-emoji: inherit\; font-stretch: inhe
+ rit\; font-size: 12pt\; line-height: 1.2\; font-family: &quot\;Calibri Lig
+ ht&quot\;\, &quot\;Helvetica Light&quot\;\, sans-serif\; font-optical-sizi
+ ng: inherit\; font-size-adjust: inherit\; font-kerning: inherit\; font-fea
+ ture-settings: inherit\; font-variation-settings: inherit\; margin: 0pt 0p
+ x\; padding: 0px\; vertical-align: baseline\; direction: ltr\;"><span styl
+ e="border: 0px\; font-style: inherit\; font-variant: inherit\; font-weight
+ : 700\; font-stretch: inherit\; font-size: inherit\; line-height: inherit\
+ ; font-family: inherit\; font-optical-sizing: inherit\; font-size-adjust: 
+ inherit\; font-kerning: inherit\; font-feature-settings: inherit\; font-va
+ riation-settings: inherit\; margin: 0px\; padding: 0px\; vertical-align: b
+ aseline\; color: inherit\;">&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbs
+ p\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;Passcode: 9SJt7M</span></div>
+ \n<div class="x_elementToProof" style="border: 0px\; font-variant-numeric:
+  inherit\; font-variant-east-asian: inherit\; font-variant-alternates: inh
+ erit\; font-variant-position: inherit\; font-variant-emoji: inherit\; font
+ -stretch: inherit\; font-size: 12pt\; line-height: 1.2\; font-family: &quo
+ t\;Calibri Light&quot\;\, &quot\;Helvetica Light&quot\;\, sans-serif\; fon
+ t-optical-sizing: inherit\; font-size-adjust: inherit\; font-kerning: inhe
+ rit\; font-feature-settings: inherit\; font-variation-settings: inherit\; 
+ margin: 0pt 0px\; padding: 0px\; vertical-align: baseline\; direction: ltr
+ \;">&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;
+ &nbsp\;&nbsp\;&nbsp\;One tap mobile</div>\n<div class="x_elementToProof" s
+ tyle="border: 0px\; font-variant-numeric: inherit\; font-variant-east-asia
+ n: inherit\; font-variant-alternates: inherit\; font-variant-position: inh
+ erit\; font-variant-emoji: inherit\; font-stretch: inherit\; font-size: 12
+ pt\; line-height: 1.2\; font-family: &quot\;Calibri Light&quot\;\, &quot\;
+ Helvetica Light&quot\;\, sans-serif\; font-optical-sizing: inherit\; font-
+ size-adjust: inherit\; font-kerning: inherit\; font-feature-settings: inhe
+ rit\; font-variation-settings: inherit\; margin: 0pt 0px\; padding: 0px\; 
+ vertical-align: baseline\; direction: ltr\;">&nbsp\;&nbsp\;&nbsp\;&nbsp\;&
+ nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;+1646
+ 5588656\,\,8137333502# US (New York)</div>\n<div class="x_elementToProof" 
+ style="border: 0px\; font-variant-numeric: inherit\; font-variant-east-asi
+ an: inherit\; font-variant-alternates: inherit\; font-variant-position: in
+ herit\; font-variant-emoji: inherit\; font-stretch: inherit\; font-size: 1
+ 2pt\; line-height: 1.2\; font-family: &quot\;Calibri Light&quot\;\, &quot\
+ ;Helvetica Light&quot\;\, sans-serif\; font-optical-sizing: inherit\; font
+ -size-adjust: inherit\; font-kerning: inherit\; font-feature-settings: inh
+ erit\; font-variation-settings: inherit\; margin: 0pt 0px\; padding: 0px\;
+  vertical-align: baseline\; direction: ltr\;">&nbsp\;&nbsp\;&nbsp\;&nbsp\;
+ &nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;&nbsp\;+164
+ 69313860\,\,8137333502# US</div>
+DTEND:20260611T233000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260611T223000Z
+LAST-MODIFIED:20251030T034718Z
+LOCATION:Bradford Library & Zoom
+SEQUENCE:0
+SUMMARY:Bradford SATp Meeting
+UID:109883491
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260612T000000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260611T230000Z
+LAST-MODIFIED:20250909T154107Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:CHB Spring Concert
+UID:109773363
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260613
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260612
+LAST-MODIFIED:20260116T042552Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Field Day and Fun Run Time TBD
+UID:DCBD9F77-93BF-4D38-906C-F5D81C3EA014-109965917
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260613
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260612
+LAST-MODIFIED:20260309T171715Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:CHB Feild Day Raindate
+UID:110042696
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260612T124500Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260612T120000Z
+LAST-MODIFIED:20250727T185535Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:EDGEMONT Walk & Roll
+UID:109689013
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:<span style="font-size: large\;">The 6th gr. students will go o
+ n a field trip to The Clary Anderson Pool for their EOY trip - (All HR's).
+  - $7</span>
+DTEND:20260612T180000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260612T130000Z
+LAST-MODIFIED:20251218T182334Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Ren 6th Gr Trip
+UID:109930334
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260612T144500Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260612T134500Z
+LAST-MODIFIED:20250831T180208Z
+LOCATION:Nishuane Auditorium
+SEQUENCE:0
+SUMMARY:Nishuane Kindergarten Production
+UID:109753996
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260613T000000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260612T220000Z
+LAST-MODIFIED:20250826T135809Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:CHB End-of-Year Family BBQ
+UID:109743987
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:<p class="p1" style="margin: 0px\; font-style: normal\; font-va
+ riant: normal\; font-size-adjust: none\; font-language-override: normal\; 
+ font-kerning: auto\; font-optical-sizing: auto\; font-feature-settings: no
+ rmal\; font-variation-settings: normal\; font-stretch: normal\; font-size:
+  12px\; line-height: normal\; font-family: Helvetica\;">JOIN US AT OUR FIR
+ ST MONTCLAIR BOARD OF EDUCATION COMMUNITY ENGAGEMENT MEETING</p>\n<p class
+ ="p1" style="margin: 0px\; font-style: normal\; font-variant: normal\; fon
+ t-size-adjust: none\; font-language-override: normal\; font-kerning: auto\
+ ; font-optical-sizing: auto\; font-feature-settings: normal\; font-variati
+ on-settings: normal\; font-stretch: normal\; font-size: 12px\; line-height
+ : normal\; font-family: Helvetica\;">"From Community Member to a School Bo
+ ard Member"</p>\n<p class="p1" style="margin: 0px\; font-style: normal\; f
+ ont-variant: normal\; font-size-adjust: none\; font-language-override: nor
+ mal\; font-kerning: auto\; font-optical-sizing: auto\; font-feature-settin
+ gs: normal\; font-variation-settings: normal\; font-stretch: normal\; font
+ -size: 12px\; line-height: normal\; font-family: Helvetica\;">Help us expl
+ ore the ways to make the Board of Education a Model that people want to se
+ rve on!</p>\n<p class="p1" style="margin: 0px\; font-style: normal\; font-
+ variant: normal\; font-size-adjust: none\; font-language-override: normal\
+ ; font-kerning: auto\; font-optical-sizing: auto\; font-feature-settings: 
+ normal\; font-variation-settings: normal\; font-stretch: normal\; font-siz
+ e: 12px\; line-height: normal\; font-family: Helvetica\;">Join a community
+  forum to explore the possibilities of running\, serving\, and being a par
+ t of this community.</p>\n<br>\nSubmit question in advance H<a href="https
+ ://forms.gle/66vbRNMFFYL5dhPQ6" title="Submit Questions">ERE</a>.
+DTEND:20260616T003000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260615T223000Z
+LAST-MODIFIED:20260611T122246Z
+LOCATION:Watchung Elementary School (Auditorium)
+SEQUENCE:0
+SUMMARY:MBOE Community Engagement Meeting
+UID:110213428
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:<font size="3">The Renaissance MS 8th Gr. Graduation Ceremony w
+ ill take place at the MHS Main Auditorium or Woodman Field (TBD - dependin
+ g on construction completion).</font>
+DTEND:20260616T143000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260616T130000Z
+LAST-MODIFIED:20251120T173741Z
+LOCATION:MHS Auditorium or Woodman Field
+SEQUENCE:0
+SUMMARY:Ren Grad Ceremony
+UID:109904341
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260616T144500Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260616T134500Z
+LAST-MODIFIED:20250831T180232Z
+LOCATION:Nishuane Auditorium
+SEQUENCE:0
+SUMMARY:Nishuane 2nd Grade Moving Up Ceremony
+UID:109753998
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:<font size="4"><span style="text-decoration: underline\;"><stro
+ ng>Tentative</strong></span><strong>:</strong><br>\nThe Renaissance MS 8th
+  Gr. students will participate in the annual EOY Pocono Environment Educat
+ ional Center (PEEC) overnight trip.&nbsp\; This trip replaced the annual W
+ ashington\, DC trip.&nbsp\; More details to follow.</font>
+DTEND:20260618T180000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260617T120000Z
+LAST-MODIFIED:20251218T182707Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Ren 8th Gr PEEC Trip
+UID:109904345
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260620
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260619
+LAST-MODIFIED:20251016T165817Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:CHB - District closed - Juneteenth
+UID:109860682
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260620
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260619
+LAST-MODIFIED:20250922T015912Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Juneteenth - Schools Closed
+UID:Ical96821c07e739b50017eb33ca3158fc48-109882966
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Tentative:<br>\nRenaissance MS all school field day event.&nbsp
+ \; More details to follows.
+DTEND;VALUE=DATE:20260624
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260623
+LAST-MODIFIED:20251120T174506Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Ren All School Field Day
+UID:109904347
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260623T150000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260623T130000Z
+LAST-MODIFIED:20250727T185550Z
+LOCATION:20 Edgemont Rd\, Montclair\, NJ 07042
+SEQUENCE:0
+SUMMARY:EDGEMONT 5th grade graduation
+UID:109689017
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260625
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260624
+LAST-MODIFIED:20251016T170240Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:CHB - Abbrev. Day (1:40 dismissal)
+UID:109860684
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260625
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260624
+LAST-MODIFIED:20250922T015912Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Abbreviated Day
+UID:Icalb3e564c7425884505e05662767976223-109882978
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260624T153000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260624T133000Z
+LAST-MODIFIED:20260415T145448Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:CHB 5th Grade Moving Up Ceremony
+UID:110128381
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260626
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260625
+LAST-MODIFIED:20251016T170327Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:CHB - Abbrev. Day (1:40 dismissal) - Last day of school 
+UID:109860686
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260626
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260625
+LAST-MODIFIED:20250922T015912Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Last Day for Students and Staff - Abbreviated Day
+UID:Icale2c3da44809884d7a1e89cd12065e011-109882998
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260626
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260625
+LAST-MODIFIED:20251120T174617Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Last Day for Students & Staff
+UID:109904351
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:In-person ceremony is a ticketed event.<br>\nLive stream availa
+ ble <a href="https://youtube.com/live/VZ7LEeDRfU8?feature=share" title="fi
+ le opens in new tab">CLICK HERE</a>
+DTEND:20260626T000000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260625T220000Z
+LAST-MODIFIED:20260625T115127Z
+LOCATION:Montclair High School
+SEQUENCE:0
+SUMMARY:MHS Graduation
+UID:110225209
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Friendly parent-facing labels based on Montclair Public School 
+ District 2026-2027 calendar
+DTEND;VALUE=DATE:20260704
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260703
+LAST-MODIFIED:20260317T142406Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Independence Day Observance - District Closed
+UID:CSVConvertf9270a56b14b5112813cd39d66d4ef51-110048856
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260806T223000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260806T213000Z
+LAST-MODIFIED:20260722T020017Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Play Date K & New Students
+UID:05B06AF8-3AFA-45B9-A66A-F46020654B73-110259471
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260822T150000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260822T140000Z
+LAST-MODIFIED:20260722T015957Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Play Date - K + New Students
+UID:57299C4D-4C97-421B-AA65-1F92509F3954-110259473
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260827
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260825
+LAST-MODIFIED:20260317T154557Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:New Teacher Orientation
+UID:CSVConvert1e4cdec4ead95401e19b36b501a40ed8-110048870
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260828
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260826
+LAST-MODIFIED:20260623T161630Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Freshman Orientation
+UID:110223518
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260828
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260826
+LAST-MODIFIED:20260721T231848Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Freshman and New Student Orientation
+UID:CSVConvert9ca8a2fcc7b007d8632303746bc190b5-110048892
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260826T163000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260826T130000Z
+LAST-MODIFIED:20260708T152944Z
+LOCATION:MHS Auditorium 
+SEQUENCE:0
+SUMMARY:Freshman Orientation (Last Names A-K)
+UID:110235875
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260827T163000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260827T130000Z
+LAST-MODIFIED:20260708T153103Z
+LOCATION:MHS Auditorium 
+SEQUENCE:0
+SUMMARY:Freshman Orientation (Last Names L-Z)
+UID:110235878
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260902
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260901
+LAST-MODIFIED:20260317T154104Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Staff Convocation
+UID:CSVConvertcfc3f186537933865c97e84ba358a1c4-110048872
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND:20260901T230000Z
+DTSTAMP:20260722T032440Z
+DTSTART:20260901T220000Z
+LAST-MODIFIED:20260722T015834Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Ice Cream Social for Kindergarten Only
+UID:6793EC3E-9FB1-486E-98EF-6273DABF4358-110259475
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260903
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260902
+LAST-MODIFIED:20260317T154119Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Staff Professional Development
+UID:CSVConvert04ef1627bd6fa1c629ca44eb3957d4e2-110048874
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260904
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260903
+LAST-MODIFIED:20260317T154119Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:First Day of School
+UID:CSVConvert4020635bd1b5ba5770ee85816732a7de-110048858
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20260908
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260907
+LAST-MODIFIED:20260317T154120Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Labor Day - District Closed
+UID:CSVConvertd95c3ac65f53424c4f7979cc409a4198-110048894
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Friendly parent-facing labels based on Montclair Public School 
+ District 2026-2027 calendar
+DTEND;VALUE=DATE:20260922
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20260921
+LAST-MODIFIED:20260317T142406Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Yom Kippur - District Closed
+UID:CSVConvertd07d1980817319799da86b15d3eabc2f-110048910
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20261013
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20261012
+LAST-MODIFIED:20260317T154129Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Indigenous Peoples' Day / Columbus Day - District Closed
+UID:CSVConverta61767973658673645e93570b01bd37b-110048882
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Friendly parent-facing labels based on Montclair Public School 
+ District 2026-2027 calendar
+DTEND;VALUE=DATE:20261022
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20261021
+LAST-MODIFIED:20260317T142406Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Middle and High School Evening Parent-Teacher Conferences / Element
+ ary Professional Development - Abbreviated Day
+UID:CSVConverta6f2e145cbfde84c139ed407d4d399f0-110048866
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20261023
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20261022
+LAST-MODIFIED:20260317T154133Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Middle and High School Afternoon Parent-Teacher Conferences / Profe
+ ssional Development - Abbreviated Day
+UID:CSVConvertbd61113ec6d863c72100a78683bdd46c-110048908
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20261104
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20261103
+LAST-MODIFIED:20260317T154138Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Election Day - Schools Closed / Staff Professional Development
+UID:CSVConvert122606bc4b8bc723d696b030578f8967-110048920
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20261107
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20261105
+LAST-MODIFIED:20260317T154538Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:NJEA Convention - District Closed
+UID:CSVConvertbc312041c0e494831daf168892142072-110048918
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20261112
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20261111
+LAST-MODIFIED:20260317T154149Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Veterans Day - District Closed
+UID:CSVConvert632517741ef67ddd4d857ac2c32c6f6d-110048898
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20261126
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20261125
+LAST-MODIFIED:20260317T154217Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Abbreviated Day for Students and Staff
+UID:CSVConvert880da2ce8b36d8043ea404c9bf7f2c68-110048888
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20261128
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20261126
+LAST-MODIFIED:20260317T154211Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Thanksgiving Break - District Closed
+UID:CSVConverte5d5049f9821ead02e5da1473bebba0c-110048852
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20261203
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20261202
+LAST-MODIFIED:20260317T154227Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Elementary Evening Parent-Teacher Conferences / Middle and High Sch
+ ool Professional Development - Abbreviated Day
+UID:CSVConvert971107d6e9064569b29bcc7c5799e094-110048868
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20261204
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20261203
+LAST-MODIFIED:20260317T154229Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Elementary Afternoon Parent-Teacher Conferences / Middle and High S
+ chool Professional Development - Abbreviated Day
+UID:CSVConvert3cb534154a6e44c2ddc624222048fc7b-110048850
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Friendly parent-facing labels based on Montclair Public School 
+ District 2026-2027 calendar
+DTEND;VALUE=DATE:20261224
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20261223
+LAST-MODIFIED:20260317T142406Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Early Dismissal for Students and Staff
+UID:CSVConvertf0bf4316b450875cc79941670c681cd3-110048880
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20261226
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20261224
+LAST-MODIFIED:20260721T232206Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:WIntert Break - District Closed
+UID:CSVConvert6f2859558bbab472e092798b5eff37c0-110048884
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20270101
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20261228
+LAST-MODIFIED:20260317T154007Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Winter Break - Schools Closed
+UID:CSVConvertd5151629e1b0df466903af9d4b0f38c5-110048896
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20270102
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20270101
+LAST-MODIFIED:20260317T153940Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:New Year's Day - District Closed
+UID:CSVConvert64eadf048506dcd0bb3b73bfdb5488e6-110048864
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20270105
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20270104
+LAST-MODIFIED:20260317T154248Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:District Reopens
+UID:CSVConvert02e2ef2c19e2eb8794661bea4be8b6e4-110048916
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20270112
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20270111
+LAST-MODIFIED:20260317T154300Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Staff Professional Development - Abbreviated Day for Students
+UID:CSVConvert64d121d6e1d1eba3690a948922a23917-110048914
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Friendly parent-facing labels based on Montclair Public School 
+ District 2026-2027 calendar
+DTEND;VALUE=DATE:20270119
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20270118
+LAST-MODIFIED:20260317T142406Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Martin Luther King Jr. Day - District Closed
+UID:CSVConverta9bbec26acda8bf2955a6b6c55803ab1-110048876
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20270216
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20270215
+LAST-MODIFIED:20260317T154319Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Presidents Day - District Closed
+UID:CSVConvert7620c663edca9523aac88558a96b4e16-110048854
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20270223
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20270222
+LAST-MODIFIED:20260317T154319Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Staff Professional Development - Abbreviated Day for Students
+UID:CSVConverta5264d58f49baba25157f352d158eb73-110048890
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20270318
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20270317
+LAST-MODIFIED:20260317T154347Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Evening Parent-Teacher Conferences - Abbreviated Day for Students
+UID:CSVConvert5043eb978df99f218e00db845fd4c3b8-110048906
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20270319
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20270318
+LAST-MODIFIED:20260317T154350Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Afternoon Parent-Teacher Conferences - Abbreviated Day for Students
+UID:CSVConvertb3d6cab0c49305720013c34e9ed97acc-110048912
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20270326
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20270322
+LAST-MODIFIED:20260317T154408Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Spring Break - Schools Closed
+UID:CSVConvert4338c35445307e70af80955503bad7a6-110048878
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20270327
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20270326
+LAST-MODIFIED:20260317T154413Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Good Friday - District Closed
+UID:CSVConvert96ca1602fc3f5526865b10518e5c86d1-110048900
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Friendly parent-facing labels based on Montclair Public School 
+ District 2026-2027 calendar
+DTEND;VALUE=DATE:20270601
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20270531
+LAST-MODIFIED:20260317T142406Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Memorial Day - District Closed
+UID:CSVConvert5e549ce36d93457bcd7bc3cdca0111f8-110048886
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Friendly parent-facing labels based on Montclair Public School 
+ District 2026-2027 calendar
+DTEND;VALUE=DATE:20270609
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20270608
+LAST-MODIFIED:20260317T142406Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Election Day - Schools Closed / Staff Professional Development
+UID:CSVConvertc019946df0d66c8164a42055e4a5e3e4-110048860
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20270619
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20270618
+LAST-MODIFIED:20260317T154439Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Juneteenth - District Closed
+UID:CSVConvert1170a2e92f280b4249704213794cf327-110048902
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20270622
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20270621
+LAST-MODIFIED:20260317T154442Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Early Dismissal for Students
+UID:CSVConvert93255c459a45847886cd5363e099b7ee-110048862
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:
+DTEND;VALUE=DATE:20270623
+DTSTAMP:20260722T032440Z
+DTSTART;VALUE=DATE:20270622
+LAST-MODIFIED:20260317T154445Z
+LOCATION:
+SEQUENCE:0
+SUMMARY:Last Day of School / Early Dismissal / High School Graduation
+UID:CSVConvert1e1fe87b98d1b4eb0bbe192f49a289b1-110048904
+END:VEVENT
+X-COMMENT: Data was retrieved at 7/21/2026 11:24:40 PM
+END:VCALENDAR

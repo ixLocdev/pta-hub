@@ -103,6 +103,22 @@ event arrived on**:
 
 - **District feed** — one URL, set once by PTAC at network level, inherited by
   every school. Its events become *School date*.
+
+  The URL is `https://www.montclair.k12.nj.us/ICalendarHandler?calendarId=889662`
+  — verified live on 2026-07-21: `text/calendar`, 117 events, no auth. The
+  district's calendar page does not link it; it is reachable only through the
+  page's `subscribeToICalAndRssFeeds` action. Treat it as undocumented and
+  therefore liable to change without notice — §9.1's last-good-copy and the
+  §9.2 staleness warning are what make that survivable.
+
+  **It requires one extra filter.** The feed is districtwide and includes other
+  schools' events (measured: 22 Chestnut Hill, 9 Renaissance, 6 Nishuane, 2
+  Bradford, 1 Glenfield). Drop any title beginning with another school's name.
+  Northeast's own items and genuine districtwide closures are both unprefixed,
+  so this is safe. It also removes the duplicate-closure problem the §5 dedupe
+  cannot: "Memorial Day - Schools Closed" and "CHB - District closed - Memorial
+  Day" share a date but not a title, so only the prefix filter separates them.
+  The school-name list is a network-level setting alongside the feed URL.
 - **School PTA feed** — set per site. Its events become *PTA event*, subject to
   §4.3.
 
@@ -488,8 +504,25 @@ people already rely on.
 
 ## 14. Open items
 
-- **Confirm the district's public feed URL.** Montclair publishes one; the exact
-  URL is not yet recorded. Until it is, Northeast runs on the PTA feed alone with
-  §4.1 and §4.3 doing the classification — which the measurements above show
-  works. The district feed is an improvement, not a prerequisite.
-- **Confirm the fourth category** (§3).
+- ~~Confirm the district's public feed URL.~~ **Resolved 2026-07-21** — found and
+  verified, see §4.2. Northeast still works without it (§4.1 and §4.3 classify
+  correctly on the PTA feed alone), so it remains an improvement rather than a
+  prerequisite — but it is what makes another school's setup a single paste.
+- ~~Confirm the fourth category.~~ **Approved 2026-07-21.** Rendered as a neutral
+  gray chip, deliberately not a color: the three colored chips mean "act on this"
+  (child is home / leave work early / come to a thing), while *School date* means
+  "worth knowing, normal day." A colored fourth chip would compete with the ones
+  that require a parent to do something.
+
+### Flagged to the AutoSync workstream, not decided here
+
+`NEPTACalendarAutoSync` reads the board-approved district calendar PDF with
+Gemini, a design chosen on the belief that no district feed existed. One does
+(§4.2). A feed is far simpler and more reliable than PDF extraction — but the PDF
+is the authoritative board-approved document, while this feed is undocumented,
+rolling-window, and could be restructured without notice. Switching sources
+versus keeping the PDF as the authority and using the feed as a cross-check is a
+real trade-off, and it belongs to that project.
+
+Either way it does not block this one, and §10 still holds: this widget is the
+easiest way to see what AutoSync did.
