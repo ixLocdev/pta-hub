@@ -111,9 +111,9 @@
 
     /**
      * Show step `n` of the wizard and hide every other step, everywhere in
-     * the wizard (sidebar current-step marker, step heading, meta row,
-     * block sections, the finish/publish step, and the preview-link
-     * panel). The live preview column (`.ptk-nl-preview`) carries no
+     * the wizard (sidebar current-step marker, step heading, block
+     * sections, the arrange panel, the finish/publish step, and the
+     * preview-link panel). The live preview column (`.ptk-nl-preview`) carries no
      * data-step and is therefore never touched here — it stays visible on
      * every step by construction.
      *
@@ -367,9 +367,10 @@
     /**
      * Re-render the preview from the form as it stands right now.
      *
-     * Issue and date live OUTSIDE the blocks JSON, so they're posted
-     * separately. They're read by NAME (`ptk_nl_issue` / `ptk_nl_date`) —
-     * the element ids are hyphenated (`ptk-nl-issue`), so an id selector
+     * Issue and date live OUTSIDE the blocks JSON (they sit in the header
+     * card, but with no [data-field], so serialize() never sees them), so
+     * they're posted separately. They're read by NAME (`ptk_nl_issue` /
+     * `ptk_nl_date`) — the element ids are hyphenated (`ptk-nl-issue`), so an id selector
      * here would match nothing, post nothing, and let the endpoint's
      * fallbacks render a confident "issue 1, today" preview that lies about
      * the exact two fields step 1 exists to set.
@@ -515,10 +516,13 @@
     /**
      * Everything that can change what the newsletter looks like refreshes it.
      *
-     * The issue/date inputs need their own binding: bindSerializeTriggers()
-     * is scoped to `#ptk-nl-blocks`, and these two live in the meta row
-     * outside it — so without this, step 1 (the step whose entire purpose is
-     * the issue number and the date) would show a preview that never moves.
+     * The issue/date inputs need their own binding. They sit at the foot of
+     * the header card, but they deliberately carry NO [data-field] (they're
+     * newsletter-level meta, not part of the header block's JSON), and
+     * bindSerializeTriggers() only listens to `#ptk-nl-blocks [data-field]` —
+     * so without this, changing the issue number or the date would show a
+     * preview that never moves. Matched by NAME, which is the one thing
+     * about these two inputs that must never change.
      *
      * Add/remove row, image pick/remove, reorder and include/skip refresh
      * from their own handlers via serializeAndPreview().

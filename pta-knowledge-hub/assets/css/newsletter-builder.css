@@ -11,15 +11,16 @@
  *    .show() clears the INLINE display and lets the cascade win — but if a
  *    stylesheet rule hides the element, jQuery falls through to
  *    getDefaultDisplay() and stamps inline `display:block`, clobbering the
- *    layout (e.g. .ptk-nl-meta-row's flex). So: no `display:none` and no
- *    media-query hiding on ANY of these, ever:
- *      - every [data-step] element: .ptk-nl-step-head, .ptk-nl-meta-row,
+ *    layout of anything that isn't a plain block. So: no `display:none` and
+ *    no media-query hiding on ANY of these, ever:
+ *      - every [data-step] element: .ptk-nl-step-head,
  *        .ptk-nl-arrange-panel, .ptk-nl-block, .ptk-nl-finish,
  *        .ptk-nl-preview-panel
  *      - the [data-step-nav] Back/Next buttons
  *      - .ptk-nl-excluded (toggled by renderArrangeList(); no data-step)
- *    .ptk-nl-meta-row is display:flex AND toggled — that only works because
- *    nothing here hides it. Keep it that way.
+ *    Nothing in that list is display:flex today, and nothing in it should
+ *    become one. Flex rows that are NOT toggled (.ptk-nl-issue-details-row)
+ *    are fine — don't hand one of them a data-step.
  *    .ptk-nl-excluded's OUTER stays a plain block; its children are styled.
  *    .ptk-nl-wizard / .ptk-nl-steps / .ptk-nl-fields / .ptk-nl-preview carry
  *    no data-step and are never toggled — flex on them is safe.
@@ -34,6 +35,12 @@
  *      scalePreview() early-returns and the preview renders unscaled at
  *      840px and gets clipped. It is never hidden or zero-width here — the
  *      responsive rule below STACKS the column instead of hiding it.
+ *
+ * 3. Nothing above .ptk-nl-preview may get a non-visible overflow.
+ *    The preview column is `position: sticky`, and sticky quietly stops
+ *    working the moment any ANCESTOR is a scroll container. The overflow on
+ *    .ptk-nl-preview itself is what lets a long newsletter still be read to
+ *    the bottom; that one is fine, and required.
  */
 
 /* ── Page shell ── */
@@ -75,9 +82,25 @@
     max-width: 640px;
 }
 
+/* The preview stays with you as you scroll — the fields column is far
+   taller than the preview, so without this it scrolls out of sight after a
+   few lines of typing and you have to go back up to see what you wrote.
+   Pinning ALONE would be worse than the bug: a filled newsletter, scaled
+   down, is often taller than the screen, and its bottom would be stuck
+   permanently off the edge. So it also scrolls INSIDE itself.
+   `top` matches .ptk-nl-steps so both columns clear the WP admin bar.
+   scrollbar-gutter reserves the scrollbar's space up front: scalePreview()
+   re-fits the preview whenever this column's width changes, and a width
+   that flipped every time the newsletter crossed the screen's height would
+   make it twitch. */
 .ptk-nl-preview {
     flex: 2 1 400px;
     min-width: 300px;
+    position: sticky;
+    top: 46px;
+    max-height: calc(100vh - 60px);
+    overflow-y: auto;
+    scrollbar-gutter: stable;
 }
 
 /* ── Step sidebar ── */
@@ -196,21 +219,34 @@
     color: #4b5563;
 }
 
-/* ── Issue meta row ──
-   display:flex AND toggled by showStep() — see rule 1 at the top. */
-.ptk-nl-meta-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    padding: 20px 24px;
-    margin-bottom: 24px;
+/* ── Issue details (foot of the Header card) ──
+   The issue number and the date are filled in for you and almost never
+   changed, so they sit UNDER the fields you actually write, quietly, as
+   two things to confirm rather than the first thing you meet.
+   Not toggled by any JS — see rule 1 at the top before adding one. */
+.ptk-nl-issue-details {
+    /* Small, because the Greeting field group above already carries its own
+       16px of bottom margin — 20 here would leave a hole. */
+    margin-top: 8px;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
 }
 
-.ptk-nl-meta-row .ptk-nl-field-group {
-    flex: 1 1 200px;
+.ptk-nl-issue-details h4 {
+    margin: 0 0 10px;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.ptk-nl-issue-details-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.ptk-nl-issue-details-row .ptk-nl-field-group {
+    flex: 1 1 180px;
+    margin-bottom: 0;
 }
 
 /* ── Field groups ── */
@@ -730,5 +766,15 @@
         flex: 0 0 auto;
         min-width: 0;
         max-width: none;
+    }
+
+    /* Stacked BELOW the fields here, so there's nothing left to follow —
+       pinning it would just park it over the page, and a scrollbox inside
+       an already-scrolling page is two scrollbars for one thing. It grows
+       to its full height and the page scrolls, as it always did. */
+    .ptk-nl-preview {
+        position: static;
+        max-height: none;
+        overflow-y: visible;
     }
 }

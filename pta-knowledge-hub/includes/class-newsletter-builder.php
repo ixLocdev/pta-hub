@@ -764,23 +764,12 @@ class PTK_Newsletter_Builder {
                             </div>
                         <?php endforeach; ?>
 
-                        <div class="ptk-nl-meta-row" data-step="1">
-                            <div class="ptk-nl-field-group">
-                                <label for="ptk-nl-issue">Issue number</label>
-                                <input type="number" id="ptk-nl-issue" name="ptk_nl_issue" value="<?php echo esc_attr( $issue_number ); ?>" min="1">
-                            </div>
-                            <div class="ptk-nl-field-group">
-                                <label for="ptk-nl-date">Issue date</label>
-                                <input type="date" id="ptk-nl-date" name="ptk_nl_date" value="<?php echo esc_attr( $date_value ); ?>">
-                            </div>
-                        </div>
-
                         <?php /* Sits here, immediately above #ptk-nl-blocks, so step 4 reads in plain DOM
                                 order: arrange panel → the footer's fields (the only section shown on step 4)
                                 → the photo check and buttons (.ptk-nl-finish) → share a preview link. No CSS
                                 ordering needed. It's a SIBLING of #ptk-nl-blocks, never a child — the
                                 flat-DOM rule governs that container's children, which stay exactly the six
-                                sections. The meta row above is data-step="1", so it's hidden here. */ ?>
+                                sections. */ ?>
                         <div class="ptk-nl-arrange-panel" data-step="<?php echo (int) $step_last; ?>">
                             <h3>Order of your newsletter</h3>
                             <p class="description">Drag to change the order, or use the arrows.</p>
@@ -814,7 +803,7 @@ class PTK_Newsletter_Builder {
                                 by that attribute. Never wrap these in per-step parents. */ ?>
                         <div id="ptk-nl-blocks">
                             <?php foreach ( $sections as $section ) : ?>
-                                <?php self::render_block_section( $section['block'], $section['excluded'] ); ?>
+                                <?php self::render_block_section( $section['block'], $section['excluded'], $issue_number, $date_value ); ?>
                             <?php endforeach; ?>
                         </div>
 
@@ -937,12 +926,19 @@ class PTK_Newsletter_Builder {
      * carries data-step for the type that owns it; it stays a direct child of
      * #ptk-nl-blocks either way.
      *
-     * @param array $block    Block with a 'type' key ('data' is deliberately
-     *                        ignored — see above).
-     * @param bool  $excluded Whether this section is left out of the newsletter
-     *                        (rendered anyway so it can be added back).
+     * The header section is the one exception to "no values here": it ends
+     * with the issue number and the issue date, which are real saved values
+     * and belong to the newsletter as a whole rather than to any block's
+     * JSON — see render_issue_details() for why they live in this card.
+     *
+     * @param array      $block    Block with a 'type' key ('data' is deliberately
+     *                             ignored — see above).
+     * @param bool       $excluded Whether this section is left out of the newsletter
+     *                             (rendered anyway so it can be added back).
+     * @param int|string $issue    Issue number to prefill (header section only).
+     * @param string     $date     Issue date, Y-m-d (header section only).
      */
-    protected static function render_block_section( $block, $excluded = false ) {
+    protected static function render_block_section( $block, $excluded = false, $issue = '', $date = '' ) {
         $type   = isset( $block['type'] ) ? $block['type'] : '';
         $pinned = in_array( $type, array( 'header', 'footer' ), true );
         $label  = self::label_for_type( $type );
@@ -965,8 +961,54 @@ class PTK_Newsletter_Builder {
 
             <div class="ptk-nl-block-body">
                 <?php self::render_block_fields( $type, array() ); ?>
+                <?php if ( 'header' === $type ) : ?>
+                    <?php self::render_issue_details( $issue, $date ); ?>
+                <?php endif; ?>
             </div>
         </section>
+        <?php
+    }
+
+    /**
+     * The issue number and the issue date, at the FOOT of the Header card.
+     *
+     * They used to be a big card of their own above everything, which put
+     * the two fields nobody edits in the most valuable space on the screen —
+     * volunteers opened the builder and met paperwork instead of a place to
+     * start writing. They're both filled in for us (next number, today), and
+     * they both print inside the masthead, so this is where they belong:
+     * last in the header, after the school name, headline and greeting.
+     *
+     * THREE THINGS THESE INPUTS MUST KEEP, or data goes missing quietly:
+     *   - name="ptk_nl_issue" / name="ptk_nl_date" exactly. handle_submission()
+     *     reads $_POST by those names, and the live preview binds its refresh
+     *     to [name="ptk_nl_issue"], [name="ptk_nl_date"].
+     *   - NO data-field attribute. serialize() collects every [data-field]
+     *     inside a .ptk-nl-block into that block's JSON; one here would
+     *     invent bogus keys in the header block's data. Issue and date are
+     *     newsletter-level meta and travel as their own POST fields.
+     *   - NO data-step of their own. The header section already carries
+     *     data-step="1", which is where these belong anyway.
+     * The wrapper is never toggled by JS, so its flex row is safe.
+     *
+     * @param int|string $issue Issue number.
+     * @param string     $date  Issue date, Y-m-d.
+     */
+    protected static function render_issue_details( $issue, $date ) {
+        ?>
+        <div class="ptk-nl-issue-details">
+            <h4>Issue details &#8212; we filled these in</h4>
+            <div class="ptk-nl-issue-details-row">
+                <div class="ptk-nl-field-group">
+                    <label for="ptk-nl-issue">Issue number</label>
+                    <input type="number" id="ptk-nl-issue" name="ptk_nl_issue" value="<?php echo esc_attr( $issue ); ?>" min="1">
+                </div>
+                <div class="ptk-nl-field-group">
+                    <label for="ptk-nl-date">Issue date</label>
+                    <input type="date" id="ptk-nl-date" name="ptk_nl_date" value="<?php echo esc_attr( $date ); ?>">
+                </div>
+            </div>
+        </div>
         <?php
     }
 
