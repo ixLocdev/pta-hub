@@ -1025,18 +1025,18 @@ class PTK_Newsletter_Builder {
                 ?>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-header-school_name">School name</label>
-                    <input type="text" id="ptk-nl-header-school_name" data-field="school_name" value="<?php echo esc_attr( isset( $data['school_name'] ) ? $data['school_name'] : '' ); ?>">
-                    <p class="description">Shown at the top of every newsletter.</p>
+                    <input type="text" id="ptk-nl-header-school_name" data-field="school_name" value="<?php echo esc_attr( isset( $data['school_name'] ) ? $data['school_name'] : '' ); ?>" aria-describedby="ptk-nl-header-school_name-hint">
+                    <p class="description" id="ptk-nl-header-school_name-hint">Shown at the top of every newsletter.</p>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-header-headline">Headline</label>
-                    <input type="text" id="ptk-nl-header-headline" data-field="headline" value="<?php echo esc_attr( isset( $data['headline'] ) ? $data['headline'] : '' ); ?>">
-                    <p class="description">The big title at the top — for example "Week of July 16." Leave blank and we'll use the week of your issue date.</p>
+                    <input type="text" id="ptk-nl-header-headline" data-field="headline" value="<?php echo esc_attr( isset( $data['headline'] ) ? $data['headline'] : '' ); ?>" aria-describedby="ptk-nl-header-headline-hint">
+                    <p class="description" id="ptk-nl-header-headline-hint">The big title at the top — for example "Week of July 16." Leave blank and we'll use the week of your issue date.</p>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-header-greeting">Greeting</label>
-                    <textarea id="ptk-nl-header-greeting" data-field="greeting" rows="2"><?php echo esc_textarea( isset( $data['greeting'] ) ? $data['greeting'] : '' ); ?></textarea>
-                    <p class="description">A friendly hello and what&#8217;s coming up. For example: Hi Northeast families &#8212; it&#8217;s the last week of school!</p>
+                    <textarea id="ptk-nl-header-greeting" data-field="greeting" rows="2" aria-describedby="ptk-nl-header-greeting-hint"><?php echo esc_textarea( isset( $data['greeting'] ) ? $data['greeting'] : '' ); ?></textarea>
+                    <p class="description" id="ptk-nl-header-greeting-hint">A friendly hello and what&#8217;s coming up. For example: Hi Northeast families &#8212; it&#8217;s the last week of school!</p>
                 </div>
                 <?php
                 break;
@@ -1045,13 +1045,13 @@ class PTK_Newsletter_Builder {
                 ?>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-announcement-pill">Short label</label>
-                    <input type="text" id="ptk-nl-announcement-pill" data-field="pill" value="<?php echo esc_attr( isset( $data['pill'] ) ? $data['pill'] : '' ); ?>">
-                    <p class="description">The little tag in the colored bar &#8212; usually when it happens. For example: Thursday &middot; Jun 25</p>
+                    <input type="text" id="ptk-nl-announcement-pill" data-field="pill" value="<?php echo esc_attr( isset( $data['pill'] ) ? $data['pill'] : '' ); ?>" aria-describedby="ptk-nl-announcement-pill-hint">
+                    <p class="description" id="ptk-nl-announcement-pill-hint">The little tag in the colored bar &#8212; usually when it happens. For example: Thursday &middot; Jun 25</p>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-announcement-text">Announcement text</label>
-                    <textarea id="ptk-nl-announcement-text" data-field="text" rows="3"><?php echo esc_textarea( isset( $data['text'] ) ? $data['text'] : '' ); ?></textarea>
-                    <p class="description">The one sentence families shouldn&#8217;t miss. For example: The last day of school is this Thursday, June 25.</p>
+                    <textarea id="ptk-nl-announcement-text" data-field="text" rows="3" aria-describedby="ptk-nl-announcement-text-hint"><?php echo esc_textarea( isset( $data['text'] ) ? $data['text'] : '' ); ?></textarea>
+                    <p class="description" id="ptk-nl-announcement-text-hint">The one sentence families shouldn&#8217;t miss. For example: The last day of school is this Thursday, June 25.</p>
                 </div>
                 <?php
                 break;
@@ -1088,26 +1088,29 @@ class PTK_Newsletter_Builder {
                 ?>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-featured-eyebrow">Small line above</label>
-                    <input type="text" id="ptk-nl-featured-eyebrow" data-field="eyebrow" value="<?php echo esc_attr( isset( $data['eyebrow'] ) ? $data['eyebrow'] : '' ); ?>">
-                    <p class="description">A short lead-in above the big headline. For example: &#8212; To our teachers &amp; staff &#128153;</p>
+                    <input type="text" id="ptk-nl-featured-eyebrow" data-field="eyebrow" value="<?php echo esc_attr( isset( $data['eyebrow'] ) ? $data['eyebrow'] : '' ); ?>" aria-describedby="ptk-nl-featured-eyebrow-hint">
+                    <p class="description" id="ptk-nl-featured-eyebrow-hint">A short lead-in above the big headline. For example: &#8212; To our teachers &amp; staff &#128153;</p>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-featured-headline">Headline</label>
-                    <input type="text" id="ptk-nl-featured-headline" data-field="headline" value="<?php echo esc_attr( isset( $data['headline'] ) ? $data['headline'] : '' ); ?>">
-                    <p class="description">The big headline for this story. For example: Congratulations to our 5th graders.</p>
+                    <input type="text" id="ptk-nl-featured-headline" data-field="headline" value="<?php echo esc_attr( isset( $data['headline'] ) ? $data['headline'] : '' ); ?>" aria-describedby="ptk-nl-featured-headline-hint">
+                    <p class="description" id="ptk-nl-featured-headline-hint">The big headline for this story. For example: Congratulations to our 5th graders.</p>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-featured-body">Story</label>
-                    <textarea id="ptk-nl-featured-body" data-field="body" rows="4"><?php echo esc_textarea( isset( $data['body'] ) ? $data['body'] : '' ); ?></textarea>
-                    <p class="description">A paragraph or two in your own words.</p>
+                    <textarea id="ptk-nl-featured-body" data-field="body" rows="4" aria-describedby="ptk-nl-featured-body-hint"><?php echo esc_textarea( isset( $data['body'] ) ? $data['body'] : '' ); ?></textarea>
+                    <p class="description" id="ptk-nl-featured-body-hint">A paragraph or two in your own words.</p>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label>Image</label>
                     <input type="hidden" data-field="image_id" value="<?php echo esc_attr( isset( $data['image_id'] ) ? $data['image_id'] : 0 ); ?>">
                     <?php /* Above the button, not below it: refreshImageChip() appends the
-                            "Image #N selected" chip to the END of this group. */ ?>
-                    <p class="description">Optional. Please don&#8217;t use photos of students&#8217; faces.</p>
-                    <button type="button" class="button ptk-nl-add-image">Add image</button>
+                            "Image #N selected" chip to the END of this group. The hint describes
+                            the Add image button below it, not the hidden input above — a hidden
+                            input is never exposed to assistive tech, so aria-describedby belongs
+                            on the button, the only real control in this group. */ ?>
+                    <p class="description" id="ptk-nl-featured-image-hint">Optional. Please don&#8217;t use photos of students&#8217; faces.</p>
+                    <button type="button" class="button ptk-nl-add-image" aria-describedby="ptk-nl-featured-image-hint">Add image</button>
                 </div>
                 <?php
                 break;
@@ -1157,8 +1160,8 @@ class PTK_Newsletter_Builder {
                 ?>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-footer-signoff">Sign-off</label>
-                    <textarea id="ptk-nl-footer-signoff" data-field="signoff" rows="2"><?php echo esc_textarea( isset( $data['signoff'] ) ? $data['signoff'] : '' ); ?></textarea>
-                    <p class="description">How you sign off. For example: With gratitude, Your PTA Board</p>
+                    <textarea id="ptk-nl-footer-signoff" data-field="signoff" rows="2" aria-describedby="ptk-nl-footer-signoff-hint"><?php echo esc_textarea( isset( $data['signoff'] ) ? $data['signoff'] : '' ); ?></textarea>
+                    <p class="description" id="ptk-nl-footer-signoff-hint">How you sign off. For example: With gratitude, Your PTA Board</p>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label>Links</label>

@@ -715,20 +715,61 @@
     /**
      * Give every [data-field] in a cloned row a unique id and point its
      * label's `for` at it, so screen readers announce the right label per
-     * row instead of every row sharing (or lacking) one.
+     * row instead of every row sharing (or lacking) one. Also gives that
+     * field's hint (the `<p class="description">` a sighted volunteer reads
+     * under it) a unique id and wires it up with aria-describedby, so a
+     * screen-reader user hears the same explanation.
      */
     function assignRowIds($row) {
-        $row.find('[data-field]').each(function () {
-            var $field = $(this);
+        $row.find('.ptk-nl-field-group').each(function () {
+            var $group = $(this);
+            var $field = $group.find('> [data-field]').first();
+            if (!$field.length) {
+                return;
+            }
+
             uidCounter++;
             var id = 'ptk-nl-dyn-' + uidCounter;
             $field.attr('id', id);
 
-            var $label = $field.closest('.ptk-nl-field-group').find('> label').first();
+            var $label = $group.find('> label').first();
             if ($label.length) {
                 $label.attr('for', id);
             }
+
+            var $hint = $group.find('> p.description').first();
+            if (!$hint.length) {
+                return;
+            }
+
+            var hintId = id + '-hint';
+            $hint.attr('id', hintId);
+
+            // The hint usually describes the [data-field] control itself. A
+            // hidden image_id input is the one exception — it's never exposed
+            // to assistive tech, so the hint belongs on the "Add image"
+            // button beside it, the only real control in that group (mirrors
+            // the static featured-image field in class-newsletter-builder.php).
+            var $describedTarget = ('hidden' === ($field.attr('type') || '').toLowerCase())
+                ? $group.find('> button.ptk-nl-add-image').first()
+                : $field;
+
+            if ($describedTarget.length) {
+                addDescribedBy($describedTarget, hintId);
+            }
         });
+    }
+
+    /**
+     * Add a hint id to an element's aria-describedby, keeping any id that's
+     * already there rather than overwriting it.
+     */
+    function addDescribedBy($el, hintId) {
+        var existing = ($el.attr('aria-describedby') || '').split(/\s+/).filter(Boolean);
+        if (existing.indexOf(hintId) === -1) {
+            existing.push(hintId);
+        }
+        $el.attr('aria-describedby', existing.join(' '));
     }
 
     /* ──────────────────────────────────────────
