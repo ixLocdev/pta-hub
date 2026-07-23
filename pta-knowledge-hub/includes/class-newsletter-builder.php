@@ -3,8 +3,14 @@
  * Newsletter Builder — guided form for creating a newsletter issue.
  *
  * Renders the "Add New" screen for the pta_newsletter post type as a
- * plain-English, section-by-section form instead of the block editor.
- * The fixed fields (Header/Announcement/Featured/Footer) and the
+ * plain-English, four-step wizard instead of the block editor. The steps
+ * are presentation only: every step-owned element carries `data-step` and
+ * the JS shows/hides by that attribute, so the six block sections stay a
+ * FLAT list of direct children of #ptk-nl-blocks — the JS reads
+ * '#ptk-nl-blocks > .ptk-nl-block' and takes the newsletter's order from
+ * DOM order. Which step edits a section is a property of its TYPE
+ * (step_for_type()); its position in the newsletter is separate and
+ * mutable. The fixed fields (Header/Announcement/Featured/Footer) and the
  * repeatable-row placeholders (Events/Story Cards) are rendered
  * server-side with a `data-field` scheme a client-side JS task
  * reads/writes, and a hidden `ptk_nl_blocks` field carries the layout as
@@ -44,6 +50,7 @@ class PTK_Newsletter_Builder {
         add_action( 'admin_menu', array( __CLASS__, 'remove_default_add_new' ), 99 );
         add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
         add_action( 'admin_init', array( __CLASS__, 'handle_submission' ) );
+        add_action( 'wp_ajax_ptk_nl_preview', array( __CLASS__, 'handle_preview_ajax' ) );
         add_action( 'load-post-new.php', array( __CLASS__, 'redirect_add_new' ) );
         add_action( 'load-post.php', array( __CLASS__, 'redirect_edit_to_builder' ) );
         add_filter( 'post_row_actions', array( __CLASS__, 'add_edit_row_action' ), 10, 2 );
@@ -201,6 +208,40 @@ class PTK_Newsletter_Builder {
     }
 
     /**
+     * Render the live preview for the builder. Runs the SAME sanitize + render
+     * path as a real save, so what the volunteer sees is what families will get.
+     */
+    public static function handle_preview_ajax() {
+        check_ajax_referer( 'ptk_nl_preview', 'nonce' );
+
+        if ( ! current_user_can( 'edit_posts' ) ) {
+            wp_send_json_error( array( 'message' => 'Permission denied.' ), 403 );
+        }
+
+        $raw    = json_decode( wp_unslash( isset( $_POST['blocks'] ) ? $_POST['blocks'] : '' ), true );
+        $blocks = PTK_Newsletter_Data::sanitize_blocks( $raw );
+
+        // Issue + date live OUTSIDE the blocks JSON and the renderer reads them
+        // from opts, so they must be posted separately or the masthead would show
+        // no issue number, no date, and no auto-derived "Week of ..." headline.
+        $issue = absint( isset( $_POST['issue'] ) ? $_POST['issue'] : 0 );
+        if ( $issue < 1 ) {
+            $issue = 1;
+        }
+        $date = isset( $_POST['date'] ) ? sanitize_text_field( wp_unslash( $_POST['date'] ) ) : '';
+        if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date ) ) {
+            $date = current_time( 'Y-m-d' );
+        }
+
+        $html = PTK_Newsletter_Renderer::render(
+            $blocks,
+            self::render_opts( $blocks, $issue, $date, array( 'preview_placeholders' => true ) )
+        );
+
+        wp_send_json_success( array( 'html' => $html ) );
+    }
+
+    /**
      * Render the blocks to HTML, create or update the pta_newsletter post,
      * and save the structured meta. wp_die()s (never returns) on a failed
      * insert/update. The caller is responsible for auth, the PII gate, and
@@ -214,17 +255,7 @@ class PTK_Newsletter_Builder {
      * @return int The saved post id.
      */
     private static function persist_newsletter( array $blocks, $issue, $date, $post_status, $edit_id ) {
-        $rendered = PTK_Newsletter_Renderer::render( $blocks, array(
-            'issue'        => $issue,
-            'date'         => $date,
-            'today'        => current_time( 'Y-m-d' ),
-            'theme'        => self::DEFAULT_THEME,
-            'logo_url'     => get_site_icon_url() ?: '',
-            'school_name'  => self::school_name_from_blocks( $blocks ),
-            'image_url_cb' => function( $id ) {
-                return wp_get_attachment_image_url( $id, 'large' );
-            },
-        ) );
+        $rendered = PTK_Newsletter_Renderer::render( $blocks, self::render_opts( $blocks, $issue, $date ) );
 
         $title = sprintf( 'Newsletter No. %d — %s', $issue, date_i18n( 'F j, Y', strtotime( $date ) ) );
 
@@ -278,6 +309,31 @@ class PTK_Newsletter_Builder {
         update_post_meta( $post_id, 'ptk_nl_blocks', wp_slash( wp_json_encode( $blocks ) ) );
 
         return $post_id;
+    }
+
+    /**
+     * The render options for a newsletter — ONE definition, used by both the
+     * save path and the live-preview endpoint so the preview can never drift
+     * from what actually gets published.
+     *
+     * @param array  $blocks Sanitized blocks.
+     * @param int    $issue  Issue number.
+     * @param string $date   Issue date 'YYYY-MM-DD'.
+     * @param array  $extra  Preview-only additions (e.g. preview_placeholders => true).
+     * @return array
+     */
+    private static function render_opts( array $blocks, $issue, $date, array $extra = array() ) {
+        return array_merge( array(
+            'issue'        => $issue,
+            'date'         => $date,
+            'today'        => current_time( 'Y-m-d' ),
+            'theme'        => self::DEFAULT_THEME,
+            'logo_url'     => get_site_icon_url() ?: '',
+            'school_name'  => self::school_name_from_blocks( $blocks ),
+            'image_url_cb' => function( $id ) {
+                return wp_get_attachment_image_url( $id, 'large' );
+            },
+        ), $extra );
     }
 
     /**
@@ -374,13 +430,18 @@ class PTK_Newsletter_Builder {
         wp_enqueue_script(
             'ptk-newsletter-builder',
             PTK_PLUGIN_URL . 'assets/js/newsletter-builder.js',
-            array( 'jquery', 'media-upload' ),
+            // jquery-ui-sortable powers step 4's drag-to-reorder. Dragging is
+            // never the only way to reorder — the arrange list's Move up/down
+            // buttons do the same thing from the keyboard.
+            array( 'jquery', 'media-upload', 'jquery-ui-sortable' ),
             PTK_VERSION,
             true
         );
 
         wp_localize_script( 'ptk-newsletter-builder', 'ptkNlData', array(
-            'blocks' => self::blocks_for_js(),
+            'blocks'       => self::blocks_for_js(),
+            'ajaxUrl'      => admin_url( 'admin-ajax.php' ),
+            'previewNonce' => wp_create_nonce( 'ptk_nl_preview' ),
         ) );
     }
 
@@ -501,6 +562,139 @@ class PTK_Newsletter_Builder {
     }
 
     /**
+     * One plain-English line saying what a section is and when you'd use one.
+     * The section names alone don't tell a first-timer that, so this renders
+     * under each heading. Returned as plain text (curly quotes and dashes
+     * included) — the caller escapes it, so never put HTML entities here.
+     *
+     * @param string $type Block type slug.
+     * @return string Empty string if the type has nothing to say.
+     */
+    protected static function intro_for_type( $type ) {
+        $intros = array(
+            'header'       => 'The top of every newsletter — your school name, the week, and a hello.',
+            'announcement' => 'The one thing families shouldn\'t miss this week. It shows as a colored bar near the top. Skip it if there isn\'t one.',
+            'events'       => 'Dates coming up. Each one shows with a “This week” or “Next week” tag that updates itself.',
+            'featured'     => 'The big story of the week, in its own colored block. Optional.',
+            'story_cards'  => 'Shorter articles — a heading, a paragraph, an optional link. Add as many as you need.',
+            'footer'       => 'Your sign-off and links. Set it once and it\'ll be here next time.',
+        );
+
+        return isset( $intros[ $type ] ) ? $intros[ $type ] : '';
+    }
+
+    /**
+     * Which wizard step edits a given block type. Step is a property of the
+     * TYPE — never of position — so a section dragged to the bottom of the
+     * newsletter on step 4 is still edited on its own step.
+     *
+     * @param string $type Block type slug.
+     * @return int Step number.
+     */
+    protected static function step_for_type( $type ) {
+        $map = array(
+            PTK_Newsletter_Data::TYPE_HEADER       => 1,
+            PTK_Newsletter_Data::TYPE_ANNOUNCEMENT => 2,
+            PTK_Newsletter_Data::TYPE_EVENTS       => 2,
+            PTK_Newsletter_Data::TYPE_FEATURED     => 3,
+            PTK_Newsletter_Data::TYPE_STORY_CARDS  => 3,
+            PTK_Newsletter_Data::TYPE_FOOTER       => 4,
+        );
+
+        return isset( $map[ $type ] ) ? $map[ $type ] : 2;
+    }
+
+    /**
+     * The wizard's steps, in order: the sidebar entries and the heading that
+     * opens each step. Plain English — this is the first thing a first-time
+     * volunteer reads.
+     *
+     * @return array[] Step number => array( 'title' => string, 'blurb' => string ).
+     */
+    protected static function steps() {
+        return array(
+            1 => array(
+                'title' => 'The basics',
+                'blurb' => "Who it's from and how you say hello. Most of this is filled in already.",
+            ),
+            2 => array(
+                'title' => "What's happening",
+                'blurb' => "The dates, and the one big thing families shouldn't miss. Skip anything you don't need.",
+            ),
+            3 => array(
+                'title' => 'Stories',
+                'blurb' => 'The longer bits — a featured story and any shorter articles. All optional.',
+            ),
+            4 => array(
+                'title' => 'Finish & publish',
+                'blurb' => 'Put it in order, check the photos, and send it out.',
+            ),
+        );
+    }
+
+    /**
+     * The sections to render into #ptk-nl-blocks, in DOM order.
+     *
+     * Edit mode hands us only the types the saved newsletter includes, but
+     * every type needs a DOM node: a type with no node could never be listed
+     * under "Not included" on step 4, so removing a section and saving would
+     * make it unrecoverable forever.
+     *
+     * The saved blocks supply the order of what IS included; every absent type
+     * is inserted immediately BEFORE the footer — the end of the movable run —
+     * in default order, marked excluded. Inserting after the footer instead
+     * would strand it below the pinned footer, where "Add back" would restore
+     * it in a spot Move up could never rescue it from.
+     *
+     * @param array $blocks Sanitized blocks (header first, footer last).
+     * @return array[] Each: array( 'block' => array, 'excluded' => bool ).
+     */
+    protected static function sections_to_render( array $blocks ) {
+        $sections = array();
+        $present  = array();
+
+        foreach ( $blocks as $block ) {
+            if ( empty( $block['type'] ) ) {
+                continue;
+            }
+            $present[]  = $block['type'];
+            $sections[] = array(
+                'block'    => $block,
+                'excluded' => false,
+            );
+        }
+
+        $missing = array();
+        foreach ( PTK_Newsletter_Data::default_blocks() as $default ) {
+            if ( ! in_array( $default['type'], $present, true ) ) {
+                $missing[] = array(
+                    'block'    => $default,
+                    'excluded' => true,
+                );
+            }
+        }
+
+        if ( ! $missing ) {
+            return $sections;
+        }
+
+        // Splice in before the footer so the excluded shells sit at the end of
+        // the movable run. sanitize_blocks() always emits a footer, so the
+        // count() fallback is belt-and-braces only.
+        $footer_at = count( $sections );
+        foreach ( $sections as $i => $section ) {
+            if ( PTK_Newsletter_Data::TYPE_FOOTER === $section['block']['type'] ) {
+                $footer_at = $i;
+                break;
+            }
+        }
+
+        array_splice( $sections, $footer_at, 0, $missing );
+
+        return $sections;
+    }
+
+    /**
      * Render the Newsletter Builder page.
      */
     public static function render_page() {
@@ -531,52 +725,130 @@ class PTK_Newsletter_Builder {
             $date_value   = date_i18n( 'Y-m-d' );
         }
 
+        $steps     = self::steps();
+        $step_last = count( $steps );
+        $sections  = self::sections_to_render( $blocks );
         ?>
         <div class="wrap ptk-nl-builder">
             <h1><?php echo $edit_id ? 'Edit Newsletter' : 'New Newsletter'; ?></h1>
             <?php self::render_notice(); ?>
-            <p class="ptk-nl-intro"><?php echo $edit_id ? 'Update the sections below — header and footer are always included, and you can add, remove, and reorder the sections in between.' : 'Fill in the sections below — header and footer are always included, and you can add, remove, and reorder the sections in between.'; ?></p>
+            <p class="ptk-nl-intro">Four short steps. We&#8217;ve filled in what we can — you write the news.</p>
 
-            <form method="post" id="ptk-nl-form">
-                <?php wp_nonce_field( 'ptk_nl_save', 'ptk_nl_nonce' ); ?>
-                <input type="hidden" name="ptk_nl_edit_id" value="<?php echo esc_attr( $edit_id ); ?>">
+            <div class="ptk-nl-wizard">
+                <nav class="ptk-nl-steps" aria-label="Newsletter steps">
+                    <ul>
+                        <?php foreach ( $steps as $step_number => $step ) : ?>
+                            <li>
+                                <button type="button" class="ptk-nl-step-link" data-goto-step="<?php echo (int) $step_number; ?>"<?php echo 1 === $step_number ? ' aria-current="step"' : ''; ?>>
+                                    <span class="ptk-nl-step-num"><?php echo (int) $step_number; ?></span>
+                                    <span class="ptk-nl-step-name"><?php echo esc_html( $step['title'] ); ?></span>
+                                </button>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                </nav>
 
-                <div class="ptk-nl-meta-row">
-                    <div class="ptk-nl-field-group">
-                        <label for="ptk-nl-issue">Issue number</label>
-                        <input type="number" id="ptk-nl-issue" name="ptk_nl_issue" value="<?php echo esc_attr( $issue_number ); ?>" min="1">
-                    </div>
-                    <div class="ptk-nl-field-group">
-                        <label for="ptk-nl-date">Issue date</label>
-                        <input type="date" id="ptk-nl-date" name="ptk_nl_date" value="<?php echo esc_attr( $date_value ); ?>">
-                    </div>
+                <div class="ptk-nl-fields">
+                    <form method="post" id="ptk-nl-form">
+                        <?php wp_nonce_field( 'ptk_nl_save', 'ptk_nl_nonce' ); ?>
+                        <input type="hidden" name="ptk_nl_edit_id" value="<?php echo esc_attr( $edit_id ); ?>">
+
+                        <?php foreach ( $steps as $step_number => $step ) : ?>
+                            <?php /* One step head is visible at a time, so it always reads as the heading for the fields below it. */ ?>
+                            <div class="ptk-nl-step-head" data-step="<?php echo (int) $step_number; ?>">
+                                <h2 tabindex="-1">
+                                    <?php echo esc_html( $step['title'] ); ?>
+                                    <span class="ptk-nl-step-count"><?php echo esc_html( sprintf( 'Step %d of %d', $step_number, $step_last ) ); ?></span>
+                                </h2>
+                                <p class="ptk-nl-step-blurb"><?php echo esc_html( $step['blurb'] ); ?></p>
+                            </div>
+                        <?php endforeach; ?>
+
+                        <?php /* Sits here, immediately above #ptk-nl-blocks, so step 4 reads in plain DOM
+                                order: arrange panel → the footer's fields (the only section shown on step 4)
+                                → the photo check and buttons (.ptk-nl-finish) → share a preview link. No CSS
+                                ordering needed. It's a SIBLING of #ptk-nl-blocks, never a child — the
+                                flat-DOM rule governs that container's children, which stay exactly the six
+                                sections. */ ?>
+                        <div class="ptk-nl-arrange-panel" data-step="<?php echo (int) $step_last; ?>">
+                            <h3>Order of your newsletter</h3>
+                            <p class="description">Drag to change the order, or use the arrows.</p>
+
+                            <div class="ptk-nl-arrange-pinned"><span aria-hidden="true">&#128274;</span> Header — always first</div>
+
+                            <?php /* Deliberately empty: the JS builds these rows from the live sections in
+                                    #ptk-nl-blocks, so the list always shows the real order. */ ?>
+                            <ul class="ptk-nl-arrange" data-arrange></ul>
+
+                            <div class="ptk-nl-arrange-pinned"><span aria-hidden="true">&#128274;</span> Footer — always last</div>
+
+                            <div class="ptk-nl-excluded" data-excluded-list>
+                                <h4>Not included</h4>
+                                <ul></ul>
+                            </div>
+
+                            <?php /* Says what just happened after a Move up/down — "Featured story moved
+                                    down. Now 3 of 4." A screen reader announces it because it's aria-live,
+                                    and everyone else can simply read it. Must be in the page from the
+                                    start: a live region added at the moment of the change isn't announced.
+                                    Empty until the JS has something to say. */ ?>
+                            <p class="ptk-nl-arrange-status" data-arrange-status role="status" aria-live="polite"></p>
+
+                            <p class="description">Once you save, a section you&#8217;ve left out won&#8217;t keep its text.</p>
+                        </div>
+
+                        <?php /* The six sections MUST stay direct children of #ptk-nl-blocks: serialize() reads
+                                '#ptk-nl-blocks > .ptk-nl-block' and takes the newsletter's order from DOM order.
+                                Steps are presentation only — each section carries data-step and the JS shows/hides
+                                by that attribute. Never wrap these in per-step parents. */ ?>
+                        <div id="ptk-nl-blocks">
+                            <?php foreach ( $sections as $section ) : ?>
+                                <?php self::render_block_section( $section['block'], $section['excluded'], $issue_number, $date_value ); ?>
+                            <?php endforeach; ?>
+                        </div>
+
+                        <input type="hidden" name="ptk_nl_blocks" id="ptk-nl-blocks-json" value="<?php echo esc_attr( wp_json_encode( $blocks ) ); ?>">
+
+                        <div class="ptk-nl-finish" data-step="<?php echo (int) $step_last; ?>">
+                            <div class="ptk-nl-pii-gate">
+                                <label>
+                                    <input type="checkbox" name="ptk_nl_pii_ok" value="1">
+                                    These photos are OK to share publicly — no student faces or personal info.
+                                </label>
+                            </div>
+
+                            <div class="ptk-nl-submit-row">
+                                <button type="submit" name="ptk_nl_status" value="draft" class="button button-secondary">Save draft</button>
+                                <button type="submit" name="ptk_nl_status" value="preview" class="button button-secondary">Preview</button>
+                                <button type="submit" name="ptk_nl_status" value="publish" class="button button-primary">Publish</button>
+                            </div>
+                        </div>
+
+                        <?php /* No data-step: the JS shows/hides these per step. */ ?>
+                        <div class="ptk-nl-step-nav">
+                            <button type="button" class="button ptk-nl-step-back" data-step-nav="prev">Back</button>
+                            <button type="button" class="button button-primary ptk-nl-step-next" data-step-nav="next">Next</button>
+                        </div>
+                    </form>
+
+                    <?php if ( $edit_id ) : ?>
+                        <?php /* Rendered outside #ptk-nl-form on purpose: it has its own <form>s, and forms can't nest. */ ?>
+                        <?php self::render_preview_panel( $edit_id ); ?>
+                    <?php endif; ?>
                 </div>
 
-                <div id="ptk-nl-blocks">
-                    <?php foreach ( $blocks as $block ) : ?>
-                        <?php self::render_block_section( $block ); ?>
-                    <?php endforeach; ?>
+                <?php /* The live preview is a COLUMN of the wizard, visible on every step — it must never carry
+                        data-step, or the JS's "hide every non-current [data-step]" would hide it on steps 1-3. */ ?>
+                <div class="ptk-nl-preview">
+                    <?php /* Decorative on purpose: the iframe's own title ("Preview of your newsletter")
+                            already names this region for a screen reader, so labelling it a second time
+                            here would just make it say the same thing twice. This <p> is what SIGHTED
+                            volunteers read — real markup rather than a CSS ::before, which isn't
+                            reliably announced and can't be selected or translated. */ ?>
+                    <p class="ptk-nl-preview-label" aria-hidden="true">Live preview</p>
+                    <iframe id="ptk-nl-preview-frame" title="Preview of your newsletter"></iframe>
                 </div>
-
-                <input type="hidden" name="ptk_nl_blocks" id="ptk-nl-blocks-json" value="<?php echo esc_attr( wp_json_encode( $blocks ) ); ?>">
-
-                <div class="ptk-nl-pii-gate">
-                    <label>
-                        <input type="checkbox" name="ptk_nl_pii_ok" value="1">
-                        These photos are OK to share publicly — no student faces or personal info.
-                    </label>
-                </div>
-
-                <div class="ptk-nl-submit-row">
-                    <button type="submit" name="ptk_nl_status" value="draft" class="button button-secondary">Save draft</button>
-                    <button type="submit" name="ptk_nl_status" value="preview" class="button button-secondary">Preview</button>
-                    <button type="submit" name="ptk_nl_status" value="publish" class="button button-primary">Publish</button>
-                </div>
-            </form>
-
-            <?php if ( $edit_id ) : ?>
-                <?php self::render_preview_panel( $edit_id ); ?>
-            <?php endif; ?>
+            </div>
         </div>
         <?php
     }
@@ -591,6 +863,12 @@ class PTK_Newsletter_Builder {
      * since a brand-new (unsaved) newsletter has no post id to attach a
      * token to.
      *
+     * Sharing a preview is part of finishing up, so the panel carries
+     * data-step="4" and the wizard's JS shows it with the rest of that step.
+     * It can't live inside .ptk-nl-finish (that's inside #ptk-nl-form, and
+     * forms can't nest), so it sits alongside the form in the fields column
+     * with its own data-step instead.
+     *
      * @param int $edit_id Existing, validated pta_newsletter post id.
      */
     protected static function render_preview_panel( $edit_id ) {
@@ -603,15 +881,15 @@ class PTK_Newsletter_Builder {
         // `admin_post_{$action}` and are never registered here).
         $post_action = admin_url( 'admin.php' );
         ?>
-        <div class="ptk-nl-preview-panel" style="margin-top:24px;padding:16px;border:1px solid #ddd;border-radius:8px;background:#fff;max-width:640px;">
-            <h2 style="margin-top:0;"><?php esc_html_e( 'Share a preview link', 'pta-knowledge-hub' ); ?></h2>
+        <div class="ptk-nl-preview-panel" data-step="4">
+            <h3><?php esc_html_e( 'Share a preview link', 'pta-knowledge-hub' ); ?></h3>
             <p class="description">
                 <?php esc_html_e( 'Let someone — like a principal or PTA president — see this draft before it\'s published, without needing a login. The link stops working after 7 days.', 'pta-knowledge-hub' ); ?>
             </p>
 
             <?php if ( $preview_url ) : ?>
                 <p class="description"><?php esc_html_e( 'This link is live right now:', 'pta-knowledge-hub' ); ?></p>
-                <input type="text" readonly value="<?php echo esc_attr( $preview_url ); ?>" id="ptk-nl-preview-url" style="width:100%;font-size:12px;margin-bottom:8px;" onclick="this.select();" />
+                <input type="text" readonly value="<?php echo esc_attr( $preview_url ); ?>" id="ptk-nl-preview-url" onclick="this.select();" />
                 <button type="button" class="button" onclick="navigator.clipboard.writeText(document.getElementById('ptk-nl-preview-url').value);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy link',1500);"><?php esc_html_e( 'Copy link', 'pta-knowledge-hub' ); ?></button>
 
                 <form method="post" action="<?php echo esc_url( $post_action ); ?>" style="display:inline;margin-left:6px;">
@@ -643,32 +921,94 @@ class PTK_Newsletter_Builder {
      * default_blocks() or a saved newsletter. Rendering values here too
      * would risk double-filling/duplicating rows.
      *
-     * @param array $block Block with a 'type' key ('data' is deliberately
-     *                      ignored — see above).
+     * Ordering and inclusion are NOT edited here — they live on step 4's
+     * arrange list — so this renders no Move/Remove controls. The section
+     * carries data-step for the type that owns it; it stays a direct child of
+     * #ptk-nl-blocks either way.
+     *
+     * The header section is the one exception to "no values here": it ends
+     * with the issue number and the issue date, which are real saved values
+     * and belong to the newsletter as a whole rather than to any block's
+     * JSON — see render_issue_details() for why they live in this card.
+     *
+     * @param array      $block    Block with a 'type' key ('data' is deliberately
+     *                             ignored — see above).
+     * @param bool       $excluded Whether this section is left out of the newsletter
+     *                             (rendered anyway so it can be added back).
+     * @param int|string $issue    Issue number to prefill (header section only).
+     * @param string     $date     Issue date, Y-m-d (header section only).
      */
-    protected static function render_block_section( $block ) {
+    protected static function render_block_section( $block, $excluded = false, $issue = '', $date = '' ) {
         $type   = isset( $block['type'] ) ? $block['type'] : '';
         $pinned = in_array( $type, array( 'header', 'footer' ), true );
         $label  = self::label_for_type( $type );
         ?>
-        <section class="ptk-nl-block" data-type="<?php echo esc_attr( $type ); ?>"<?php echo $pinned ? ' data-pinned="1"' : ''; ?>>
+        <section class="ptk-nl-block" data-type="<?php echo esc_attr( $type ); ?>" data-step="<?php echo (int) self::step_for_type( $type ); ?>"<?php echo $pinned ? ' data-pinned="1"' : ''; ?><?php echo $excluded ? ' data-excluded="1"' : ''; ?>>
             <div class="ptk-nl-block-header">
-                <h2><?php echo esc_html( $label ); ?></h2>
+                <h3><?php echo esc_html( $label ); ?></h3>
                 <?php if ( $pinned ) : ?>
                     <span class="ptk-nl-pinned-note">Always shown</span>
-                <?php else : ?>
-                    <div class="ptk-nl-block-actions">
-                        <button type="button" class="button ptk-nl-move-up">Move up</button>
-                        <button type="button" class="button ptk-nl-move-down">Move down</button>
-                        <button type="button" class="button ptk-nl-remove-block">Remove</button>
-                    </div>
                 <?php endif; ?>
             </div>
 
+            <?php /* Sibling of the header, never inside it: the arrange list reads
+                    '.ptk-nl-block-header h3' for this section's name, so nothing but
+                    the name belongs in there. */ ?>
+            <?php $intro = self::intro_for_type( $type ); ?>
+            <?php if ( $intro ) : ?>
+                <p class="description ptk-nl-block-intro"><?php echo esc_html( $intro ); ?></p>
+            <?php endif; ?>
+
             <div class="ptk-nl-block-body">
                 <?php self::render_block_fields( $type, array() ); ?>
+                <?php if ( 'header' === $type ) : ?>
+                    <?php self::render_issue_details( $issue, $date ); ?>
+                <?php endif; ?>
             </div>
         </section>
+        <?php
+    }
+
+    /**
+     * The issue number and the issue date, at the FOOT of the Header card.
+     *
+     * They used to be a big card of their own above everything, which put
+     * the two fields nobody edits in the most valuable space on the screen —
+     * volunteers opened the builder and met paperwork instead of a place to
+     * start writing. They're both filled in for us (next number, today), and
+     * they both print inside the masthead, so this is where they belong:
+     * last in the header, after the school name, headline and greeting.
+     *
+     * THREE THINGS THESE INPUTS MUST KEEP, or data goes missing quietly:
+     *   - name="ptk_nl_issue" / name="ptk_nl_date" exactly. handle_submission()
+     *     reads $_POST by those names, and the live preview binds its refresh
+     *     to [name="ptk_nl_issue"], [name="ptk_nl_date"].
+     *   - NO data-field attribute. serialize() collects every [data-field]
+     *     inside a .ptk-nl-block into that block's JSON; one here would
+     *     invent bogus keys in the header block's data. Issue and date are
+     *     newsletter-level meta and travel as their own POST fields.
+     *   - NO data-step of their own. The header section already carries
+     *     data-step="1", which is where these belong anyway.
+     * The wrapper is never toggled by JS, so its flex row is safe.
+     *
+     * @param int|string $issue Issue number.
+     * @param string     $date  Issue date, Y-m-d.
+     */
+    protected static function render_issue_details( $issue, $date ) {
+        ?>
+        <div class="ptk-nl-issue-details">
+            <h4>Issue details &#8212; we filled these in</h4>
+            <div class="ptk-nl-issue-details-row">
+                <div class="ptk-nl-field-group">
+                    <label for="ptk-nl-issue">Issue number</label>
+                    <input type="number" id="ptk-nl-issue" name="ptk_nl_issue" value="<?php echo esc_attr( $issue ); ?>" min="1">
+                </div>
+                <div class="ptk-nl-field-group">
+                    <label for="ptk-nl-date">Issue date</label>
+                    <input type="date" id="ptk-nl-date" name="ptk_nl_date" value="<?php echo esc_attr( $date ); ?>">
+                </div>
+            </div>
+        </div>
         <?php
     }
 
@@ -685,16 +1025,18 @@ class PTK_Newsletter_Builder {
                 ?>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-header-school_name">School name</label>
-                    <input type="text" id="ptk-nl-header-school_name" data-field="school_name" value="<?php echo esc_attr( isset( $data['school_name'] ) ? $data['school_name'] : '' ); ?>">
+                    <input type="text" id="ptk-nl-header-school_name" data-field="school_name" value="<?php echo esc_attr( isset( $data['school_name'] ) ? $data['school_name'] : '' ); ?>" aria-describedby="ptk-nl-header-school_name-hint">
+                    <p class="description" id="ptk-nl-header-school_name-hint">Shown at the top of every newsletter.</p>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-header-headline">Headline</label>
-                    <input type="text" id="ptk-nl-header-headline" data-field="headline" value="<?php echo esc_attr( isset( $data['headline'] ) ? $data['headline'] : '' ); ?>">
-                    <p class="description">The big title at the top — for example "Week of July 16." Leave blank and we'll use the week of your issue date.</p>
+                    <input type="text" id="ptk-nl-header-headline" data-field="headline" value="<?php echo esc_attr( isset( $data['headline'] ) ? $data['headline'] : '' ); ?>" aria-describedby="ptk-nl-header-headline-hint">
+                    <p class="description" id="ptk-nl-header-headline-hint">The big title at the top — for example "Week of July 16." Leave blank and we'll use the week of your issue date.</p>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-header-greeting">Greeting</label>
-                    <textarea id="ptk-nl-header-greeting" data-field="greeting" rows="2"><?php echo esc_textarea( isset( $data['greeting'] ) ? $data['greeting'] : '' ); ?></textarea>
+                    <textarea id="ptk-nl-header-greeting" data-field="greeting" rows="2" aria-describedby="ptk-nl-header-greeting-hint"><?php echo esc_textarea( isset( $data['greeting'] ) ? $data['greeting'] : '' ); ?></textarea>
+                    <p class="description" id="ptk-nl-header-greeting-hint">A friendly hello and what&#8217;s coming up. For example: Hi Northeast families &#8212; it&#8217;s the last week of school!</p>
                 </div>
                 <?php
                 break;
@@ -702,12 +1044,14 @@ class PTK_Newsletter_Builder {
             case 'announcement':
                 ?>
                 <div class="ptk-nl-field-group">
-                    <label for="ptk-nl-announcement-pill">Pill label</label>
-                    <input type="text" id="ptk-nl-announcement-pill" data-field="pill" value="<?php echo esc_attr( isset( $data['pill'] ) ? $data['pill'] : '' ); ?>">
+                    <label for="ptk-nl-announcement-pill">Short label</label>
+                    <input type="text" id="ptk-nl-announcement-pill" data-field="pill" value="<?php echo esc_attr( isset( $data['pill'] ) ? $data['pill'] : '' ); ?>" aria-describedby="ptk-nl-announcement-pill-hint">
+                    <p class="description" id="ptk-nl-announcement-pill-hint">The little tag in the colored bar &#8212; usually when it happens. For example: Thursday &middot; Jun 25</p>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-announcement-text">Announcement text</label>
-                    <textarea id="ptk-nl-announcement-text" data-field="text" rows="3"><?php echo esc_textarea( isset( $data['text'] ) ? $data['text'] : '' ); ?></textarea>
+                    <textarea id="ptk-nl-announcement-text" data-field="text" rows="3" aria-describedby="ptk-nl-announcement-text-hint"><?php echo esc_textarea( isset( $data['text'] ) ? $data['text'] : '' ); ?></textarea>
+                    <p class="description" id="ptk-nl-announcement-text-hint">The one sentence families shouldn&#8217;t miss. For example: The last day of school is this Thursday, June 25.</p>
                 </div>
                 <?php
                 break;
@@ -722,14 +1066,17 @@ class PTK_Newsletter_Builder {
                         <div class="ptk-nl-field-group">
                             <label>Date</label>
                             <input type="date" data-field="date">
+                            <p class="description">When it happens.</p>
                         </div>
                         <div class="ptk-nl-field-group">
                             <label>Title</label>
                             <input type="text" data-field="title">
+                            <p class="description">What it&#8217;s called. For example: Last Day of School</p>
                         </div>
                         <div class="ptk-nl-field-group">
                             <label>Description</label>
                             <textarea data-field="desc" rows="2"></textarea>
+                            <p class="description">One short line. For example: Early dismissal for students.</p>
                         </div>
                         <button type="button" class="button ptk-nl-remove-row">Remove</button>
                     </div>
@@ -740,21 +1087,30 @@ class PTK_Newsletter_Builder {
             case 'featured':
                 ?>
                 <div class="ptk-nl-field-group">
-                    <label for="ptk-nl-featured-eyebrow">Eyebrow</label>
-                    <input type="text" id="ptk-nl-featured-eyebrow" data-field="eyebrow" value="<?php echo esc_attr( isset( $data['eyebrow'] ) ? $data['eyebrow'] : '' ); ?>">
+                    <label for="ptk-nl-featured-eyebrow">Small line above</label>
+                    <input type="text" id="ptk-nl-featured-eyebrow" data-field="eyebrow" value="<?php echo esc_attr( isset( $data['eyebrow'] ) ? $data['eyebrow'] : '' ); ?>" aria-describedby="ptk-nl-featured-eyebrow-hint">
+                    <p class="description" id="ptk-nl-featured-eyebrow-hint">A short lead-in above the big headline. For example: &#8212; To our teachers &amp; staff &#128153;</p>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-featured-headline">Headline</label>
-                    <input type="text" id="ptk-nl-featured-headline" data-field="headline" value="<?php echo esc_attr( isset( $data['headline'] ) ? $data['headline'] : '' ); ?>">
+                    <input type="text" id="ptk-nl-featured-headline" data-field="headline" value="<?php echo esc_attr( isset( $data['headline'] ) ? $data['headline'] : '' ); ?>" aria-describedby="ptk-nl-featured-headline-hint">
+                    <p class="description" id="ptk-nl-featured-headline-hint">The big headline for this story. For example: Congratulations to our 5th graders.</p>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-featured-body">Story</label>
-                    <textarea id="ptk-nl-featured-body" data-field="body" rows="4"><?php echo esc_textarea( isset( $data['body'] ) ? $data['body'] : '' ); ?></textarea>
+                    <textarea id="ptk-nl-featured-body" data-field="body" rows="4" aria-describedby="ptk-nl-featured-body-hint"><?php echo esc_textarea( isset( $data['body'] ) ? $data['body'] : '' ); ?></textarea>
+                    <p class="description" id="ptk-nl-featured-body-hint">A paragraph or two in your own words.</p>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label>Image</label>
                     <input type="hidden" data-field="image_id" value="<?php echo esc_attr( isset( $data['image_id'] ) ? $data['image_id'] : 0 ); ?>">
-                    <button type="button" class="button ptk-nl-add-image">Add image</button>
+                    <?php /* Above the button, not below it: refreshImageChip() appends the
+                            "Image #N selected" chip to the END of this group. The hint describes
+                            the Add image button below it, not the hidden input above — a hidden
+                            input is never exposed to assistive tech, so aria-describedby belongs
+                            on the button, the only real control in this group. */ ?>
+                    <p class="description" id="ptk-nl-featured-image-hint">Optional. Please don&#8217;t use photos of students&#8217; faces.</p>
+                    <button type="button" class="button ptk-nl-add-image" aria-describedby="ptk-nl-featured-image-hint">Add image</button>
                 </div>
                 <?php
                 break;
@@ -769,23 +1125,30 @@ class PTK_Newsletter_Builder {
                         <div class="ptk-nl-field-group">
                             <label>Heading</label>
                             <input type="text" data-field="heading">
+                            <p class="description">A short headline for this article. For example: Volunteers needed: Book Fair</p>
                         </div>
                         <div class="ptk-nl-field-group">
                             <label>Story</label>
                             <textarea data-field="body" rows="3"></textarea>
+                            <p class="description">A paragraph or two in your own words.</p>
                         </div>
                         <div class="ptk-nl-field-group">
                             <label>Image</label>
                             <input type="hidden" data-field="image_id" value="0">
+                            <?php /* Above the button, not below it: refreshImageChip() appends the
+                                    "Image #N selected" chip to the END of this group. */ ?>
+                            <p class="description">Optional. Please don&#8217;t use photos of students&#8217; faces.</p>
                             <button type="button" class="button ptk-nl-add-image">Add image</button>
                         </div>
                         <div class="ptk-nl-field-group">
-                            <label>Link URL</label>
+                            <label>Link address</label>
                             <input type="url" data-field="link_url">
+                            <p class="description">Where the link goes. For example: https://northeastpta.org/volunteer/</p>
                         </div>
                         <div class="ptk-nl-field-group">
-                            <label>Link text</label>
+                            <label>Link wording</label>
                             <input type="text" data-field="link_text">
+                            <p class="description">What the link says. For example: Sign up for a shift</p>
                         </div>
                         <button type="button" class="button ptk-nl-remove-row">Remove</button>
                     </div>
@@ -797,7 +1160,8 @@ class PTK_Newsletter_Builder {
                 ?>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-footer-signoff">Sign-off</label>
-                    <textarea id="ptk-nl-footer-signoff" data-field="signoff" rows="2"><?php echo esc_textarea( isset( $data['signoff'] ) ? $data['signoff'] : '' ); ?></textarea>
+                    <textarea id="ptk-nl-footer-signoff" data-field="signoff" rows="2" aria-describedby="ptk-nl-footer-signoff-hint"><?php echo esc_textarea( isset( $data['signoff'] ) ? $data['signoff'] : '' ); ?></textarea>
+                    <p class="description" id="ptk-nl-footer-signoff-hint">How you sign off. For example: With gratitude, Your PTA Board</p>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label>Links</label>
@@ -807,12 +1171,14 @@ class PTK_Newsletter_Builder {
                         <!-- Row fields intentionally have no static ids: the later JS task assigns a unique id per cloned row and points each label's for at it. -->
                         <div class="ptk-nl-row" data-row>
                             <div class="ptk-nl-field-group">
-                                <label>Label</label>
+                                <label>Link wording</label>
                                 <input type="text" data-field="label">
+                                <p class="description">What it says. For example: Full calendar</p>
                             </div>
                             <div class="ptk-nl-field-group">
-                                <label>URL</label>
+                                <label>Link address</label>
                                 <input type="url" data-field="url">
+                                <p class="description">Where it goes.</p>
                             </div>
                             <button type="button" class="button ptk-nl-remove-row">Remove</button>
                         </div>

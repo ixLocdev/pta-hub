@@ -1,5 +1,39 @@
 # Newsletter Wizard + Live Preview — Implementation Plan
 
+> **STATUS: COMPLETE** (2026-07-17, branch `newsletter-wizard`). All 10 tasks
+> implemented, each spec- and quality-reviewed, then driven end-to-end in a real
+> WordPress (Playground).
+>
+> **Verified in the browser, not just by tests:**
+> - The wizard renders: sidebar, one step at a time, "Step 1 of 4", auto-filled
+>   issue/date/school name, and the auto-derived "Week of July 17" headline.
+> - **The live preview works**, showing placeholder stubs for unwritten sections
+>   and outlining the section being edited (the highlight follows the step).
+> - **The issue/date trigger fires** — typing `42` moved the preview from "NO. 3"
+>   to "NO. 42". This was the plan's most-warned-about silent failure.
+> - Boot preview renders immediately (the discarded-document race fix holds).
+> - Remove shows **exactly one** confirm dialog, keeps the section in the DOM, and
+>   preserves its text; Add back restores it to its original slot and does NOT
+>   leak its step-3 fields onto step 4.
+> - **Remove → Save → reopen → the section is still in "Not included" with a
+>   working Add back** (returning an empty section — the documented limitation).
+>   Without Task 5's Step 2b this list would be empty and removal permanent.
+> - Keyboard Move up/down keeps focus in the list, and at the boundary falls back
+>   to the row's other enabled button; the live region announces
+>   "Key announcement moved up. Now 1 of 4."
+> - Responsive: at 950px the wizard stacks (preview below, keeps real width); at
+>   1500px it's the three-column layout.
+> - **Published output is unaffected:** no placeholder text or stub markup leaks,
+>   the removed section is absent, empty blocks still render nothing, and Phase 1's
+>   guarantees hold (`data-event-date` survives KSES; em dash + "Café" round-trip).
+>
+> **No code bugs were found by this pass** — the per-task reviews caught them
+> upstream (the discarded iframe document, the append-vs-splice that would have
+> stranded excluded sections below the footer, the boot-focus stealing the admin
+> notices, and two ways CSS could have silently broken the layout).
+>
+> **Deliberately deferred:** version bump + zip/update-info release artifacts.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Turn the Newsletter Builder's single long form into a 4-step wizard with a live preview, so a first-time PTA volunteer isn't daunted — without changing the newsletter's published output, data model, or save path.
@@ -406,7 +440,13 @@ Inside the `.ptk-nl-finish[data-step=4]` block, above the PII gate, render:
 - A pinned row for Footer ("🔒 Footer — always last").
 - `<div class="ptk-nl-excluded" data-excluded-list><h4>Not included</h4><ul></ul></div>`.
 
-**Visual order note:** the footer's *fields* are a child of `#ptk-nl-blocks`, which sits **before** `.ptk-nl-finish` in the DOM — so on step 4 the footer fields will appear **above** the arrange list. That's probably not what you want. Use CSS `order` on the step-4 children (or place `.ptk-nl-finish` accordingly) so step 4 reads: arrange list → footer fields → photo check → buttons → share-a-preview. **Do not fix this by moving the footer section out of `#ptk-nl-blocks`** (that breaks the flat-DOM constraint).
+**Visual order — RESOLVED by placement, no CSS `order` needed.** The footer's *fields* are a child of `#ptk-nl-blocks`, so if the arrange list lived inside `.ptk-nl-finish` the footer fields would appear above it — and CSS `order` couldn't fix it, because `order` only sorts *siblings* and those two live in different parents.
+
+Instead, render the arrange panel as **its own `<div class="ptk-nl-arrange-panel" data-step="4">`, a sibling of `#ptk-nl-blocks`, placed immediately BEFORE it** (right after `.ptk-nl-meta-row`). `.ptk-nl-finish` then holds only the PII gate + submit buttons. On step 4 the visible elements fall in natural DOM order:
+
+> arrange panel → footer fields (inside `#ptk-nl-blocks`) → photo check + buttons (`.ptk-nl-finish`) → share-a-preview panel
+
+which is exactly the wanted reading order, with no CSS trickery. (`.ptk-nl-meta-row` is `data-step="1"`, so it's hidden on step 4 and doesn't interfere.) This does **not** touch the flat-DOM constraint — that governs `#ptk-nl-blocks`'s *children*; the arrange panel is a sibling of the container. **Do not** use `display:contents` on `.ptk-nl-finish` — it risks the jQuery `getDefaultDisplay()` clobbering described in the Task 9 CSS constraint. **Do not** move the footer section out of `#ptk-nl-blocks`.
 
 - [ ] **Step 2: Build the rows from the DOM (JS)**
 
@@ -492,13 +532,33 @@ git add -A && git commit -m "Show the newsletter building itself beside the form
 
 **Files:** Modify `pta-knowledge-hub/assets/css/newsletter-builder.css`
 
+### ⚠ CSS CONSTRAINT — never hide a `[data-step]` element from a stylesheet
+
+`showStep()` uses jQuery `.toggle(bool)`. jQuery's `.show()` clears the **inline** display and lets the cascade win — **but only if the element isn't hidden by a stylesheet rule.** If CSS hides it, jQuery falls into `getDefaultDisplay()` and stamps inline **`display:block`**, which would clobber e.g. `.ptk-nl-meta-row`'s `display:flex`.
+
+So:
+- **DO NOT** write `[data-step] { display: none }` + an `.is-active` reveal.
+- **DO NOT** hide any `[data-step]` element in a media query.
+- Let the JS own show/hide entirely; CSS only styles.
+- `.ptk-nl-wizard` / `.ptk-nl-steps` / `.ptk-nl-preview` carry no `data-step` and are never toggled — making them flex is safe.
+
+**The same trap applies to `.ptk-nl-excluded`** (the "Not included" list), even though it has no `data-step`: `renderArrangeList()` toggles it with jQuery `.toggle()`. If CSS gives it `display:flex`/`grid`, jQuery's `.show()` will stamp inline `display:block` and clobber the layout. **Style its children instead**, or give it a plain (non-flex) outer element. Rule of thumb: **any element the JS toggles must not be given a non-`block` display by CSS.** Grep the JS for `.toggle(` / `.show(` / `.hide(` before styling anything.
+
+### ⚠ What the preview JS already owns — do not fight it
+
+Task 8 landed; these are facts about the live DOM, not suggestions:
+- **`.ptk-nl-preview-scale`** is a wrapper **created by JS** between `.ptk-nl-preview` and the iframe, carrying inline `overflow:hidden` + a computed `height`. **JS owns that height — never set `height` on it in CSS.**
+- **`#ptk-nl-preview-frame`** gets inline `width`/`height`/`transform`/`transform-origin`/`border`/`display` from JS. **Inline styles win — CSS width/height on the iframe will be ignored.**
+- **`.ptk-nl-preview` MUST have a real, nonzero width at boot.** `scalePreview()` early-returns on a zero width, and the preview then renders unscaled at 840px and gets clipped. **Never start the panel in a `display:none` or zero-width container.**
+- **Don't `display:none` the panel at a breakpoint** without triggering a refresh on return — a zero width skips scaling and the wrapper keeps a stale height. For the responsive collapse, prefer moving/resizing the column over hiding it, or wire the toggle to re-run the scale.
+
 - [ ] **Step 1: Layout**
 
-`.ptk-nl-wizard` = flex row: `.ptk-nl-steps` sidebar (~170px) | fields column (min ~420px, flex 1) | `.ptk-nl-preview` (flex, the widest that fits). Style the active step, the pinned/arrange rows, the drag handle, the excluded list, and the placeholder look. Follow the project rule: **full borders/fills, never single-side accent stripes.**
+`.ptk-nl-wizard` = flex row: `.ptk-nl-steps` sidebar (~170px) | fields column (min ~420px, flex 1) | `.ptk-nl-preview` (flex, the widest that fits). Style the active step (`.is-active` / `[aria-current="step"]`), the pinned/arrange rows, the drag handle, the excluded list, and the placeholder look. Follow the project rule: **full borders/fills, never single-side accent stripes.**
 
-- [ ] **Step 1b: Place the share-a-preview panel**
+- [ ] **Step 1b: Verify the share-a-preview panel reads as part of the finish column**
 
-It lives **outside** `.ptk-nl-wizard` (a sibling of the form inside `.wrap`), so `data-step="4"` alone will show it *below the whole wizard, full width* rather than in the fields column where it belongs. Fix with CSS/placement so on step 4 it reads as part of the finish column. Verify in the Playground pass — don't guess.
+**Premise updated (Task 5 already moved it):** Task 5 placed the share-a-preview panel inside `.ptk-nl-fields` — still a sibling of `#ptk-nl-form`, so no nested forms — and gave it `data-step="4"`. So it no longer sits below the whole wizard, and **it does not need "fixing" again**. Just style it so it reads as part of the finish column, and confirm in the Playground pass.
 
 - [ ] **Step 2: Responsive**
 
