@@ -62,7 +62,7 @@ ptk_test_ok( strpos( $empty_html, '&#8470;&nbsp;039' ) !== false, 'empty layout 
 // absence proves both empty blocks were skipped (header uses navy as a text color only).
 ptk_test_ok( strpos( $empty_html, 'background:#1a2f5c' ) === false, 'empty announcement/featured navy bars are skipped' );
 // The events heading must not render on its own when there are no rows.
-ptk_test_ok( strpos( $empty_html, 'Upcoming' ) === false, 'empty events block skips the heading' );
+ptk_test_ok( strpos( $empty_html, 'Coming up' ) === false, 'empty events block skips the heading' );
 // An all-empty footer bar must not render its top border chrome.
 ptk_test_ok( strpos( $empty_html, 'padding:40px 20px 32px' ) === false, 'empty footer bar is skipped' );
 
@@ -83,7 +83,7 @@ $full_blocks = array(
 );
 $full_html = PTK_Newsletter_Renderer::render( $full_blocks, $empty_opts );
 ptk_test_ok( strpos( $full_html, 'Bake sale today' ) !== false, 'populated announcement still renders' );
-ptk_test_ok( strpos( $full_html, 'Field Day' ) !== false && strpos( $full_html, 'Upcoming' ) !== false, 'populated events still render' );
+ptk_test_ok( strpos( $full_html, 'Field Day' ) !== false && strpos( $full_html, 'Coming up' ) !== false, 'populated events still render' );
 ptk_test_ok( strpos( $full_html, 'What a year' ) !== false && strpos( $full_html, 'background:#1a2f5c' ) !== false, 'populated featured hero still renders' );
 ptk_test_ok( strpos( $full_html, 'Volunteers wanted' ) !== false, 'populated story card still renders' );
 ptk_test_ok( strpos( $full_html, 'Thanks' ) !== false && strpos( $full_html, 'Website' ) !== false, 'populated footer still renders' );
@@ -166,5 +166,37 @@ foreach ( array(
     );
     ptk_test_ok( strpos( $h, $want . '<' ) !== false, "issue dated $d is headed \"$want\"" );
 }
+
+// --- 4.2.0 masthead and Coming up. ----------------------------------------
+$m = PTK_Newsletter_Renderer::render(
+    array( array( 'type' => 'header', 'data' => array( 'school_name' => 'NE', 'headline' => '', 'summary' => 'ASE registration is open this week', 'greeting' => 'Hi' ) ) ),
+    array( 'issue' => 41, 'date' => '2026-09-20', 'today' => '2026-09-20', 'theme' => 'harbor-navy', 'logo_url' => '', 'school_name' => 'NE' )
+);
+ptk_test_ok( strpos( $m, 'Newsletter&nbsp;&#8470;&nbsp;041 · 2026–2027' ) !== false, 'masthead eyebrow reads "Newsletter № 041 · 2026–2027"' );
+ptk_test_ok( strpos( $m, 'ASE registration is open this week' ) !== false, 'summary line renders under the date' );
+ptk_test_ok( strpos( $m, "'Libre Franklin'" ) !== false && strpos( $m, "'Inter'" ) === false, 'Libre Franklin replaces Inter' );
+ptk_test_ok( strpos( $m, 'Fraunces' ) === false, 'Fraunces is gone' );
+ptk_test_ok( substr_count( $m, '<h1' ) === 1, 'exactly one h1' );
+$m2 = PTK_Newsletter_Renderer::render(
+    array( array( 'type' => 'header', 'data' => array( 'school_name' => 'NE', 'headline' => '', 'summary' => '', 'greeting' => '' ) ) ),
+    array( 'issue' => '', 'date' => '', 'today' => '2026-09-20', 'theme' => 'harbor-navy', 'logo_url' => '', 'school_name' => 'NE' )
+);
+ptk_test_ok( strpos( $m2, '&#8470;' ) === false && strpos( $m2, '2026' ) === false, 'no issue and no date: no eyebrow at all' );
+
+$ev = PTK_Newsletter_Renderer::render(
+    array( array( 'type' => 'events', 'data' => array( 'rows' => array(
+        array( 'date' => '2026-09-14', 'title' => 'ASE registration opens', 'desc' => 'Members first' ),
+        array( 'date' => '2026-09-10', 'title' => 'Already happened', 'desc' => '' ),
+    ) ) ) ),
+    array( 'issue' => 41, 'date' => '2026-09-13', 'today' => '2026-09-13', 'theme' => 'harbor-navy', 'logo_url' => '', 'school_name' => 'NE' )
+);
+ptk_test_ok( strpos( $ev, '§ Coming up' ) !== false, 'events open with the § Coming up rule' );
+ptk_test_ok( strpos( $ev, ">What's coming up<" ) !== false, 'events heading is "What\'s coming up"' );
+ptk_test_ok( strpos( $ev, '>Monday<' ) !== false, 'weekday renders under the numeral' );
+ptk_test_ok( strpos( $ev, 'data-event-row' ) !== false && strpos( $ev, 'data-event-numeral' ) !== false, 'rows and numerals carry hooks for the relabel script' );
+ptk_test_ok( strpos( $ev, '#a51d23' ) === false, 'a past date is never red' );
+ptk_test_ok( strpos( $ev, 'opacity:0.45' ) !== false, 'a past row is faded' );
+ptk_test_ok( strpos( $ev, 'border-top:1px solid #111' ) === false, 'no strong line on the first row; the § rule is the strong line' );
+ptk_test_ok( strpos( $ev, 'lining-nums tabular-nums' ) !== false, 'numerals use lining figures' );
 
 ptk_test_done();

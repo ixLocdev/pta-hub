@@ -2,13 +2,17 @@
 /**
  * Newsletter renderer: turns structured block data into newsletter HTML.
  *
- * Mirrors the visual language of the source Northeast newsletter design
- * (masthead, navy announcement strip, hairline-ruled event rows with a
- * relabeling date pill, a navy hero, story cards, and a signoff footer) but
- * parametrized by a palette and driven entirely by block data. Every style
- * is applied inline so the same markup is safe to reuse in a future email
+ * Mirrors the Northeast house style as issue № 040 set it (masthead with
+ * the full issue line, ONE navy announcement callout with a when line,
+ * dates and a button, "§ label" sections on white for the top story,
+ * stories and quick notes, hairline-ruled event rows with a relabeling date
+ * tag, and a signoff footer), driven entirely by block data. Every style is
+ * applied inline so the same markup is safe to reuse in a future email
  * renderer. WordPress-free beyond the sanitizing/escaping helpers shimmed in
  * tests/bootstrap.php, so it can be unit-tested with plain php.
+ *
+ * Depends on PTK_Newsletter_Data (dates, school year, timeline states): the
+ * renderer is not usable without it, and does not pretend otherwise.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -34,6 +38,9 @@ class PTK_Newsletter_Renderer {
         'text'     => '#111111',
         'muted'    => '#4a4a4a',
         'hairline' => '#e6e3dc',
+        'on_navy'  => '#cfd8e3',
+        'small'    => '#6b6b6b',
+        'chip'     => '#f0eee7',
     );
 
     /**
@@ -46,8 +53,11 @@ class PTK_Newsletter_Renderer {
         'upcoming'  => 'Upcoming',
     );
 
-    const FONT_SANS   = "'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif";
-    const FONT_SERIF  = "'Fraunces',Georgia,serif";
+    const FONT_SANS   = "'Libre Franklin',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif";
+    const FONT_SERIF  = "Newsreader,Georgia,serif";
+
+    /** Lining, even-width figures for every date numeral (house style "Type"). */
+    const NUMERALS    = 'font-variant-numeric:lining-nums tabular-nums;';
 
     /**
      * Render an ordered array of { type, data } blocks into newsletter HTML.
@@ -90,6 +100,7 @@ class PTK_Newsletter_Renderer {
     private static function render_header( array $data, array $opts ) {
         $school_name = isset( $data['school_name'] ) ? self::str( $data['school_name'] ) : '';
         $headline    = isset( $data['headline'] ) ? self::str( $data['headline'] ) : '';
+        $summary     = isset( $data['summary'] ) ? self::str( $data['summary'] ) : '';
         $greeting    = isset( $data['greeting'] ) ? self::str( $data['greeting'] ) : '';
         $issue       = isset( $opts['issue'] ) ? $opts['issue'] : '';
         $date        = isset( $opts['date'] ) ? self::str( $opts['date'] ) : '';
@@ -112,9 +123,14 @@ class PTK_Newsletter_Renderer {
 
         $issue_html = '';
         if ( '' !== trim( self::str( $issue ) ) ) {
-            // "№ 042": the house style, and the same label the share page and
-            // settings preview use (PTK_Share_Text::issue_label pads to 3).
-            $issue_html = '<div style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:' . esc_attr( self::PALETTE['muted'] ) . ';font-weight:600;margin-bottom:10px;">&#8470;&nbsp;' . esc_html( PTK_Share_Text::issue_label( self::str( $issue ) ) ) . '</div>';
+            // "Newsletter № 042 · 2026–2027": the house style, and the same
+            // number the share page and settings preview use
+            // (PTK_Share_Text::issue_label pads to 3). No date, no year.
+            $year        = PTK_Newsletter_Data::school_year_label( $date );
+            $issue_html  = '<div style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:' . esc_attr( self::PALETTE['muted'] ) . ';font-weight:600;margin-bottom:10px;">';
+            $issue_html .= 'Newsletter&nbsp;&#8470;&nbsp;' . esc_html( PTK_Share_Text::issue_label( self::str( $issue ) ) );
+            $issue_html .= ( '' !== $year ) ? ' · ' . esc_html( $year ) : '';
+            $issue_html .= '</div>';
         }
 
         $headline_html = '';
@@ -126,12 +142,18 @@ class PTK_Newsletter_Renderer {
         if ( '' !== trim( $date_display ) ) {
             $date_html = '<div style="font-weight:600;color:' . esc_attr( self::PALETTE['text'] ) . ';">' . esc_html( $date_display ) . '</div>';
         }
+        if ( '' !== trim( $summary ) ) {
+            $date_html .= '<div>' . esc_html( $summary ) . '</div>';
+        }
 
         $html  = '<div data-ptk-block="' . esc_attr( 'header' ) . '" style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:32px 20px;border-bottom:1px solid ' . esc_attr( self::PALETTE['hairline'] ) . ';box-sizing:border-box;">';
         $html .= '<div style="max-width:840px;margin:0 auto;">';
-        $html .= '<div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap;">';
+        $html .= '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:24px;flex-wrap:wrap;">';
+        $html .= '<div style="display:flex;align-items:center;gap:12px;">';
         $html .= $logo_html;
         $html .= '<div style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:' . esc_attr( self::PALETTE['primary'] ) . ';font-weight:700;line-height:1.4;">' . esc_html( $school_name ) . '</div>';
+        $html .= '</div>';
+        // Round 2 hook: the "Join the PTA" link goes here, as this row's second flex child.
         $html .= '</div>';
         $html .= '<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;border-top:1px solid ' . esc_attr( self::PALETTE['text'] ) . ';padding-top:20px;">';
         $html .= '<div style="flex:1 1 240px;min-width:240px;">';
@@ -178,7 +200,10 @@ class PTK_Newsletter_Renderer {
     }
 
     /**
-     * Upcoming-events list: date number, title, desc, and a relabeling pill.
+     * Coming up: "§ Coming up", then one hairline-ruled row per date --
+     * numeral and weekday, title and detail, and a relabeling tag. Past rows
+     * fade (grey numeral, never red); the relabel script redoes that for the
+     * reader's own day via data-event-row / data-event-numeral.
      */
     private static function render_events( array $data, array $opts ) {
         $rows  = isset( $data['rows'] ) && is_array( $data['rows'] ) ? $data['rows'] : array();
@@ -200,13 +225,15 @@ class PTK_Newsletter_Renderer {
             $valid_rows[] = $row;
         }
         if ( empty( $valid_rows ) ) {
-            return self::placeholder( 'events', 'Your upcoming events will appear here.', $opts );
+            return self::placeholder( 'events', 'Your dates coming up will appear here.', $opts );
         }
         $rows = $valid_rows;
 
-        $html  = '<div data-ptk-block="' . esc_attr( 'events' ) . '" style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:20px 20px 40px;box-sizing:border-box;">';
+        $html  = '<div data-ptk-block="' . esc_attr( 'events' ) . '" style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:40px 20px 40px;box-sizing:border-box;">';
         $html .= '<div style="max-width:840px;margin:0 auto;">';
-        $html .= '<h2 style="font-family:' . self::FONT_SANS . ';font-weight:800;font-size:clamp(24px,5vw,30px);line-height:1.05;letter-spacing:-0.02em;margin:0 0 28px;color:' . esc_attr( self::PALETTE['text'] ) . ';">Upcoming</h2>';
+        $html .= self::section_rule( 'Coming up', '28px' );
+        // Round 2 hook: "See full calendar" sits right-aligned in a flex row with this h2.
+        $html .= '<h2 style="font-family:' . self::FONT_SANS . ';font-weight:800;font-size:clamp(24px,5vw,30px);line-height:1.05;letter-spacing:-0.02em;margin:0 0 28px;color:' . esc_attr( self::PALETTE['text'] ) . ';">What\'s coming up</h2>';
 
         $count = count( $rows );
         foreach ( $rows as $i => $row ) {
@@ -214,29 +241,41 @@ class PTK_Newsletter_Renderer {
             $title = isset( $row['title'] ) ? self::str( $row['title'] ) : '';
             $desc  = isset( $row['desc'] ) ? self::str( $row['desc'] ) : '';
 
-            $bucket = ( '' !== $date && class_exists( 'PTK_Newsletter_Data' ) )
+            $bucket = ( '' !== $date )
                 ? PTK_Newsletter_Data::relabel_for_date( $date, $today )
                 : 'upcoming';
             $label  = isset( self::EVENT_LABELS[ $bucket ] ) ? self::EVENT_LABELS[ $bucket ] : self::EVENT_LABELS['upcoming'];
+            $past   = ( 'past' === $bucket );
 
-            $date_color = ( 'past' === $bucket ) ? self::PALETTE['emphasis'] : self::PALETTE['primary'];
+            // Past is grey, never red: house style keeps red for no school,
+            // deadlines and urgent things.
+            $date_color   = $past ? self::PALETTE['small'] : self::PALETTE['primary'];
             $date_display = '' !== $date ? self::format_event_date( $date ) : '';
+            $weekday      = '' !== $date ? self::format_event_weekday( $date ) : '';
 
-            $top_border    = ( 0 === $i ) ? '1px solid ' . self::PALETTE['text'] : '1px solid ' . self::PALETTE['hairline'];
-            $bottom_border = ( $count - 1 === $i ) ? 'border-bottom:1px solid ' . self::PALETTE['hairline'] . ';' : '';
+            // The § rule above the list is the only strong line; every row
+            // is separated by a hairline.
+            $row_style  = 'display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-start;padding:18px 0;border-top:1px solid ' . self::PALETTE['hairline'] . ';';
+            $row_style .= ( $count - 1 === $i ) ? 'border-bottom:1px solid ' . self::PALETTE['hairline'] . ';' : '';
+            $row_style .= $past ? 'opacity:0.45;' : '';
 
-            $html .= '<div style="display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-start;padding:18px 0;border-top:' . esc_attr( $top_border ) . ';' . $bottom_border . '">';
+            $pill_style = 'font-size:10px;letter-spacing:0.16em;text-transform:uppercase;font-weight:700;color:' . ( $past ? self::PALETTE['muted'] : self::PALETTE['primary'] ) . ';background:' . ( $past ? self::PALETTE['hairline'] : self::PALETTE['chip'] ) . ';padding:5px 9px;border-radius:4px;white-space:nowrap;align-self:flex-start;';
+
+            $html .= '<div data-event-row style="' . esc_attr( $row_style ) . '">';
             // 112px fits the widest realistic date, "May 28" (~100px at 30px
             // serif). At 88px two-digit days wrapped: "Sep" / "24". nowrap so
             // a wider font fallback overflows a little instead of breaking.
             $html .= '<div style="flex:0 0 112px;">';
-            $html .= '<div style="font-family:' . self::FONT_SERIF . ';font-weight:500;font-size:30px;line-height:0.95;white-space:nowrap;color:' . esc_attr( $date_color ) . ';">' . esc_html( $date_display ) . '</div>';
+            $html .= '<div data-event-numeral style="font-family:' . self::FONT_SERIF . ';font-weight:500;font-size:30px;line-height:0.95;white-space:nowrap;color:' . esc_attr( $date_color ) . ';' . self::NUMERALS . '">' . esc_html( $date_display ) . '</div>';
+            if ( '' !== $weekday ) {
+                $html .= '<div style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:' . esc_attr( self::PALETTE['muted'] ) . ';font-weight:600;margin-top:4px;">' . esc_html( $weekday ) . '</div>';
+            }
             $html .= '</div>';
             $html .= '<div style="flex:1 1 220px;min-width:200px;">';
             $html .= '<div style="font-size:17px;font-weight:600;line-height:1.35;margin-bottom:4px;">' . esc_html( $title ) . '</div>';
             $html .= '<div style="font-size:14px;color:' . esc_attr( self::PALETTE['muted'] ) . ';line-height:1.5;">' . wp_kses_post( $desc ) . '</div>';
             $html .= '</div>';
-            $html .= '<span data-event-date="' . esc_attr( $date ) . '" data-default="' . esc_attr( $label ) . '" style="font-size:10px;letter-spacing:0.16em;text-transform:uppercase;font-weight:700;color:' . esc_attr( self::PALETTE['primary'] ) . ';background:#f0eee7;padding:5px 9px;border-radius:4px;white-space:nowrap;align-self:flex-start;">' . esc_html( $label ) . '</span>';
+            $html .= '<span data-event-date="' . esc_attr( $date ) . '" data-default="' . esc_attr( $label ) . '" style="' . esc_attr( $pill_style ) . '">' . esc_html( $label ) . '</span>';
             $html .= '</div>';
         }
 
@@ -400,6 +439,17 @@ class PTK_Newsletter_Renderer {
     }
 
     /**
+     * The "§ Coming up" mark and its ink line, which opens every white
+     * section. Deliberately not named render_*: see the dispatch in render().
+     */
+    private static function section_rule( $mark, $margin_bottom = '16px' ) {
+        return '<div style="display:flex;align-items:center;gap:18px;margin-bottom:' . esc_attr( $margin_bottom ) . ';">'
+            . '<div style="font-family:' . self::FONT_SERIF . ';font-style:italic;font-weight:500;font-size:15px;color:' . esc_attr( self::PALETTE['primary'] ) . ';white-space:nowrap;">§ ' . esc_html( $mark ) . '</div>'
+            . '<div style="flex:1;height:1px;background:' . esc_attr( self::PALETTE['text'] ) . ';min-width:20px;"></div>'
+            . '</div>';
+    }
+
+    /**
      * Preview-only stub for a block the user hasn't written yet, so the builder can
      * outline it and show where it will land. NEVER used by the save path — the
      * published newsletter still renders nothing for an empty block.
@@ -466,6 +516,20 @@ class PTK_Newsletter_Renderer {
             return $date;
         }
         return $dt->format( 'M j' );
+    }
+
+    /**
+     * The weekday under an event numeral: "Monday".
+     *
+     * @param string $date 'YYYY-MM-DD'.
+     * @return string Weekday, or '' if unparseable.
+     */
+    private static function format_event_weekday( $date ) {
+        $dt = DateTime::createFromFormat( '!Y-m-d', $date );
+        if ( ! $dt ) {
+            return '';
+        }
+        return $dt->format( 'l' );
     }
 
     /**
