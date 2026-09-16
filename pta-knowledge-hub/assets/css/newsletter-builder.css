@@ -694,6 +694,18 @@
     min-height: 34px;
 }
 
+/* Says what Create / Stop sharing just did (they no longer reload the page).
+   Empty until then; a plain block, never hidden from CSS. */
+.ptk-nl-preview-link-status {
+    margin: 8px 0 0;
+    font-size: 13px;
+    color: #4b5563;
+}
+
+.ptk-nl-preview-link-status:empty {
+    margin: 0;
+}
+
 /* ── Live preview column ──
    Must keep a real, nonzero width at all times (rule 2 at the top). */
 .ptk-nl-preview {

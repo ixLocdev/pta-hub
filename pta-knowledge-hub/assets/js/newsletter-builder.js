@@ -106,7 +106,194 @@
         // Straight away, not debounced: the preview column must never sit
         // blank while a volunteer wonders whether it's broken.
         refreshPreview();
+
+        // Added in 4.1.1. LAST, and each one fenced off on its own: a throw
+        // above this line would leave the whole wizard inert, and a throw in
+        // one of these must not take the others down with it.
+        safeBoot(bindCopyButtons);
+        safeBoot(bindPreviewLinks);
+        safeBoot(bindUnsavedGuard);
     });
+
+    /** Run one optional boot step; log a failure instead of throwing it. */
+    function safeBoot(fn) {
+        try {
+            fn();
+        } catch (err) {
+            if (window.console && window.console.error) {
+                window.console.error('Newsletter builder: part of the page failed to start:', err);
+            }
+        }
+    }
+
+    /* ──────────────────────────────────────────
+     * Copy buttons: <button data-ptk-copy="#selector"> copies that field's
+     * value (or, for a link, its href).
+     * ────────────────────────────────────────── */
+
+    function bindCopyButtons() {
+        $(document).on('click', '[data-ptk-copy]', function (e) {
+            e.preventDefault();
+            var $button = $(this);
+            var $source = $($button.attr('data-ptk-copy')).first();
+            if (!$source.length) {
+                return;
+            }
+            var text = $source.is('a') ? $source.attr('href') : $source.val();
+            var label = $button.data('ptkCopyLabel') || $button.text();
+            $button.data('ptkCopyLabel', label);
+
+            function done(ok) {
+                $button.text(ok ? 'Copied!' : 'Press Ctrl+C (or \u2318C) to copy');
+                setTimeout(function () {
+                    $button.text(label);
+                }, 2000);
+            }
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function () {
+                    done(true);
+                }, function () {
+                    done(fallbackCopy($source, text));
+                });
+            } else {
+                done(fallbackCopy($source, text));
+            }
+        });
+    }
+
+    /** Older browsers / non-secure pages: select the text and copy that. */
+    function fallbackCopy($source, text) {
+        try {
+            if ($source.is('input, textarea')) {
+                $source.trigger('focus').trigger('select');
+                return document.execCommand('copy');
+            }
+            var $tmp = $('<textarea readonly style="position:absolute;left:-9999px;"></textarea>').val(text).appendTo('body');
+            $tmp.trigger('select');
+            var ok = document.execCommand('copy');
+            $tmp.remove();
+            return ok;
+        } catch (err) {
+            return false;
+        }
+    }
+
+    /* ──────────────────────────────────────────
+     * Preview links, without reloading the page.
+     *
+     * The panel's Create / Stop sharing controls are real <form>s that post
+     * to admin.php (they still work without JavaScript). Here they become
+     * AJAX calls that swap the panel's body in place, so nothing typed into
+     * the newsletter is lost and the volunteer stays on step 4.
+     * ────────────────────────────────────────── */
+
+    function bindPreviewLinks() {
+        if (typeof ptkNlData === 'undefined' || !ptkNlData || !ptkNlData.ajaxUrl || !ptkNlData.previewLinkNonce) {
+            return; // Leave the plain forms to do their job.
+        }
+
+        $(document).on('submit', '[data-preview-link-action]', function (e) {
+            var $form = $(this);
+            var $panel = $form.closest('[data-preview-link-panel]');
+            var postId = parseInt($panel.attr('data-post-id'), 10) || 0;
+            if (!postId) {
+                return; // Let the form post normally.
+            }
+            e.preventDefault();
+
+            var mode = $form.attr('data-preview-link-action');
+            var $status = $panel.find('[data-preview-link-status]');
+            var $button = $form.find('button[type="submit"]');
+
+            $button.prop('disabled', true);
+            $status.text(mode === 'generate' ? 'Making a link\u2026' : 'Stopping the link\u2026');
+
+            $.post(ptkNlData.ajaxUrl, {
+                action: 'ptk_nl_preview_link',
+                nonce: ptkNlData.previewLinkNonce,
+                post_id: postId,
+                mode: mode
+            }).done(function (response) {
+                if (!response || !response.success || !response.data || typeof response.data.html !== 'string') {
+                    $button.prop('disabled', false);
+                    $status.text((response && response.data && response.data.message) || 'That didn\u2019t work. Please try again.');
+                    return;
+                }
+                $panel.find('[data-preview-link-body]').html(response.data.html);
+                $status.text(response.data.message || '');
+
+                // Keep keyboard users where the action happened.
+                var $focus = $panel.find('#ptk-nl-preview-url');
+                if (!$focus.length) {
+                    $focus = $panel.find('[data-preview-link-body] button').first();
+                }
+                $focus.trigger('focus');
+            }).fail(function (xhr) {
+                $button.prop('disabled', false);
+                var msg = xhr && xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message;
+                $status.text(msg || 'That didn\u2019t work \u2014 check your connection and try again. Nothing you typed was lost.');
+            });
+        });
+    }
+
+    /* ──────────────────────────────────────────
+     * Unsaved-changes guard.
+     *
+     * The newsletter is only saved when a Save / Publish / Update button is
+     * pressed, so leaving the page any other way throws edits away. Warn
+     * first -- but only when something really changed. "Changed" means the
+     * newsletter as it would be saved (blocks, issue, date) differs from how
+     * it loaded, so typing something and deleting it again doesn't nag.
+     * The share panel saves itself and is not part of this.
+     * ────────────────────────────────────────── */
+
+    function bindUnsavedGuard() {
+        var $form = $('#ptk-nl-form');
+        if (!$form.length) {
+            return;
+        }
+
+        var baseline = formState();
+        var submitting = false;
+        var dirty = false;
+
+        // A cheap flag on input; the snapshot comparison on leaving is what
+        // decides.
+        $form.on('input change', function () {
+            dirty = true;
+        });
+        $(document).on('click', '.ptk-nl-add, .ptk-nl-remove-row, .ptk-nl-add-image, .ptk-nl-remove-image, .ptk-nl-arr-up, .ptk-nl-arr-down, .ptk-nl-arr-remove, .ptk-nl-arr-addback', function () {
+            dirty = true;
+        });
+        $(document).on('sortstop', '[data-arrange]', function () {
+            dirty = true;
+        });
+
+        // A real save is leaving on purpose.
+        $form.on('submit', function () {
+            submitting = true;
+        });
+
+        window.addEventListener('beforeunload', function (e) {
+            if (submitting || !dirty || formState() === baseline) {
+                return undefined;
+            }
+            e.preventDefault();
+            e.returnValue = '';
+            return '';
+        });
+    }
+
+    /** Everything a save would send, as one comparable string. */
+    function formState() {
+        serialize();
+        return [
+            $('#ptk-nl-blocks-json').val(),
+            $('[name="ptk_nl_issue"]').val(),
+            $('[name="ptk_nl_date"]').val()
+        ].join('\u0000');
+    }
 
     /* ──────────────────────────────────────────
      * Wizard step navigation

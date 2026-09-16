@@ -254,9 +254,7 @@ class PTK_Public_Preview {
         $post_id = isset( $_POST['post'] ) ? absint( $_POST['post'] ) : 0;
         self::guard_request( $post_id, 'ptk_generate_preview_' . $post_id );
 
-        $token = bin2hex( random_bytes( 16 ) );
-        update_post_meta( $post_id, self::META_TOKEN, $token );
-        update_post_meta( $post_id, self::META_EXPIRES, time() + self::TTL_SECONDS );
+        self::create_token( $post_id );
 
         wp_safe_redirect( self::redirect_target( $post_id ) );
         exit;
@@ -266,11 +264,36 @@ class PTK_Public_Preview {
         $post_id = isset( $_POST['post'] ) ? absint( $_POST['post'] ) : 0;
         self::guard_request( $post_id, 'ptk_revoke_preview_' . $post_id );
 
-        delete_post_meta( $post_id, self::META_TOKEN );
-        delete_post_meta( $post_id, self::META_EXPIRES );
+        self::revoke_token( $post_id );
 
         wp_safe_redirect( self::redirect_target( $post_id ) );
         exit;
+    }
+
+    /**
+     * Start a fresh 7-day preview link for a post. No auth here -- callers
+     * (the admin-action handlers above, and the Newsletter Builder's AJAX
+     * handler) check the nonce, edit_post and the post type first.
+     *
+     * @param int $post_id Post ID.
+     * @return string The new token.
+     */
+    public static function create_token( $post_id ) {
+        $token = bin2hex( random_bytes( 16 ) );
+        update_post_meta( $post_id, self::META_TOKEN, $token );
+        update_post_meta( $post_id, self::META_EXPIRES, time() + self::TTL_SECONDS );
+        return $token;
+    }
+
+    /**
+     * Stop a post's preview link working. Same no-auth contract as
+     * create_token().
+     *
+     * @param int $post_id Post ID.
+     */
+    public static function revoke_token( $post_id ) {
+        delete_post_meta( $post_id, self::META_TOKEN );
+        delete_post_meta( $post_id, self::META_EXPIRES );
     }
 
     /**
