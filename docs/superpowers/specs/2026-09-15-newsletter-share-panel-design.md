@@ -1,6 +1,6 @@
 # Newsletter Share Panel — Design
 
-> **STATUS: DRAFT** (2026-09-15, rev 2 after code audit). Brainstormed with Lucas;
+> **STATUS: DRAFT** (2026-09-16, rev 3 after two code audits). Brainstormed with Lucas;
 > not yet planned or built.
 
 ## The problem
@@ -79,9 +79,34 @@ So: **one panel, on the Builder's "Finish & publish" step**, rendered when
 `ptk_nl_msg=published`. Behaviourally this is what we wanted; it is simply one
 screen rather than two.
 
+It follows the proven sibling-panel pattern: `render_preview_panel()` already
+sits outside `#ptk-nl-form` carrying `data-step="4"` (`:877`), and `showStep()`
+toggles every `[data-step]` in `.ptk-nl-wizard` (`newsletter-builder.js:141-146`).
+
+**The just-published state needs a boot hint, or it is unreachable.** After
+`handle_submission()` redirects with `ptk_nl_msg=published` (`:201-207`), the JS
+boot unconditionally calls `showStep(FIRST_STEP, false)` (`js:101`) and there is
+no deep-link to a step anywhere in that file. The volunteer would land on step 1
+with a "Newsletter published" notice while the share panel sat hidden three steps
+away. Fix: PHP localizes `startStep = 4` when `ptk_nl_msg` is set, and the boot
+calls `showStep( ptkNlData.startStep || FIRST_STEP, false )`.
+
+**CSS contract** (`newsletter-builder.css:9-26`): any new `[data-step]` element
+must be a plain block, never `display:flex`, and never hidden by the stylesheet.
+
 **Forms cannot nest** (`class-newsletter-builder.php:869-870`). The panel's
 textareas therefore save by AJAX against their own nonce, not by riding the
-Builder's form submit.
+Builder's form submit — a second nonce (`ptk_nl_share`) alongside the existing
+one in `ptkNlData` (`:216`, `:447-451`).
+
+**The panel's JS must not be able to kill the Builder.** The boot block
+(`js:83-107`) is a flat list of `bind*()` calls; a throw anywhere in it aborts
+before `showStep()` and the whole wizard goes inert — a documented failure mode
+that `node --check` does not catch
+(`plans/2026-07-16-newsletter-wizard-live-preview.md:462`). The share binding goes
+**last** in the boot block and is wrapped in `try/catch`: the panel is optional,
+the Builder is not. Its copy buttons are self-contained — `copy-button.js` is a
+front-end asset and is not enqueued on this admin hook (`enqueue_assets()` `:416-452`).
 
 ## Components
 
@@ -94,9 +119,12 @@ Pure PHP, WordPress-free beyond sanitizing shims — the same shape as
 carry the URL, issue number, date, or a reliable school name — issue and date are
 post meta (`class-newsletter-builder.php:300-301`), the permalink needs a post ID,
 and `school_name` falls back to `get_bloginfo('name')` (`:346-358`). This mirrors
-the renderer's existing `$opts` bag (`class-newsletter-renderer.php:52-57`, built
-by `render_opts()` at `:325-337`). `$opts` carries `url`, `issue`, `date`,
-`school_name`.
+the renderer's existing `$opts` bag (`class-newsletter-renderer.php:52-57`).
+**It cannot reuse `render_opts()`** (`:325-337`): that method is `private`, and it
+supplies `issue`, `date`, `today`, `theme`, `logo_url`, `school_name` and
+`image_url_cb` but **no `url`**. The panel builds its own opts — or a new public
+helper does — adding `url = get_permalink( $post_id )`. `$opts` carries `url`,
+`issue`, `date`, `school_name`.
 
 **All body fields are HTML**, not plain text — `announcement.text`,
 `featured.body`, `card.body`, `event.desc`, `greeting`, `signoff` all pass through
@@ -146,6 +174,20 @@ blocks. Rule: **JS marks a channel dirty on first `input`; only dirty channels
 write meta. No meta means regenerate at render. "Reset to generated" deletes the
 meta.**
 
+**A frozen caption can go stale.** The dirty rule protects a hand-fixed caption,
+but it also means "PTA Newsletter #040 is out" survives the issue being renumbered
+to 41. Store the generation-time inputs hash alongside each edited caption; when it
+no longer matches, show "the newsletter changed since you edited this" beside the
+reset control. Warn, do not silently overwrite.
+
+**Capabilities on the AJAX save.** The existing preview endpoint checks only
+`current_user_can('edit_posts')` (`:218`) — fine for a stateless render, wrong for
+a per-post write. The share save checks `current_user_can('edit_post', $post_id)`
+**and** `get_post_type($post_id) === 'pta_newsletter'`, the pattern already used by
+`handle_submission()` (`:150-159`) and `PTK_Public_Preview::guard_request()`
+(`:295-304`). The upload-your-own-square path additionally needs `upload_files`
+(the Builder already assumes it via `wp_enqueue_media()`, `:421`).
+
 Regeneration happens **lazily at render**, not on `save_post`:
 `persist_newsletter()` writes the post *before* its meta
 (`class-newsletter-builder.php:279-309`), so a `save_post` hook would read stale
@@ -161,13 +203,27 @@ may be bundled. **Bundle only the weights and the Latin subset the square actual
 draws** — two full families would add roughly 1 MB to a 218 KB plugin. The plugin
 bundles no fonts today.
 
-Regenerates when issue, date, school name or share color change — **unless** a
-custom square was uploaded, which is never touched.
+**Change detection is a stored hash**, not a guess: a hash of
+`(issue, date, school_name, share_color, PTK_VERSION)` saved in post meta, compared
+when the Builder panel renders. Regeneration happens **only there** — never on the
+public share page.
+
+A custom uploaded square is **never** regenerated over. It needs a way back,
+though: a **"Use the generated square again"** action clears the custom-attachment
+meta and returns to auto. Without it, a school that uploads once is stuck forever.
 
 **This is the plugin's first writer to the media library** (existing code only
 reads, `class-newsletter-builder.php:334`). It must `require wp-admin/includes/image.php`
-for `wp_generate_attachment_metadata`, respect per-site upload quotas, and set
-`post_parent` so the square is deleted with its newsletter. Uploads land per-site
+for `wp_generate_attachment_metadata` and respect per-site upload quotas.
+
+**Cleanup needs an explicit hook — `post_parent` does not delete anything.**
+`wp_delete_post()` *reparents* child attachments rather than deleting them, and
+`wp_trash_post()` leaves them alone entirely. Store the square's attachment ID in
+post meta and hook `before_delete_post` for `pta_newsletter`, calling
+`wp_delete_attachment( $id, true )` — the pattern `PTK_Multisite` already uses
+(`class-multisite.php:39-40`). **Only the auto-generated square is deleted**, never
+a user-uploaded one, which may be an existing library image used elsewhere.
+`post_parent` is still worth setting for the "Uploaded to" column. Uploads land per-site
 (`sites/N/`), which is correct; `PTK_Multisite` syncs only `pta_knowledge`
 (`class-multisite.php:312,419,498`), so the square is never copied between sites.
 
@@ -188,9 +244,19 @@ not implementable: preview lookups only match `draft/pending/private/future`
 (`class-public-preview.php:92`) and tokens are *deleted* on publish (`:310-318`) —
 the exact opposite of what a share page needs. Since the page serves an
 already-published newsletter, a token protects nothing and would need its own
-expiry and cron. **The page gates on `post_status === 'publish'` and 404s
-otherwise.** Drafts get no phone handoff; the panel says the QR appears once
-published.
+expiry and cron. **The page gates on BOTH `post_type === 'pta_newsletter'` and
+`post_status === 'publish'`, and 404s otherwise.** The post-type check is not
+optional: without it, `?ptk_share=<id>` pointed at a restricted `pta_knowledge`
+entry could leak at least a title. Drafts get no phone handoff; the panel says the
+QR appears once published.
+
+`ptk_share` must be registered through the `query_vars` filter exactly as
+`ptk_preview` is (`class-public-preview.php:64-67`), or `get_query_var()` returns
+nothing. No other code claims that var.
+
+**The page is strictly read-only.** It never regenerates the square and never
+writes to the media library — otherwise an unauthenticated GET could trigger image
+work on the server.
 
 Shows: the square (long-press to save), the caption with a copy button, and a
 WhatsApp share button.
@@ -225,7 +291,12 @@ The spec names the capability as `manage_options` on the subsite (a site admin).
 | Captions read robotically | Calibrate the shortening rule against `fb-post-*.md`; ship "reset to generated" |
 | Dirty-flag lost → user edits silently overwritten | Absence of meta means regenerate; only JS-marked channels write |
 | Unreadable school colors | Contrast guard on *resolved* colors |
-| Media-library writes on multisite | `post_parent`, quota check, `wp-admin/includes/image.php` |
+| Media-library writes on multisite | Quota check, `wp-admin/includes/image.php` |
+| Orphaned squares after delete | `before_delete_post` + `wp_delete_attachment`; auto-generated only |
+| Share panel JS throws and kills the Builder | Binding goes last in the boot block, wrapped in `try/catch` |
+| Just-published state unreachable | `startStep` boot hint; verify in Playground, not by reading code |
+| Frozen caption goes stale after renumbering | Inputs hash stored with the caption; warn beside reset |
+| Public share URL triggering server work | Share page is read-only; regeneration is admin-render only |
 | Font bundle bloats the zip | Latin subset, only the weights drawn |
 
 ## Testing
