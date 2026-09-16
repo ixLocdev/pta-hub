@@ -1242,7 +1242,7 @@ class PTK_Newsletter_Builder {
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-header-headline">Headline</label>
                     <input type="text" id="ptk-nl-header-headline" data-field="headline" value="<?php echo esc_attr( isset( $data['headline'] ) ? $data['headline'] : '' ); ?>" aria-describedby="ptk-nl-header-headline-hint">
-                    <p class="description" id="ptk-nl-header-headline-hint">The big title at the top — for example "Week of July 16." Leave blank and we'll use the week of your issue date.</p>
+                    <p class="description" id="ptk-nl-header-headline-hint">The big title at the top — for example "Week of September 14." Leave blank and we'll use the week of your issue date.</p>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-header-greeting">Greeting</label>

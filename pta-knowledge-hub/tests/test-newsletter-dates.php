@@ -25,4 +25,13 @@ $wednesday = '2026-06-24';
 ptk_test_ok( PTK_Newsletter_Data::relabel_for_date( '2026-06-28', $wednesday ) === 'this-week', 'wednesday today: sunday end of week is this-week' );
 ptk_test_ok( PTK_Newsletter_Data::relabel_for_date( '2026-06-29', $wednesday ) === 'next-week', 'wednesday today: next monday is next-week' );
 
+// issue_week_monday(): the Monday a "Week of" headline names.
+ptk_test_ok( PTK_Newsletter_Data::issue_week_monday( '2026-09-16' ) === '2026-09-14', 'Wed 2026-09-16 -> Mon 2026-09-14' );
+ptk_test_ok( PTK_Newsletter_Data::issue_week_monday( '2026-09-14' ) === '2026-09-14', 'Mon 2026-09-14 -> itself' );
+ptk_test_ok( PTK_Newsletter_Data::issue_week_monday( '2026-09-20' ) === '2026-09-21', 'Sun 2026-09-20 -> the following Monday, 2026-09-21' );
+ptk_test_ok( PTK_Newsletter_Data::issue_week_monday( '2026-09-13' ) === '2026-09-14', 'Sun 2026-09-13 (#040) -> Mon 2026-09-14' );
+ptk_test_ok( PTK_Newsletter_Data::issue_week_monday( 'nope' ) === '', 'garbage date -> empty' );
+// relabel_for_date() still uses the same Monday math after the refactor.
+ptk_test_ok( PTK_Newsletter_Data::relabel_for_date( '2026-09-20', '2026-09-16' ) === 'this-week', 'relabel: Sunday is still in the Wednesday\'s week' );
+
 ptk_test_done();

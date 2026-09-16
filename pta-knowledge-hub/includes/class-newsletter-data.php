@@ -312,6 +312,42 @@ class PTK_Newsletter_Data {
     }
 
     /**
+     * The Monday starting the calendar week (Monday-Sunday) that $dt is in.
+     * Shared by relabel_for_date() and issue_week_monday().
+     *
+     * @param DateTime $dt
+     * @return DateTime A new object; $dt is not changed.
+     */
+    private static function monday_of( DateTime $dt ) {
+        // ISO-8601 day-of-week: Monday = 1 ... Sunday = 7.
+        $dow    = (int) $dt->format( 'N' );
+        $monday = clone $dt;
+        $monday->modify( '-' . ( $dow - 1 ) . ' days' );
+        return $monday;
+    }
+
+    /**
+     * The Monday a newsletter's "Week of ..." headline names, for its issue
+     * date. A weekday belongs to its own week (Wed Sep 16 -> Mon Sep 14).
+     * A SUNDAY belongs to the week starting the next day: school newsletters
+     * go out on Sunday for the coming week (#040 was sent Sun Sep 13 as
+     * "Week of September 14"). Saturday stays with its own week.
+     *
+     * @param mixed $date Issue date 'YYYY-MM-DD'.
+     * @return string 'YYYY-MM-DD', or '' if the date is not valid.
+     */
+    public static function issue_week_monday( $date ) {
+        $dt = self::parse_date( $date );
+        if ( ! $dt ) {
+            return '';
+        }
+        if ( 7 === (int) $dt->format( 'N' ) ) {
+            $dt->modify( '+1 day' );
+        }
+        return self::monday_of( $dt )->format( 'Y-m-d' );
+    }
+
+    /**
      * Classify an event date relative to today into a display bucket, with
      * the calendar week starting on Monday.
      *
@@ -334,10 +370,7 @@ class PTK_Newsletter_Data {
             return 'past';
         }
 
-        // ISO-8601 day-of-week: Monday = 1 ... Sunday = 7.
-        $dow           = (int) $today_dt->format( 'N' );
-        $this_monday   = clone $today_dt;
-        $this_monday->modify( '-' . ( $dow - 1 ) . ' days' );
+        $this_monday   = self::monday_of( $today_dt );
         $this_sunday   = clone $this_monday;
         $this_sunday->modify( '+6 days' );
 

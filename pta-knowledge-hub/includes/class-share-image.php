@@ -138,6 +138,14 @@ class PTK_Share_Image {
         if ( ! preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $date, $m ) ) {
             return $date;
         }
+        // Same Monday as the newsletter's own "Week of" headline, so the
+        // square and the masthead never name different weeks.
+        if ( class_exists( 'PTK_Newsletter_Data' ) ) {
+            $monday = PTK_Newsletter_Data::issue_week_monday( $date );
+            if ( '' !== $monday && preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $monday, $mm ) ) {
+                $m = $mm;
+            }
+        }
         $stamp = mktime( 0, 0, 0, (int) $m[2], (int) $m[3], (int) $m[1] );
         if ( false === $stamp ) {
             return $date;

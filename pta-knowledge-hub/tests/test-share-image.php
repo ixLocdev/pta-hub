@@ -3,6 +3,7 @@ require __DIR__ . '/bootstrap.php';
 require __DIR__ . '/../includes/class-share-color.php';
 require __DIR__ . '/../includes/class-share-text.php';
 require __DIR__ . '/../includes/class-share-data.php';
+require __DIR__ . '/../includes/class-newsletter-data.php';
 require __DIR__ . '/../includes/class-share-image.php';
 
 set_error_handler( function ( $errno, $errstr ) {
@@ -310,6 +311,10 @@ ptk_test_ok(
 // The square is a masthead, not a log line: "2026-09-14" reads like a filename.
 ptk_test_ok( PTK_Share_Image::dateline( '2026-09-14' ) === 'Week of September 14', 'an ISO date becomes a week' );
 ptk_test_ok( PTK_Share_Image::dateline( '2026-01-05' ) === 'Week of January 5', 'no leading zero on the day' );
+if ( class_exists( 'PTK_Newsletter_Data' ) ) {
+    ptk_test_ok( PTK_Share_Image::dateline( '2026-09-16' ) === 'Week of September 14', 'square names the week\'s Monday, like the masthead' );
+    ptk_test_ok( PTK_Share_Image::dateline( '2026-09-13' ) === 'Week of September 14', 'a Sunday date looks ahead to the coming week' );
+}
 ptk_test_ok( PTK_Share_Image::dateline( 'Winter term' ) === 'Winter term', 'a non-ISO date is left alone' );
 ptk_test_ok( PTK_Share_Image::dateline( '' ) === '', 'an empty date stays empty' );
 

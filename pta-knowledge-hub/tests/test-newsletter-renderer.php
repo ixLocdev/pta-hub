@@ -42,7 +42,7 @@ $blank_headline_html = PTK_Newsletter_Renderer::render( $blank_headline_blocks, 
     'issue' => 39, 'date' => '2026-07-16', 'today' => '2026-07-16',
     'theme' => 'harbor-navy', 'logo_url' => '', 'school_name' => 'Northeast PTA',
 ) );
-ptk_test_ok( strpos( $blank_headline_html, 'Week of July 16' ) !== false, 'blank headline auto-derives "Week of {Month} {day}"' );
+ptk_test_ok( strpos( $blank_headline_html, 'Week of July 13' ) !== false, 'blank headline auto-derives "Week of {Monday}" (Thu Jul 16 -> Jul 13)' );
 
 // --- Masthead: the issue date renders friendly, not raw ISO. ---------------
 ptk_test_ok( strpos( $blank_headline_html, 'July 16, 2026' ) !== false, 'friendly formatted issue date renders' );
@@ -150,5 +150,21 @@ ptk_test_ok( stripos( $published, 'will appear here' ) === false, 'published: no
 // --- Event dates never wrap ("Sep" / "24"). ------------------------------
 ptk_test_ok( strpos( $html, 'flex:0 0 112px;' ) !== false, 'event date column is wide enough for "May 28"' );
 ptk_test_ok( strpos( $html, 'font-size:30px;line-height:0.95;white-space:nowrap;' ) !== false, 'event date does not wrap' );
+
+// --- "Week of" names the week's Monday; Sunday looks ahead. ---------------
+foreach ( array(
+    '2026-09-16' => 'Week of September 14', // Wednesday
+    '2026-09-14' => 'Week of September 14', // Monday
+    '2026-09-13' => 'Week of September 14', // Sunday (#040 went out this day)
+    '2026-09-20' => 'Week of September 21', // Sunday -> the following Monday
+    '2026-09-19' => 'Week of September 14', // Saturday stays in its own week
+    '2026-10-01' => 'Week of September 28', // across a month boundary
+) as $d => $want ) {
+    $h = PTK_Newsletter_Renderer::render(
+        array( array( 'type' => 'header', 'data' => array( 'school_name' => 'NE', 'headline' => '' ) ) ),
+        array( 'issue' => 40, 'date' => $d, 'today' => $d, 'theme' => 'harbor-navy', 'logo_url' => '', 'school_name' => 'NE' )
+    );
+    ptk_test_ok( strpos( $h, $want . '<' ) !== false, "issue dated $d is headed \"$want\"" );
+}
 
 ptk_test_done();

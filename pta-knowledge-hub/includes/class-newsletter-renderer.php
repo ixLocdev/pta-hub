@@ -485,13 +485,16 @@ class PTK_Newsletter_Renderer {
 
     /**
      * Derive the default masthead headline "Week of {Month} {day}" from a
-     * 'YYYY-MM-DD' issue date.
+     * 'YYYY-MM-DD' issue date, naming that week's Monday.
      *
      * @param string $date 'YYYY-MM-DD'.
      * @return string Derived headline, or '' if the date is unparseable.
      */
     private static function derive_week_of_headline( $date ) {
-        $dt = DateTime::createFromFormat( '!Y-m-d', $date );
+        // Named for the week's Monday, the way the newsletters are titled:
+        // an issue dated Wed Sep 16 is "Week of September 14", and one sent
+        // on Sunday Sep 13 is also "Week of September 14".
+        $dt = DateTime::createFromFormat( '!Y-m-d', PTK_Newsletter_Data::issue_week_monday( $date ) );
         if ( ! $dt ) {
             return '';
         }
