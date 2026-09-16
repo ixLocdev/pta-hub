@@ -20,8 +20,9 @@ class PTK_Newsletter_Post_Type {
     }
 
     /**
-     * Enqueue the reader's-date relabel script on the public single
-     * newsletter view only.
+     * Enqueue the reader's-date relabel script, the stylesheet that hides the
+     * theme's doubled title, and the house fonts on the public single
+     * newsletter view only (the ?ptk_preview= view counts as singular too).
      */
     public static function enqueue_public() {
         if ( ! is_singular( self::POST_TYPE ) ) {
@@ -35,6 +36,13 @@ class PTK_Newsletter_Post_Type {
             PTK_VERSION,
             true
         );
+        // The newsletter's masthead is the page's title; the theme's own title
+        // and date above it are hidden here, never by replacing the template
+        // (bb-theme's container and the Themer header/footer depend on it).
+        wp_enqueue_style( 'ptk-newsletter-public', PTK_PLUGIN_URL . 'assets/css/newsletter-public.css', array(), PTK_VERSION );
+
+        // The other ten sites don't load the house fonts themselves.
+        wp_enqueue_style( 'ptk-newsletter-fonts', 'https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,500;1,6..72,500&display=swap', array(), null );
     }
 
     public static function register() {

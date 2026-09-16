@@ -1,0 +1,4 @@
+/* The newsletter's masthead is the page's title (house style rule 5). bb-theme prints its
+   own title and date above the content; hide that, never the theme template. */
+body.single-pta_newsletter .fl-post-header,
+body.single-pta_newsletter .fl-post-meta-top { display: none; }
