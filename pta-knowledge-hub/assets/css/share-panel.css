@@ -127,3 +127,37 @@
 .ptk-nl-share-square.is-busy {
     opacity: 0.6;
 }
+
+/* ── "Use a photo behind the words" (round 3) ── */
+.ptk-nl-share-photo {
+    margin-top: 16px;
+    padding: 12px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+}
+
+.ptk-nl-share-photo-label {
+    margin: 0 0 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.ptk-nl-share-photo-consent {
+    margin-bottom: 10px;
+}
+
+.ptk-nl-share-photo-consent .description {
+    margin: 0 0 6px;
+}
+
+.ptk-nl-share-photo-refused {
+    margin: 6px 0 0;
+    font-size: 12px;
+    color: #b42318;
+}
+
+.ptk-nl-share-photo-picker {
+    max-width: 270px;
+}

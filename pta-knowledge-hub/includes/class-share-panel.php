@@ -59,13 +59,32 @@ class PTK_Share_Panel {
             PTK_VERSION
         );
 
+        // The same picker the Builder's image fields use (round 3), at a
+        // 1:1 frame for the square's background photo. wp_enqueue_media()
+        // is already called by the Builder page this panel always shares
+        // (class docblock: rendered by render_page() on step 4).
+        wp_enqueue_script(
+            'ptk-focal-point',
+            PTK_PLUGIN_URL . 'assets/js/focal-point.js',
+            array(),
+            PTK_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'ptk-focal-point-picker',
+            PTK_PLUGIN_URL . 'assets/js/focal-point-picker.js',
+            array( 'jquery', 'ptk-focal-point' ),
+            PTK_VERSION,
+            true
+        );
+
         // Its OWN file, deliberately not part of newsletter-builder.js: a throw
         // in the Builder's boot block leaves the whole wizard inert, and the
         // share panel is optional where the Builder is not.
         wp_enqueue_script(
             'ptk-share-panel',
             PTK_PLUGIN_URL . 'assets/js/share-panel.js',
-            array( 'jquery' ),
+            array( 'jquery', 'ptk-focal-point-picker' ),
             PTK_VERSION,
             true
         );
@@ -184,8 +203,10 @@ class PTK_Share_Panel {
     }
 
     /**
-     * Switch the Instagram picture: mode=custom with an attachment_id, or
-     * mode=generated. Replies with the re-rendered picture area.
+     * Switch the Instagram picture: mode=custom with an attachment_id,
+     * mode=generated, or (round 3) mode=photo/photo_from_featured/
+     * no_photo for the "photo behind the words" background layer.
+     * Replies with the re-rendered picture area.
      */
     public static function ajax_square() {
         $post_id = self::authorize_request();
@@ -210,8 +231,58 @@ class PTK_Share_Panel {
             }
 
             PTK_Share_Data::save_square( $post_id, $attachment_id, true, '' );
+
+            // A school's own finished upload has already made every layout
+            // decision GD would otherwise make -- a leftover "photo behind
+            // the words" choice from before this upload must not resurrect
+            // itself if the school later switches back to "generated".
+            PTK_Share_Data::clear_square_photo( $post_id );
         } elseif ( 'generated' === $mode ) {
             PTK_Share_Image::use_generated_square( $post_id );
+        } elseif ( 'photo' === $mode || 'photo_from_featured' === $mode ) {
+            self::require_photo_consent( $post_id );
+
+            if ( 'photo_from_featured' === $mode ) {
+                // Never a value round-tripped from the client: read the
+                // newsletter's OWN saved top-story photo server-side, so
+                // there is no way this action can attach a photo the
+                // newsletter doesn't already contain.
+                $ctx      = self::context( $post_id );
+                $photo_id = 0;
+                foreach ( $ctx['blocks'] as $block ) {
+                    if ( isset( $block['type'] ) && PTK_Newsletter_Data::TYPE_FEATURED === $block['type'] ) {
+                        $photo_id = isset( $block['data']['image_id'] ) ? absint( $block['data']['image_id'] ) : 0;
+                        break;
+                    }
+                }
+                if ( ! $photo_id ) {
+                    wp_send_json_error( array( 'message' => 'This newsletter has no top-story photo to use yet.' ), 400 );
+                }
+                PTK_Share_Data::save_square_photo( $post_id, $photo_id, 50, 50, 0 );
+            } else {
+                $attachment_id = isset( $_POST['attachment_id'] ) ? absint( $_POST['attachment_id'] ) : 0;
+                if ( ! $attachment_id || 'attachment' !== get_post_type( $attachment_id ) || ! wp_attachment_is_image( $attachment_id ) ) {
+                    wp_send_json_error( array( 'message' => 'Please choose a picture.' ), 400 );
+                }
+                $focal_x = isset( $_POST['focal_x'] ) ? $_POST['focal_x'] : 50;
+                $focal_y = isset( $_POST['focal_y'] ) ? $_POST['focal_y'] : 50;
+                $zoom    = isset( $_POST['zoom'] ) ? $_POST['zoom'] : 0;
+                PTK_Share_Data::save_square_photo( $post_id, $attachment_id, $focal_x, $focal_y, $zoom );
+            }
+        } elseif ( 'photo_reframe' === $mode ) {
+            // Adjust ONLY the focal point/zoom of the photo already chosen
+            // (the picker fires this on every drag/wheel/keyboard change) --
+            // no new consent needed, this doesn't add or change WHICH photo.
+            $current = PTK_Share_Data::get_square_photo( $post_id );
+            if ( ! $current['photo_id'] ) {
+                wp_send_json_error( array( 'message' => 'Choose a photo first.' ), 400 );
+            }
+            $focal_x = isset( $_POST['focal_x'] ) ? $_POST['focal_x'] : 50;
+            $focal_y = isset( $_POST['focal_y'] ) ? $_POST['focal_y'] : 50;
+            $zoom    = isset( $_POST['zoom'] ) ? $_POST['zoom'] : 0;
+            PTK_Share_Data::save_square_photo( $post_id, $current['photo_id'], $focal_x, $focal_y, $zoom );
+        } elseif ( 'no_photo' === $mode ) {
+            PTK_Share_Data::clear_square_photo( $post_id );
         } else {
             wp_send_json_error( array( 'message' => 'Unknown picture choice.' ), 400 );
         }
@@ -219,6 +290,37 @@ class PTK_Share_Panel {
         wp_send_json_success( array(
             'html' => self::square_html( $post_id, self::context( $post_id ) ),
         ) );
+    }
+
+    /**
+     * The photo-privacy gate, extended to the square's background photo
+     * (round 3): setting one is reachable via this AJAX endpoint entirely
+     * outside the main form's Publish-time gate (a newsletter with no
+     * OTHER photos never trips it), so this checks the SAME confirmation
+     * independently, and reuses the SAME meta key -- see class docblock's
+     * "no second consent mechanism" decision.
+     *
+     * Sends a 409 and stops the request if confirmation is missing.
+     *
+     * @param int $post_id
+     */
+    protected static function require_photo_consent( $post_id ) {
+        if ( get_post_meta( $post_id, PTK_Newsletter_Builder::META_PII_CONFIRMED, true ) ) {
+            return;
+        }
+
+        if ( empty( $_POST['pii_ok'] ) ) {
+            wp_send_json_error(
+                array(
+                    'message'  => 'Please confirm the photos are OK before using one on the Instagram square — the same checkbox as Publish.',
+                    'needsPii' => true,
+                    'piiLabel' => PTK_Newsletter_Builder::PII_CHECKBOX_LABEL,
+                ),
+                409
+            );
+        }
+
+        update_post_meta( $post_id, PTK_Newsletter_Builder::META_PII_CONFIRMED, current_time( 'Y-m-d' ) );
     }
 
     /**
@@ -412,6 +514,7 @@ class PTK_Share_Panel {
     public static function square_html( $post_id, array $ctx ) {
         $caps       = PTK_Share_Image::capabilities();
         $square     = PTK_Share_Data::get_square( $post_id );
+        $photo      = PTK_Share_Data::get_square_photo( $post_id );
         $can_upload = current_user_can( 'upload_files' );
         $result     = null;
 
@@ -425,6 +528,12 @@ class PTK_Share_Panel {
                 // PTK_Share_Color::square_background_color()/square_text_color().
                 'background'  => PTK_Share_Color::square_background_color(),
                 'text'        => PTK_Share_Color::square_text_color(),
+                // Round 3: "photo behind the words". photo_id 0 is a no-op
+                // -- the flat square, exactly as before.
+                'photo_id'      => $photo['photo_id'],
+                'photo_focal_x' => $photo['focal_x'],
+                'photo_focal_y' => $photo['focal_y'],
+                'photo_zoom'    => $photo['zoom'],
             ) );
         }
 
@@ -467,6 +576,71 @@ class PTK_Share_Panel {
             <?php endif; ?>
             <?php if ( $square['custom'] && $caps['freetype'] ) : ?>
                 <button type="button" class="button-link" data-share-generated>Use the generated square again</button>
+            <?php endif; ?>
+        </div>
+
+        <?php if ( ! $square['custom'] ) : ?>
+            <?php echo self::square_photo_html( $post_id, $ctx, $photo ); // phpcs:ignore WordPress.Security.EscapeOutput -- built and escaped below. ?>
+        <?php endif; ?>
+        <?php
+        return (string) ob_get_clean();
+    }
+
+    /**
+     * "Use a photo behind the words": the section that lets a volunteer
+     * put a real photo under the generated square's text instead of a
+     * flat color. A school's own finished upload (`$square['custom']`)
+     * has nothing to layer a photo behind, so square_html() only calls
+     * this when there is a generated square to modify (spec Part E).
+     *
+     * @param int   $post_id
+     * @param array $ctx   From context().
+     * @param array $photo From PTK_Share_Data::get_square_photo().
+     * @return string
+     */
+    protected static function square_photo_html( $post_id, array $ctx, array $photo ) {
+        $featured_image_id = 0;
+        foreach ( $ctx['blocks'] as $block ) {
+            if ( isset( $block['type'] ) && PTK_Newsletter_Data::TYPE_FEATURED === $block['type'] ) {
+                $featured_image_id = isset( $block['data']['image_id'] ) ? absint( $block['data']['image_id'] ) : 0;
+                break;
+            }
+        }
+
+        $pii_confirmed = (bool) get_post_meta( $post_id, PTK_Newsletter_Builder::META_PII_CONFIRMED, true );
+
+        ob_start();
+        ?>
+        <div class="ptk-nl-share-photo" data-share-photo data-has-photo="<?php echo $photo['photo_id'] ? '1' : '0'; ?>" data-pii-confirmed="<?php echo $pii_confirmed ? '1' : '0'; ?>" data-featured-image-id="<?php echo (int) $featured_image_id; ?>">
+            <p class="ptk-nl-share-photo-label">Use a photo behind the words</p>
+
+            <?php if ( ! $pii_confirmed ) : ?>
+                <div class="ptk-nl-share-photo-consent" data-share-photo-consent>
+                    <p class="description">Please confirm the photos are OK before using one here — the same checkbox as Publish.</p>
+                    <label>
+                        <input type="checkbox" data-share-photo-pii-ok>
+                        <?php echo esc_html( PTK_Newsletter_Builder::PII_CHECKBOX_LABEL ); ?>
+                    </label>
+                </div>
+            <?php endif; ?>
+
+            <?php if ( ! $photo['photo_id'] ) : ?>
+                <div class="ptk-nl-share-actions" data-share-photo-choices>
+                    <?php if ( $featured_image_id > 0 ) : ?>
+                        <button type="button" class="button" data-share-photo-featured<?php echo $pii_confirmed ? '' : ' disabled'; ?>>Use the top story&#8217;s photo</button>
+                    <?php endif; ?>
+                    <button type="button" class="button" data-share-photo-choose<?php echo $pii_confirmed ? '' : ' disabled'; ?>>Choose a different photo</button>
+                </div>
+            <?php else : ?>
+                <div class="ptk-nl-share-photo-picker" data-share-photo-picker-mount data-photo-id="<?php echo (int) $photo['photo_id']; ?>">
+                    <input type="hidden" data-field="image_focal_x" value="<?php echo esc_attr( $photo['focal_x'] ); ?>">
+                    <input type="hidden" data-field="image_focal_y" value="<?php echo esc_attr( $photo['focal_y'] ); ?>">
+                    <input type="hidden" data-field="image_zoom" value="<?php echo esc_attr( $photo['zoom'] ); ?>">
+                </div>
+                <div class="ptk-nl-share-actions">
+                    <button type="button" class="button" data-share-photo-choose>Choose a different photo</button>
+                    <button type="button" class="button-link" data-share-photo-remove>Remove photo</button>
+                </div>
             <?php endif; ?>
         </div>
         <?php

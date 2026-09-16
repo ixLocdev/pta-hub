@@ -298,6 +298,7 @@
                         // Server-rendered, escaped markup: the same fragment
                         // the page load renders.
                         $area.html(res.data.html);
+                        initPhotoPicker($area);
                         $status.text('Picture updated');
                     } else {
                         $status.text(errorText(res, 'The picture could not be changed.'));
@@ -345,6 +346,155 @@
         $area.on('click', '[data-share-generated]', function (e) {
             e.preventDefault();
             send({ mode: 'generated' }, 'Making the square…');
+        });
+
+        /* ──────────────────────────────────────────
+         * "Use a photo behind the words" (round 3)
+         * ────────────────────────────────────────── */
+
+        var photoFrame = null;
+
+        function piiOk($root) {
+            var $checkbox = $root.find('[data-share-photo-pii-ok]');
+            return $checkbox.length ? !!$checkbox.prop('checked') : true;
+        }
+
+        // A refusal (409, "confirm the photos first") surfaces as an
+        // inline message next to the consent checkbox rather than the
+        // channel's shared status line -- mirrors data-share-stale's own
+        // inline-in-context placement.
+        function handlePhotoRefusal(res, $root) {
+            if (res && res.data && res.data.needsPii) {
+                var $consent = $root.find('[data-share-photo-consent]');
+                if ($consent.length && !$consent.find('.ptk-nl-share-photo-refused').length) {
+                    $consent.append('<p class="ptk-nl-share-photo-refused" role="alert">' + $('<div>').text(res.data.message).html() + '</p>');
+                }
+                return true;
+            }
+            return false;
+        }
+
+        function sendPhoto($root, data, busyText) {
+            if (!piiOk($root)) {
+                data.pii_ok = 0;
+            } else {
+                data.pii_ok = 1;
+            }
+            data.action = 'ptk_nl_share_square';
+            data.nonce = ptkNlShare.nonce;
+            data.post_id = postId;
+
+            $area.addClass('is-busy').attr('aria-busy', 'true');
+            $status.text(busyText);
+
+            $.post(ptkNlShare.ajaxUrl, data)
+                .done(function (res) {
+                    if (res && res.success && res.data && typeof res.data.html === 'string') {
+                        $area.html(res.data.html);
+                        initPhotoPicker($area);
+                        $status.text('Picture updated');
+                        return;
+                    }
+                    if (!handlePhotoRefusal(res, $root)) {
+                        $status.text(errorText(res, 'The picture could not be changed.'));
+                    }
+                })
+                .fail(function (xhr) {
+                    if (!handlePhotoRefusal(xhr && xhr.responseJSON, $root)) {
+                        $status.text(errorText(xhr && xhr.responseJSON, 'The picture could not be changed — check your connection.'));
+                    }
+                })
+                .always(function () {
+                    $area.removeClass('is-busy').removeAttr('aria-busy');
+                });
+        }
+
+        $area.on('click', '[data-share-photo-featured]', function (e) {
+            e.preventDefault();
+            var $root = $(this).closest('[data-share-photo]');
+            sendPhoto($root, { mode: 'photo_from_featured' }, 'Using the top story’s photo…');
+        });
+
+        $area.on('click', '[data-share-photo-choose]', function (e) {
+            e.preventDefault();
+            var $root = $(this).closest('[data-share-photo]');
+
+            if (typeof wp === 'undefined' || !wp.media) {
+                $status.text('The media library is not available on this page. Reload and try again.');
+                return;
+            }
+
+            if (!photoFrame) {
+                photoFrame = wp.media({
+                    title: 'Choose a photo for behind the words',
+                    button: { text: 'Use this photo' },
+                    library: { type: 'image' },
+                    multiple: false
+                });
+
+                photoFrame.on('select', function () {
+                    var picked = photoFrame.state().get('selection').first();
+                    if (!picked) {
+                        return;
+                    }
+                    sendPhoto($root, { mode: 'photo', attachment_id: picked.get('id'), focal_x: 50, focal_y: 50, zoom: 0 }, 'Adding the photo…');
+                });
+            }
+
+            photoFrame.open();
+        });
+
+        $area.on('click', '[data-share-photo-remove]', function (e) {
+            e.preventDefault();
+            var $root = $(this).closest('[data-share-photo]');
+            sendPhoto($root, { mode: 'no_photo' }, 'Removing the photo…');
+        });
+
+        // The focal-point-and-zoom picker itself, mounted once per render
+        // when a photo is chosen -- reuses the SAME control the Builder's
+        // image fields use (assets/js/focal-point-picker.js), at a 1:1
+        // frame. Reframing/rezooming saves via mode=photo_reframe, which
+        // needs no fresh consent (the photo itself isn't changing).
+        var reframeTimer = null;
+        $area.on('change', '[data-share-photo-picker-mount] [data-field]', function () {
+            var $mount = $(this).closest('[data-share-photo-picker-mount]');
+            var $root = $mount.closest('[data-share-photo]');
+            window.clearTimeout(reframeTimer);
+            reframeTimer = window.setTimeout(function () {
+                sendPhoto($root, {
+                    mode: 'photo_reframe',
+                    focal_x: $mount.find('[data-field="image_focal_x"]').val(),
+                    focal_y: $mount.find('[data-field="image_focal_y"]').val(),
+                    zoom: $mount.find('[data-field="image_zoom"]').val()
+                }, 'Saving the framing…');
+            }, 400);
+        });
+
+        initPhotoPicker($area);
+    }
+
+    /**
+     * Fetch the chosen photo's src and build the focal-point picker inside
+     * [data-share-photo-picker-mount], if the current square render has
+     * one. Called on boot and after every square re-render (send()'s done
+     * handler replaces $area's HTML, which drops any picker DOM along with
+     * it -- this rebuilds it fresh).
+     */
+    function initPhotoPicker($area) {
+        var $mount = $area.find('[data-share-photo-picker-mount]');
+        if (!$mount.length || typeof window.ptkInitFocalPicker !== 'function') {
+            return;
+        }
+        var photoId = parseInt($mount.attr('data-photo-id'), 10) || 0;
+        if (!photoId || typeof wp === 'undefined' || !wp.media || !wp.media.attachment) {
+            return;
+        }
+        wp.media.attachment(photoId).fetch().done(function () {
+            var attachment = wp.media.attachment(photoId).toJSON();
+            var src = (attachment.sizes && attachment.sizes.large && attachment.sizes.large.url) || attachment.url;
+            if (src) {
+                window.ptkInitFocalPicker($mount, { aspect: '1:1', src: src });
+            }
         });
     }
 

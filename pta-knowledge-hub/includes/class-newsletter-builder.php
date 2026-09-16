@@ -46,6 +46,14 @@ class PTK_Newsletter_Builder {
     /** Post meta: the day (Y-m-d) the photo check was confirmed on publish. */
     const META_PII_CONFIRMED = 'ptk_nl_pii_confirmed';
 
+    /**
+     * The main gate's checkbox copy, pulled out so PTK_Share_Panel's own
+     * consent prompt (round 3 -- the square's background photo is
+     * reachable outside this form, see class-share-panel.php) can reuse
+     * the exact wording rather than drift from it over time.
+     */
+    const PII_CHECKBOX_LABEL = 'These photos are OK to share publicly — no student faces or personal info.';
+
     /** The only theme shipped in Phase 1. */
     const DEFAULT_THEME = 'harbor-navy';
 
@@ -215,7 +223,13 @@ class PTK_Newsletter_Builder {
         // gate is skipped entirely. Otherwise downgrade to draft and flag it
         // so step 4 can explain why nothing went live, next to the checkbox.
         $pii_ok       = ! empty( $_POST['ptk_nl_pii_ok'] );
-        $has_images   = PTK_Newsletter_Data::blocks_have_images( $blocks );
+        // The Instagram square's own background photo (round 3) never
+        // appears in $blocks -- it lives in PTK_Share_Data's post meta,
+        // set via a separate AJAX endpoint the main gate can't see on its
+        // own. OR it in here so a newsletter whose ONLY photo is the
+        // square's background photo still requires confirmation to publish.
+        $has_images   = PTK_Newsletter_Data::blocks_have_images( $blocks )
+            || PTK_Share_Data::square_has_custom_photo( $edit_id );
         $forced_draft = false;
         if ( 'publish' === $status_req && $has_images && ! $pii_ok ) {
             $status_req   = 'draft';
@@ -1012,7 +1026,10 @@ class PTK_Newsletter_Builder {
         }
 
         $is_published = $edit_id && 'publish' === get_post_status( $edit_id );
-        $has_images   = PTK_Newsletter_Data::blocks_have_images( $blocks );
+        // See handle_submission()'s matching OR: the square's own
+        // background photo (round 3) doesn't live in $blocks.
+        $has_images   = PTK_Newsletter_Data::blocks_have_images( $blocks )
+            || PTK_Share_Data::square_has_custom_photo( $edit_id );
         $pii_date     = $edit_id ? (string) get_post_meta( $edit_id, self::META_PII_CONFIRMED, true ) : '';
         $pii_date     = preg_match( '/^\d{4}-\d{2}-\d{2}$/', $pii_date ) ? $pii_date : '';
         $pii_failed   = isset( $_GET['ptk_nl_msg'] ) && 'pii' === sanitize_key( wp_unslash( $_GET['ptk_nl_msg'] ) );
@@ -1117,7 +1134,7 @@ class PTK_Newsletter_Builder {
                                 <?php endif; ?>
                                 <label>
                                     <input type="checkbox" id="ptk-nl-pii-ok" name="ptk_nl_pii_ok" value="1"<?php checked( '' !== $pii_date ); ?><?php echo $pii_failed ? ' aria-describedby="ptk-nl-pii-error"' : ''; ?>>
-                                    These photos are OK to share publicly — no student faces or personal info.
+                                    <?php echo esc_html( self::PII_CHECKBOX_LABEL ); ?>
                                 </label>
                                 <?php if ( '' !== $pii_date ) : ?>
                                     <p class="ptk-nl-pii-note">Confirmed when this issue was published on <?php echo esc_html( date_i18n( 'F j, Y', strtotime( $pii_date ) ) ); ?>.</p>
