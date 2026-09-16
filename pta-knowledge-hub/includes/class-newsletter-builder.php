@@ -422,32 +422,53 @@ class PTK_Newsletter_Builder {
     }
 
     /**
-     * Render an admin notice for ?ptk_nl_msg= after a save/publish redirect.
+     * The message after a save/publish redirect (?ptk_nl_msg=).
+     *
+     * Deliberately NOT WordPress's .notice: that draws a one-sided accent bar,
+     * which the house style never uses, and WordPress's own script moves
+     * .notice elements around the page. .ptk-nl-msg is a full four-sided box
+     * (same pattern as the Sharing settings messages).
+     *
+     * @param int $edit_id The newsletter just saved, or 0.
      */
-    private static function render_notice() {
+    private static function render_notice( $edit_id = 0 ) {
         if ( empty( $_GET['ptk_nl_msg'] ) ) {
             return;
         }
 
         $msg     = sanitize_key( wp_unslash( $_GET['ptk_nl_msg'] ) );
         $notices = array(
-            'saved'     => array( 'success', 'Draft saved.' ),
-            'published' => array( 'success', 'Newsletter published.' ),
-            'updated'   => array( 'success', 'Newsletter updated.' ),
-            'pii'       => array( 'warning', 'Confirm the photo/privacy check before publishing. Your newsletter was saved as a draft instead.' ),
+            'saved'     => array( 'ok', 'Draft saved.' ),
+            'published' => array( 'ok', 'Newsletter published.' ),
+            'updated'   => array( 'ok', 'Newsletter updated.' ),
+            'pii'       => array( 'warn', 'Confirm the photo/privacy check before publishing. Your newsletter was saved as a draft instead.' ),
         );
 
         if ( ! isset( $notices[ $msg ] ) ) {
             return;
         }
 
-        list( $type, $text ) = $notices[ $msg ];
+        list( $kind, $text ) = $notices[ $msg ];
 
-        printf(
-            '<div class="notice notice-%1$s is-dismissible"><p>%2$s</p></div>',
-            esc_attr( $type ),
-            esc_html( $text )
-        );
+        $live_url = ( $edit_id && in_array( $msg, array( 'published', 'updated' ), true ) && 'publish' === get_post_status( $edit_id ) )
+            ? (string) get_permalink( $edit_id )
+            : '';
+        ?>
+        <div class="ptk-nl-msg ptk-nl-msg-<?php echo esc_attr( $kind ); ?>" role="status">
+            <p>
+                <strong><?php echo esc_html( $text ); ?></strong>
+                <?php if ( 'published' === $msg && '' !== $live_url ) : ?>
+                    Now share it below.
+                <?php endif; ?>
+            </p>
+            <?php if ( '' !== $live_url ) : ?>
+                <p class="ptk-nl-msg-actions">
+                    <a class="button button-primary" id="ptk-nl-msg-view" href="<?php echo esc_url( $live_url ); ?>" target="_blank" rel="noopener">View newsletter</a>
+                    <button type="button" class="button" data-ptk-copy="#ptk-nl-msg-view">Copy link</button>
+                </p>
+            <?php endif; ?>
+        </div>
+        <?php
     }
 
     /**
@@ -817,7 +838,7 @@ class PTK_Newsletter_Builder {
         ?>
         <div class="wrap ptk-nl-builder">
             <h1><?php echo $edit_id ? 'Edit Newsletter' : 'New Newsletter'; ?></h1>
-            <?php self::render_notice(); ?>
+            <?php self::render_notice( $edit_id ); ?>
             <p class="ptk-nl-intro">Four short steps. We&#8217;ve filled in what we can — you write the news.</p>
 
             <div class="ptk-nl-wizard">

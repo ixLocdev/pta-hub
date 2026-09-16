@@ -591,6 +591,43 @@
     color: #6b7280;
 }
 
+/* ── Messages after saving ──
+   The builder's own messages, not WordPress's .notice (which draws a
+   one-sided accent bar -- never used here). Full four-sided border and a
+   fill, the same pattern as share-settings.css's .ptk-ss-msg. */
+.ptk-nl-msg {
+    margin: 16px 0;
+    padding: 4px 16px;
+    border: 1px solid #c3c4c7;
+    border-radius: 8px;
+    background: #ffffff;
+    font-size: 14px;
+}
+
+.ptk-nl-msg p {
+    margin: 10px 0;
+}
+
+.ptk-nl-msg-ok {
+    border-color: #9ec5a8;
+    background: #f0f7f2;
+}
+
+.ptk-nl-msg-warn {
+    border-color: #e0c37a;
+    background: #fdf7e6;
+}
+
+.ptk-nl-msg-error {
+    border-color: #e2a4a7;
+    background: #fbeeee;
+    color: #7a1419;
+}
+
+.ptk-nl-msg-actions .button {
+    margin-right: 8px;
+}
+
 /* ── Photo/privacy consent gate ── */
 .ptk-nl-pii-gate {
     background: #fffbeb;
