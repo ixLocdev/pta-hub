@@ -36,15 +36,19 @@ class PTK_Share_Data {
 
     /**
      * Hash of everything the share SQUARE is made from: issue, date,
-     * school name and color -- never the newsletter's story content, so
-     * editing a story never marks a perfectly fine square as stale.
+     * school name, and BOTH drawn colors (background, text; 4.3.0) --
+     * never the newsletter's story content, so editing a story never
+     * marks a perfectly fine square as stale. Two schools whose picks
+     * both get corrected to the same readable pair should not each think
+     * the other's square is stale, which is why the caller passes the
+     * DRAWN colors (post contrast-guard), not the raw option values.
      *
      * $version is passed in rather than read from a PTK_VERSION constant
      * so this stays reachable from a plain-php test harness that defines
      * no such constant.
      */
-    public static function square_inputs_hash( $issue, $date, $school_name, $share_color, $version ) {
-        return md5( $issue . '|' . $date . '|' . $school_name . '|' . $share_color . '|' . $version );
+    public static function square_inputs_hash( $issue, $date, $school_name, $background, $text, $version ) {
+        return md5( $issue . '|' . $date . '|' . $school_name . '|' . $background . '|' . $text . '|' . $version );
     }
 
     /**

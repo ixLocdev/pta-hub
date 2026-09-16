@@ -414,7 +414,11 @@ class PTK_Share_Panel {
                 'issue'       => $ctx['opts']['issue'],
                 'date'        => $ctx['opts']['date'],
                 'school_name' => $ctx['opts']['school_name'],
-                'color'       => PTK_Share_Color::share_color(),
+                // 4.3.0: the square's two colors, neither one falling back
+                // to the Council palette (round-2 amendment) -- see
+                // PTK_Share_Color::square_background_color()/square_text_color().
+                'background'  => PTK_Share_Color::square_background_color(),
+                'text'        => PTK_Share_Color::square_text_color(),
             ) );
         }
 

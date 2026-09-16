@@ -18,7 +18,8 @@ $args = array(
     'issue'       => '042',
     'date'        => 'September 16, 2026',
     'school_name' => 'Northeast Elementary School PTA',
-    'color'       => '#d97706',
+    'background'  => '#1a2f5c',
+    'text'        => '#d97706',
 );
 
 // ---------------------------------------------------------------------
@@ -183,21 +184,27 @@ ptk_test_ok( $rgb === array( 0x1a, 0x2f, 0x5c ), 'the ground is navy #1a2f5c' );
 // The color it draws with has been through the contrast guard
 // ---------------------------------------------------------------------
 
-$accent = $t::accent_for( '#d97706' );
-ptk_test_ok( PTK_Share_Color::contrast_ratio( $accent, '#1a2f5c' ) >= 4.5, 'the accent is readable on the navy ground' );
-$accent_bad = $t::accent_for( '#4338ca' );
-ptk_test_ok( PTK_Share_Color::contrast_ratio( $accent_bad, '#1a2f5c' ) >= 4.5, 'an accent that fails on navy (1.66:1) is corrected before drawing' );
-$accent_junk = $t::accent_for( '#zzz' );
-ptk_test_ok( PTK_Share_Color::contrast_ratio( $accent_junk, '#1a2f5c' ) >= 4.5, 'a junk accent still comes out readable' );
+$accent = $t::text_for( '#d97706', '#1a2f5c' );
+ptk_test_ok( PTK_Share_Color::contrast_ratio( $accent, '#1a2f5c' ) >= 4.5, 'the text color is readable on the navy background' );
+$accent_bad = $t::text_for( '#4338ca', '#1a2f5c' );
+ptk_test_ok( PTK_Share_Color::contrast_ratio( $accent_bad, '#1a2f5c' ) >= 4.5, 'a text color that fails on navy (1.66:1) is corrected before drawing' );
+$accent_junk = $t::text_for( '#zzz', '#1a2f5c' );
+ptk_test_ok( PTK_Share_Color::contrast_ratio( $accent_junk, '#1a2f5c' ) >= 4.5, 'a junk text color still comes out readable' );
+
+// text_for() against a LIGHT background darkens instead of lightening.
+$on_light = $t::text_for( '#ffffff', '#efece6' );
+ptk_test_ok( PTK_Share_Color::contrast_ratio( $on_light, '#efece6' ) >= 4.5, 'text_for() darkens white on a light background rather than trying to lighten it further' );
+ptk_test_ok( '#ffffff' !== $on_light, 'text_for() actually changed the failing color' );
 
 // ---------------------------------------------------------------------
 // It must survive the awkward real inputs, not just the tidy one
 // ---------------------------------------------------------------------
 
 $awkward = array(
-    'a very long school name' => array( 'issue' => '140', 'date' => 'September 16, 2026', 'school_name' => 'Northeast Elementary School PTA', 'color' => '#2563eb' ),
-    'a very short one'        => array( 'issue' => '001', 'date' => 'September 2, 2026', 'school_name' => 'NE PTA', 'color' => '#16a34a' ),
-    'a silly long name'       => array( 'issue' => '7', 'date' => '', 'school_name' => 'The Parent Teacher Association of Northeast Elementary School, Montclair', 'color' => '' ),
+    'a very long school name' => array( 'issue' => '140', 'date' => 'September 16, 2026', 'school_name' => 'Northeast Elementary School PTA', 'background' => '#1a2f5c', 'text' => '#2563eb' ),
+    'a very short one'        => array( 'issue' => '001', 'date' => 'September 2, 2026', 'school_name' => 'NE PTA', 'background' => '#1a2f5c', 'text' => '#16a34a' ),
+    'a silly long name'       => array( 'issue' => '7', 'date' => '', 'school_name' => 'The Parent Teacher Association of Northeast Elementary School, Montclair', 'background' => '', 'text' => '' ),
+    'a light background'      => array( 'issue' => '9', 'date' => 'September 16, 2026', 'school_name' => 'Sample PTA', 'background' => '#efece6', 'text' => '#1a2f5c' ),
 );
 foreach ( $awkward as $label => $case ) {
     $out = $t::render_png( $case, array( 'gd' => true, 'freetype' => true ) );
@@ -209,7 +216,7 @@ foreach ( $awkward as $label => $case ) {
 // With nothing to draw, a square would be the navy ground and two rules --
 // the blank image the contract forbids. It says so rather than shipping one.
 ptk_test_ok( $t::render_png( array(), array( 'gd' => true, 'freetype' => true ) ) === false, 'render_png returns false when there is nothing to draw' );
-ptk_test_ok( $t::render_png( array( 'issue' => '', 'date' => '', 'school_name' => '', 'color' => '#2563eb' ), array( 'gd' => true, 'freetype' => true ) ) === false, 'a color alone is not content' );
+ptk_test_ok( $t::render_png( array( 'issue' => '', 'date' => '', 'school_name' => '', 'background' => '#1a2f5c', 'text' => '#2563eb' ), array( 'gd' => true, 'freetype' => true ) ) === false, 'colors alone are not content' );
 
 // ---------------------------------------------------------------------
 // fit_text() -- the shrink-to-fit the long names depend on

@@ -37,24 +37,31 @@ ptk_test_ok( $hash_a !== $hash_diff_issue, 'caption_inputs_hash: different issue
 // square_inputs_hash()
 // ---------------------------------------------------------------------
 
-$sq_a = $t::square_inputs_hash( 1, '2026-09-16', 'Northeast Elementary', '#1a2f5c', '1.4.0' );
-$sq_b = $t::square_inputs_hash( 1, '2026-09-16', 'Northeast Elementary', '#c0392b', '1.4.0' );
+$sq_a = $t::square_inputs_hash( 1, '2026-09-16', 'Northeast Elementary', '#1a2f5c', '#ffffff', '1.4.0' );
+$sq_b = $t::square_inputs_hash( 1, '2026-09-16', 'Northeast Elementary', '#c0392b', '#ffffff', '1.4.0' );
 
 ptk_test_ok( is_string( $sq_a ) && '' !== $sq_a, 'square_inputs_hash returns a non-empty string' );
-ptk_test_ok( $sq_a !== $sq_b, 'square_inputs_hash: different color gives a different hash' );
+ptk_test_ok( $sq_a !== $sq_b, 'square_inputs_hash: different background gives a different hash' );
 
-$sq_diff_version = $t::square_inputs_hash( 1, '2026-09-16', 'Northeast Elementary', '#1a2f5c', '1.5.0' );
+$sq_diff_text = $t::square_inputs_hash( 1, '2026-09-16', 'Northeast Elementary', '#1a2f5c', '#000000', '1.4.0' );
+ptk_test_ok( $sq_a !== $sq_diff_text, 'square_inputs_hash: different text color gives a different hash' );
+
+$sq_diff_version = $t::square_inputs_hash( 1, '2026-09-16', 'Northeast Elementary', '#1a2f5c', '#ffffff', '1.5.0' );
 ptk_test_ok( $sq_a !== $sq_diff_version, 'square_inputs_hash: different version gives a different hash' );
 
-$sq_a_again = $t::square_inputs_hash( 1, '2026-09-16', 'Northeast Elementary', '#1a2f5c', '1.4.0' );
+$sq_a_again = $t::square_inputs_hash( 1, '2026-09-16', 'Northeast Elementary', '#1a2f5c', '#ffffff', '1.4.0' );
 ptk_test_ok( $sq_a === $sq_a_again, 'square_inputs_hash: same inputs give the same hash' );
+
+// Both colors changing but nothing else unchanged still equals itself.
+$sq_both_same = $t::square_inputs_hash( 1, '2026-09-16', 'Northeast Elementary', '#1a2f5c', '#ffffff', '1.4.0' );
+ptk_test_ok( $sq_a === $sq_both_same, 'square_inputs_hash: both colors unchanged -> hash unchanged' );
 
 // The whole point of two hashes: editing a story block must NOT move the
 // square hash, or the stale-caption warning would never fire on the common
 // edit (changing a story) while pretending the square (which never reads
 // story content) also went stale.
-$sq_from_blocks_a = $t::square_inputs_hash( 1, '2026-09-16', 'Northeast Elementary', '#1a2f5c', '1.4.0' );
-$sq_from_blocks_b = $t::square_inputs_hash( 1, '2026-09-16', 'Northeast Elementary', '#1a2f5c', '1.4.0' );
+$sq_from_blocks_a = $t::square_inputs_hash( 1, '2026-09-16', 'Northeast Elementary', '#1a2f5c', '#ffffff', '1.4.0' );
+$sq_from_blocks_b = $t::square_inputs_hash( 1, '2026-09-16', 'Northeast Elementary', '#1a2f5c', '#ffffff', '1.4.0' );
 ptk_test_ok( $sq_from_blocks_a === $sq_from_blocks_b, 'square_inputs_hash: ignores block content entirely (same call, same result regardless of any story edit)' );
 
 ptk_test_ok( $hash_a !== $sq_a, 'caption hash and square hash are different functions producing different values' );

@@ -2,10 +2,11 @@
 /**
  * The 1080x1080 share square Instagram wants.
  *
- * Draws a navy ground, the school's share color (already through the
- * contrast guard in PTK_Share_Color) as the accent, and three pieces of
- * type: the issue number, the week, and the school's name. Nothing else --
- * no logo, no story text, because the caption carries the words.
+ * Draws two colors -- a background and a text color (4.3.0; the text color
+ * is already through the contrast guard in PTK_Share_Color, checked
+ * against the chosen background) -- and three pieces of type: the issue
+ * number, the week, and the school's name. Nothing else -- no logo, no
+ * story text, because the caption carries the words.
  *
  * Two SEPARATE capability checks, because the two failures are different:
  *   imagecreatetruecolor()  GD          -- the QR encoder needs this too
@@ -102,20 +103,24 @@ class PTK_Share_Image {
     }
 
     /**
-     * The color actually drawn: the school's share color pushed until it
-     * is readable on the navy ground. The guard runs here, on the RESOLVED
-     * color, because several palette defaults fail on their own.
+     * The text color actually drawn: the school's chosen text color pushed
+     * until it is readable against its CHOSEN background (4.3.0 — was
+     * always the fixed navy GROUND; now the background is itself a
+     * setting). The guard runs here, on the RESOLVED pair, because a
+     * school may pick two colors that don't contrast on their own.
      *
+     * @param mixed $text       The chosen (or default) text color.
+     * @param mixed $background The chosen (or default) background color.
      * @return string '#rrggbb'
      */
-    public static function accent_for( $color ) {
-        return PTK_Share_Color::readable_pair( $color, self::GROUND );
+    public static function text_for( $text, $background ) {
+        return PTK_Share_Color::readable_pair( $text, $background );
     }
 
     /**
      * Render the square.
      *
-     * @param array      $args  issue, date, school_name, color.
+     * @param array      $args  issue, date, school_name, background, text.
      * @param array|null $caps  null detects for real; inject to test the
      *                          degradation path.
      * @return string|false Binary PNG, or false when it cannot be drawn.
@@ -174,7 +179,18 @@ class PTK_Share_Image {
         $issue  = isset( $args['issue'] ) ? trim( (string) $args['issue'] ) : '';
         $date   = isset( $args['date'] ) ? trim( (string) $args['date'] ) : '';
         $school = isset( $args['school_name'] ) ? trim( (string) $args['school_name'] ) : '';
-        $accent = self::accent_for( isset( $args['color'] ) ? $args['color'] : '' );
+
+        // 4.3.0: two colors, background and text, each falling back to its
+        // own plain default (navy / white) rather than the Council palette
+        // -- see PTK_Share_Color::square_background_color()/square_text_color(),
+        // the callers of ensure_square() below.
+        $background = PTK_Share_Color::normalize_hex(
+            isset( $args['background'] ) && '' !== $args['background'] ? $args['background'] : self::GROUND
+        );
+        $text = self::text_for(
+            isset( $args['text'] ) && '' !== $args['text'] ? $args['text'] : PTK_Share_Color::TEXT_FALLBACK,
+            $background
+        );
 
         // Nothing to say, so nothing to draw. A square with only the rules
         // on it IS the blank image this must never return.
@@ -187,12 +203,11 @@ class PTK_Share_Image {
             return false;
         }
 
-        $ground     = self::allocate( $im, self::GROUND );
-        $accent_col = self::allocate( $im, $accent );
-        $white      = self::allocate( $im, '#ffffff' );
-        $hairline   = self::allocate( $im, '#3a4f7c' );
+        $bg_col   = self::allocate( $im, $background );
+        $text_col = self::allocate( $im, $text );
+        $hairline = self::allocate( $im, self::hairline_for( $background ) );
 
-        imagefilledrectangle( $im, 0, 0, self::SIZE - 1, self::SIZE - 1, $ground );
+        imagefilledrectangle( $im, 0, 0, self::SIZE - 1, self::SIZE - 1, $bg_col );
 
         $left  = self::PAD;
         $right = self::SIZE - self::PAD;
@@ -200,7 +215,7 @@ class PTK_Share_Image {
 
         // Eyebrow, letterspaced, in the accent. Full-width hairline under
         // it -- a masthead rule, never a side bar.
-        self::draw_tracked( $im, 'NEWSLETTER', $fonts['eyebrow'], 30, $left, 168, $accent_col, 11 );
+        self::draw_tracked( $im, 'NEWSLETTER', $fonts['eyebrow'], 30, $left, 168, $text_col, 11 );
         imagefilledrectangle( $im, $left, 210, $right, 213, $hairline );
 
         // The issue number, as big as it can be without touching the
@@ -212,17 +227,17 @@ class PTK_Share_Image {
             // page. The № sign is left off here: the ISSUE label above already
             // says what the number is, and the bundled font may not carry №.
             $issue = PTK_Share_Text::issue_label( $issue );
-            self::draw_tracked( $im, 'ISSUE', $fonts['eyebrow'], 34, $left, 296, $white, 12 );
+            self::draw_tracked( $im, 'ISSUE', $fonts['eyebrow'], 34, $left, 296, $text_col, 12 );
 
             $issue_size = self::fit_text( $issue, $fonts['issue'], 300, 96, $width );
-            imagettftext( $im, $issue_size, 0, $left, 640, $white, $fonts['issue'], $issue );
+            imagettftext( $im, $issue_size, 0, $left, 640, $text_col, $fonts['issue'], $issue );
         }
 
         // The week, in the serif, in the accent.
         $dateline = self::dateline( $date );
         if ( '' !== $dateline ) {
             $date_size = self::fit_text( $dateline, $fonts['date'], 56, 28, $width );
-            imagettftext( $im, $date_size, 0, $left, 736, $accent_col, $fonts['date'], $dateline );
+            imagettftext( $im, $date_size, 0, $left, 736, $text_col, $fonts['date'], $dateline );
         }
 
         // The school's name at the foot, above a second hairline, shrunk
@@ -241,7 +256,7 @@ class PTK_Share_Image {
             $baseline      = $last_baseline - ( ( count( $lines ) - 1 ) * $line_height );
 
             foreach ( $lines as $line ) {
-                imagettftext( $im, $size, 0, $left, $baseline, $white, $fonts['school'], $line );
+                imagettftext( $im, $size, 0, $left, $baseline, $text_col, $fonts['school'], $line );
                 $baseline += $line_height;
             }
         }
@@ -284,6 +299,24 @@ class PTK_Share_Image {
     private static function allocate( $im, $hex ) {
         $rgb = PTK_Share_Color::to_rgb( $hex );
         return imagecolorallocate( $im, $rgb[0], $rgb[1], $rgb[2] );
+    }
+
+    /**
+     * The two rule lines' color: a fixed step off the BACKGROUND, not a
+     * third stored setting (spec Part D: "an implementation detail...
+     * not a new user-facing setting"). Cosmetic, not contrast-guarded --
+     * it doesn't carry text. +32 per channel toward white on a dark
+     * background, -32 toward black on a light one, which is exactly what
+     * the old fixed pair (#1a2f5c ground / #3a4f7c hairline) already was:
+     * 0x1a+32=0x3a, 0x2f+32=0x4f, 0x5c+32=0x7c.
+     *
+     * @param string $background Normalized '#rrggbb'.
+     * @return string
+     */
+    private static function hairline_for( $background ) {
+        list( $r, $g, $b ) = PTK_Share_Color::to_rgb( $background );
+        $delta = ( PTK_Share_Color::relative_luminance( $background ) < 0.5 ) ? 32 : -32;
+        return PTK_Share_Color::from_rgb( $r + $delta, $g + $delta, $b + $delta );
     }
 
     /**
@@ -567,7 +600,7 @@ class PTK_Share_Image {
      * The admin panel render is the only caller.
      *
      * @param int   $post_id Newsletter post.
-     * @param array $args    issue, date, school_name, color, and optionally
+     * @param array $args    issue, date, school_name, background, text, and optionally
      *                       version (defaults to PTK_VERSION).
      * @return int|WP_Error Attachment ID, or a WP_Error the panel turns
      *                      into "upload a square picture".
@@ -604,12 +637,18 @@ class PTK_Share_Image {
         $school  = isset( $args['school_name'] ) ? (string) $args['school_name'] : '';
         $version = isset( $args['version'] ) ? (string) $args['version'] : ( defined( 'PTK_VERSION' ) ? PTK_VERSION : '0' );
 
-        // Hash the color actually DRAWN, not the one requested -- two
-        // schools whose picks both get corrected to the same readable
-        // color should not each think the other's square is stale.
-        $accent = self::accent_for( isset( $args['color'] ) ? $args['color'] : '' );
+        // Hash the colors actually DRAWN, not the ones requested -- two
+        // schools whose picks both get corrected to the same readable pair
+        // should not each think the other's square is stale.
+        $background = PTK_Share_Color::normalize_hex(
+            isset( $args['background'] ) && '' !== $args['background'] ? $args['background'] : self::GROUND
+        );
+        $text = self::text_for(
+            isset( $args['text'] ) && '' !== $args['text'] ? $args['text'] : PTK_Share_Color::TEXT_FALLBACK,
+            $background
+        );
 
-        $current_hash = PTK_Share_Data::square_inputs_hash( $issue, $date, $school, $accent, $version );
+        $current_hash = PTK_Share_Data::square_inputs_hash( $issue, $date, $school, $background, $text, $version );
         $exists       = $square['image_id'] && self::attachment_exists( $square['image_id'] );
 
         if ( ! self::should_regenerate( $square['hash'], $current_hash, $exists, false ) ) {
@@ -627,7 +666,8 @@ class PTK_Share_Image {
             'issue'       => $issue,
             'date'        => $date,
             'school_name' => $school,
-            'color'       => $accent,
+            'background'  => $background,
+            'text'        => $text,
         ) );
 
         if ( ! is_string( $png ) || '' === $png ) {
