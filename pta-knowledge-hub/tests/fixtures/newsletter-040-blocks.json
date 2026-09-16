@@ -1,0 +1,179 @@
+[
+  {
+    "type": "header",
+    "data": {
+      "school_name": "Northeast Elementary PTA · Montclair, NJ",
+      "headline": "",
+      "summary": "ASE registration opens Monday",
+      "greeting": "Hi Northeast families! The big news this week: <strong>After School Enrichment registration opens Monday, Sept 14</strong>, and PTA members get first pick. Also inside: Film on the Field has a new date, the website has a new Getting to School menu, and a reminder that PTA memberships start fresh every year."
+    }
+  },
+  {
+    "type": "announcement",
+    "data": {
+      "when": "Opens Monday, Sept 14 · 8:30 AM for PTA members",
+      "headline": "ASE registration opens Monday, Sept 14. PTA members go first.",
+      "text": "Fall After School Enrichment has <strong>12 classes for grades K–5</strong>, on Tuesdays and Wednesdays from 3 to 4 PM for 7 weeks. Each class has 10 to 16 spots. <strong>2026–27 PTA members register first</strong>, so if you haven't rejoined yet, do it before 8:30 AM on Monday.",
+      "button_text": "Go to ASE registration →",
+      "button_url": "https://app.givebacks.gives/c691c4",
+      "timeline": [
+        {
+          "date": "2026-09-14",
+          "time": "8:30 AM–12:30 PM",
+          "what": "PTA members only"
+        },
+        {
+          "date": "2026-09-14",
+          "time": "12:30–5:00 PM",
+          "what": "Closed between windows"
+        },
+        {
+          "date": "2026-09-14",
+          "time": "5:00 PM",
+          "what": "Reopens for everyone"
+        },
+        {
+          "date": "2026-09-17",
+          "time": "12:00 noon",
+          "what": "Registration closes"
+        }
+      ]
+    }
+  },
+  {
+    "type": "featured",
+    "data": {
+      "eyebrow": "ASE volunteers",
+      "headline": "Can you help on Tuesdays? Your child gets a free class.",
+      "body": "Thank you to everyone who signed up: <strong>Wednesdays are fully staffed.</strong> We still need volunteers to help supervise ASE on <strong>Tuesdays, 2:30 to 4 PM</strong>, for 7 weeks starting Sept 22. Volunteers' children can take one ASE class for free.",
+      "image_id": 0,
+      "link_url": "mailto:ptavp@northeastpta.org?subject=ASE%20volunteer%20(Tuesdays)",
+      "link_text": "Email Leslie to volunteer on Tuesdays →"
+    }
+  },
+  {
+    "type": "events",
+    "data": {
+      "rows": [
+        {
+          "date": "2026-09-14",
+          "title": "ASE registration opens",
+          "desc": "PTA members 8:30 AM–12:30 PM, then closed until it reopens for everyone at 5 PM."
+        },
+        {
+          "date": "2026-09-17",
+          "title": "ASE registration closes at noon",
+          "desc": "Last chance to sign up for fall classes."
+        },
+        {
+          "date": "2026-09-21",
+          "title": "No school: Yom Kippur",
+          "desc": "District closed."
+        },
+        {
+          "date": "2026-09-22",
+          "title": "ASE classes begin",
+          "desc": "Tuesday classes start Sept 22, Wednesday classes Sept 23. Pick-up is at 4 PM in front of the school."
+        },
+        {
+          "date": "2026-09-25",
+          "title": "Last day to order mums",
+          "desc": "Pre-orders close. Proceeds support the 5th grade class. <a href=\"https://mums26.givesmart.com\">Order at mums26.givesmart.com</a>."
+        },
+        {
+          "date": "2026-09-26",
+          "title": "Fifth Grade Car Wash + mum pickup",
+          "desc": "9 AM–12 PM in front of Northeast. Get your car washed by the 5th graders and pick up your mums while you're there."
+        },
+        {
+          "date": "2026-10-01",
+          "title": "Back-to-School Night · 6–7 PM",
+          "desc": "Meet your child's teacher and see the classroom."
+        },
+        {
+          "date": "2026-10-12",
+          "title": "No school: Indigenous Peoples' Day",
+          "desc": "District closed."
+        },
+        {
+          "date": "2026-10-16",
+          "title": "Film on the Field · new date",
+          "desc": "Moved from Oct 2. Rain date Friday, Oct 23. Time to be announced."
+        }
+      ]
+    }
+  },
+  {
+    "type": "story_cards",
+    "data": {
+      "cards": [
+        {
+          "eyebrow": "Date change",
+          "heading": "Film on the Field moves to Friday, October 16.",
+          "body": "Our fall movie night on the Northeast field is now <strong>Friday, October 16</strong>, two weeks later than the Oct 2 date in last week's newsletter. If it rains, the <strong>rain date is Friday, October 23</strong>. Time to be announced; bring blankets and chairs. We'll post the time on the <a href=\"https://northeastpta.org/calendar/\">PTA calendar</a> once it's set.",
+          "image_id": 0,
+          "link_url": "",
+          "link_text": ""
+        },
+        {
+          "eyebrow": "New on northeastpta.org",
+          "heading": "Drop-off help, all in one place: Getting to School.",
+          "body": "The website menu has a new <strong>Getting to School</strong> section with two pages for your morning and afternoon trips: a live traffic page that tells you whether to leave earlier, and the morning car line, stop by stop.",
+          "image_id": 0,
+          "link_url": "https://northeastpta.org/traffic/",
+          "link_text": "Check traffic →"
+        },
+        {
+          "eyebrow": "Membership",
+          "heading": "Were you a member last year? Please sign up again.",
+          "body": "PTA memberships reset every school year, so <strong>last year's membership doesn't carry over</strong>. Joining for 2026–27 takes about two minutes, and individual membership is $20.",
+          "image_id": 0,
+          "link_url": "https://northeastschoolpta.givebacks.com/shop/items/23263",
+          "link_text": "Join the PTA for 2026–27 →"
+        }
+      ]
+    }
+  },
+  {
+    "type": "quick_notes",
+    "data": {
+      "label": "Good to know",
+      "items": [
+        {
+          "heading": "Lunch menu",
+          "body": "This week's breakfast and lunch menus are always on the site, one day at a time on mobile.",
+          "link_url": "https://northeastpta.org/lunch-menu/",
+          "link_text": "See the menu →"
+        },
+        {
+          "heading": "Subscribe to the calendar",
+          "body": "Add the Northeast calendar to your phone once and it updates itself whenever a date changes. No more screenshots.",
+          "link_url": "https://northeastpta.org/calendar/",
+          "link_text": "Subscribe →"
+        },
+        {
+          "heading": "Family Handbook",
+          "body": "Arrival, dismissal, early pickup, absences: the 2026–2027 handbook is on the site and searchable.",
+          "link_url": "https://northeastpta.org/family-handbook/",
+          "link_text": "Open the handbook →"
+        }
+      ]
+    }
+  },
+  {
+    "type": "footer",
+    "data": {
+      "signoff": "Good luck with ASE sign-ups this week, and thank you to the volunteers who make those classes happen. Thanks for reading, and for being part of this community.<br><br>Warmly,<br><strong>Your Northeast PTA Board</strong>",
+      "links": [
+        {
+          "label": "NortheastPTA@northeastpta.org",
+          "url": "mailto:NortheastPTA@northeastpta.org"
+        },
+        {
+          "label": "northeastpta.org",
+          "url": "https://northeastpta.org"
+        }
+      ]
+    }
+  }
+]

@@ -282,4 +282,21 @@ ptk_test_ok( strpos( $qn_ph, 'data-ptk-block="quick_notes"' ) !== false, 'previe
 $ft_default = PTK_Newsletter_Renderer::render( array( array( 'type' => 'featured', 'data' => array( 'eyebrow' => '', 'headline' => 'X', 'body' => '', 'image_id' => 0, 'link_url' => '', 'link_text' => '' ) ) ), $st_opts );
 ptk_test_ok( strpos( $ft_default, '§ Top story' ) !== false, 'top story with no label falls back to "Top story"' );
 
+// --- The #040 fixture: whole-newsletter guarantees, and the HTML for eyeballing. ---
+$fx = json_decode( file_get_contents( __DIR__ . '/fixtures/newsletter-040-blocks.json' ), true );
+ptk_test_ok( is_array( $fx ), 'the #040 fixture parses' );
+$fx = PTK_Newsletter_Data::sanitize_blocks( $fx );
+$fx_html = PTK_Newsletter_Renderer::render( $fx, array( 'issue' => 40, 'date' => '2026-09-13', 'today' => '2026-09-13', 'theme' => 'harbor-navy', 'logo_url' => '', 'school_name' => 'Northeast Elementary PTA' ) );
+ptk_test_ok( substr_count( $fx_html, 'background:#1a2f5c' ) === 1, '#040: exactly one navy band' );
+ptk_test_ok( strpos( $fx_html, 'border-left' ) === false && strpos( $fx_html, 'border-right' ) === false, '#040: no one-sided borders anywhere' );
+ptk_test_ok( substr_count( $fx_html, '<h1' ) === 1, '#040: one h1' );
+ptk_test_ok( strpos( $fx_html, 'Inter' ) === false && strpos( $fx_html, 'Fraunces' ) === false, '#040: old fonts gone' );
+ptk_test_ok( preg_match_all( '/#ffd166/', $fx_html ) >= 2, '#040: yellow appears (when line, deadline row)' );
+ptk_test_ok( strpos( $fx_html, 'Newsletter&nbsp;&#8470;&nbsp;040 · 2026–2027' ) !== false, '#040: the eyebrow' );
+$out = getenv( 'PTK_RENDER_OUT' );
+if ( $out ) {
+    file_put_contents( $out, "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><link href=\"https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,500;1,6..72,500&display=swap\" rel=\"stylesheet\"><style>body{margin:0}</style></head><body>" . $fx_html . "</body></html>" );
+    echo "  (wrote $out)\n";
+}
+
 ptk_test_done();
