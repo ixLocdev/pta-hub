@@ -58,7 +58,7 @@ class PTK_Share_Text {
      */
     public static function issue_label( $issue ) {
         $issue = trim( (string) $issue );
-        if ( '' === $issue || ! ctype_digit( $issue ) ) {
+        if ( '' === $issue || ! preg_match( '/^\d+$/', $issue ) ) {
             return $issue;
         }
         return str_pad( $issue, self::ISSUE_PAD, '0', STR_PAD_LEFT );
@@ -111,8 +111,11 @@ class PTK_Share_Text {
     private static function truncate( $s ) {
         if ( mb_strlen( $s ) <= self::LINE_MAX ) { return $s; }
         $cut = mb_substr( $s, 0, self::LINE_MAX );
-        $sp  = mb_strrpos( $cut, ' ' );
-        if ( false !== $sp ) { $cut = mb_substr( $cut, 0, $sp ); }
+        // strrpos/substr on bytes is safe here: the space is one ASCII byte, so
+        // cutting at it always lands on a character boundary. (mb_strrpos has no
+        // WordPress polyfill; mb_substr and mb_strlen do.)
+        $sp  = strrpos( $cut, ' ' );
+        if ( false !== $sp ) { $cut = substr( $cut, 0, $sp ); }
         return preg_replace( '/[\s,;:—–-]+$/u', '', $cut ) . '…';
     }
 
