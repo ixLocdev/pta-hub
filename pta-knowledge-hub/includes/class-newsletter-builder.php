@@ -218,6 +218,17 @@ class PTK_Newsletter_Builder {
             $status_req = 'draft';
         }
 
+        // Round 3.1 (spec item 9): the example newsletter must never go
+        // live by accident -- it exists purely to show what a finished one
+        // looks like. Force it back to draft and flag it the same way the
+        // photo-consent gate does, so render_page() can show the "This is
+        // an example" notice next to where Publish would have been.
+        $example_blocked = false;
+        if ( $edit_id && 'publish' === $status_req && class_exists( 'PTK_Example_Newsletter' ) && PTK_Example_Newsletter::is_example( $edit_id ) ) {
+            $status_req       = 'draft';
+            $example_blocked  = true;
+        }
+
         // PII gate: never publish photos without the photo/privacy
         // confirmation. With no photos there is nothing to confirm, so the
         // gate is skipped entirely. Otherwise downgrade to draft and flag it
@@ -272,7 +283,7 @@ class PTK_Newsletter_Builder {
         if ( $was_published ) {
             $msg = 'updated';
         } else {
-            $msg = $forced_draft ? 'pii' : ( 'publish' === $post_status ? 'published' : 'saved' );
+            $msg = $example_blocked ? 'example' : ( $forced_draft ? 'pii' : ( 'publish' === $post_status ? 'published' : 'saved' ) );
         }
 
         wp_safe_redirect( add_query_arg( array(
@@ -1050,6 +1061,8 @@ class PTK_Newsletter_Builder {
         }
 
         $is_published = $edit_id && 'publish' === get_post_status( $edit_id );
+        // Round 3.1 (spec item 9): never offer Publish on the example.
+        $is_example   = $edit_id && class_exists( 'PTK_Example_Newsletter' ) && PTK_Example_Newsletter::is_example( $edit_id );
         // See handle_submission()'s matching OR: the square's own
         // background photo (round 3) doesn't live in $blocks.
         $has_images   = PTK_Newsletter_Data::blocks_have_images( $blocks )
@@ -1063,7 +1076,12 @@ class PTK_Newsletter_Builder {
         $sections  = self::sections_to_render( $blocks );
         ?>
         <div class="wrap ptk-nl-builder">
-            <h1><?php echo $edit_id ? 'Edit Newsletter' : 'New Newsletter'; ?></h1>
+            <h1><?php echo $is_example ? 'Example Newsletter' : ( $edit_id ? 'Edit Newsletter' : 'New Newsletter' ); ?></h1>
+            <?php if ( $is_example ) : ?>
+                <div class="ptk-nl-msg ptk-nl-msg-warn" role="status">
+                    <p>This is an example. Start a new newsletter instead.</p>
+                </div>
+            <?php endif; ?>
             <?php self::render_notice( $edit_id ); ?>
             <p class="ptk-nl-intro">Five short steps. We&#8217;ve filled in what we can — you write the news.</p>
             <?php if ( ! $edit_id ) : $last_id = self::most_recent_newsletter_id(); if ( $last_id ) : $last_issue = get_post_meta( $last_id, 'ptk_nl_issue', true ); if ( $last_issue ) : ?>
@@ -1071,6 +1089,19 @@ class PTK_Newsletter_Builder {
                     <p>We copied your footer and section names from No. <?php echo esc_html( PTK_Share_Text::issue_label( $last_issue ) ); ?>. Everything else — stories, events, the announcement, the greeting — starts blank.</p>
                 </div>
             <?php endif; endif; endif; ?>
+
+            <?php
+            // Round 3.1 (spec item 9): a quiet link to the example, only on
+            // the start screen (a brand-new newsletter, not while editing
+            // one) -- the example itself already carries its own notice, so
+            // this never needs to repeat itself.
+            $example_id = ( ! $edit_id && class_exists( 'PTK_Example_Newsletter' ) ) ? PTK_Example_Newsletter::example_id() : 0;
+            if ( $example_id ) :
+                ?>
+                <p class="ptk-nl-example-link">
+                    <a href="<?php echo esc_url( get_preview_post_link( $example_id ) ); ?>" target="_blank" rel="noopener">See an example newsletter</a>
+                </p>
+            <?php endif; ?>
 
             <div class="ptk-nl-wizard">
                 <nav class="ptk-nl-steps" aria-label="Newsletter steps">
@@ -1184,7 +1215,15 @@ class PTK_Newsletter_Builder {
                             </div>
 
                             <div class="ptk-nl-submit-row">
-                                <?php if ( $is_published ) : ?>
+                                <?php if ( $is_example ) : ?>
+                                    <?php /* Round 3.1 (spec item 9): no Publish, ever -- the example must
+                                            never go live by accident. Save draft still works, since editing
+                                            it to explore is harmless, but handle_submission() blocks Publish
+                                            server-side too (belt and braces, matches the photo/PII gate's
+                                            pattern). */ ?>
+                                    <button type="submit" name="ptk_nl_status" value="draft" class="button button-secondary">Save draft</button>
+                                    <a class="button button-primary" href="<?php echo esc_url( self::url() ); ?>">Start a new newsletter</a>
+                                <?php elseif ( $is_published ) : ?>
                                     <?php /* Live already: no Save draft (it would take the newsletter down) and no
                                             Preview (View newsletter shows the real thing). handle_submission()
                                             keeps it published whatever is posted. */ ?>
