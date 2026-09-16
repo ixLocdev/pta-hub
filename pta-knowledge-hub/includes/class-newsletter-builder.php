@@ -285,6 +285,10 @@ class PTK_Newsletter_Builder {
             wp_send_json_error( array( 'message' => 'You do not have permission to edit this newsletter.' ), 403 );
         }
 
+        if ( 'publish' === get_post_status( $post_id ) ) {
+            wp_send_json_error( array( 'message' => 'This newsletter is already published, so share its real link instead. Reload the page to see it.' ), 409 );
+        }
+
         $mode = isset( $_POST['mode'] ) ? sanitize_key( wp_unslash( $_POST['mode'] ) ) : '';
 
         if ( 'generate' === $mode ) {
@@ -968,6 +972,23 @@ class PTK_Newsletter_Builder {
      * @param int $edit_id Existing, validated pta_newsletter post id.
      */
     protected static function render_preview_panel( $edit_id ) {
+        // A preview link only opens drafts (PTK_Public_Preview matches
+        // draft/pending/private/future) and its token is deleted on publish,
+        // so offering one for a live newsletter would hand out a dead link.
+        // A live newsletter's real address is the thing to share instead.
+        if ( 'publish' === get_post_status( $edit_id ) ) {
+            $live_url = (string) get_permalink( $edit_id );
+            ?>
+            <div class="ptk-nl-preview-panel" data-step="4">
+                <h3>Link to your newsletter</h3>
+                <p class="description"><label for="ptk-nl-live-url">Your newsletter is live. Anyone with this link can read it:</label></p>
+                <input type="text" readonly value="<?php echo esc_attr( $live_url ); ?>" id="ptk-nl-live-url" onclick="this.select();" />
+                <button type="button" class="button" data-ptk-copy="#ptk-nl-live-url">Copy link</button>
+                <a class="button" href="<?php echo esc_url( $live_url ); ?>" target="_blank" rel="noopener">View newsletter</a>
+            </div>
+            <?php
+            return;
+        }
         ?>
         <div class="ptk-nl-preview-panel" data-step="4" data-preview-link-panel data-post-id="<?php echo esc_attr( $edit_id ); ?>">
             <h3>Share a preview link</h3>
