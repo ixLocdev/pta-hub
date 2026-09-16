@@ -115,7 +115,21 @@
         safeBoot(bindUnsavedGuard);
         safeBoot(focusConsentIfRefused);
         safeBoot(bindRevealInvalidFields);
+        // Added in 4.2.0, fenced off the same way.
+        safeBoot(openFilledDisclosures);
     });
+
+    /**
+     * A closed "Add dates" disclosure hiding rows that were saved would look
+     * like the dates had vanished. Open any disclosure that has rows in it.
+     */
+    function openFilledDisclosures() {
+        $('[data-disclosure]').each(function () {
+            if ($(this).find('[data-rows] > [data-row]').length) {
+                this.open = true;
+            }
+        });
+    }
 
     /**
      * A required field on a hidden step (the issue number, on step 1, when
@@ -607,6 +621,8 @@
         doc.open();
         doc.write(
             '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+            // The house fonts: without them the preview shows Helvetica.
+            '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,500;1,6..72,500&display=swap">' +
             '<style>' + PREVIEW_STYLE + '</style></head>' +
             '<body style="margin:0;width:' + PREVIEW_WIDTH + 'px">' + html + '</body></html>'
         );
