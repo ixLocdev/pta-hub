@@ -113,7 +113,54 @@
         safeBoot(bindCopyButtons);
         safeBoot(bindPreviewLinks);
         safeBoot(bindUnsavedGuard);
+        safeBoot(focusConsentIfRefused);
     });
+
+    /**
+     * Publishing was turned into a draft because the photo check wasn't
+     * ticked: move focus to that checkbox, where the explanation sits.
+     */
+    function focusConsentIfRefused() {
+        if (typeof ptkNlData === 'undefined' || !ptkNlData || !parseInt(ptkNlData.focusConsent, 10)) {
+            return;
+        }
+        var box = document.getElementById('ptk-nl-pii-ok');
+        if (box && !box.closest('[hidden]')) {
+            box.focus();
+        }
+    }
+
+    /**
+     * Show the photo check only while the newsletter has a photo in it --
+     * the same rule the server uses (PTK_Newsletter_Data::blocks_have_images).
+     * Uses the `hidden` attribute, not jQuery .toggle(), and the gate carries
+     * no data-step, so showStep() and this never fight.
+     */
+    function updatePhotoCheck(blocks) {
+        var gate = document.querySelector('[data-pii-gate]');
+        if (!gate) {
+            return;
+        }
+        var has = false;
+        for (var i = 0; i < blocks.length && !has; i++) {
+            var data = blocks[i].data || {};
+            for (var key in data) {
+                if (!Object.prototype.hasOwnProperty.call(data, key)) {
+                    continue;
+                }
+                if (key === 'image_id' && parseInt(data[key], 10) > 0) {
+                    has = true;
+                } else if (Array.isArray(data[key])) {
+                    for (var j = 0; j < data[key].length; j++) {
+                        if (data[key][j] && parseInt(data[key][j].image_id, 10) > 0) {
+                            has = true;
+                        }
+                    }
+                }
+            }
+        }
+        gate.hidden = !has;
+    }
 
     /** Run one optional boot step; log a failure instead of throwing it. */
     function safeBoot(fn) {
@@ -1525,6 +1572,13 @@
         var $hidden = $('#ptk-nl-blocks-json');
         if ($hidden.length) {
             $hidden.val(JSON.stringify(blocks));
+        }
+
+        // Fenced off: serialize() runs inside the boot block.
+        try {
+            updatePhotoCheck(blocks);
+        } catch (err) {
+            // The server still enforces the photo check; nothing is lost.
         }
     }
 

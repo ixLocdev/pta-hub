@@ -270,6 +270,38 @@ class PTK_Newsletter_Data {
     }
 
     /**
+     * Does this newsletter show any photo? True when any block -- or any row
+     * inside a block (story cards) -- has an image_id above 0. The photo
+     * consent check only means something when there is a photo to confirm.
+     *
+     * @param mixed $blocks Blocks array (sanitized or raw).
+     * @return bool
+     */
+    public static function blocks_have_images( $blocks ) {
+        if ( ! is_array( $blocks ) ) {
+            return false;
+        }
+        foreach ( $blocks as $block ) {
+            if ( ! is_array( $block ) || ! isset( $block['data'] ) || ! is_array( $block['data'] ) ) {
+                continue;
+            }
+            foreach ( $block['data'] as $key => $value ) {
+                if ( 'image_id' === $key && is_scalar( $value ) && intval( $value ) > 0 ) {
+                    return true;
+                }
+                if ( is_array( $value ) ) {
+                    foreach ( $value as $row ) {
+                        if ( is_array( $row ) && isset( $row['image_id'] ) && is_scalar( $row['image_id'] ) && intval( $row['image_id'] ) > 0 ) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * Bump a "last issue number" to the next issue, flooring at 1.
      *
      * @param mixed $last Last issue number (expected numeric).

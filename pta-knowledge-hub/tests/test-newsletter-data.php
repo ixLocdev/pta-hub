@@ -46,4 +46,18 @@ ptk_test_ok( $hevent['date'] === '', 'array event date becomes empty string' );
 ptk_test_ok( $hevent['title'] === '', 'array event title becomes empty string' );
 ptk_test_ok( $hlink['url'] === '', 'array footer link url becomes empty string' );
 
+// --- blocks_have_images(): the photo check only applies with a photo. ----
+$no_img = array(
+    array( 'type' => 'header', 'data' => array( 'school_name' => 'X' ) ),
+    array( 'type' => 'featured', 'data' => array( 'headline' => 'Hi', 'image_id' => 0 ) ),
+    array( 'type' => 'story_cards', 'data' => array( 'cards' => array( array( 'heading' => 'A', 'image_id' => 0 ) ) ) ),
+);
+ptk_test_ok( false === PTK_Newsletter_Data::blocks_have_images( $no_img ), 'no image_id above 0 -> no images' );
+ptk_test_ok( false === PTK_Newsletter_Data::blocks_have_images( array() ), 'empty blocks -> no images' );
+ptk_test_ok( false === PTK_Newsletter_Data::blocks_have_images( 'junk' ), 'non-array -> no images' );
+$feat = $no_img; $feat[1]['data']['image_id'] = 12;
+ptk_test_ok( true === PTK_Newsletter_Data::blocks_have_images( $feat ), 'featured image counts' );
+$card = $no_img; $card[2]['data']['cards'][] = array( 'heading' => 'B', 'image_id' => '7' );
+ptk_test_ok( true === PTK_Newsletter_Data::blocks_have_images( $card ), 'a story card image counts (string id too)' );
+
 ptk_test_done();

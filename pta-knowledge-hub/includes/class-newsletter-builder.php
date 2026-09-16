@@ -42,6 +42,9 @@ class PTK_Newsletter_Builder {
 
     const PAGE_SLUG = 'ptk-newsletter-builder';
 
+    /** Post meta: the day (Y-m-d) the photo check was confirmed on publish. */
+    const META_PII_CONFIRMED = 'ptk_nl_pii_confirmed';
+
     /** The only theme shipped in Phase 1. */
     const DEFAULT_THEME = 'harbor-navy';
 
@@ -177,12 +180,14 @@ class PTK_Newsletter_Builder {
             $status_req = 'draft';
         }
 
-        // PII gate: never publish without the photo/privacy confirmation.
-        // Silently downgrade to draft and flag it so the redirect notice can
-        // explain why nothing went live.
+        // PII gate: never publish photos without the photo/privacy
+        // confirmation. With no photos there is nothing to confirm, so the
+        // gate is skipped entirely. Otherwise downgrade to draft and flag it
+        // so step 4 can explain why nothing went live, next to the checkbox.
         $pii_ok       = ! empty( $_POST['ptk_nl_pii_ok'] );
+        $has_images   = PTK_Newsletter_Data::blocks_have_images( $blocks );
         $forced_draft = false;
-        if ( 'publish' === $status_req && ! $pii_ok ) {
+        if ( 'publish' === $status_req && $has_images && ! $pii_ok ) {
             $status_req   = 'draft';
             $forced_draft = true;
         }
@@ -204,6 +209,13 @@ class PTK_Newsletter_Builder {
 
         // Build the post, write it, and persist the structured meta.
         $post_id = self::persist_newsletter( $blocks, $issue, $date, $post_status, $edit_id );
+
+        // Remember the photo confirmation, with the day it was given, so the
+        // box shows ticked when this newsletter is opened again instead of
+        // looking like it was never done. The first confirmation is kept.
+        if ( 'publish' === $post_status && $has_images && $pii_ok && ! get_post_meta( $post_id, self::META_PII_CONFIRMED, true ) ) {
+            update_post_meta( $post_id, self::META_PII_CONFIRMED, current_time( 'Y-m-d' ) );
+        }
 
         // Preview is only offered for drafts. A published newsletter has no
         // Preview button (View newsletter does that job), so a stray preview
@@ -441,7 +453,8 @@ class PTK_Newsletter_Builder {
             'saved'     => array( 'ok', 'Draft saved.' ),
             'published' => array( 'ok', 'Newsletter published.' ),
             'updated'   => array( 'ok', 'Newsletter updated.' ),
-            'pii'       => array( 'warn', 'Confirm the photo/privacy check before publishing. Your newsletter was saved as a draft instead.' ),
+            // 'pii' has no message up here on purpose: it is shown next to the
+            // photo checkbox on step 4, which gets focus (see render_page()).
         );
 
         if ( ! isset( $notices[ $msg ] ) ) {
@@ -540,6 +553,11 @@ class PTK_Newsletter_Builder {
         // wp_localize_script() stringifies this to "4" -- the JS parseInt()s it.
         if ( ! empty( $_GET['ptk_nl_msg'] ) ) {
             $nl_data['startStep'] = 4;
+            // Publishing was refused for want of the photo check: put the
+            // volunteer ON the checkbox, where the explanation is.
+            if ( 'pii' === sanitize_key( wp_unslash( $_GET['ptk_nl_msg'] ) ) ) {
+                $nl_data['focusConsent'] = 1;
+            }
         } elseif ( ! empty( $_GET['ptk_nl_step'] ) ) {
             $step = absint( $_GET['ptk_nl_step'] );
             if ( $step >= 1 && $step <= count( self::steps() ) ) {
@@ -831,6 +849,10 @@ class PTK_Newsletter_Builder {
         }
 
         $is_published = $edit_id && 'publish' === get_post_status( $edit_id );
+        $has_images   = PTK_Newsletter_Data::blocks_have_images( $blocks );
+        $pii_date     = $edit_id ? (string) get_post_meta( $edit_id, self::META_PII_CONFIRMED, true ) : '';
+        $pii_date     = preg_match( '/^\d{4}-\d{2}-\d{2}$/', $pii_date ) ? $pii_date : '';
+        $pii_failed   = isset( $_GET['ptk_nl_msg'] ) && 'pii' === sanitize_key( wp_unslash( $_GET['ptk_nl_msg'] ) );
 
         $steps     = self::steps();
         $step_last = count( $steps );
@@ -917,11 +939,21 @@ class PTK_Newsletter_Builder {
                         <input type="hidden" name="ptk_nl_blocks" id="ptk-nl-blocks-json" value="<?php echo esc_attr( wp_json_encode( $blocks ) ); ?>">
 
                         <div class="ptk-nl-finish" data-step="<?php echo (int) $step_last; ?>">
-                            <div class="ptk-nl-pii-gate">
+                            <?php /* Immediately above the buttons it governs. Hidden (the `hidden`
+                                    attribute, never CSS) when the newsletter has no photos -- there is
+                                    nothing to confirm. newsletter-builder.js shows it again the moment a
+                                    photo is added. */ ?>
+                            <div class="ptk-nl-pii-gate" data-pii-gate<?php echo $has_images ? '' : ' hidden'; ?>>
+                                <?php if ( $pii_failed ) : ?>
+                                    <p class="ptk-nl-pii-error" id="ptk-nl-pii-error" role="alert">Your newsletter was saved as a draft, not published. Please tick this box to confirm the photos are OK, then press Publish again.</p>
+                                <?php endif; ?>
                                 <label>
-                                    <input type="checkbox" name="ptk_nl_pii_ok" value="1">
+                                    <input type="checkbox" id="ptk-nl-pii-ok" name="ptk_nl_pii_ok" value="1"<?php checked( '' !== $pii_date ); ?><?php echo $pii_failed ? ' aria-describedby="ptk-nl-pii-error"' : ''; ?>>
                                     These photos are OK to share publicly — no student faces or personal info.
                                 </label>
+                                <?php if ( '' !== $pii_date ) : ?>
+                                    <p class="ptk-nl-pii-note">Confirmed when this issue was published on <?php echo esc_html( date_i18n( 'F j, Y', strtotime( $pii_date ) ) ); ?>.</p>
+                                <?php endif; ?>
                             </div>
 
                             <div class="ptk-nl-submit-row">

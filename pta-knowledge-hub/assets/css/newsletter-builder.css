@@ -651,6 +651,19 @@
     margin-top: 2px;
 }
 
+.ptk-nl-pii-error {
+    margin: 0 0 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #7a1419;
+}
+
+.ptk-nl-pii-note {
+    margin: 8px 0 0 24px;
+    font-size: 13px;
+    color: #78350f;
+}
+
 /* ── Submit row ── */
 .ptk-nl-submit-row {
     display: flex;
