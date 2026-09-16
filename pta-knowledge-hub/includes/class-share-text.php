@@ -135,7 +135,7 @@ class PTK_Share_Text {
             ? 'PTA Newsletter #' . $issue . ' is out.'
             : 'A new PTA newsletter is out.';
 
-        $featured_headline = isset( $featured['headline'] ) ? trim( (string) $featured['headline'] ) : '';
+        $featured_headline = self::html_to_text( isset( $featured['headline'] ) ? $featured['headline'] : '' );
         $featured_body     = self::html_to_text( isset( $featured['body'] ) ? $featured['body'] : '' );
         $featured_lines    = array_filter( array( $featured_headline, $featured_body ), 'strlen' );
         $featured_para     = implode( "\n", $featured_lines );
@@ -173,7 +173,7 @@ class PTK_Share_Text {
             $lines = array();
             foreach ( $footer_links as $link ) {
                 if ( ! is_array( $link ) || empty( $link['label'] ) || empty( $link['url'] ) ) { continue; }
-                $lines[] = trim( (string) $link['label'] ) . ': ' . trim( (string) $link['url'] );
+                $lines[] = self::html_to_text( $link['label'] ) . ': ' . trim( (string) $link['url'] );
             }
             if ( ! empty( $lines ) ) {
                 $footer_block = implode( "\n", $lines );
@@ -197,7 +197,7 @@ class PTK_Share_Text {
 
     /** One "Upcoming events" line for an event row. */
     private static function event_line( $row ) {
-        $title = isset( $row['title'] ) ? trim( (string) $row['title'] ) : '';
+        $title = self::html_to_text( isset( $row['title'] ) ? $row['title'] : '' );
         $date  = isset( $row['date'] ) ? (string) $row['date'] : '';
         $pretty = self::pretty_date( $date );
         if ( '' === $title ) {

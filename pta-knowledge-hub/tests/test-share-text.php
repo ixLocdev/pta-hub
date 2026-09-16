@@ -154,4 +154,23 @@ $bare_blocks = array(
 $bare = $t::generate( $bare_blocks, $opts );
 ptk_test_ok( '' !== trim( $bare['facebook'] ), 'facebook text is non-empty even with no featured/cards/events' );
 
+// Plain-text fields carry entities too -- a featured headline, an event title
+// and a footer label must decode exactly like an HTML body does, or the same
+// post shows "K&ndash;5" in one line and "K-5" in the next.
+$ent = PTK_Share_Text::generate(
+    array(
+        array( 'type' => 'header', 'data' => array( 'school_name' => 'NE PTA', 'headline' => '', 'greeting' => '' ) ),
+        array( 'type' => 'featured', 'data' => array( 'eyebrow' => '', 'headline' => 'Grades K&ndash;5 start September&nbsp;22.', 'body' => '', 'image_id' => 0 ) ),
+        array( 'type' => 'events', 'data' => array( 'rows' => array( array( 'date' => '2026-09-26', 'title' => 'Car Wash &amp; Mum Pickup', 'desc' => '' ) ) ) ),
+        array( 'type' => 'footer', 'data' => array( 'signoff' => '', 'links' => array( array( 'label' => 'Join &amp; Renew', 'url' => 'https://x.test/j' ) ) ) ),
+    ),
+    array( 'url' => 'https://x.test/n', 'issue' => '40', 'date' => '2026-09-14', 'school_name' => 'NE PTA', 'today' => '2026-09-14' )
+);
+ptk_test_ok( strpos( $ent['facebook'], '&ndash;' ) === false, 'featured headline decodes entities' );
+ptk_test_ok( strpos( $ent['facebook'], '&nbsp;' ) === false, 'featured headline decodes nbsp' );
+ptk_test_ok( strpos( $ent['facebook'], 'Car Wash & Mum Pickup' ) !== false, 'event title decodes entities' );
+ptk_test_ok( strpos( $ent['facebook'], 'Join & Renew' ) !== false, 'footer label decodes entities' );
+ptk_test_ok( strpos( $ent['instagram'], '&ndash;' ) === false, 'instagram decodes entities too' );
+ptk_test_ok( strpos( $ent['whatsapp'], '&ndash;' ) === false, 'whatsapp decodes entities too' );
+
 ptk_test_done();
