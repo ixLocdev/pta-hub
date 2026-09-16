@@ -384,6 +384,11 @@
          *   only a real photo CHANGE (new photo, removed, switched to
          *   custom) needs the picture area to visibly re-render.
          */
+        // Every reframe save gets a number; only the newest one's reply may
+        // touch the square's <img> -- two quick drags in a row must not let
+        // an older reply's stale picture land after a newer one.
+        var reframeSeq = 0;
+
         function sendPhoto($root, data, busyText, quiet) {
             if (!piiOk($root)) {
                 data.pii_ok = 0;
@@ -399,11 +404,23 @@
                 $status.text(busyText);
             }
 
+            var mySeq = quiet ? ++reframeSeq : 0;
+
             $.post(ptkNlShare.ajaxUrl, data)
                 .done(function (res) {
+                    if (quiet && mySeq !== reframeSeq) {
+                        return; // A newer reframe is already in flight or landed.
+                    }
                     if (res && res.success && res.data && typeof res.data.html === 'string') {
                         if (quiet) {
-                            return; // Saved silently; the picker's own DOM already reflects it.
+                            // Saved silently; the picker's own DOM already reflects the
+                            // NEW framing (that's what the volunteer is looking at), but
+                            // the rendered square picture itself (round 3.1, spec item 3)
+                            // still needs to catch up -- swap just the <img src>, never
+                            // the whole area (that would tear down the picker mid-drag
+                            // and steal keyboard focus off the dot).
+                            updateSquareImage($area, res.data.html);
+                            return;
                         }
                         $area.html(res.data.html);
                         initPhotoPicker($area);
@@ -486,6 +503,9 @@
             var $mount = $(this).closest('[data-share-photo-picker-mount]');
             var $root = $mount.closest('[data-share-photo]');
             window.clearTimeout(reframeTimer);
+            // ~500ms after the LAST change (spec item 3) -- long enough that a
+            // drag or a burst of scroll-wheel zoom ticks collapses into one
+            // request instead of flooding the server with GD renders.
             reframeTimer = window.setTimeout(function () {
                 sendPhoto($root, {
                     mode: 'photo_reframe',
@@ -493,10 +513,33 @@
                     focal_y: $mount.find('[data-field="image_focal_y"]').val(),
                     zoom: $mount.find('[data-field="image_zoom"]').val()
                 }, 'Saving the framing…', true);
-            }, 400);
+            }, 500);
         });
 
         initPhotoPicker($area);
+    }
+
+    /**
+     * Round 3.1 (spec item 3): after a quiet reframe save, swap just the
+     * rendered square's <img src> for the freshly generated picture --
+     * never the whole $area (that would tear down the picker the volunteer
+     * is mid-drag on and steal keyboard focus off the dot). The new HTML
+     * came back from the SAME server render the non-quiet path would use;
+     * only the DOM update is different. Cache-busted with a timestamp: the
+     * attachment id (and so its URL) stays the same on every reframe, so
+     * without this the browser would keep showing the OLD picture from
+     * cache.
+     *
+     * @param {jQuery} $area The [data-share-square] area.
+     * @param {string} html  The server-rendered square markup.
+     */
+    function updateSquareImage($area, html) {
+        var src = $('<div>').html(html).find('.ptk-nl-share-figure img').attr('src');
+        if (!src) {
+            return;
+        }
+        var busted = src + (src.indexOf('?') === -1 ? '?' : '&') + 'v=' + Date.now();
+        $area.find('.ptk-nl-share-figure img').attr('src', busted);
     }
 
     /**
