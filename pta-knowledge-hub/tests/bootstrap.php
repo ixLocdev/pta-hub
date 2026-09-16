@@ -29,6 +29,19 @@ if ( ! function_exists( 'ptk_test_clean_url' ) ) {
 if ( ! function_exists( 'esc_url' ) ) { function esc_url( $s ) { return ptk_test_clean_url( $s ); } }
 if ( ! function_exists( 'esc_url_raw' ) ) { function esc_url_raw( $s ) { return ptk_test_clean_url( $s ); } }
 if ( ! function_exists( 'absint' ) ) { function absint( $n ) { return abs( intval( $n ) ); } }
+if ( ! function_exists( 'sanitize_email' ) ) {
+    function sanitize_email( $s ) {
+        $s = trim( (string) $s );
+        return preg_replace( '/[^a-zA-Z0-9!#$%&\'*+\/=?^_`{|}~.\-@]/', '', $s );
+    }
+}
+if ( ! function_exists( 'is_email' ) ) {
+    function is_email( $s ) { return (bool) filter_var( (string) $s, FILTER_VALIDATE_EMAIL ); }
+}
+if ( ! function_exists( 'sanitize_key' ) ) {
+    function sanitize_key( $s ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/', '', (string) $s ) ); }
+}
+if ( ! function_exists( 'wp_unslash' ) ) { function wp_unslash( $s ) { return $s; } }
 
 function ptk_test_ok( $cond, $label ) {
     if ( $cond ) { echo "  ok  - $label\n"; }

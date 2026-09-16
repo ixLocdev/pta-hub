@@ -1,10 +1,16 @@
 /**
- * Newsletters > Sharing settings: live preview of the square's accent color.
+ * Newsletter settings: live preview of the share square's two colors.
  *
  * readableOn() mirrors PTK_Share_Color::readable_pair() step for step
- * (WCAG contrast, 4.5 minimum, walk toward white on a dark ground, 40 steps
- * of 8% plus a 1-unit nudge), so the preview shows exactly the color the
- * server will save. The server stays the authority; this is only a preview.
+ * (WCAG contrast, 4.5 minimum, walk toward white on a dark background,
+ * toward black on a light one, 40 steps of 8% plus a 1-unit nudge), so the
+ * preview shows exactly the color the server will save. The server stays
+ * the authority; this is only a preview.
+ *
+ * 4.3.0: two independent picker+hex pairs (background, text), no
+ * "own color / council color" choice -- the square no longer has a
+ * Council-palette fallback (round-2 amendment). Both fields use the same
+ * wiring, generalized into wireColorField() rather than duplicated.
  * No jQuery.
  */
 (function () {
@@ -81,93 +87,81 @@
         return best;
     }
 
-    function boot() {
-        var form = document.querySelector('[data-ptk-share-settings]');
-        if (!form) {
-            return;
-        }
-        var ground = form.getAttribute('data-ground') || '#1a2f5c';
-        var picker = form.querySelector('#ptk-share-color');
-        var own = form.querySelector('input[name="ptk_share_color_mode"][value="own"]');
-        var council = form.querySelector('input[name="ptk_share_color_mode"][value="council"]');
-        var preview = form.querySelector('[data-preview]');
-        var note = form.querySelector('[data-preview-note]');
-        var hex = form.querySelector('#ptk-share-color-hex');
-        var error = form.querySelector('[data-color-error]');
-        if (!picker || !own || !council || !preview || !note) {
-            return;
-        }
-
-        function setError(text) {
-            if (!hex || !error) {
-                return;
-            }
-            error.textContent = text;
-            if (text) {
-                hex.setAttribute('aria-invalid', 'true');
-            } else {
-                hex.removeAttribute('aria-invalid');
-            }
-        }
-
-        function update() {
-            var useOwn = own.checked;
-            var chosen = norm(useOwn ? picker.value : council.getAttribute('data-color'));
-            var drawn = readableOn(chosen, ground);
-            preview.style.setProperty('--ptk-ss-accent', drawn);
-
-            if (drawn === chosen) {
-                note.textContent = 'Reads clearly on the navy square.';
-            } else if (useOwn) {
-                note.textContent = 'Too dark to read on navy. When you save, we’ll lighten it to ' + drawn + ' (shown here).';
-            } else {
-                note.textContent = 'On the navy square this color is lightened to ' + drawn + ' so it can be read (shown here).';
-            }
+    /**
+     * Wire one picker+hex pair so they stay in sync and always report a
+     * normalized hex via getValue(). Returns { getValue, onChange }.
+     */
+    function wireColorField(form, pickerSel, hexSel, onAnyChange) {
+        var picker = form.querySelector(pickerSel);
+        var hex = form.querySelector(hexSel);
+        if (!picker) {
+            return null;
         }
 
         function fromPicker() {
-            own.checked = true;
             if (hex) {
                 hex.value = picker.value;
             }
-            setError('');
-            update();
+            onAnyChange();
         }
         picker.addEventListener('input', fromPicker);
         picker.addEventListener('change', fromPicker);
 
         if (hex) {
-            // Typing a valid code moves the swatch and selects "our own".
-            // An unfinished code is left alone while typing; it's only called
-            // wrong once it's clearly finished (six characters) or they move on.
             hex.addEventListener('input', function () {
                 var v = hex.value.trim();
                 if (isHex(v)) {
                     picker.value = norm(v);
-                    own.checked = true;
-                    setError('');
-                    update();
-                } else if (v.replace(/^#/, '').length >= 6) {
-                    setError('That isn’t a color code. Type six letters and numbers, like 1a2f5c.');
-                } else {
-                    setError('');
+                    onAnyChange();
                 }
             });
             hex.addEventListener('change', function () {
                 var v = hex.value.trim();
                 if (v === '') {
                     hex.value = picker.value;
-                    setError('');
-                } else if (!isHex(v)) {
-                    setError('That isn’t a color code. Type six letters and numbers, like 1a2f5c.');
-                } else {
-                    own.checked = true;
-                    update();
+                } else if (isHex(v)) {
+                    picker.value = norm(v);
                 }
+                onAnyChange();
             });
         }
-        own.addEventListener('change', update);
-        council.addEventListener('change', update);
+
+        return {
+            getValue: function () {
+                return norm(picker.value);
+            }
+        };
+    }
+
+    function boot() {
+        var form = document.querySelector('[data-ptk-share-settings]');
+        if (!form) {
+            return;
+        }
+        var preview = form.querySelector('[data-preview]');
+        var note = form.querySelector('[data-preview-note]');
+        if (!preview || !note) {
+            return;
+        }
+
+        function update() {
+            var bg = bgField ? bgField.getValue() : '#1a2f5c';
+            var text = textField ? textField.getValue() : '#ffffff';
+            var drawn = readableOn(text, bg);
+
+            preview.style.setProperty('--ptk-ss-bg', bg);
+            preview.style.setProperty('--ptk-ss-accent', drawn);
+
+            if (drawn === text) {
+                note.textContent = 'Reads clearly on your square.';
+            } else {
+                note.textContent = 'Too hard to read on your square. When you save, we’ll adjust it to ' + drawn + ' (shown here).';
+            }
+        }
+
+        var bgField = wireColorField(form, '[data-ptk-bg-picker]', '[data-ptk-bg-hex]', function () { update(); });
+        var textField = wireColorField(form, '[data-ptk-text-picker]', '[data-ptk-text-hex]', function () { update(); });
+
         update();
     }
 

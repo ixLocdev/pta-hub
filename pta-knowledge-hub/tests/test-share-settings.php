@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/bootstrap.php';
+require __DIR__ . '/../includes/class-newsletter-data.php';
 require __DIR__ . '/../includes/class-share-color.php';
 require __DIR__ . '/../includes/class-share-settings.php';
 
@@ -81,6 +82,48 @@ $c = $t::submitted_color( '#ff0000', 'blue', '#336699' );
 ptk_test_ok( '' === $c['value'] && false !== strpos( $c['error'], '1a2f5c' ), 'a non-code is refused with an example' );
 $c = $t::submitted_color( 'junk', '', '' );
 ptk_test_ok( '' === $c['value'] && '' !== $c['error'], 'no usable color at all is an error, never navy by accident' );
+
+// ---------------------------------------------------------------------
+// 4.3.0: submitted_color() is reusable for the background field with
+// zero changes -- same helper, a background-flavored scenario.
+// ---------------------------------------------------------------------
+$c = $t::submitted_color( '#1a2f5c', '2a3f6c', '#1a2f5c' );
+ptk_test_ok( '#2a3f6c' === $c['value'] && '' === $c['error'], 'submitted_color() works unchanged for a background-color scenario' );
+
+// ---------------------------------------------------------------------
+// 4.3.0: PTK_Share_Color::BG_OPTION / TEXT_FALLBACK
+// ---------------------------------------------------------------------
+ptk_test_ok( 'ptk_share_bg_color' === PTK_Share_Color::BG_OPTION, 'BG_OPTION is the expected option key' );
+ptk_test_ok( '#ffffff' === PTK_Share_Color::TEXT_FALLBACK, 'TEXT_FALLBACK is white' );
+
+// ---------------------------------------------------------------------
+// 4.3.0: validate_link_field() -- Join / News / Calendar links
+// ---------------------------------------------------------------------
+$l = $t::validate_link_field( 'https://yourschool.org/join', 'join@yourschool.org' );
+ptk_test_ok( 'https://yourschool.org/join' === $l['value'] && '' === $l['error'], 'a plain https link is accepted' );
+
+$l = $t::validate_link_field( 'join@yourschool.org', 'join@yourschool.org' );
+ptk_test_ok( 'mailto:join@yourschool.org' === $l['value'] && '' === $l['error'], 'a bare email becomes a mailto: link' );
+
+$l = $t::validate_link_field( '', 'join@yourschool.org' );
+ptk_test_ok( '' === $l['value'] && '' === $l['error'], 'empty is allowed (means: clear it)' );
+
+foreach ( array( 'javascript:alert(1)', 'not a link at all', 'ftp://x.test/y' ) as $bad ) {
+    $l = $t::validate_link_field( $bad, 'join@yourschool.org' );
+    ptk_test_ok( '' === $l['value'] && '' !== $l['error'], 'validate_link_field rejects: ' . $bad );
+}
+
+// ---------------------------------------------------------------------
+// 4.3.0: validate_contact_email()
+// ---------------------------------------------------------------------
+$e = $t::validate_contact_email( 'office@yourschool.org' );
+ptk_test_ok( 'office@yourschool.org' === $e['value'] && '' === $e['error'], 'a normal email is accepted' );
+
+$e = $t::validate_contact_email( '' );
+ptk_test_ok( '' === $e['value'] && '' === $e['error'], 'empty email is allowed (means: clear it)' );
+
+$e = $t::validate_contact_email( 'not an email' );
+ptk_test_ok( '' === $e['value'] && '' !== $e['error'], 'a non-email is refused with a plain message' );
 
 // The admin CSS must never draw a one-sided accent bar.
 $css = file_get_contents( __DIR__ . '/../assets/css/share-settings.css' ) . file_get_contents( __DIR__ . '/../assets/css/share-page.css' );

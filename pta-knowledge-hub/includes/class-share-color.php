@@ -35,6 +35,24 @@ class PTK_Share_Color {
     /** Per-site override, stored as a blog option (not a network one). */
     const OPTION = 'ptk_share_color';
 
+    /**
+     * 4.3.0: the share square's SECOND color, its background. A blog
+     * option like OPTION, and -- unlike OPTION's own resolution chain --
+     * deliberately has no Council fallback: the square is a two-color
+     * contract (background, text) set on the Newsletter settings page,
+     * not fed from PTK_Site_Colors. See square_background_color() /
+     * square_text_color() below.
+     */
+    const BG_OPTION = 'ptk_share_bg_color';
+
+    /**
+     * 4.3.0: the square's text-color default when nothing is set. White,
+     * not FALLBACK -- a school that has never visited Newsletter settings
+     * gets navy background + white text, not a color derived from the
+     * Council palette. See square_text_color().
+     */
+    const TEXT_FALLBACK = '#ffffff';
+
     /** Hard cap so readable_pair() always terminates. */
     const MAX_STEPS = 40;
 
@@ -254,5 +272,39 @@ class PTK_Share_Color {
      */
     public static function readable_share_color( $blog_id = null, $against = self::FALLBACK ) {
         return self::readable_pair( self::share_color( $blog_id ), $against );
+    }
+
+    /**
+     * 4.3.0: the share square's background -- this site's own pick, else
+     * the navy default. NEVER the Council's network palette: the square's
+     * two colors are a self-contained pair set on Newsletter settings, so
+     * a school that never visited that page always gets navy + white
+     * (Decision, round-2 amendment), not whatever color the Council
+     * happens to have on file for a different purpose (the owner dots).
+     *
+     * @param int|null $blog_id Defaults to the current site.
+     * @return string Normalized '#rrggbb'.
+     */
+    public static function square_background_color( $blog_id = null ) {
+        $blog_id = ( null === $blog_id ) ? (int) get_current_blog_id() : (int) $blog_id;
+        $own     = get_option( self::BG_OPTION, '' );
+        return self::is_hex( $own ) ? self::normalize_hex( $own ) : self::FALLBACK;
+    }
+
+    /**
+     * 4.3.0: the share square's text color -- this site's own pick (kept
+     * under the pre-existing OPTION key, see class docblock), else white.
+     * Same no-Council rule as square_background_color(). This is what the
+     * square should be asked to draw with BEFORE the contrast guard runs
+     * against the chosen background (readable_pair() against the actual
+     * background, not a fixed ground).
+     *
+     * @param int|null $blog_id Defaults to the current site.
+     * @return string Normalized '#rrggbb'.
+     */
+    public static function square_text_color( $blog_id = null ) {
+        $blog_id = ( null === $blog_id ) ? (int) get_current_blog_id() : (int) $blog_id;
+        $own     = get_option( self::OPTION, '' );
+        return self::is_hex( $own ) ? self::normalize_hex( $own ) : self::TEXT_FALLBACK;
     }
 }

@@ -131,4 +131,14 @@ ptk_test_ok( $t::is_hex( '#zzz' ) === false, 'is_hex rejects garbage' );
 ptk_test_ok( $t::is_hex( null ) === false, 'is_hex rejects null' );
 ptk_test_ok( $t::is_hex( array() ) === false, 'is_hex rejects an array' );
 
+// ---------------------------------------------------------------------
+// 4.3.0: BG_OPTION / TEXT_FALLBACK constants exist and are the expected
+// values -- square_background_color()/square_text_color() themselves
+// touch get_option() and are exercised in Playground, not here (same
+// split as share_color() above them).
+// ---------------------------------------------------------------------
+ptk_test_ok( 'ptk_share_bg_color' === $t::BG_OPTION, 'BG_OPTION is ptk_share_bg_color' );
+ptk_test_ok( '#ffffff' === $t::TEXT_FALLBACK, 'TEXT_FALLBACK is white' );
+ptk_test_ok( '#1a2f5c' === $t::FALLBACK, 'FALLBACK (background default) stays navy' );
+
 ptk_test_done();

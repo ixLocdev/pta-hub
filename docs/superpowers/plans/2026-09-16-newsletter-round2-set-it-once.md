@@ -27,6 +27,17 @@ checks.
 first — every line reference, option key and decision is there. Where this plan and the spec
 disagree, the spec wins — say so rather than guessing.
 
+**AMENDMENT (2026-09-16, the controller):** the square's two colors have NO Council-palette
+fallback — see the spec's amendment note at the top of that file. Task 1 Step 1 and Task 5's
+"the simplest correct reading is default is white when unset" already point at the right
+outcome for the TEXT color; this amendment makes it explicit for both colors and adds that the
+square reads two new accessors (`PTK_Share_Color::square_background_color()` /
+`square_text_color()`) rather than `share_color()`, which keeps its existing Council-fallback
+chain for any other caller. Task 1 Step 4's "background has NO council concept" was already
+correct; apply the same "no council concept" rule to the TEXT field too, so the settings page's
+former own/council radio group for `ptk_share_color` is replaced with a second plain
+picker+hex pair, matching the background field's UI.
+
 **Where:** the git worktree `/Users/lucas/apps/PTA/PTA HUB/.claude/worktrees/newsletter-round2`,
 branch `newsletter-round2`, built on round 1 (4.2.0). Run everything from there. Do not `cd` to
 the parent repo, do not touch other branches, never use bare `git stash`.

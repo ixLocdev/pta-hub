@@ -1,25 +1,37 @@
 <?php
 /**
- * Newsletters > Sharing settings: the two per-school settings the share
- * panel needs.
+ * Newsletters > Newsletter settings: the school-wide settings that used to
+ * be typed every issue. Renamed in place from "Sharing settings" (4.3.0) --
+ * same file, same class, same PAGE_SLUG, so an old bookmark still lands
+ * here (spec Decision 4).
  *
- *   ptk_share_color         the color on the Instagram square
+ *   ptk_share_bg_color      the Instagram square's background
+ *   ptk_share_color         the Instagram square's text color
  *   ptk_share_facebook_url  the PTA's Facebook group (https only, may be empty)
+ *   ptk_join_url            "Join the PTA" link, masthead
+ *   ptk_news_url            "Got news?" submission link
+ *   ptk_calendar_url        "See full calendar" link, Coming up
+ *   ptk_contact_email       contact email for the "Got news?" closing
  *
- * Both are BLOG options: each school sets its own, on its own site, from the
- * menu where it already works on newsletters. This is a separate page from
- * PTK_Site_Colors' "School Colors" screen on purpose -- that one is the
- * Council's network palette, and it feeds the owner dots on every site's
- * Knowledge Hub list. Nothing here reads or writes `ptk_site_colors`, and
- * PTK_Site_Colors::color_for() never looks at `ptk_share_color`.
+ * All seven are BLOG options: each school sets its own, on its own site,
+ * from the menu where it already works on newsletters.
  *
- * Kept out of PTK_Share_Color, which stays pure contrast maths plus one thin
- * option read. The validation and wording helpers below are pure PHP too, so
- * tests/test-share-settings.php covers them without WordPress.
+ * 4.3.0 amendment (the controller's call, overriding the original round-2
+ * design doc): the square's two colors do NOT fall back to the Council's
+ * network palette (PTK_Site_Colors) at all. Background defaults to navy,
+ * text to white, full stop -- see PTK_Share_Color::square_background_color()
+ * / square_text_color(). This page no longer offers an "own color" vs
+ * "council color" choice for the square; it offers two independent
+ * picker+hex pairs, each with its own plain default.
  *
- * The contrast guard is visible: a color that can't be read on the navy
- * square is adjusted, the ADJUSTED color is what gets saved, and the page
- * says so in plain words. Nothing is swapped silently.
+ * Kept out of PTK_Share_Color, which stays pure contrast maths plus thin
+ * option reads. The validation and wording helpers below are pure PHP too,
+ * so tests/test-share-settings.php covers them without WordPress.
+ *
+ * The contrast guard is visible: a color pair that can't be read together is
+ * adjusted (the TEXT color moves, never the background -- 4.1.1's existing
+ * pattern of always moving the SAME side), the ADJUSTED color is what gets
+ * saved, and the page says so in plain words. Nothing is swapped silently.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -31,10 +43,11 @@ class PTK_Share_Settings {
     const PAGE_SLUG    = 'ptk-share-settings';
     const ACTION       = 'ptk_share_settings';
     const FB_OPTION    = 'ptk_share_facebook_url';
+    const JOIN_OPTION  = 'ptk_join_url';
+    const NEWS_OPTION  = 'ptk_news_url';
+    const CAL_OPTION   = 'ptk_calendar_url';
+    const EMAIL_OPTION = 'ptk_contact_email';
     const NOTICE_KEY   = 'ptk_share_settings_notice_';
-
-    /** The ground the square's accent color sits on. */
-    const GROUND = '#1a2f5c';
 
     /** @var string */
     private static $hook = '';
@@ -88,7 +101,67 @@ class PTK_Share_Settings {
     }
 
     /**
-     * What to tell someone after they pick a color.
+     * Check a Join / News / Calendar link: a web address or a bare email
+     * (round 1 Decision 6 -- a bare email becomes a mailto: link, nobody
+     * has to know the word "mailto"). Reuses
+     * PTK_Newsletter_Data::sanitize_link_url() for the actual cleaning, and
+     * adds the same "not saved, here's why" plain-English error the
+     * Facebook field already has.
+     *
+     * @param mixed  $raw
+     * @param string $example Shown in the error, e.g. "https://yourschool.org/join".
+     * @return array{value:string,error:string}
+     */
+    public static function validate_link_field( $raw, $example ) {
+        $url = is_string( $raw ) ? trim( $raw ) : '';
+
+        if ( '' === $url ) {
+            return array( 'value' => '', 'error' => '' );
+        }
+
+        $clean = PTK_Newsletter_Data::sanitize_link_url( $url );
+
+        if ( '' === $clean ) {
+            return array(
+                'value' => '',
+                'error' => 'That doesn’t look like a web address or an email. Please paste a full link starting with https://, or type an email address -- for example ' . $example . '.',
+            );
+        }
+
+        return array( 'value' => $clean, 'error' => '' );
+    }
+
+    /**
+     * Check a contact email: plain address, no mailto: prefix (it's used
+     * both as a mailto: link and as plain display text).
+     *
+     * @param mixed $raw
+     * @return array{value:string,error:string}
+     */
+    public static function validate_contact_email( $raw ) {
+        $email = is_string( $raw ) ? trim( $raw ) : '';
+
+        if ( '' === $email ) {
+            return array( 'value' => '', 'error' => '' );
+        }
+
+        $clean = sanitize_email( $email );
+
+        if ( '' === $clean || ! is_email( $clean ) ) {
+            return array(
+                'value' => '',
+                'error' => 'That doesn’t look like an email address. Please type one like office@yourschool.org.',
+            );
+        }
+
+        return array( 'value' => $clean, 'error' => '' );
+    }
+
+    /**
+     * What to tell someone after they pick a color pair. The direction
+     * (lightened/darkened) is read off the two ACTUAL hex values, so this
+     * works the same whether it is being told about the text color moving
+     * against a navy background or a custom one.
      *
      * @param string $picked What they chose ('#rrggbb').
      * @param string $saved  What was stored after the contrast guard.
@@ -99,19 +172,19 @@ class PTK_Share_Settings {
         $saved  = PTK_Share_Color::normalize_hex( $saved );
 
         if ( $picked === $saved ) {
-            return sprintf( 'Saved. Your color %s reads clearly on the navy square.', $saved );
+            return sprintf( 'Saved. Your color %s reads clearly against your background.', $saved );
         }
 
         if ( PTK_Share_Color::relative_luminance( $saved ) > PTK_Share_Color::relative_luminance( $picked ) ) {
             return sprintf(
-                'That color (%1$s) was too dark to read on the navy square, so we lightened it to %2$s and saved that instead.',
+                'That color (%1$s) was too dark to read on your square, so we lightened it to %2$s and saved that instead.',
                 $picked,
                 $saved
             );
         }
 
         return sprintf(
-            'That color (%1$s) was too hard to read on the navy square, so we darkened it to %2$s and saved that instead.',
+            'That color (%1$s) was too hard to read on your square, so we darkened it to %2$s and saved that instead.',
             $picked,
             $saved
         );
@@ -156,7 +229,11 @@ class PTK_Share_Settings {
     }
 
     /**
-     * Which of the three places the color came from, in plain words.
+     * Which of the three places a color came from, in plain words. Kept for
+     * the general "why is this the color you see" wording; the square
+     * itself no longer has a Council-fallback source (4.3.0 amendment) --
+     * this is not called for the square's two fields any more, but stays
+     * available (and tested) as a small, reusable piece of copy.
      *
      * @param string $source 'own' | 'council' | 'default'
      * @return string
@@ -176,36 +253,6 @@ class PTK_Share_Settings {
      * WordPress
      * ----------------------------------------------------------------*/
 
-    /**
-     * Where the color in use right now comes from.
-     *
-     * @return string 'own' | 'council' | 'default'
-     */
-    public static function color_source() {
-        if ( PTK_Share_Color::is_hex( get_option( PTK_Share_Color::OPTION, '' ) ) ) {
-            return 'own';
-        }
-        $network = get_site_option( 'ptk_site_colors', array() );
-        $blog_id = (int) get_current_blog_id();
-        if ( is_array( $network ) && isset( $network[ $blog_id ] ) && PTK_Share_Color::is_hex( $network[ $blog_id ] ) ) {
-            return 'council';
-        }
-        return 'default';
-    }
-
-    /**
-     * The color this school falls back to when it has no pick of its own.
-     * Read-only use of the Council's palette.
-     *
-     * @return string '#rrggbb'
-     */
-    public static function council_color() {
-        if ( class_exists( 'PTK_Site_Colors' ) ) {
-            return PTK_Share_Color::normalize_hex( PTK_Site_Colors::color_for( get_current_blog_id() ) );
-        }
-        return PTK_Share_Color::FALLBACK;
-    }
-
     public static function page_url( $args = array() ) {
         return add_query_arg(
             array_merge( array( 'post_type' => 'pta_newsletter', 'page' => self::PAGE_SLUG ), $args ),
@@ -216,8 +263,8 @@ class PTK_Share_Settings {
     public static function add_page() {
         self::$hook = (string) add_submenu_page(
             'edit.php?post_type=pta_newsletter',
-            'Sharing settings',
-            'Sharing settings',
+            'Newsletter settings',
+            'Newsletter settings',
             'manage_options',
             self::PAGE_SLUG,
             array( __CLASS__, 'render_page' )
@@ -233,49 +280,71 @@ class PTK_Share_Settings {
     }
 
     /**
-     * Save both fields. Nonce-checked POST to admin-post.php.
+     * Save all seven fields. Nonce-checked POST to admin-post.php.
      */
     public static function handle_save() {
         if ( ! current_user_can( 'manage_options' ) ) {
-            wp_die( 'Only this site’s administrators can change the sharing settings.', 'Not allowed', array( 'response' => 403 ) );
+            wp_die( 'Only this site’s administrators can change the newsletter settings.', 'Not allowed', array( 'response' => 403 ) );
         }
         check_admin_referer( self::ACTION );
 
         $notice = array(
-            'messages' => array(),
-            'fb_error' => '',
-            'fb_typed' => '',
-            'color_error' => '',
-            'color_typed' => '',
+            'messages'      => array(),
+            'fb_error'      => '',
+            'fb_typed'      => '',
+            'bg_error'      => '',
+            'bg_typed'      => '',
+            'color_error'   => '',
+            'color_typed'   => '',
+            'join_error'    => '',
+            'join_typed'    => '',
+            'news_error'    => '',
+            'news_typed'    => '',
+            'cal_error'     => '',
+            'cal_typed'     => '',
+            'email_error'   => '',
+            'email_typed'   => '',
         );
 
-        // ---- Color ----
-        $mode = isset( $_POST['ptk_share_color_mode'] ) ? sanitize_key( wp_unslash( $_POST['ptk_share_color_mode'] ) ) : '';
-
-        if ( 'council' === $mode ) {
-            $had_own = PTK_Share_Color::is_hex( get_option( PTK_Share_Color::OPTION, '' ) );
-            delete_option( PTK_Share_Color::OPTION );
-            if ( $had_own ) {
-                $notice['messages'][] = array( 'ok', 'Your own color is cleared. The square now uses the color the district council set for your school.' );
+        // ---- Background color ----
+        $bg_choice = self::submitted_color(
+            isset( $_POST['ptk_share_bg_color'] ) ? (string) wp_unslash( $_POST['ptk_share_bg_color'] ) : '',
+            isset( $_POST['ptk_share_bg_color_hex'] ) ? sanitize_text_field( wp_unslash( $_POST['ptk_share_bg_color_hex'] ) ) : '',
+            isset( $_POST['ptk_share_bg_color_initial'] ) ? sanitize_text_field( wp_unslash( $_POST['ptk_share_bg_color_initial'] ) ) : ''
+        );
+        if ( '' !== $bg_choice['error'] ) {
+            $notice['bg_error'] = $bg_choice['error'];
+            $notice['bg_typed'] = isset( $_POST['ptk_share_bg_color_hex'] ) ? substr( sanitize_text_field( wp_unslash( $_POST['ptk_share_bg_color_hex'] ) ), 0, 40 ) : '';
+            $notice['messages'][] = array( 'error', 'The background color was not saved. ' . $bg_choice['error'] );
+        } else {
+            $previous = get_option( PTK_Share_Color::BG_OPTION, '' );
+            update_option( PTK_Share_Color::BG_OPTION, $bg_choice['value'] );
+            if ( $previous !== $bg_choice['value'] ) {
+                $notice['messages'][] = array( 'ok', sprintf( 'Background color saved: %s.', $bg_choice['value'] ) );
             }
-        } elseif ( 'own' === $mode ) {
-            $choice = self::submitted_color(
-                isset( $_POST['ptk_share_color'] ) ? (string) wp_unslash( $_POST['ptk_share_color'] ) : '',
-                isset( $_POST['ptk_share_color_hex'] ) ? sanitize_text_field( wp_unslash( $_POST['ptk_share_color_hex'] ) ) : '',
-                isset( $_POST['ptk_share_color_initial'] ) ? sanitize_text_field( wp_unslash( $_POST['ptk_share_color_initial'] ) ) : ''
-            );
-            if ( '' !== $choice['error'] ) {
-                $notice['color_error'] = $choice['error'];
-                $notice['color_typed'] = isset( $_POST['ptk_share_color_hex'] ) ? substr( sanitize_text_field( wp_unslash( $_POST['ptk_share_color_hex'] ) ), 0, 40 ) : '';
-                $notice['messages'][] = array( 'error', 'The color was not saved. ' . $choice['error'] );
-            } else {
-                $picked   = $choice['value'];
-                $saved    = PTK_Share_Color::readable_pair( $picked, self::GROUND );
-                $previous = get_option( PTK_Share_Color::OPTION, '' );
-                update_option( PTK_Share_Color::OPTION, $saved );
-                if ( $picked !== $saved || ! PTK_Share_Color::is_hex( $previous ) || PTK_Share_Color::normalize_hex( $previous ) !== $saved ) {
-                    $notice['messages'][] = array( $picked === $saved ? 'ok' : 'warn', self::color_message( $picked, $saved ) );
-                }
+        }
+
+        // ---- Text color -- checked for readability against the background ----
+        $background = ( '' !== $bg_choice['error'] )
+            ? PTK_Share_Color::square_background_color()
+            : PTK_Share_Color::normalize_hex( $bg_choice['value'] );
+
+        $text_choice = self::submitted_color(
+            isset( $_POST['ptk_share_color'] ) ? (string) wp_unslash( $_POST['ptk_share_color'] ) : '',
+            isset( $_POST['ptk_share_color_hex'] ) ? sanitize_text_field( wp_unslash( $_POST['ptk_share_color_hex'] ) ) : '',
+            isset( $_POST['ptk_share_color_initial'] ) ? sanitize_text_field( wp_unslash( $_POST['ptk_share_color_initial'] ) ) : ''
+        );
+        if ( '' !== $text_choice['error'] ) {
+            $notice['color_error'] = $text_choice['error'];
+            $notice['color_typed'] = isset( $_POST['ptk_share_color_hex'] ) ? substr( sanitize_text_field( wp_unslash( $_POST['ptk_share_color_hex'] ) ), 0, 40 ) : '';
+            $notice['messages'][] = array( 'error', 'The text color was not saved. ' . $text_choice['error'] );
+        } else {
+            $picked   = $text_choice['value'];
+            $saved    = PTK_Share_Color::readable_pair( $picked, $background );
+            $previous = get_option( PTK_Share_Color::OPTION, '' );
+            update_option( PTK_Share_Color::OPTION, $saved );
+            if ( $previous !== $saved ) {
+                $notice['messages'][] = array( $picked === $saved ? 'ok' : 'warn', self::color_message( $picked, $saved ) );
             }
         }
 
@@ -287,7 +356,6 @@ class PTK_Share_Settings {
         $before = (string) get_option( self::FB_OPTION, '' );
 
         if ( '' !== $result['error'] ) {
-            // Keep what they had; show what they typed so they can fix it.
             $notice['fb_error'] = $result['error'];
             $notice['fb_typed'] = substr( $typed, 0, 2000 );
             $notice['messages'][] = array( 'error', 'The Facebook group link was not saved. ' . $result['error'] );
@@ -310,6 +378,56 @@ class PTK_Share_Settings {
             }
         }
 
+        // ---- Join / News / Calendar links ----
+        $link_fields = array(
+            'join'  => array( 'option' => self::JOIN_OPTION, 'post' => 'ptk_join_url', 'label' => 'Join the PTA link', 'example' => 'join@yourschool.org' ),
+            'news'  => array( 'option' => self::NEWS_OPTION, 'post' => 'ptk_news_url', 'label' => 'Send us your news link', 'example' => 'news@yourschool.org' ),
+            'cal'   => array( 'option' => self::CAL_OPTION, 'post' => 'ptk_calendar_url', 'label' => 'Calendar page link', 'example' => 'https://yourschool.org/calendar' ),
+        );
+        foreach ( $link_fields as $key => $field ) {
+            $typed  = isset( $_POST[ $field['post'] ] ) ? (string) wp_unslash( $_POST[ $field['post'] ] ) : '';
+            $typed  = wp_check_invalid_utf8( $typed, true );
+            $result = self::validate_link_field( $typed, $field['example'] );
+            $before = (string) get_option( $field['option'], '' );
+
+            if ( '' !== $result['error'] ) {
+                $notice[ $key . '_error' ] = $result['error'];
+                $notice[ $key . '_typed' ] = substr( $typed, 0, 2000 );
+                $notice['messages'][] = array( 'error', 'The ' . $field['label'] . ' was not saved. ' . $result['error'] );
+            } elseif ( '' === $result['value'] ) {
+                delete_option( $field['option'] );
+                if ( '' !== $before ) {
+                    $notice['messages'][] = array( 'ok', $field['label'] . ' removed.' );
+                }
+            } else {
+                update_option( $field['option'], $result['value'] );
+                if ( $result['value'] !== $before ) {
+                    $notice['messages'][] = array( 'ok', $field['label'] . ' saved.' );
+                }
+            }
+        }
+
+        // ---- Contact email ----
+        $typed  = isset( $_POST['ptk_contact_email'] ) ? sanitize_text_field( wp_unslash( $_POST['ptk_contact_email'] ) ) : '';
+        $result = self::validate_contact_email( $typed );
+        $before = (string) get_option( self::EMAIL_OPTION, '' );
+
+        if ( '' !== $result['error'] ) {
+            $notice['email_error'] = $result['error'];
+            $notice['email_typed'] = substr( $typed, 0, 200 );
+            $notice['messages'][] = array( 'error', 'The contact email was not saved. ' . $result['error'] );
+        } elseif ( '' === $result['value'] ) {
+            delete_option( self::EMAIL_OPTION );
+            if ( '' !== $before ) {
+                $notice['messages'][] = array( 'ok', 'Contact email removed.' );
+            }
+        } else {
+            update_option( self::EMAIL_OPTION, $result['value'] );
+            if ( $result['value'] !== $before ) {
+                $notice['messages'][] = array( 'ok', 'Contact email saved.' );
+            }
+        }
+
         if ( empty( $notice['messages'] ) ) {
             $notice['messages'][] = array( 'ok', 'Settings saved. Nothing needed changing.' );
         }
@@ -322,7 +440,7 @@ class PTK_Share_Settings {
 
     public static function render_page() {
         if ( ! current_user_can( 'manage_options' ) ) {
-            wp_die( 'Only this site’s administrators can change the sharing settings.', 'Not allowed', array( 'response' => 403 ) );
+            wp_die( 'Only this site’s administrators can change the newsletter settings.', 'Not allowed', array( 'response' => 403 ) );
         }
 
         $notice = get_transient( self::NOTICE_KEY . get_current_user_id() );
@@ -330,24 +448,39 @@ class PTK_Share_Settings {
             delete_transient( self::NOTICE_KEY . get_current_user_id() );
         }
         if ( ! is_array( $notice ) ) {
-            $notice = array( 'messages' => array(), 'fb_error' => '', 'fb_typed' => '' );
+            $notice = array();
         }
-        $notice = array_merge( array( 'color_error' => '', 'color_typed' => '' ), $notice );
+        $notice = array_merge( array(
+            'fb_error' => '', 'fb_typed' => '',
+            'bg_error' => '', 'bg_typed' => '',
+            'color_error' => '', 'color_typed' => '',
+            'join_error' => '', 'join_typed' => '',
+            'news_error' => '', 'news_typed' => '',
+            'cal_error' => '', 'cal_typed' => '',
+            'email_error' => '', 'email_typed' => '',
+            'messages' => array(),
+        ), $notice );
 
-        $own_raw  = get_option( PTK_Share_Color::OPTION, '' );
-        $has_own  = PTK_Share_Color::is_hex( $own_raw );
-        $council  = self::council_color();
-        $current  = PTK_Share_Color::share_color();
-        $drawn    = PTK_Share_Color::readable_pair( $current, self::GROUND );
-        $source   = self::color_source();
-        $picker   = $has_own ? PTK_Share_Color::normalize_hex( $own_raw ) : $council;
-        $typed    = '' !== $notice['color_error'] ? (string) $notice['color_typed'] : $picker;
+        $bg_raw   = get_option( PTK_Share_Color::BG_OPTION, '' );
+        $bg_has   = PTK_Share_Color::is_hex( $bg_raw );
+        $bg_value = PTK_Share_Color::square_background_color();
+        $bg_typed = '' !== $notice['bg_error'] ? (string) $notice['bg_typed'] : $bg_value;
 
-        $fb_value = '' !== $notice['fb_error'] ? (string) $notice['fb_typed'] : (string) get_option( self::FB_OPTION, '' );
+        $text_raw   = get_option( PTK_Share_Color::OPTION, '' );
+        $text_has   = PTK_Share_Color::is_hex( $text_raw );
+        $text_value = PTK_Share_Color::square_text_color();
+        $drawn      = PTK_Share_Color::readable_pair( $text_value, $bg_value );
+        $text_typed = '' !== $notice['color_error'] ? (string) $notice['color_typed'] : $text_value;
+
+        $fb_value    = '' !== $notice['fb_error'] ? (string) $notice['fb_typed'] : (string) get_option( self::FB_OPTION, '' );
+        $join_value  = '' !== $notice['join_error'] ? (string) $notice['join_typed'] : (string) get_option( self::JOIN_OPTION, '' );
+        $news_value  = '' !== $notice['news_error'] ? (string) $notice['news_typed'] : (string) get_option( self::NEWS_OPTION, '' );
+        $cal_value   = '' !== $notice['cal_error'] ? (string) $notice['cal_typed'] : (string) get_option( self::CAL_OPTION, '' );
+        $email_value = '' !== $notice['email_error'] ? (string) $notice['email_typed'] : (string) get_option( self::EMAIL_OPTION, '' );
         ?>
         <div class="wrap ptk-share-settings">
-            <h1>Sharing settings</h1>
-            <p class="ptk-ss-intro">These two settings are used by <strong>Share this newsletter</strong>, on the last step of the newsletter builder. They only affect this school’s site.</p>
+            <h1>Newsletter settings</h1>
+            <p class="ptk-ss-intro">Set these once and every newsletter carries them automatically: the two colors on the Instagram square, your Facebook group, the links families use to join, send news, and see the calendar, and where questions should go. Leave anything blank to leave it out of the newsletter -- nothing here is required.</p>
 
             <?php foreach ( (array) $notice['messages'] as $msg ) :
                 if ( ! is_array( $msg ) || count( $msg ) < 2 ) {
@@ -360,56 +493,47 @@ class PTK_Share_Settings {
                 </div>
             <?php endforeach; ?>
 
-            <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" novalidate data-ptk-share-settings data-ground="<?php echo esc_attr( self::GROUND ); ?>">
+            <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" novalidate data-ptk-share-settings>
                 <input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION ); ?>">
                 <?php wp_nonce_field( self::ACTION ); ?>
 
-                <h2>Color on the Instagram square</h2>
-                <p>
-                    Right now the square uses
-                    <span class="ptk-ss-chip" style="background:<?php echo esc_attr( $current ); ?>;" aria-hidden="true"></span>
-                    <code><?php echo esc_html( $current ); ?></code>,
-                    <?php echo esc_html( self::source_label( $source ) ); ?>.
-                    <?php if ( $drawn !== $current ) : ?>
-                        On the navy square it is lightened to <code><?php echo esc_html( $drawn ); ?></code> so it can be read.
-                    <?php endif; ?>
-                </p>
+                <h2>Colors on the Instagram square</h2>
+                <p>Two colors: the square's background and its text. Leave either one alone and it uses the default shown below.</p>
 
                 <div class="ptk-ss-color">
-                    <fieldset class="ptk-ss-choices">
-                        <legend class="screen-reader-text">Which color to use</legend>
-                        <label class="ptk-ss-choice">
-                            <input type="radio" name="ptk_share_color_mode" value="council" data-color="<?php echo esc_attr( $council ); ?>" <?php checked( ! $has_own ); ?>>
-                            Use the color the district council set for your school
-                            <span class="ptk-ss-chip" style="background:<?php echo esc_attr( $council ); ?>;" aria-hidden="true"></span>
-                            <code><?php echo esc_html( $council ); ?></code>
-                        </label>
-                        <label class="ptk-ss-choice">
-                            <input type="radio" name="ptk_share_color_mode" value="own" <?php checked( $has_own ); ?>>
-                            Use our own color
-                        </label>
-                        <?php /* Never dimmed: picking or typing a color selects "Use our own color"
-                                (share-settings.js). The text field is there because the native picker
-                                hides the color code -- on Safari, deep in a system panel. */ ?>
+                    <div class="ptk-ss-colorfield">
+                        <label for="ptk-share-bg-color"><strong>Background</strong> -- default navy (#1a2f5c)</label>
                         <div class="ptk-ss-picker">
-                            <label for="ptk-share-color">Pick our color</label>
-                            <input type="color" id="ptk-share-color" name="ptk_share_color" value="<?php echo esc_attr( $picker ); ?>">
-                            <label for="ptk-share-color-hex">or type its code</label>
-                            <input type="text" id="ptk-share-color-hex" name="ptk_share_color_hex" class="ptk-ss-hex" value="<?php echo esc_attr( $typed ); ?>" maxlength="7" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="1a2f5c" aria-describedby="ptk-share-color-hint ptk-share-color-error"<?php echo '' !== $notice['color_error'] ? ' aria-invalid="true"' : ''; ?>>
-                            <input type="hidden" name="ptk_share_color_initial" value="<?php echo esc_attr( $picker ); ?>">
+                            <input type="color" id="ptk-share-bg-color" name="ptk_share_bg_color" value="<?php echo esc_attr( $bg_value ); ?>" data-ptk-bg-picker>
+                            <label for="ptk-share-bg-color-hex" class="screen-reader-text">Background color code</label>
+                            <input type="text" id="ptk-share-bg-color-hex" name="ptk_share_bg_color_hex" class="ptk-ss-hex" value="<?php echo esc_attr( $bg_typed ); ?>" maxlength="7" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="1a2f5c" data-ptk-bg-hex aria-describedby="ptk-share-bg-error"<?php echo '' !== $notice['bg_error'] ? ' aria-invalid="true"' : ''; ?>>
+                            <input type="hidden" name="ptk_share_bg_color_initial" value="<?php echo esc_attr( $bg_value ); ?>">
                         </div>
-                        <p class="description ptk-ss-hex-hint" id="ptk-share-color-hint">A color code is six letters and numbers, like 1a2f5c. The # is optional.</p>
-                        <p class="ptk-ss-field-error" id="ptk-share-color-error" data-color-error role="alert"><?php echo esc_html( $notice['color_error'] ); ?></p>
-                    </fieldset>
+                        <p class="ptk-ss-field-error" id="ptk-share-bg-error" role="alert"><?php echo esc_html( $notice['bg_error'] ); ?></p>
+                    </div>
+
+                    <div class="ptk-ss-colorfield">
+                        <label for="ptk-share-color"><strong>Text</strong> -- default white (#ffffff)</label>
+                        <div class="ptk-ss-picker">
+                            <input type="color" id="ptk-share-color" name="ptk_share_color" value="<?php echo esc_attr( $text_value ); ?>" data-ptk-text-picker>
+                            <label for="ptk-share-color-hex" class="screen-reader-text">Text color code</label>
+                            <input type="text" id="ptk-share-color-hex" name="ptk_share_color_hex" class="ptk-ss-hex" value="<?php echo esc_attr( $text_typed ); ?>" maxlength="7" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="ffffff" data-ptk-text-hex aria-describedby="ptk-share-color-error"<?php echo '' !== $notice['color_error'] ? ' aria-invalid="true"' : ''; ?>>
+                            <input type="hidden" name="ptk_share_color_initial" value="<?php echo esc_attr( $text_value ); ?>">
+                        </div>
+                        <p class="ptk-ss-field-error" id="ptk-share-color-error" role="alert"><?php echo esc_html( $notice['color_error'] ); ?></p>
+                        <?php if ( $text_has && $drawn !== $text_value ) : ?>
+                            <p class="description">On your square it is adjusted to <code><?php echo esc_html( $drawn ); ?></code> so it can be read against the background.</p>
+                        <?php endif; ?>
+                    </div>
 
                     <div class="ptk-ss-preview-wrap">
-                        <div class="ptk-ss-preview" data-preview aria-hidden="true" style="--ptk-ss-accent:<?php echo esc_attr( $drawn ); ?>;">
+                        <div class="ptk-ss-preview" data-preview aria-hidden="true" style="--ptk-ss-bg:<?php echo esc_attr( $bg_value ); ?>;--ptk-ss-accent:<?php echo esc_attr( $drawn ); ?>;">
                             <span class="ptk-ss-preview-eyebrow">NEWSLETTER</span>
                             <span class="ptk-ss-preview-rule"></span>
                             <span class="ptk-ss-preview-issue">№ 041</span>
                             <span class="ptk-ss-preview-date">Week of September 21</span>
                         </div>
-                        <p class="ptk-ss-preview-note" data-preview-note aria-live="polite">How the color looks on the navy square.</p>
+                        <p class="ptk-ss-preview-note" data-preview-note aria-live="polite">How the colors look on the square.</p>
                     </div>
                 </div>
 
@@ -422,6 +546,46 @@ class PTK_Share_Settings {
                     <p class="ptk-ss-field-error" id="ptk-share-facebook-error"><?php echo esc_html( $notice['fb_error'] ); ?></p>
                 <?php endif; ?>
                 <p class="description">Open your group in a browser and copy the address from the top of the window. It must start with https://. Leave it empty if your PTA has no group -- the share panel then leaves out the Facebook button.</p>
+
+                <h2>Join the PTA</h2>
+                <p>
+                    <label for="ptk-join-url">Where families go to join</label><br>
+                    <input type="text" inputmode="url" class="regular-text" id="ptk-join-url" name="ptk_join_url" value="<?php echo esc_attr( $join_value ); ?>" placeholder="https://yourschool.org/join or join@yourschool.org" autocomplete="off"<?php echo '' !== $notice['join_error'] ? ' aria-invalid="true" aria-describedby="ptk-join-error"' : ''; ?>>
+                </p>
+                <?php if ( '' !== $notice['join_error'] ) : ?>
+                    <p class="ptk-ss-field-error" id="ptk-join-error"><?php echo esc_html( $notice['join_error'] ); ?></p>
+                <?php endif; ?>
+                <p class="description">A web address, or a plain email address. Shows as "Join the PTA for {school year} →" in the masthead of every newsletter. Leave it empty to leave the link out.</p>
+
+                <h2>Send us your news</h2>
+                <p>
+                    <label for="ptk-news-url">Where families send news to include</label><br>
+                    <input type="text" inputmode="url" class="regular-text" id="ptk-news-url" name="ptk_news_url" value="<?php echo esc_attr( $news_value ); ?>" placeholder="https://yourschool.org/submit-news or news@yourschool.org" autocomplete="off"<?php echo '' !== $notice['news_error'] ? ' aria-invalid="true" aria-describedby="ptk-news-error"' : ''; ?>>
+                </p>
+                <?php if ( '' !== $notice['news_error'] ) : ?>
+                    <p class="ptk-ss-field-error" id="ptk-news-error"><?php echo esc_html( $notice['news_error'] ); ?></p>
+                <?php endif; ?>
+                <p class="description">Adds a "Got news? Put it in the newsletter." closing to every newsletter, right before the footer. Leave it empty and that closing is left out entirely.</p>
+
+                <h2>Calendar page</h2>
+                <p>
+                    <label for="ptk-calendar-url">Where families see the full calendar</label><br>
+                    <input type="text" inputmode="url" class="regular-text" id="ptk-calendar-url" name="ptk_calendar_url" value="<?php echo esc_attr( $cal_value ); ?>" placeholder="https://yourschool.org/calendar or calendar@yourschool.org" autocomplete="off"<?php echo '' !== $notice['cal_error'] ? ' aria-invalid="true" aria-describedby="ptk-calendar-error"' : ''; ?>>
+                </p>
+                <?php if ( '' !== $notice['cal_error'] ) : ?>
+                    <p class="ptk-ss-field-error" id="ptk-calendar-error"><?php echo esc_html( $notice['cal_error'] ); ?></p>
+                <?php endif; ?>
+                <p class="description">Adds a "See full calendar →" link next to "What's coming up" -- only shown once there's at least one date listed. Leave it empty to leave the link out.</p>
+
+                <h2>Contact email</h2>
+                <p>
+                    <label for="ptk-contact-email">Where questions about the newsletter go</label><br>
+                    <input type="email" class="regular-text" id="ptk-contact-email" name="ptk_contact_email" value="<?php echo esc_attr( $email_value ); ?>" placeholder="office@yourschool.org" autocomplete="off"<?php echo '' !== $notice['email_error'] ? ' aria-invalid="true" aria-describedby="ptk-contact-email-error"' : ''; ?>>
+                </p>
+                <?php if ( '' !== $notice['email_error'] ) : ?>
+                    <p class="ptk-ss-field-error" id="ptk-contact-email-error"><?php echo esc_html( $notice['email_error'] ); ?></p>
+                <?php endif; ?>
+                <p class="description">Added to the "Got news?" closing as "Questions? Email {address}." Only shown when a news link above is also set. Leave it empty to leave it out.</p>
 
                 <?php submit_button( 'Save settings' ); ?>
             </form>

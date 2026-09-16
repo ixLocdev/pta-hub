@@ -5,6 +5,21 @@
 > (built on round 1 / 4.2.0, commit `16ac13a`). Plan:
 > `docs/superpowers/plans/2026-09-16-newsletter-round2-set-it-once.md`.
 
+> **AMENDMENT (2026-09-16, the controller, overriding Part D / Decision 5 below):** the
+> Instagram square's two colors do **not** fall back to the Council/school palette
+> (`PTK_Site_Colors::color_for()`) at all. Background is `ptk_share_bg_color`, default
+> `#1a2f5c` when unset. Text is `ptk_share_color` (same key, so an existing saved pick still
+> applies), default `#ffffff` when unset. `PTK_Share_Color::share_color()`'s own council-
+> fallback chain is left untouched for any other caller, but the square now reads two new,
+> council-free accessors instead: `PTK_Share_Color::square_background_color()` and
+> `square_text_color()`. The readability check still compares the two CHOSEN colors and
+> adjusts the TEXT color (never the background) when they fail, with a plain message, exactly
+> as 4.1.1 already does for the single color. `PTK_Site_Colors::color_for()` (the owner dots)
+> is untouched. Everywhere below that describes an "own → Council → default" resolution chain
+> for the square specifically (Part D, Decision 5, fact 3) is superseded by this amendment;
+> the same chain remains correct for `share_color()` as a general-purpose method, which now
+> simply has no caller left that needs its Council branch for the square.
+
 ## The problem
 
 Round 1 (4.2.0) made the Builder's output match issue № 040's look, but left four things a
