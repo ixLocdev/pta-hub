@@ -412,16 +412,43 @@ class PTK_Newsletter_Builder {
      */
     private static function render_opts( array $blocks, $issue, $date, array $extra = array() ) {
         return array_merge( array(
-            'issue'        => $issue,
-            'date'         => $date,
-            'today'        => current_time( 'Y-m-d' ),
-            'theme'        => self::DEFAULT_THEME,
-            'logo_url'     => get_site_icon_url() ?: '',
-            'school_name'  => self::school_name_from_blocks( $blocks ),
+            'issue'         => $issue,
+            'date'          => $date,
+            'today'         => current_time( 'Y-m-d' ),
+            'theme'         => self::DEFAULT_THEME,
+            'logo_url'      => self::masthead_logo_url(),
+            'school_name'   => self::school_name_from_blocks( $blocks ),
+            // 4.3.0 "set it once" settings — every value already sanitized on
+            // the way in (PTK_Share_Settings::handle_save()); run through the
+            // same sanitizer again here, matching how every other value in
+            // this array is treated as untrusted at render time.
+            'join_url'      => PTK_Newsletter_Data::sanitize_link_url( get_option( 'ptk_join_url', '' ) ),
+            'calendar_url'  => PTK_Newsletter_Data::sanitize_link_url( get_option( 'ptk_calendar_url', '' ) ),
+            'news_url'      => PTK_Newsletter_Data::sanitize_link_url( get_option( 'ptk_news_url', '' ) ),
+            'contact_email' => sanitize_email( (string) get_option( 'ptk_contact_email', '' ) ),
             'image_url_cb' => function( $id ) {
                 return wp_get_attachment_image_url( $id, 'large' );
             },
         ), $extra );
+    }
+
+    /**
+     * The masthead logo: the site's own custom logo (Appearance > Customize
+     * > Site Identity), else its Site Icon (the favicon round 1 used), else
+     * none. A school that only ever set a favicon keeps seeing it — this
+     * only ADDS a better source, it never removes the fallback.
+     *
+     * @return string
+     */
+    private static function masthead_logo_url() {
+        $logo_id = (int) get_theme_mod( 'custom_logo' );
+        if ( $logo_id ) {
+            $url = wp_get_attachment_image_url( $logo_id, 'thumbnail' );
+            if ( $url ) {
+                return $url;
+            }
+        }
+        return get_site_icon_url() ?: '';
     }
 
     /**

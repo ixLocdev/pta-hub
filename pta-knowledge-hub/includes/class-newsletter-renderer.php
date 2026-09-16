@@ -77,7 +77,18 @@ class PTK_Newsletter_Renderer {
                 continue;
             }
 
-            $type   = self::str( $block['type'] );
+            $type = self::str( $block['type'] );
+
+            // Round 2: the "Got news?" closing is settings-driven, not a
+            // stored block, so it has no data of its own — it is inserted
+            // immediately before the footer, here in the dispatch loop
+            // itself, rather than as a render_<type> method (see
+            // render_news_cta()'s docblock for why it is never reachable
+            // via the dynamic dispatch below).
+            if ( PTK_Newsletter_Data::TYPE_FOOTER === $type && '' !== trim( self::str( isset( $opts['news_url'] ) ? $opts['news_url'] : '' ) ) ) {
+                $out .= self::render_news_cta( $opts );
+            }
+
             $data   = isset( $block['data'] ) && is_array( $block['data'] ) ? $block['data'] : array();
             // Dynamic dispatch: only render_<blocktype> methods are reachable
             // targets here. Do NOT name a private helper "render_<something>"
@@ -121,12 +132,27 @@ class PTK_Newsletter_Renderer {
             $logo_html = '<img src="' . esc_url( $logo_url ) . '" alt="' . esc_attr( $school_name ) . '" style="width:32px;height:32px;display:block;flex-shrink:0;" />';
         }
 
+        // Computed once, used both by the issue line below and by the Join
+        // link — never parse $date into a school year twice.
+        $year = PTK_Newsletter_Data::school_year_label( $date );
+
+        // Round 2: "Join the PTA for {school year} →", right side of the
+        // masthead's first row. When $year is '' (unparseable date), the
+        // link still renders with just "Join the PTA →" — no dangling
+        // " for " with nothing after it, mirroring how the issue line
+        // above omits its own "· {year}" fragment when blank.
+        $join_url  = isset( $opts['join_url'] ) ? self::str( $opts['join_url'] ) : '';
+        $join_html = '';
+        if ( '' !== trim( $join_url ) ) {
+            $join_text = 'Join the PTA' . ( '' !== $year ? ' for ' . $year : '' ) . ' →';
+            $join_html = '<a href="' . esc_url( $join_url ) . '" style="font-size:13px;font-weight:700;color:' . esc_attr( self::PALETTE['primary'] ) . ';text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;white-space:nowrap;">' . esc_html( $join_text ) . '</a>';
+        }
+
         $issue_html = '';
         if ( '' !== trim( self::str( $issue ) ) ) {
             // "Newsletter № 042 · 2026–2027": the house style, and the same
             // number the share page and settings preview use
             // (PTK_Share_Text::issue_label pads to 3). No date, no year.
-            $year        = PTK_Newsletter_Data::school_year_label( $date );
             $issue_html  = '<div style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:' . esc_attr( self::PALETTE['muted'] ) . ';font-weight:600;margin-bottom:10px;">';
             $issue_html .= 'Newsletter&nbsp;&#8470;&nbsp;' . esc_html( PTK_Share_Text::issue_label( self::str( $issue ) ) );
             $issue_html .= ( '' !== $year ) ? ' · ' . esc_html( $year ) : '';
@@ -153,7 +179,7 @@ class PTK_Newsletter_Renderer {
         $html .= $logo_html;
         $html .= '<div style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:' . esc_attr( self::PALETTE['primary'] ) . ';font-weight:700;line-height:1.4;">' . esc_html( $school_name ) . '</div>';
         $html .= '</div>';
-        // Round 2 hook: the "Join the PTA" link goes here, as this row's second flex child.
+        $html .= $join_html;
         $html .= '</div>';
         $html .= '<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;border-top:1px solid ' . esc_attr( self::PALETTE['text'] ) . ';padding-top:20px;">';
         $html .= '<div style="flex:1 1 240px;min-width:240px;">';
@@ -313,11 +339,26 @@ class PTK_Newsletter_Renderer {
         }
         $rows = $valid_rows;
 
+        $calendar_url = isset( $opts['calendar_url'] ) ? self::str( $opts['calendar_url'] ) : '';
+
         $html  = '<div data-ptk-block="' . esc_attr( 'events' ) . '" style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:40px 20px 40px;box-sizing:border-box;">';
         $html .= '<div style="max-width:840px;margin:0 auto;">';
         $html .= self::section_rule( 'Coming up', '28px' );
-        // Round 2 hook: "See full calendar" sits right-aligned in a flex row with this h2.
-        $html .= '<h2 style="font-family:' . self::FONT_SANS . ';font-weight:800;font-size:clamp(24px,5vw,30px);line-height:1.05;letter-spacing:-0.02em;margin:0 0 28px;color:' . esc_attr( self::PALETTE['text'] ) . ';">What\'s coming up</h2>';
+
+        // Round 2: "See full calendar →" only when there's a link AND at
+        // least one real row — this method already returned a placeholder
+        // above when $valid_rows was empty, so reaching here means there is
+        // something to see a full calendar OF. An empty Coming-up block
+        // never gets the link, matching round 1's "empty sections render
+        // nothing" rule.
+        if ( '' !== trim( $calendar_url ) ) {
+            $html .= '<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:28px;">';
+            $html .= '<h2 style="font-family:' . self::FONT_SANS . ';font-weight:800;font-size:clamp(24px,5vw,30px);line-height:1.05;letter-spacing:-0.02em;margin:0;color:' . esc_attr( self::PALETTE['text'] ) . ';">What\'s coming up</h2>';
+            $html .= '<a href="' . esc_url( $calendar_url ) . '" style="font-size:14px;font-weight:700;color:' . esc_attr( self::PALETTE['primary'] ) . ';text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;white-space:nowrap;">See full calendar →</a>';
+            $html .= '</div>';
+        } else {
+            $html .= '<h2 style="font-family:' . self::FONT_SANS . ';font-weight:800;font-size:clamp(24px,5vw,30px);line-height:1.05;letter-spacing:-0.02em;margin:0 0 28px;color:' . esc_attr( self::PALETTE['text'] ) . ';">What\'s coming up</h2>';
+        }
 
         $count = count( $rows );
         foreach ( $rows as $i => $row ) {
@@ -518,6 +559,40 @@ class PTK_Newsletter_Renderer {
         }
 
         $html .= '</div>';
+        $html .= '</div>';
+        $html .= '</div>';
+
+        return $html;
+    }
+
+    /**
+     * "Got news?" closing (round 2): a plain white § section pointing
+     * families at the news-submission link, with an optional "Questions?
+     * Email {address}." line. Settings-driven (opts['news_url']), never a
+     * stored block — dispatched from render()'s loop, immediately before
+     * the footer, not named render_<type> so it is unreachable from the
+     * dynamic $method dispatch above. Never navy: the announcement already
+     * owns this newsletter's one navy callout (house rule).
+     */
+    private static function render_news_cta( array $opts ) {
+        $news_url = isset( $opts['news_url'] ) ? self::str( $opts['news_url'] ) : '';
+        if ( '' === trim( $news_url ) ) {
+            return '';
+        }
+
+        $email = isset( $opts['contact_email'] ) ? self::str( $opts['contact_email'] ) : '';
+
+        $html  = '<div style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:40px 20px 8px;box-sizing:border-box;">';
+        $html .= '<div style="max-width:840px;margin:0 auto;">';
+        $html .= self::section_rule( 'Your news' );
+        $html .= '<h2 style="font-family:' . self::FONT_SANS . ';font-weight:800;font-size:clamp(24px,5vw,30px);line-height:1.05;letter-spacing:-0.02em;margin:0 0 12px;color:' . esc_attr( self::PALETTE['text'] ) . ';">Got news? Put it in the newsletter.</h2>';
+        $html .= '<p style="font-size:16px;line-height:1.65;color:' . esc_attr( self::PALETTE['muted'] ) . ';margin:0 0 20px;max-width:620px;">Send it our way and we\'ll get it in the next issue.</p>';
+        $html .= '<p style="margin:20px 0 0;">';
+        $html .= '<a href="' . esc_url( $news_url ) . '" style="font-size:16px;font-weight:700;' . self::link_style() . '">Open the submission form →</a>';
+        if ( '' !== trim( $email ) ) {
+            $html .= ' <span style="font-size:16px;color:' . esc_attr( self::PALETTE['muted'] ) . ';">Questions? Email <a href="' . esc_url( 'mailto:' . $email ) . '" style="' . self::link_style() . '">' . esc_html( $email ) . '</a>.</span>';
+        }
+        $html .= '</p>';
         $html .= '</div>';
         $html .= '</div>';
 

@@ -320,4 +320,61 @@ $qn_block = substr( $qn3, strpos( $qn3, 'data-ptk-block="quick_notes"' ) );
 ptk_test_ok( substr_count( $qn_block, 'padding:16px 0;border-top:1px solid' ) === 2, 'three quick notes are separated by exactly two hairlines' );
 ptk_test_ok( strpos( $qn_block, 'border-bottom' ) === false, 'no hairline under the last quick note' );
 
+// --- 4.3.0: Join link, calendar link, "Got news?" closing. -----------------
+
+$base_blocks = array(
+    array( 'type' => 'header', 'data' => array( 'school_name' => 'Northeast PTA' ) ),
+    array( 'type' => 'events', 'data' => array( 'rows' => array(
+        array( 'date' => '2026-09-20', 'title' => 'Book Fair', 'desc' => '' ),
+    ) ) ),
+    array( 'type' => 'footer', 'data' => array( 'signoff' => 'Thanks!', 'links' => array() ) ),
+);
+
+$join_html = PTK_Newsletter_Renderer::render( $base_blocks, array(
+    'issue' => 41, 'date' => '2026-09-13', 'today' => '2026-09-13',
+    'join_url' => 'https://example.org/join',
+) );
+ptk_test_ok( strpos( $join_html, 'Join the PTA for 2026' ) !== false, 'join link: shows the school year' );
+ptk_test_ok( strpos( $join_html, 'https://example.org/join' ) !== false, 'join link: href is present' );
+
+$no_join_html = PTK_Newsletter_Renderer::render( $base_blocks, array(
+    'issue' => 41, 'date' => '2026-09-13', 'today' => '2026-09-13', 'join_url' => '',
+) );
+ptk_test_ok( strpos( $no_join_html, 'Join the PTA' ) === false, 'join link: absent when join_url is blank' );
+
+$cal_html = PTK_Newsletter_Renderer::render( $base_blocks, array(
+    'issue' => 41, 'date' => '2026-09-13', 'today' => '2026-09-13',
+    'calendar_url' => 'https://example.org/cal',
+) );
+ptk_test_ok( strpos( $cal_html, "What's coming up" ) !== false && strpos( $cal_html, 'See full calendar' ) > strpos( $cal_html, "What's coming up" ), 'calendar link: "See full calendar" appears after the heading' );
+
+$empty_events_blocks = array(
+    array( 'type' => 'header', 'data' => array( 'school_name' => 'Northeast PTA' ) ),
+    array( 'type' => 'events', 'data' => array( 'rows' => array() ) ),
+    array( 'type' => 'footer', 'data' => array( 'signoff' => 'Thanks!', 'links' => array() ) ),
+);
+$cal_empty_html = PTK_Newsletter_Renderer::render( $empty_events_blocks, array(
+    'issue' => 41, 'date' => '2026-09-13', 'today' => '2026-09-13',
+    'calendar_url' => 'https://example.org/cal', 'preview_placeholders' => true,
+) );
+ptk_test_ok( strpos( $cal_empty_html, 'See full calendar' ) === false, 'calendar link: absent when there are no event rows, even with calendar_url set' );
+ptk_test_ok( strpos( $cal_empty_html, 'Your dates coming up will appear here.' ) !== false, 'calendar link: empty events still shows the placeholder' );
+
+$news_html = PTK_Newsletter_Renderer::render( $base_blocks, array(
+    'issue' => 41, 'date' => '2026-09-13', 'today' => '2026-09-13',
+    'news_url' => 'https://example.org/submit', 'contact_email' => 'ne@example.org',
+) );
+ptk_test_ok( strpos( $news_html, 'Got news? Put it in the newsletter.' ) !== false, 'news CTA: heading renders' );
+ptk_test_ok( strpos( $news_html, 'Questions? Email' ) !== false, 'news CTA: contact email line renders' );
+$news_pos   = strpos( $news_html, 'Got news? Put it in the newsletter.' );
+$footer_pos = strpos( $news_html, 'Thanks!' );
+ptk_test_ok( $news_pos !== false && $footer_pos !== false && $news_pos < $footer_pos, 'news CTA: renders immediately before the footer content' );
+
+$no_news_html = PTK_Newsletter_Renderer::render( $base_blocks, array(
+    'issue' => 41, 'date' => '2026-09-13', 'today' => '2026-09-13', 'news_url' => '',
+) );
+ptk_test_ok( strpos( $no_news_html, 'Got news?' ) === false, 'news CTA: absent when news_url is blank' );
+
+ptk_test_ok( strpos( $news_html, 'border-left' ) === false && strpos( $news_html, 'border-right' ) === false, 'news CTA: no one-sided borders' );
+
 ptk_test_done();
