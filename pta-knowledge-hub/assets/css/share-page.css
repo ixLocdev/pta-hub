@@ -140,6 +140,10 @@ body.ptk-sp {
 
 /* Read like the house form field: the words you are about to paste. */
 .ptk-sp-text {
+    /* No widows. Captions rewrap at every phone width, so this can't be
+       fixed in the words themselves -- ask the browser not to strand a
+       last word. Browsers without support simply wrap as before. */
+    text-wrap: pretty;
     margin: 0 0 14px;
     padding: 14px 16px;
     border: 1px solid #d6d1c6;
