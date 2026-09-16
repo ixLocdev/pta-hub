@@ -1,0 +1,170 @@
+/**
+ * Newsletters > Sharing settings (PTK_Share_Settings).
+ *
+ * Design rule: full borders, fills and spacing only -- never a one-sided
+ * accent bar. That is also why the messages are NOT WordPress's .notice,
+ * which draws a 4px left border.
+ */
+
+.ptk-share-settings {
+    max-width: 760px;
+}
+
+.ptk-ss-intro {
+    font-size: 14px;
+    max-width: 62ch;
+}
+
+.ptk-share-settings h2 {
+    margin-top: 32px;
+    padding-top: 20px;
+    border-top: 1px solid #dcdcde;
+}
+
+.ptk-ss-msg {
+    margin: 16px 0;
+    padding: 2px 14px;
+    border: 1px solid #c3c4c7;
+    border-radius: 6px;
+    background: #ffffff;
+}
+
+.ptk-ss-msg p {
+    margin: 10px 0;
+    font-size: 14px;
+}
+
+.ptk-ss-msg-ok {
+    border-color: #9ec5a8;
+    background: #f0f7f2;
+}
+
+.ptk-ss-msg-warn {
+    border-color: #e0c37a;
+    background: #fdf7e6;
+}
+
+.ptk-ss-msg-error {
+    border-color: #e2a4a7;
+    background: #fbeeee;
+    color: #7a1419;
+}
+
+.ptk-ss-chip {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1px solid rgba( 0, 0, 0, 0.2 );
+    vertical-align: -2px;
+    margin: 0 2px 0 4px;
+}
+
+.ptk-ss-color {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px 40px;
+    align-items: flex-start;
+}
+
+.ptk-ss-choices {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    min-width: 260px;
+}
+
+.ptk-ss-choice {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+}
+
+.ptk-ss-choice input[type="radio"] {
+    margin: 0;
+}
+
+.ptk-ss-picker {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 6px 0 0 24px;
+}
+
+.ptk-ss-picker input[type="color"] {
+    width: 56px;
+    height: 36px;
+    padding: 2px;
+    border: 1px solid #8c8f94;
+    border-radius: 4px;
+    background: #ffffff;
+    cursor: pointer;
+}
+
+.ptk-ss-picker.is-off {
+    opacity: 0.5;
+}
+
+.ptk-ss-preview {
+    --ptk-ss-accent: #ffffff;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    box-sizing: border-box;
+    width: 200px;
+    height: 200px;
+    padding: 20px 18px;
+    border-radius: 4px;
+    background: #1a2f5c;
+    color: #ffffff;
+    font-family: 'Libre Franklin', Helvetica, Arial, sans-serif;
+}
+
+.ptk-ss-preview-eyebrow {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var( --ptk-ss-accent );
+}
+
+.ptk-ss-preview-rule {
+    display: block;
+    height: 1px;
+    margin: 8px 0 20px;
+    background: var( --ptk-ss-accent );
+}
+
+.ptk-ss-preview-issue {
+    font-size: 44px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+}
+
+.ptk-ss-preview-date {
+    margin-top: 12px;
+    font-family: Newsreader, Georgia, 'Times New Roman', serif;
+    font-style: italic;
+    font-size: 16px;
+    color: var( --ptk-ss-accent );
+}
+
+.ptk-ss-preview-note {
+    max-width: 220px;
+    margin: 8px 0 0;
+    font-size: 13px;
+    color: #50575e;
+}
+
+.ptk-ss-field-error {
+    margin: -6px 0 8px;
+    color: #a51d23;
+    font-weight: 600;
+    max-width: 62ch;
+}
+
+#ptk-share-facebook-url[aria-invalid="true"] {
+    border-color: #a51d23;
+    box-shadow: 0 0 0 1px #a51d23;
+}
