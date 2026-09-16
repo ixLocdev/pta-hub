@@ -19,6 +19,8 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+require_once dirname( __FILE__ ) . '/class-focal-point.php';
+
 // issue_label() lives with the share text so every surface pads the issue
 // number the same way. require_once resolves real paths, so this and the
 // plugin bootstrap's own require never load it twice.
@@ -423,7 +425,7 @@ class PTK_Newsletter_Renderer {
         $link_url  = isset( $data['link_url'] ) ? self::str( $data['link_url'] ) : '';
         $link_text = isset( $data['link_text'] ) ? self::str( $data['link_text'] ) : '';
 
-        $image_html = self::maybe_image( $image_id, $opts, $headline );
+        $image_html = self::maybe_image( $image_id, $data, $opts, $headline );
 
         // Nothing to feature (no text and no rendered image): skip the section.
         if ( '' === trim( $eyebrow ) && '' === trim( $headline ) && '' === trim( $body ) && '' === $image_html
@@ -495,7 +497,7 @@ class PTK_Newsletter_Renderer {
 
             $padding = ( 0 === $i ) ? '40px 20px 8px' : '24px 20px 8px';
             $html   .= '<div style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:' . $padding . ';box-sizing:border-box;">';
-            $html   .= self::story_section( $rule, $heading, $body, self::maybe_image( $image_id, $opts, $heading ), $link_url, $link_text );
+            $html   .= self::story_section( $rule, $heading, $body, self::maybe_image( $image_id, $card, $opts, $heading ), $link_url, $link_text );
             $html   .= '</div>';
         }
 
@@ -723,12 +725,19 @@ class PTK_Newsletter_Renderer {
      * $opts['image_url_cb']( $image_id ) : string. Skipped entirely if no
      * callback is available (pure renderer has no attachment access).
      *
+     * "Show whole" (default, $data['image_fit'] !== 'crop') emits BYTE FOR
+     * BYTE what this method always returned -- no visual change for a
+     * newsletter that never touches "Crop to fit." "Crop to fit" wraps the
+     * image in a clipped 16:9 frame using object-fit/object-position for the
+     * focal point and, when zoomed, a transform:scale from the same origin.
+     *
      * @param int    $image_id Attachment ID, 0 to skip.
+     * @param array  $data     The block's data array (image_fit/focal/zoom live here).
      * @param array  $opts     Render options, possibly containing image_url_cb.
      * @param string $alt      Alt text fallback.
      * @return string
      */
-    private static function maybe_image( $image_id, array $opts, $alt = '' ) {
+    private static function maybe_image( $image_id, array $data, array $opts, $alt = '' ) {
         if ( $image_id <= 0 ) {
             return '';
         }
@@ -742,7 +751,23 @@ class PTK_Newsletter_Renderer {
             return '';
         }
 
-        return '<img src="' . esc_url( $url ) . '" alt="' . esc_attr( $alt ) . '" style="display:block;width:100%;height:auto;border-radius:4px;margin:0;" />';
+        $fit = isset( $data['image_fit'] ) && 'crop' === $data['image_fit'] ? 'crop' : 'whole';
+        if ( 'whole' === $fit ) {
+            return '<img src="' . esc_url( $url ) . '" alt="' . esc_attr( $alt ) . '" style="display:block;width:100%;height:auto;border-radius:4px;margin:0;" />';
+        }
+
+        $x    = isset( $data['image_focal_x'] ) ? $data['image_focal_x'] : 50;
+        $y    = isset( $data['image_focal_y'] ) ? $data['image_focal_y'] : 50;
+        $zoom = isset( $data['image_zoom'] ) ? $data['image_zoom'] : 0;
+        $pos  = PTK_Focal_Point::object_position( $x, $y );
+        $zoom_style = PTK_Focal_Point::css_zoom_style( $x, $y, $zoom );
+
+        // The frame MUST clip -- a zoomed photo is scaled past its own box
+        // on purpose. aspect-ratio gives the 16:9 frame without a fixed
+        // pixel height, so this keeps working at every screen width.
+        return '<div style="width:100%;aspect-ratio:16/9;overflow:hidden;border-radius:4px;">'
+            . '<img src="' . esc_url( $url ) . '" alt="' . esc_attr( $alt ) . '" style="display:block;width:100%;height:100%;object-fit:cover;object-position:' . esc_attr( $pos ) . ';' . esc_attr( $zoom_style ) . '" />'
+            . '</div>';
     }
 
     /**

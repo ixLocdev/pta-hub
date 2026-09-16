@@ -377,4 +377,61 @@ ptk_test_ok( strpos( $no_news_html, 'Got news?' ) === false, 'news CTA: absent w
 
 ptk_test_ok( strpos( $news_html, 'border-left' ) === false && strpos( $news_html, 'border-right' ) === false, 'news CTA: no one-sided borders' );
 
+// Round 3: maybe_image()'s crop branch.
+
+$R = 'PTK_Newsletter_Renderer';
+$img_opts = array( 'image_url_cb' => function( $id ) { return 'https://example.org/img-' . $id . '.jpg'; } );
+
+// Show whole (default): byte-for-byte what today's markup is.
+$html_whole = $R::render( array(
+    array( 'type' => 'header', 'data' => array() ),
+    array( 'type' => 'featured', 'data' => array( 'headline' => 'Story', 'image_id' => 7, 'image_fit' => 'whole' ) ),
+    array( 'type' => 'footer', 'data' => array() ),
+), $img_opts );
+ptk_test_ok( false !== strpos( $html_whole, '<img src="https://example.org/img-7.jpg" alt="Story" style="display:block;width:100%;height:auto;border-radius:4px;margin:0;" />' ), 'Show whole: unchanged markup, byte for byte' );
+ptk_test_ok( false === strpos( $html_whole, 'object-fit' ), 'Show whole: no crop styling leaks in' );
+
+// Crop to fit: the 16:9 frame, clipped, with object-position and (when
+// zoomed) transform:scale.
+$html_crop = $R::render( array(
+    array( 'type' => 'header', 'data' => array() ),
+    array( 'type' => 'featured', 'data' => array( 'headline' => 'Story', 'image_id' => 7, 'image_fit' => 'crop', 'image_focal_x' => 30, 'image_focal_y' => 80, 'image_zoom' => 175 ) ),
+    array( 'type' => 'footer', 'data' => array() ),
+), $img_opts );
+ptk_test_ok( false !== strpos( $html_crop, 'aspect-ratio:16/9' ), 'Crop to fit: 16:9 frame' );
+ptk_test_ok( false !== strpos( $html_crop, 'overflow:hidden' ), 'Crop to fit: the frame clips' );
+ptk_test_ok( false !== strpos( $html_crop, 'object-fit:cover' ), 'Crop to fit: object-fit:cover' );
+ptk_test_ok( false !== strpos( $html_crop, 'object-position:30% 80%' ), 'Crop to fit: object-position from the focal point' );
+ptk_test_ok( false !== strpos( $html_crop, 'scale(1.75)' ), 'Crop to fit: zoom becomes a scale transform' );
+
+// Unzoomed crop: object-position present, no transform at all.
+$html_crop_unzoomed = $R::render( array(
+    array( 'type' => 'header', 'data' => array() ),
+    array( 'type' => 'featured', 'data' => array( 'headline' => 'Story', 'image_id' => 7, 'image_fit' => 'crop', 'image_focal_x' => 50, 'image_focal_y' => 50, 'image_zoom' => 0 ) ),
+    array( 'type' => 'footer', 'data' => array() ),
+), $img_opts );
+ptk_test_ok( false === strpos( $html_crop_unzoomed, 'transform:scale' ), 'Crop to fit, unzoomed: no scale transform emitted at all' );
+
+// Story cards get the same treatment (second call site).
+$html_cards = $R::render( array(
+    array( 'type' => 'header', 'data' => array() ),
+    array( 'type' => 'story_cards', 'data' => array( 'cards' => array(
+        array( 'heading' => 'A', 'image_id' => 3, 'image_fit' => 'crop', 'image_focal_x' => 0, 'image_focal_y' => 0, 'image_zoom' => 0 ),
+    ) ) ),
+    array( 'type' => 'footer', 'data' => array() ),
+), $img_opts );
+ptk_test_ok( false !== strpos( $html_cards, 'aspect-ratio:16/9' ), 'Story cards: crop applies at the second call site too' );
+
+// No image at all: unaffected either way.
+$html_none = $R::render( array(
+    array( 'type' => 'header', 'data' => array() ),
+    array( 'type' => 'featured', 'data' => array( 'headline' => 'Story', 'image_fit' => 'crop' ) ),
+    array( 'type' => 'footer', 'data' => array() ),
+), $img_opts );
+ptk_test_ok( false === strpos( $html_none, 'aspect-ratio' ), 'No image_id: fit mode is moot, nothing crop-related renders' );
+
+// No one-sided borders in the crop markup either.
+ptk_test_ok( strpos( $html_crop, 'border-left' ) === false && strpos( $html_crop, 'border-right' ) === false, 'Crop to fit: no one-sided borders' );
+ptk_test_ok( strpos( $html_cards, 'border-left' ) === false && strpos( $html_cards, 'border-right' ) === false, 'Story cards crop: no one-sided borders' );
+
 ptk_test_done();
