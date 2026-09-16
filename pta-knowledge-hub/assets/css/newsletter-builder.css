@@ -749,6 +749,16 @@
     border-radius: 4px;
     color: #8a2224;
 }
+/* Carries data-step="5", so showStep()'s jQuery .toggle() sets an inline
+   display style whenever "Publish & share" is the current step -- which
+   would override the `hidden` attribute JS also sets. :empty is what
+   actually keeps it invisible until there is something to report. */
+.ptk-nl-validation-summary:empty {
+    display: none !important;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
 .ptk-nl-validation-summary p {
     margin: 0 0 6px;
     font-weight: 700;

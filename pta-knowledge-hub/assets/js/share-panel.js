@@ -8,7 +8,7 @@
  *
  * DOM contract (see PTK_Share_Panel::render()):
  *   [data-share-panel][data-post-id]
- *     section[data-share-channel][data-dirty?]
+ *     details[data-share-channel][data-dirty?] -- collapsible, round 3.1
  *       [data-share-stale] [data-share-text] [data-share-copy]
  *       [data-share-reset] [data-share-status] [data-share-whatsapp?]
  *       [data-share-square] (instagram only; re-rendered by the server)
@@ -56,6 +56,7 @@
             bindChannel($(this), postId);
         });
 
+        bindChannelDisclosures($panel);
         bindSquare($panel, postId);
 
         // Leaving the page (including via the Builder's own Publish/Save
@@ -67,6 +68,38 @@
                 if (flush) {
                     flush();
                 }
+            });
+        });
+    }
+
+    /**
+     * Round 3.1 (spec item 5): "one open at a time" for the channel
+     * <details> -- the browser gives collapse/expand for free, this just
+     * closes every OTHER channel the moment one is opened, so the panel
+     * never shows three full post-texts stacked at once.
+     *
+     * Bound directly to each <details> (not delegated on $panel): the
+     * native `toggle` event historically does not bubble in every browser,
+     * so a `$panel.on('toggle', '[data-share-channel]', ...)` delegation
+     * would silently miss it in some of them. The channels are all
+     * server-rendered and never added later, so direct binding costs
+     * nothing.
+     *
+     * @param {jQuery} $panel [data-share-panel]
+     */
+    function bindChannelDisclosures($panel) {
+        var $channels = $panel.find('[data-share-channel]');
+        $channels.each(function () {
+            var el = this;
+            el.addEventListener('toggle', function () {
+                if (!el.open) {
+                    return;
+                }
+                $channels.each(function () {
+                    if (this !== el && this.open) {
+                        this.open = false;
+                    }
+                });
             });
         });
     }

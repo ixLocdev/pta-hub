@@ -459,13 +459,22 @@ class PTK_Share_Panel {
                 <?php endif; ?>
             </div>
 
-            <?php foreach ( self::channel_labels() as $channel => $label ) : ?>
-                <?php
+            <?php
+            // Round 3.1 (spec item 5): collapsible channels, one open at a
+            // time, Facebook open by default -- progressive disclosure so
+            // "Publish & share" doesn't show three full post-texts at once.
+            // <details>/<summary> is the native, no-JS-required collapse;
+            // share-panel.js's bindChannelDisclosures() is the only bit
+            // that enforces "one at a time" (closing the others when one
+            // opens) and needs no changes to anything else in this file.
+            $first_channel = true;
+            foreach ( self::channel_labels() as $channel => $label ) :
                 $caption = PTK_Share_Data::resolve_caption( $post_id, $channel, $ctx['blocks'], $ctx['opts'] );
                 $field   = 'ptk-nl-share-' . $channel;
                 ?>
-                <section class="ptk-nl-share-channel" data-share-channel="<?php echo esc_attr( $channel ); ?>"<?php echo $caption['stored'] ? ' data-dirty="1"' : ''; ?>>
-                    <h4><?php echo esc_html( $label ); ?></h4>
+                <details class="ptk-nl-share-channel" data-share-channel="<?php echo esc_attr( $channel ); ?>"<?php echo $caption['stored'] ? ' data-dirty="1"' : ''; ?><?php echo $first_channel ? ' open' : ''; ?>>
+                    <summary><h4><?php echo esc_html( $label ); ?></h4></summary>
+                    <?php $first_channel = false; ?>
 
                     <p class="ptk-nl-share-stale" data-share-stale<?php echo ( $caption['stored'] && $caption['stale'] ) ? '' : ' hidden'; ?>>The newsletter changed since you edited this.</p>
 
@@ -498,7 +507,7 @@ class PTK_Share_Panel {
                         </div>
                         <?php self::render_phone_handoff( $post_id, $published, $caps ); ?>
                     <?php endif; ?>
-                </section>
+                </details>
             <?php endforeach; ?>
         </div>
         <?php

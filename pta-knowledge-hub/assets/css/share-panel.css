@@ -35,15 +35,53 @@
     color: #374151;
 }
 
+/* Round 3.1 (spec item 5): collapsible, one open at a time
+   (bindChannelDisclosures() in share-panel.js). <details>/<summary> is the
+   native, no-JS toggle -- full-width hairline between channels, never a
+   one-sided accent bar. */
 .ptk-nl-share-channel {
     margin-top: 20px;
     padding-top: 18px;
     border-top: 1px solid #e5e7eb;
 }
 
+.ptk-nl-share-channel > summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 30px;
+}
+
+.ptk-nl-share-channel > summary::-webkit-details-marker {
+    display: none;
+}
+
+.ptk-nl-share-channel > summary::before {
+    content: "\25B8"; /* ▸ */
+    display: inline-block;
+    font-size: 12px;
+    color: #6b7280;
+    transition: transform 0.15s ease;
+}
+
+.ptk-nl-share-channel[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.ptk-nl-share-channel > summary:focus-visible {
+    outline: 2px solid #2271b1;
+    outline-offset: 2px;
+}
+
 .ptk-nl-share-channel h4 {
-    margin: 0 0 8px;
+    margin: 0;
     font-size: 15px;
+}
+
+.ptk-nl-share-channel > summary + * {
+    margin-top: 12px;
 }
 
 .ptk-nl-share-stale {
