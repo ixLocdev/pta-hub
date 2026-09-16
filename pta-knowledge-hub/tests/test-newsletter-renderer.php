@@ -299,4 +299,14 @@ if ( $out ) {
     echo "  (wrote $out)\n";
 }
 
+// --- Links and bold text a volunteer types match #040: navy underlined links, ink bold. ---
+$rt = PTK_Newsletter_Renderer::render( array(
+    array( 'type' => 'events', 'data' => array( 'rows' => array( array( 'date' => '2026-09-25', 'title' => 'Mums', 'desc' => 'Order at <a href="https://mums26.givesmart.com">mums26</a>.' ) ) ) ),
+    array( 'type' => 'announcement', 'data' => array( 'when' => '', 'headline' => 'H', 'text' => 'Has <strong>12 classes</strong>, ask <a href="mailto:a@b.org">the counselor</a>.', 'button_text' => '', 'button_url' => '', 'timeline' => array() ) ),
+), array( 'issue' => 40, 'date' => '2026-09-13', 'today' => '2026-09-13', 'theme' => 'harbor-navy', 'logo_url' => '', 'school_name' => 'NE' ) );
+ptk_test_ok( strpos( $rt, '<a href="https://mums26.givesmart.com" style="color:#1a2f5c;text-decoration:underline;' ) !== false, 'a typed link on white is a navy underlined link' );
+ptk_test_ok( strpos( $rt, '<a href="mailto:a@b.org" style="color:#ffffff;text-decoration:underline;' ) !== false, 'a typed link on navy is white and underlined' );
+ptk_test_ok( strpos( $rt, '<strong style="color:#ffffff;">12 classes</strong>' ) !== false, 'bold text on navy is white' );
+ptk_test_ok( strpos( $rt, 'flex:1 1 200px;min-width:200px;' ) !== false, 'event title sits beside the date on a 375px phone (112 + 20 + 200 fits)' );
+
 ptk_test_done();

@@ -164,7 +164,7 @@ class PTK_Newsletter_Renderer {
         $html .= $date_html;
         $html .= '</div>';
         $html .= '</div>';
-        $html .= '<p style="font-size:16px;line-height:1.65;color:' . esc_attr( self::PALETTE['muted'] ) . ';margin:24px 0 0;max-width:620px;">' . wp_kses_post( $greeting ) . '</p>';
+        $html .= '<p style="font-size:16px;line-height:1.65;color:' . esc_attr( self::PALETTE['muted'] ) . ';margin:24px 0 0;max-width:620px;">' . self::rich( $greeting ) . '</p>';
         $html .= '</div>';
         $html .= '</div>';
 
@@ -237,7 +237,7 @@ class PTK_Newsletter_Renderer {
 
         if ( $has_text ) {
             $t_margin = $has_after ? '0 0 28px' : '0';
-            $html .= '<div style="font-size:16px;line-height:1.65;color:' . esc_attr( self::PALETTE['on_navy'] ) . ';margin:' . $t_margin . ';max-width:660px;">' . wp_kses_post( $text ) . '</div>';
+            $html .= '<div style="font-size:16px;line-height:1.65;color:' . esc_attr( self::PALETTE['on_navy'] ) . ';margin:' . $t_margin . ';max-width:660px;">' . self::rich( $text, true ) . '</div>';
         }
 
         if ( ! empty( $rows ) ) {
@@ -355,9 +355,9 @@ class PTK_Newsletter_Renderer {
                 $html .= '<div style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:' . esc_attr( self::PALETTE['muted'] ) . ';font-weight:600;margin-top:4px;">' . esc_html( $weekday ) . '</div>';
             }
             $html .= '</div>';
-            $html .= '<div style="flex:1 1 220px;min-width:200px;">';
+            $html .= '<div style="flex:1 1 200px;min-width:200px;">';
             $html .= '<div style="font-size:17px;font-weight:600;line-height:1.35;margin-bottom:4px;">' . esc_html( $title ) . '</div>';
-            $html .= '<div style="font-size:14px;color:' . esc_attr( self::PALETTE['muted'] ) . ';line-height:1.5;">' . wp_kses_post( $desc ) . '</div>';
+            $html .= '<div style="font-size:14px;color:' . esc_attr( self::PALETTE['muted'] ) . ';line-height:1.5;">' . self::rich( $desc ) . '</div>';
             $html .= '</div>';
             $html .= '<span data-event-date="' . esc_attr( $date ) . '" data-default="' . esc_attr( $label ) . '" style="' . esc_attr( $pill_style ) . '">' . esc_html( $label ) . '</span>';
             $html .= '</div>';
@@ -504,7 +504,7 @@ class PTK_Newsletter_Renderer {
                 $html .= '<h3 style="font-family:' . self::FONT_SANS . ';font-size:17px;font-weight:700;line-height:1.35;color:' . esc_attr( self::PALETTE['text'] ) . ';margin:0 0 4px;">' . esc_html( $n['heading'] ) . '</h3>';
             }
             if ( '' !== trim( $n['body'] ) ) {
-                $html .= '<div style="font-size:15px;line-height:1.6;color:' . esc_attr( self::PALETTE['muted'] ) . ';">' . wp_kses_post( $n['body'] ) . '</div>';
+                $html .= '<div style="font-size:15px;line-height:1.6;color:' . esc_attr( self::PALETTE['muted'] ) . ';">' . self::rich( $n['body'] ) . '</div>';
             }
             if ( '' !== trim( $n['link_url'] ) && '' !== trim( $n['link_text'] ) ) {
                 $html .= '<p style="margin:8px 0 0;"><a href="' . esc_url( $n['link_url'] ) . '" style="font-size:14px;font-weight:700;' . self::link_style() . '">' . esc_html( $n['link_text'] ) . '</a></p>';
@@ -549,7 +549,7 @@ class PTK_Newsletter_Renderer {
         $html .= '<div style="max-width:840px;margin:0 auto;">';
 
         if ( '' !== trim( $signoff ) ) {
-            $html .= '<p style="font-size:17px;line-height:1.65;color:' . esc_attr( self::PALETTE['text'] ) . ';margin:0 0 28px;">' . wp_kses_post( $signoff ) . '</p>';
+            $html .= '<p style="font-size:17px;line-height:1.65;color:' . esc_attr( self::PALETTE['text'] ) . ';margin:0 0 28px;">' . self::rich( $signoff ) . '</p>';
         }
 
         if ( ! empty( $valid_links ) ) {
@@ -577,7 +577,7 @@ class PTK_Newsletter_Renderer {
             $html .= '<h2 style="font-family:' . self::FONT_SANS . ';font-weight:800;font-size:clamp(24px,5vw,30px);line-height:1.05;letter-spacing:-0.02em;margin:0 0 12px;color:' . esc_attr( self::PALETTE['text'] ) . ';">' . esc_html( $headline ) . '</h2>';
         }
         if ( '' !== trim( $body ) ) {
-            $html .= '<div style="font-size:16px;line-height:1.65;color:' . esc_attr( self::PALETTE['muted'] ) . ';margin:0 0 20px;max-width:620px;">' . wp_kses_post( $body ) . '</div>';
+            $html .= '<div style="font-size:16px;line-height:1.65;color:' . esc_attr( self::PALETTE['muted'] ) . ';margin:0 0 20px;max-width:620px;">' . self::rich( $body ) . '</div>';
         }
         if ( '' !== $image_html ) {
             $html .= '<figure style="margin:28px 0 0;">' . $image_html . '</figure>';
@@ -586,6 +586,24 @@ class PTK_Newsletter_Renderer {
             $html .= '<p style="margin:20px 0 0;"><a href="' . esc_url( $link_url ) . '" style="font-size:16px;font-weight:700;' . self::link_style() . '">' . esc_html( $link_text ) . '</a></p>';
         }
         $html .= '</div>';
+        return $html;
+    }
+
+    /**
+     * A volunteer's rich text (kses-cleaned) in the house style: links they
+     * typed become underlined navy links (white on navy) and bold text is
+     * ink (white on navy), as #040 writes them. Only bare <a> and <strong>
+     * tags are styled -- a tag that already carries attributes other than
+     * href is left exactly as it is.
+     */
+    private static function rich( $html, $on_navy = false ) {
+        $html   = wp_kses_post( $html );
+        $link   = $on_navy
+            ? 'color:#ffffff;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;'
+            : self::link_style();
+        $strong = 'color:' . ( $on_navy ? '#ffffff' : self::PALETTE['text'] ) . ';';
+        $html   = preg_replace( '/<a(\s+href="[^"]*")\s*>/i', '<a$1 style="' . $link . '">', $html );
+        $html   = preg_replace( '/<strong>/i', '<strong style="' . $strong . '">', $html );
         return $html;
     }
 
