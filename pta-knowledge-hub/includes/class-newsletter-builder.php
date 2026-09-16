@@ -641,12 +641,29 @@ class PTK_Newsletter_Builder {
         );
 
         wp_enqueue_script(
+            'ptk-focal-point',
+            PTK_PLUGIN_URL . 'assets/js/focal-point.js',
+            array(),
+            PTK_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
+            'ptk-focal-point-picker',
+            PTK_PLUGIN_URL . 'assets/js/focal-point-picker.js',
+            array( 'jquery', 'ptk-focal-point' ),
+            PTK_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
             'ptk-newsletter-builder',
             PTK_PLUGIN_URL . 'assets/js/newsletter-builder.js',
             // jquery-ui-sortable powers step 4's drag-to-reorder. Dragging is
             // never the only way to reorder — the arrange list's Move up/down
-            // buttons do the same thing from the keyboard.
-            array( 'jquery', 'media-upload', 'jquery-ui-sortable' ),
+            // buttons do the same thing from the keyboard. ptk-focal-point-picker
+            // must load first: the boot block calls into it (initFocalPickers()).
+            array( 'jquery', 'media-upload', 'jquery-ui-sortable', 'ptk-focal-point-picker' ),
             PTK_VERSION,
             true
         );
@@ -1498,9 +1515,12 @@ class PTK_Newsletter_Builder {
                     <textarea id="ptk-nl-featured-body" data-field="body" rows="4" aria-describedby="ptk-nl-featured-body-hint"><?php echo esc_textarea( isset( $data['body'] ) ? $data['body'] : '' ); ?></textarea>
                     <p class="description" id="ptk-nl-featured-body-hint">A paragraph or two in your own words.</p>
                 </div>
-                <div class="ptk-nl-field-group">
+                <div class="ptk-nl-field-group ptk-nl-image-group" data-image-group>
                     <label>Image</label>
                     <input type="hidden" data-field="image_id" value="<?php echo esc_attr( isset( $data['image_id'] ) ? $data['image_id'] : 0 ); ?>">
+                    <input type="hidden" data-field="image_focal_x" value="<?php echo esc_attr( isset( $data['image_focal_x'] ) ? $data['image_focal_x'] : 50 ); ?>">
+                    <input type="hidden" data-field="image_focal_y" value="<?php echo esc_attr( isset( $data['image_focal_y'] ) ? $data['image_focal_y'] : 50 ); ?>">
+                    <input type="hidden" data-field="image_zoom" value="<?php echo esc_attr( isset( $data['image_zoom'] ) ? $data['image_zoom'] : 0 ); ?>">
                     <?php /* Above the button, not below it: refreshImageChip() appends the
                             "Image #N selected" chip to the END of this group. The hint describes
                             the Add image button below it, not the hidden input above — a hidden
@@ -1508,6 +1528,16 @@ class PTK_Newsletter_Builder {
                             on the button, the only real control in this group. */ ?>
                     <p class="description" id="ptk-nl-featured-image-hint">Optional. Please don&#8217;t use photos of students&#8217; faces.</p>
                     <button type="button" class="button ptk-nl-add-image" aria-describedby="ptk-nl-featured-image-hint">Add image</button>
+                    <?php /* image_fit is the ONE crop field with a visible control: a plain
+                            select, so it needs no special-casing in getFieldValue/setFieldValue
+                            (falls through to .val() like every non-image_id field). Hidden by
+                            default; refreshFocalPicker() (assets/js/newsletter-builder.js) shows
+                            it once an image is chosen, and shows/builds the focal-point picker
+                            surface below it when the value is "crop". */ ?>
+                    <select class="ptk-nl-image-fit" data-field="image_fit" style="display:none;">
+                        <option value="whole"<?php selected( ! isset( $data['image_fit'] ) || 'crop' !== $data['image_fit'] ); ?>>Show whole photo</option>
+                        <option value="crop"<?php selected( isset( $data['image_fit'] ) && 'crop' === $data['image_fit'] ); ?>>Crop to fit (16:9)</option>
+                    </select>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-featured-link_url">Link address</label>
@@ -1544,13 +1574,20 @@ class PTK_Newsletter_Builder {
                             <textarea data-field="body" rows="3"></textarea>
                             <p class="description">A paragraph or two in your own words.</p>
                         </div>
-                        <div class="ptk-nl-field-group">
+                        <div class="ptk-nl-field-group ptk-nl-image-group" data-image-group>
                             <label>Image</label>
                             <input type="hidden" data-field="image_id" value="0">
+                            <input type="hidden" data-field="image_focal_x" value="50">
+                            <input type="hidden" data-field="image_focal_y" value="50">
+                            <input type="hidden" data-field="image_zoom" value="0">
                             <?php /* Above the button, not below it: refreshImageChip() appends the
                                     "Image #N selected" chip to the END of this group. */ ?>
                             <p class="description">Optional. Please don&#8217;t use photos of students&#8217; faces.</p>
                             <button type="button" class="button ptk-nl-add-image">Add image</button>
+                            <select class="ptk-nl-image-fit" data-field="image_fit" style="display:none;">
+                                <option value="whole" selected>Show whole photo</option>
+                                <option value="crop">Crop to fit (16:9)</option>
+                            </select>
                         </div>
                         <div class="ptk-nl-field-group">
                             <label>Link address</label>

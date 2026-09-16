@@ -117,6 +117,9 @@
         safeBoot(bindRevealInvalidFields);
         // Added in 4.2.0, fenced off the same way.
         safeBoot(openFilledDisclosures);
+        // Added in 4.4.0 (round 3): an existing "crop" photo shows its
+        // picker immediately, with no click required.
+        safeBoot(initFocalPickers);
     });
 
     /**
@@ -1445,9 +1448,87 @@
             var $hidden = $group.find('[data-field="image_id"]').first();
             if ($hidden.length) {
                 $hidden.val(0);
+                resetImageCrop($group);
                 refreshImageChip($hidden);
+                refreshFocalPicker($group);
                 serializeAndPreview();
             }
+        });
+
+        // Fit-mode ("Show whole photo" / "Crop to fit") select: show/hide/
+        // (re)build the focal-point picker surface. Delegated alongside the
+        // existing bindSerializeTriggers() listener on the same element (it
+        // also re-serializes/re-previews on this change; the two listeners
+        // don't conflict).
+        $(document).on('change', '.ptk-nl-image-fit', function () {
+            refreshFocalPicker($(this).closest('.ptk-nl-field-group'));
+        });
+    }
+
+    /**
+     * A fresh photo starts at "Show whole" -- it may not even contain the
+     * subject the PREVIOUS photo in this slot was framed for, so a crop
+     * chosen for the old photo must never carry over silently.
+     */
+    function resetImageCrop($group) {
+        $group.find('[data-field="image_fit"]').val('whole');
+        $group.find('[data-field="image_focal_x"]').val(50);
+        $group.find('[data-field="image_focal_y"]').val(50);
+        $group.find('[data-field="image_zoom"]').val(0);
+    }
+
+    /**
+     * Show/hide the "Show whole photo / Crop to fit" select once an image
+     * is chosen, and show/build (or hide/destroy) the focal-point picker
+     * surface underneath it when the fit is "crop". Runs on page load
+     * (once per image group, via initFocalPickers()) and after every image
+     * pick/remove/fit change.
+     */
+    function refreshFocalPicker($group) {
+        var $idField = $group.find('[data-field="image_id"]').first();
+        var $fitField = $group.find('[data-field="image_fit"]').first();
+        var id = parseInt($idField.val(), 10) || 0;
+
+        if (id <= 0) {
+            $fitField.hide();
+            if (window.ptkDestroyFocalPicker) {
+                window.ptkDestroyFocalPicker($group);
+            }
+            return;
+        }
+
+        $fitField.show();
+
+        if ('crop' !== $fitField.val()) {
+            if (window.ptkDestroyFocalPicker) {
+                window.ptkDestroyFocalPicker($group);
+            }
+            return;
+        }
+
+        if (typeof wp === 'undefined' || !wp.media || !wp.media.attachment) {
+            return; // media API unavailable -- nothing to fetch a src from.
+        }
+
+        fetchAttachment(id).done(function (attachment) {
+            if (!attachment) {
+                return;
+            }
+            var src = ( attachment.sizes && attachment.sizes.large && attachment.sizes.large.url )
+                || attachment.url;
+            if (src && window.ptkInitFocalPicker) {
+                window.ptkInitFocalPicker($group, { aspect: '16:9', src: src });
+            }
+        });
+    }
+
+    /** Every image group on the page, on load -- an existing "crop" photo
+     * shows its picker immediately, with no click required. Called via
+     * safeBoot(): a throw here must not take the rest of the wizard down.
+     */
+    function initFocalPickers() {
+        $('[data-image-group]').each(function () {
+            refreshFocalPicker($(this));
         });
     }
 
@@ -1479,8 +1560,14 @@
                     return;
                 }
                 var attachment = mediaFrame.state().get('selection').first().toJSON();
+                var $group = mediaTargetField.closest('.ptk-nl-field-group');
+                var previousId = parseInt(mediaTargetField.val(), 10) || 0;
                 mediaTargetField.val(attachment.id);
+                if (attachment.id && attachment.id !== previousId) {
+                    resetImageCrop($group);
+                }
                 refreshImageChip(mediaTargetField);
+                refreshFocalPicker($group);
                 serializeAndPreview();
             });
         }
@@ -1488,11 +1575,32 @@
         mediaFrame.open();
     }
 
+    // One shared attachment fetch/cache, id -> wp.media attachment JSON (a
+    // jQuery-style promise). Used by BOTH refreshImageChip() (thumbnail)
+    // and the focal-point picker (photo src), so an image already fetched
+    // for one purpose is never fetched twice.
+    var attachmentCache = {};
+    function fetchAttachment(id) {
+        if (attachmentCache[id]) {
+            return attachmentCache[id];
+        }
+        if (typeof wp === 'undefined' || !wp.media || !wp.media.attachment) {
+            var $none = $.Deferred();
+            attachmentCache[id] = $none.promise();
+            return attachmentCache[id];
+        }
+        var attachment = wp.media.attachment(id);
+        attachmentCache[id] = attachment.fetch().then(function () {
+            return attachment.toJSON();
+        });
+        return attachmentCache[id];
+    }
+
     /**
-     * Show/replace/remove the "Image #{id} selected" chip + Remove control
-     * next to an image_id hidden field, based on its current value. A real
-     * thumbnail isn't available client-side without an extra AJAX round
-     * trip, so a plain-text chip stands in for MVP.
+     * Show/replace/remove the image chip next to an image_id hidden field,
+     * based on its current value: a placeholder text chip immediately (no
+     * flash of nothing), upgraded to a real thumbnail + filename once
+     * wp.media resolves the attachment.
      */
     function refreshImageChip($hidden) {
         var $group = $hidden.closest('.ptk-nl-field-group');
@@ -1500,14 +1608,29 @@
 
         $group.find('.ptk-nl-image-chip').remove();
 
-        if (id > 0) {
-            var $chip = $(
-                '<span class="ptk-nl-image-chip">Image #' + id + ' selected ' +
-                '<button type="button" class="button button-small ptk-nl-remove-image">Remove image</button>' +
-                '</span>'
-            );
-            $group.append($chip);
+        if (id <= 0) {
+            return;
         }
+
+        var $chip = $(
+            '<span class="ptk-nl-image-chip"><span class="ptk-nl-image-thumb"></span>' +
+            '<span class="ptk-nl-image-name">Image #' + id + '</span> ' +
+            '<button type="button" class="button button-small ptk-nl-remove-image">Remove image</button></span>'
+        );
+        $group.append($chip);
+
+        fetchAttachment(id).done(function (attachment) {
+            if (!attachment) {
+                return;
+            }
+            var thumbUrl = attachment.sizes && attachment.sizes.thumbnail && attachment.sizes.thumbnail.url;
+            if (thumbUrl) {
+                $chip.find('.ptk-nl-image-thumb').html('<img src="' + thumbUrl + '" alt="" width="48" height="48">');
+            }
+            if (attachment.filename) {
+                $chip.find('.ptk-nl-image-name').text(attachment.filename);
+            }
+        });
     }
 
     /* ──────────────────────────────────────────
