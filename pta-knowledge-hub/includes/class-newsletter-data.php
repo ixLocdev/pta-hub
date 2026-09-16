@@ -434,6 +434,44 @@ class PTK_Newsletter_Data {
     }
 
     /**
+     * "2026–2027" for an issue date. The school year runs August to July:
+     * months 8-12 belong to Y–(Y+1), months 1-7 to (Y-1)–Y. A June issue
+     * is the year that is ending; an August one is the year about to start.
+     *
+     * @return string '' when the date is not valid.
+     */
+    public static function school_year_label( $date ) {
+        $dt = self::parse_date( $date );
+        if ( ! $dt ) {
+            return '';
+        }
+        $y = (int) $dt->format( 'Y' );
+        $m = (int) $dt->format( 'n' );
+        $start = ( $m >= 8 ) ? $y : $y - 1;
+        return $start . "\xe2\x80\x93" . ( $start + 1 );
+    }
+
+    /**
+     * Per-row display state for an announcement timeline: past (its day is
+     * over, the same rule the event tags use) and deadline (the last row as
+     * entered -- rows are never sorted; the volunteer said which is last).
+     *
+     * @return array[] One array( 'past' => bool, 'deadline' => bool ) per row.
+     */
+    public static function timeline_states( array $rows, $today ) {
+        $states = array();
+        $last   = count( $rows ) - 1;
+        foreach ( array_values( $rows ) as $i => $row ) {
+            $date = is_array( $row ) && isset( $row['date'] ) ? $row['date'] : '';
+            $states[] = array(
+                'past'     => 'past' === self::relabel_for_date( $date, $today ),
+                'deadline' => $i === $last,
+            );
+        }
+        return $states;
+    }
+
+    /**
      * Classify an event date relative to today into a display bucket, with
      * the calendar week starting on Monday.
      *
