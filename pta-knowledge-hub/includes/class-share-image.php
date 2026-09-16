@@ -73,9 +73,31 @@ class PTK_Share_Image {
      * @return array{gd:bool,freetype:bool}
      */
     public static function capabilities() {
+        // imagettftext() can EXIST on a GD that cannot draw type -- WordPress
+        // Playground's PHP is one, and gd_info() there still claims
+        // "FreeType Support". Every call then warns and draws nothing,
+        // leaving a navy square with no words on it. Measuring one letter
+        // in a bundled font is the only honest answer. Cached per request.
+        static $freetype = null;
+
+        $gd = function_exists( 'imagecreatetruecolor' );
+
+        if ( null === $freetype ) {
+            $freetype = false;
+            if ( function_exists( 'imagettftext' ) && function_exists( 'imagettfbbox' ) ) {
+                $fonts = self::font_files();
+                if ( is_readable( $fonts['issue'] ) ) {
+                    $prev     = error_reporting( 0 );
+                    $box      = imagettfbbox( 12, 0, $fonts['issue'], 'A' );
+                    error_reporting( $prev );
+                    $freetype = is_array( $box );
+                }
+            }
+        }
+
         return array(
-            'gd'       => function_exists( 'imagecreatetruecolor' ),
-            'freetype' => function_exists( 'imagettftext' ),
+            'gd'       => $gd,
+            'freetype' => $freetype,
         );
     }
 

@@ -29,7 +29,9 @@ ptk_test_ok( is_array( $caps ), 'capabilities() returns an array' );
 ptk_test_ok( array_key_exists( 'gd', $caps ) && is_bool( $caps['gd'] ), 'capabilities()[gd] is a boolean' );
 ptk_test_ok( array_key_exists( 'freetype', $caps ) && is_bool( $caps['freetype'] ), 'capabilities()[freetype] is a boolean' );
 ptk_test_ok( $caps['gd'] === function_exists( 'imagecreatetruecolor' ), 'capabilities()[gd] reports imagecreatetruecolor()' );
-ptk_test_ok( $caps['freetype'] === function_exists( 'imagettftext' ), 'capabilities()[freetype] reports imagettftext()' );
+$ft_fonts    = $t::font_files();
+$ft_expected = function_exists( 'imagettftext' ) && function_exists( 'imagettfbbox' ) && is_array( @imagettfbbox( 12, 0, $ft_fonts['issue'], 'A' ) );
+ptk_test_ok( $caps['freetype'] === $ft_expected, 'capabilities()[freetype] means type can really be measured, not just that imagettftext() exists' );
 
 // ---------------------------------------------------------------------
 // The fonts have to actually be on disk, or nothing below can draw.
