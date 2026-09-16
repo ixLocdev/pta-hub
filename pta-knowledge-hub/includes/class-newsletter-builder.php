@@ -834,6 +834,12 @@ class PTK_Newsletter_Builder {
                     <?php if ( $edit_id ) : ?>
                         <?php /* Rendered outside #ptk-nl-form on purpose: it has its own <form>s, and forms can't nest. */ ?>
                         <?php self::render_preview_panel( $edit_id ); ?>
+
+                        <?php /* Same pattern as the preview panel: a sibling of #ptk-nl-form with its own
+                                data-step="4", so showStep() owns it. It saves by AJAX, never by this form. */ ?>
+                        <?php if ( class_exists( 'PTK_Share_Panel' ) ) : ?>
+                            <?php PTK_Share_Panel::render( $edit_id ); ?>
+                        <?php endif; ?>
                     <?php endif; ?>
                 </div>
 

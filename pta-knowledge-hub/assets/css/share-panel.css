@@ -1,0 +1,129 @@
+/**
+ * PTA Knowledge Hub — "Share this newsletter" panel (Builder step 4).
+ *
+ * .ptk-nl-share-panel carries data-step, so it follows newsletter-builder.css
+ * rule 1: a plain block, never display:flex, never hidden from a stylesheet.
+ * showStep() owns its visibility. Only its CHILDREN are styled freely here.
+ */
+
+.ptk-nl-share-panel {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-top: 24px;
+}
+
+.ptk-nl-share-intro h3 {
+    margin: 0 0 4px;
+    font-size: 17px;
+}
+
+.ptk-nl-share-panel .description {
+    font-size: 13px;
+    line-height: 1.5;
+    color: #6b7280;
+}
+
+.ptk-nl-share-note {
+    margin: 12px 0 0;
+    padding: 10px 12px;
+    background: #f3f4f6;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #374151;
+}
+
+.ptk-nl-share-channel {
+    margin-top: 20px;
+    padding-top: 18px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.ptk-nl-share-channel h4 {
+    margin: 0 0 8px;
+    font-size: 15px;
+}
+
+.ptk-nl-share-stale {
+    margin: 0 0 8px;
+    padding: 8px 12px;
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #78350f;
+}
+
+.ptk-nl-share-stale[hidden] {
+    display: none;
+}
+
+.ptk-nl-share-text {
+    width: 100%;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 8px 10px;
+    resize: vertical;
+}
+
+.ptk-nl-share-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+    margin-top: 8px;
+}
+
+.ptk-nl-share-status {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.ptk-nl-share-square {
+    margin-top: 14px;
+}
+
+.ptk-nl-share-figure {
+    margin: 0;
+}
+
+.ptk-nl-share-figure img {
+    display: block;
+    width: 100%;
+    max-width: 270px;
+    height: auto;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+}
+
+.ptk-nl-share-figure figcaption {
+    margin-top: 4px;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.ptk-nl-share-phone {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 16px;
+    padding: 12px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+}
+
+.ptk-nl-share-phone img {
+    flex: 0 0 auto;
+    image-rendering: pixelated;
+}
+
+.ptk-nl-share-phone .description {
+    margin: 0;
+}
+
+.ptk-nl-share-square.is-busy {
+    opacity: 0.6;
+}

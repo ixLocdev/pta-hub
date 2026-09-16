@@ -1,0 +1,327 @@
+<?php
+/**
+ * "Share this newsletter" panel on the Builder's last step.
+ *
+ * Hands a volunteer ready-to-paste Facebook / Instagram / WhatsApp text
+ * plus a square picture. Nothing posts by itself.
+ *
+ * WHERE IT LIVES, AND WHY: pta_newsletter has no post-publish screen and no
+ * edit-screen sidebar -- redirect_edit_to_builder() sends every edit into
+ * the Builder page, and handle_submission() owns the save redirect. So the
+ * panel is rendered by PTK_Newsletter_Builder::render_page() on step 4, as
+ * a SIBLING of #ptk-nl-form (forms cannot nest) carrying data-step="4",
+ * exactly like the preview-link panel. The Builder's showStep() owns its
+ * visibility; nothing here may hide it or make it display:flex.
+ *
+ * It never fatals and never shows a broken image: no GD, no FreeType, or a
+ * WP_Error from ensure_square() each degrade to a plain sentence, and the
+ * captions keep working in every case.
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
+class PTK_Share_Panel {
+
+    const NONCE_ACTION = 'ptk_nl_share';
+
+    /** Longest caption we will store. Facebook's own limit is far above any real post. */
+    const MAX_CAPTION = 20000;
+
+    public static function init() {
+        add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
+    }
+
+    /**
+     * Assets for the Builder page only.
+     *
+     * @param string $hook Current admin page hook.
+     */
+    public static function enqueue_assets( $hook ) {
+        if ( 'pta_newsletter_page_' . PTK_Newsletter_Builder::PAGE_SLUG !== $hook ) {
+            return;
+        }
+
+        wp_enqueue_style(
+            'ptk-share-panel',
+            PTK_PLUGIN_URL . 'assets/css/share-panel.css',
+            array( 'ptk-newsletter-builder' ),
+            PTK_VERSION
+        );
+    }
+
+    /**
+     * Channel => heading.
+     *
+     * @return array
+     */
+    protected static function channel_labels() {
+        return array(
+            'facebook'  => 'Facebook',
+            'instagram' => 'Instagram',
+            'whatsapp'  => 'WhatsApp',
+        );
+    }
+
+    /**
+     * Is this a newsletter families can actually open? Only a published
+     * one gets real links and the QR -- a draft's permalink 404s for them.
+     *
+     * @param int $post_id
+     * @return bool
+     */
+    public static function is_published( $post_id ) {
+        return 'publish' === get_post_status( $post_id );
+    }
+
+    /**
+     * Everything the captions and the square are made from, read from the
+     * saved newsletter (never from the request).
+     *
+     * Deliberately NOT PTK_Newsletter_Builder::render_opts(): that is
+     * private and has no url.
+     *
+     * @param int $post_id
+     * @return array{blocks:array,opts:array}
+     */
+    public static function context( $post_id ) {
+        $blocks = PTK_Newsletter_Data::sanitize_blocks(
+            json_decode( (string) get_post_meta( $post_id, 'ptk_nl_blocks', true ), true )
+        );
+
+        $issue = absint( get_post_meta( $post_id, 'ptk_nl_issue', true ) );
+        $date  = (string) get_post_meta( $post_id, 'ptk_nl_date', true );
+        if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date ) ) {
+            $date = '';
+        }
+
+        $opts = array(
+            // A draft gets no url at all: never hand out a link that 404s.
+            'url'         => self::is_published( $post_id ) ? (string) get_permalink( $post_id ) : '',
+            'issue'       => $issue ? $issue : '',
+            'date'        => $date,
+            'school_name' => self::school_name( $blocks ),
+            'today'       => current_time( 'Y-m-d' ),
+        );
+
+        return array(
+            'blocks' => $blocks,
+            'opts'   => $opts,
+        );
+    }
+
+    /**
+     * The header block's school name, else the site name.
+     *
+     * @param array $blocks Sanitized blocks.
+     * @return string
+     */
+    protected static function school_name( array $blocks ) {
+        foreach ( $blocks as $block ) {
+            if ( isset( $block['type'] ) && PTK_Newsletter_Data::TYPE_HEADER === $block['type'] ) {
+                $name = isset( $block['data']['school_name'] ) ? trim( (string) $block['data']['school_name'] ) : '';
+                if ( '' !== $name ) {
+                    return $name;
+                }
+                break;
+            }
+        }
+
+        return wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
+    }
+
+    /**
+     * The hash stored alongside a caption so the stale notice works.
+     *
+     * @param array $ctx From context().
+     * @return string
+     */
+    public static function caption_hash( array $ctx ) {
+        $o = $ctx['opts'];
+        return PTK_Share_Data::caption_inputs_hash( $ctx['blocks'], $o['url'], $o['issue'], $o['date'], $o['school_name'] );
+    }
+
+    /**
+     * The WhatsApp hand-off link for a caption.
+     *
+     * @param string $text
+     * @return string
+     */
+    public static function whatsapp_url( $text ) {
+        return 'https://wa.me/?text=' . rawurlencode( (string) $text );
+    }
+
+    /**
+     * The PTA's Facebook group, or '' when none is set (then no link-out
+     * is shown at all -- never a dead button).
+     *
+     * @return string
+     */
+    public static function facebook_url() {
+        $url = trim( (string) get_option( 'ptk_share_facebook_url', '' ) );
+        return '' === $url ? '' : esc_url_raw( $url );
+    }
+
+    /**
+     * Render the panel. Called by PTK_Newsletter_Builder::render_page()
+     * OUTSIDE #ptk-nl-form, only for an existing, validated newsletter.
+     *
+     * @param int $post_id
+     */
+    public static function render( $post_id ) {
+        $post_id   = absint( $post_id );
+        $ctx       = self::context( $post_id );
+        $published = self::is_published( $post_id );
+        $caps      = PTK_Share_Image::capabilities();
+        ?>
+        <div class="ptk-nl-share-panel" data-step="4" data-share-panel data-post-id="<?php echo esc_attr( $post_id ); ?>">
+            <div class="ptk-nl-share-intro">
+                <h3>Share this newsletter</h3>
+                <p class="description">Ready-to-paste posts for your PTA&#8217;s pages and groups. Nothing is posted for you &#8212; copy, paste, and change anything you like. Your changes are kept.</p>
+                <?php if ( ! $published ) : ?>
+                    <p class="ptk-nl-share-note">The link and phone handoff appear once this newsletter is published.</p>
+                <?php endif; ?>
+            </div>
+
+            <?php foreach ( self::channel_labels() as $channel => $label ) : ?>
+                <?php
+                $caption = PTK_Share_Data::resolve_caption( $post_id, $channel, $ctx['blocks'], $ctx['opts'] );
+                $field   = 'ptk-nl-share-' . $channel;
+                ?>
+                <section class="ptk-nl-share-channel" data-share-channel="<?php echo esc_attr( $channel ); ?>"<?php echo $caption['stored'] ? ' data-dirty="1"' : ''; ?>>
+                    <h4><?php echo esc_html( $label ); ?></h4>
+
+                    <p class="ptk-nl-share-stale" data-share-stale<?php echo ( $caption['stored'] && $caption['stale'] ) ? '' : ' hidden'; ?>>The newsletter changed since you edited this.</p>
+
+                    <label class="screen-reader-text" for="<?php echo esc_attr( $field ); ?>"><?php echo esc_html( $label . ' post text' ); ?></label>
+                    <textarea id="<?php echo esc_attr( $field ); ?>" class="ptk-nl-share-text" rows="<?php echo 'whatsapp' === $channel ? 5 : 9; ?>" data-share-text><?php echo esc_textarea( $caption['text'] ); ?></textarea>
+
+                    <div class="ptk-nl-share-actions">
+                        <button type="button" class="button button-primary" data-share-copy>Copy text</button>
+                        <?php if ( 'facebook' === $channel && $published && '' !== self::facebook_url() ) : ?>
+                            <a class="button" href="<?php echo esc_url( self::facebook_url() ); ?>" target="_blank" rel="noopener noreferrer">Open your Facebook group</a>
+                        <?php endif; ?>
+                        <?php if ( 'whatsapp' === $channel && $published ) : ?>
+                            <a class="button" data-share-whatsapp href="<?php /* esc_attr, NOT esc_url: esc_url strips %0A and would glue the lines together. We build this URL ourselves: fixed https scheme, rawurlencoded text. */ echo esc_attr( self::whatsapp_url( $caption['text'] ) ); ?>" target="_blank" rel="noopener noreferrer">Open in WhatsApp</a>
+                        <?php endif; ?>
+                        <button type="button" class="button-link ptk-nl-share-reset" data-share-reset>Reset to generated</button>
+                        <span class="ptk-nl-share-status" data-share-status role="status" aria-live="polite"></span>
+                    </div>
+
+                    <?php if ( 'instagram' === $channel ) : ?>
+                        <div class="ptk-nl-share-square" data-share-square>
+                            <?php echo self::square_html( $post_id, $ctx ); // phpcs:ignore WordPress.Security.EscapeOutput -- built and escaped in square_html(). ?>
+                        </div>
+                        <?php self::render_phone_handoff( $post_id, $published, $caps ); ?>
+                    <?php endif; ?>
+                </section>
+            <?php endforeach; ?>
+        </div>
+        <?php
+    }
+
+    /**
+     * The Instagram picture area: the square (generated or uploaded) and
+     * its controls, or a plain sentence where a picture cannot be shown.
+     * Returned as a string so the AJAX handlers can send back the same
+     * markup after a change.
+     *
+     * @param int   $post_id
+     * @param array $ctx From context().
+     * @return string
+     */
+    public static function square_html( $post_id, array $ctx ) {
+        $caps       = PTK_Share_Image::capabilities();
+        $square     = PTK_Share_Data::get_square( $post_id );
+        $can_upload = current_user_can( 'upload_files' );
+        $result     = null;
+
+        if ( $square['custom'] || $caps['freetype'] ) {
+            $result = PTK_Share_Image::ensure_square( $post_id, array(
+                'issue'       => $ctx['opts']['issue'],
+                'date'        => $ctx['opts']['date'],
+                'school_name' => $ctx['opts']['school_name'],
+                'color'       => PTK_Share_Color::share_color(),
+            ) );
+        }
+
+        $image_url = '';
+        $full_url  = '';
+        $message   = '';
+
+        if ( is_wp_error( $result ) ) {
+            $message = $result->get_error_message();
+        } elseif ( $result ) {
+            $image_url = (string) wp_get_attachment_image_url( $result, 'medium_large' );
+            $full_url  = (string) wp_get_attachment_url( $result );
+            if ( '' === $image_url ) {
+                $image_url = $full_url;
+            }
+            if ( '' === $image_url ) {
+                $message = 'The square picture could not be found. Upload one instead.';
+            }
+        } else {
+            $message = 'Upload a square picture for Instagram.';
+        }
+
+        ob_start();
+        ?>
+        <?php if ( '' !== $image_url ) : ?>
+            <figure class="ptk-nl-share-figure">
+                <img src="<?php echo esc_url( $image_url ); ?>" alt="<?php echo esc_attr( $square['custom'] ? 'Your square picture for Instagram' : 'Square picture for Instagram with this issue number and date' ); ?>" width="270" height="270">
+                <figcaption><?php echo $square['custom'] ? 'Your own picture.' : 'Made for you from this issue.'; ?></figcaption>
+            </figure>
+        <?php else : ?>
+            <p class="ptk-nl-share-note"><?php echo esc_html( $message ); ?></p>
+        <?php endif; ?>
+
+        <div class="ptk-nl-share-actions">
+            <?php if ( '' !== $full_url ) : ?>
+                <a class="button" href="<?php echo esc_url( $full_url ); ?>" download>Save the picture</a>
+            <?php endif; ?>
+            <?php if ( $can_upload ) : ?>
+                <button type="button" class="button" data-share-upload><?php echo '' !== $image_url ? 'Upload your own instead' : 'Upload a square picture'; ?></button>
+            <?php endif; ?>
+            <?php if ( $square['custom'] && $caps['freetype'] ) : ?>
+                <button type="button" class="button-link" data-share-generated>Use the generated square again</button>
+            <?php endif; ?>
+        </div>
+        <?php
+        return (string) ob_get_clean();
+    }
+
+    /**
+     * The QR code that hands the kit to a phone -- published newsletters
+     * on servers with GD only.
+     *
+     * @param int   $post_id
+     * @param bool  $published
+     * @param array $caps From PTK_Share_Image::capabilities().
+     */
+    protected static function render_phone_handoff( $post_id, $published, array $caps ) {
+        if ( ! $caps['gd'] ) {
+            echo '<p class="ptk-nl-share-note">Sending this to your phone isn&#8217;t available on this website. Copy the text above instead.</p>';
+            return;
+        }
+
+        if ( ! $published ) {
+            // The panel intro already says the handoff waits for publishing.
+            return;
+        }
+
+        $target = add_query_arg( 'ptk_share', $post_id, home_url( '/' ) );
+        $qr     = class_exists( 'PTK_QR_Codes' ) ? PTK_QR_Codes::png_data_url( $target, 2, 4 ) : '';
+
+        if ( '' === $qr ) {
+            echo '<p class="ptk-nl-share-note">The phone code couldn&#8217;t be made just now. Try reloading this page.</p>';
+            return;
+        }
+        ?>
+        <div class="ptk-nl-share-phone">
+            <img src="<?php echo esc_attr( $qr ); ?>" alt="QR code that opens these posts on your phone">
+            <p class="description">Posting from your phone? Scan this to open the picture and the text there.</p>
+        </div>
+        <?php
+    }
+}

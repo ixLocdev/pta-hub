@@ -54,6 +54,11 @@ if ( ! function_exists( 'ptk_glossary_url' ) ) {
 require_once PTK_PLUGIN_DIR . 'includes/class-post-type.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-newsletter-post-type.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-newsletter-builder.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-share-text.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-share-data.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-share-color.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-share-image.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-share-panel.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-search-engine.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-single-enhancements.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-qr-codes.php';
@@ -133,6 +138,8 @@ function ptk_init() {
     PTK_Post_Type::init();
     PTK_Newsletter_Post_Type::init();
     PTK_Newsletter_Builder::init();
+    PTK_Share_Image::init();
+    PTK_Share_Panel::init();
     PTK_Search_Engine::init();
     PTK_Single_Enhancements::init();
     PTK_QR_Codes::init();

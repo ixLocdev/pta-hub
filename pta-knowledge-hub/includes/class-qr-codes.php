@@ -122,14 +122,29 @@ class PTK_QR_Codes {
     }
 
     /**
-     * Generate a base64 data URL for a small inline preview PNG.
+     * A QR code for any string, as a base64 PNG data URL.
+     *
+     * Public so other screens (the newsletter share panel) can draw one
+     * without going through the pta_knowledge meta box. Returns '' when
+     * the bundled library is missing, GD is missing, or nothing came out
+     * -- callers show a plain message instead of a broken image.
+     *
+     * @param string $text   What the code encodes.
+     * @param int    $margin Quiet zone, in modules.
+     * @param int    $size   Pixels per module.
+     * @return string Data URL, or ''.
      */
-    private static function generate_png_data_url( string $text, int $margin, int $size ): string {
+    public static function png_data_url( $text, $margin = 4, $size = 3 ) {
+        $text = (string) $text;
+        if ( '' === $text || ! self::lib_available() || ! function_exists( 'imagecreate' ) ) {
+            return '';
+        }
+
         require_once PTK_PLUGIN_DIR . self::LIB_PATH;
 
         ob_start();
         $prev = error_reporting( E_ERROR | E_PARSE );
-        QRcode::png( $text, false, QR_ECLEVEL_M, $size, $margin );
+        QRcode::png( $text, false, QR_ECLEVEL_M, (int) $size, (int) $margin );
         error_reporting( $prev );
         $png = ob_get_clean();
 
@@ -137,5 +152,12 @@ class PTK_QR_Codes {
             return '';
         }
         return 'data:image/png;base64,' . base64_encode( $png );
+    }
+
+    /**
+     * Generate a base64 data URL for a small inline preview PNG.
+     */
+    private static function generate_png_data_url( string $text, int $margin, int $size ): string {
+        return self::png_data_url( $text, $margin, $size );
     }
 }
