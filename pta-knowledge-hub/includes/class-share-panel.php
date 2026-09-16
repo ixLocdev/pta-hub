@@ -31,6 +31,9 @@ class PTK_Share_Panel {
 
     public static function init() {
         add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
+        add_action( 'wp_ajax_ptk_nl_share_save', array( __CLASS__, 'ajax_save' ) );
+        add_action( 'wp_ajax_ptk_nl_share_reset', array( __CLASS__, 'ajax_reset' ) );
+        add_action( 'wp_ajax_ptk_nl_share_square', array( __CLASS__, 'ajax_square' ) );
     }
 
     /**
@@ -49,6 +52,157 @@ class PTK_Share_Panel {
             array( 'ptk-newsletter-builder' ),
             PTK_VERSION
         );
+
+        // Its OWN file, deliberately not part of newsletter-builder.js: a throw
+        // in the Builder's boot block leaves the whole wizard inert, and the
+        // share panel is optional where the Builder is not.
+        wp_enqueue_script(
+            'ptk-share-panel',
+            PTK_PLUGIN_URL . 'assets/js/share-panel.js',
+            array( 'jquery' ),
+            PTK_VERSION,
+            true
+        );
+
+        wp_localize_script( 'ptk-share-panel', 'ptkNlShare', array(
+            'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+            'nonce'   => wp_create_nonce( self::NONCE_ACTION ),
+        ) );
+    }
+
+    /* ------------------------------------------------------------------
+     * AJAX. Every handler: nonce, then edit_post on THIS post, then that
+     * the post really is a pta_newsletter. The Builder's preview endpoint
+     * checks only edit_posts -- right for a stateless render, wrong for a
+     * per-post write, so it is not the model here; handle_submission() is.
+     * ------------------------------------------------------------------ */
+
+    /**
+     * Refuse the request unless it may write to the posted newsletter.
+     *
+     * @return int The post id (never returns otherwise).
+     */
+    protected static function authorize_request() {
+        check_ajax_referer( self::NONCE_ACTION, 'nonce' );
+
+        $post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+
+        if ( ! $post_id || 'pta_newsletter' !== get_post_type( $post_id ) ) {
+            wp_send_json_error( array( 'message' => 'That newsletter could not be found.' ), 404 );
+        }
+
+        if ( ! current_user_can( 'edit_post', $post_id ) ) {
+            wp_send_json_error( array( 'message' => 'You do not have permission to edit this newsletter.' ), 403 );
+        }
+
+        return $post_id;
+    }
+
+    /**
+     * The posted channel, or a refusal.
+     *
+     * @return string
+     */
+    protected static function request_channel() {
+        $channel = isset( $_POST['channel'] ) ? sanitize_key( wp_unslash( $_POST['channel'] ) ) : '';
+        if ( ! in_array( $channel, PTK_Share_Data::CHANNELS, true ) ) {
+            wp_send_json_error( array( 'message' => 'Unknown channel.' ), 400 );
+        }
+        return $channel;
+    }
+
+    /**
+     * Save one channel's edited caption, with the hash of what it was
+     * written against so the stale notice can fire later.
+     */
+    public static function ajax_save() {
+        $post_id = self::authorize_request();
+        $channel = self::request_channel();
+
+        // Plain text, never rendered as HTML (esc_textarea on the way out).
+        // Not sanitize_textarea_field(): it strips %XX sequences, which
+        // would quietly break any link a volunteer pastes.
+        $text = isset( $_POST['text'] ) ? (string) wp_unslash( $_POST['text'] ) : '';
+        $text = wp_check_invalid_utf8( $text, true );
+        $text = str_replace( "\0", '', $text );
+        $text = str_replace( array( "\r\n", "\r" ), "\n", $text );
+        if ( function_exists( 'mb_substr' ) ) {
+            $text = mb_substr( $text, 0, self::MAX_CAPTION );
+        } else {
+            $text = substr( $text, 0, self::MAX_CAPTION );
+        }
+
+        $ctx = self::context( $post_id );
+
+        if ( '' === trim( $text ) ) {
+            // An emptied box has nothing worth keeping; the next load
+            // generates afresh rather than showing a blank post.
+            PTK_Share_Data::delete_caption( $post_id, $channel );
+        } else {
+            // update_post_meta() unslashes, so slash first or backslashes vanish.
+            PTK_Share_Data::save_caption( $post_id, $channel, wp_slash( $text ), self::caption_hash( $ctx ) );
+        }
+
+        wp_send_json_success( array(
+            'saved'       => true,
+            'whatsappUrl' => self::whatsapp_url( $text ),
+        ) );
+    }
+
+    /**
+     * Forget one channel's edits and hand back freshly generated text.
+     */
+    public static function ajax_reset() {
+        $post_id = self::authorize_request();
+        $channel = self::request_channel();
+
+        PTK_Share_Data::delete_caption( $post_id, $channel );
+
+        $ctx     = self::context( $post_id );
+        $caption = PTK_Share_Data::resolve_caption( $post_id, $channel, $ctx['blocks'], $ctx['opts'] );
+
+        wp_send_json_success( array(
+            'text'        => $caption['text'],
+            'whatsappUrl' => self::whatsapp_url( $caption['text'] ),
+        ) );
+    }
+
+    /**
+     * Switch the Instagram picture: mode=custom with an attachment_id, or
+     * mode=generated. Replies with the re-rendered picture area.
+     */
+    public static function ajax_square() {
+        $post_id = self::authorize_request();
+        $mode    = isset( $_POST['mode'] ) ? sanitize_key( wp_unslash( $_POST['mode'] ) ) : '';
+
+        if ( 'custom' === $mode ) {
+            if ( ! current_user_can( 'upload_files' ) ) {
+                wp_send_json_error( array( 'message' => 'You do not have permission to add pictures.' ), 403 );
+            }
+
+            $attachment_id = isset( $_POST['attachment_id'] ) ? absint( $_POST['attachment_id'] ) : 0;
+            if ( ! $attachment_id || 'attachment' !== get_post_type( $attachment_id ) || ! wp_attachment_is_image( $attachment_id ) ) {
+                wp_send_json_error( array( 'message' => 'Please choose a picture.' ), 400 );
+            }
+
+            // The generated square this replaces is ours: remove it rather
+            // than leave an orphan in the media library. Never an upload.
+            $square = PTK_Share_Data::get_square( $post_id );
+            if ( ! $square['custom'] && $square['image_id'] && (int) $square['image_id'] !== $attachment_id
+                && 'attachment' === get_post_type( $square['image_id'] ) ) {
+                wp_delete_attachment( $square['image_id'], true );
+            }
+
+            PTK_Share_Data::save_square( $post_id, $attachment_id, true, '' );
+        } elseif ( 'generated' === $mode ) {
+            PTK_Share_Image::use_generated_square( $post_id );
+        } else {
+            wp_send_json_error( array( 'message' => 'Unknown picture choice.' ), 400 );
+        }
+
+        wp_send_json_success( array(
+            'html' => self::square_html( $post_id, self::context( $post_id ) ),
+        ) );
     }
 
     /**

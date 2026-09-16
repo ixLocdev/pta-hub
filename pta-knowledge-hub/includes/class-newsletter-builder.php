@@ -438,11 +438,21 @@ class PTK_Newsletter_Builder {
             true
         );
 
-        wp_localize_script( 'ptk-newsletter-builder', 'ptkNlData', array(
+        $nl_data = array(
             'blocks'       => self::blocks_for_js(),
             'ajaxUrl'      => admin_url( 'admin-ajax.php' ),
             'previewNonce' => wp_create_nonce( 'ptk_nl_preview' ),
-        ) );
+        );
+
+        // Just saved or published: land on the last step, where the notice's
+        // follow-up lives (the share panel, the photo check). Without this the
+        // wizard boots on step 1 and the share panel sits hidden on step 4.
+        // wp_localize_script() stringifies this to "4" -- the JS parseInt()s it.
+        if ( ! empty( $_GET['ptk_nl_msg'] ) ) {
+            $nl_data['startStep'] = 4;
+        }
+
+        wp_localize_script( 'ptk-newsletter-builder', 'ptkNlData', $nl_data );
     }
 
     /**

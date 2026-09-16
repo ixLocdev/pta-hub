@@ -98,7 +98,10 @@
         // anything is shown/hidden. No focus move on boot: focus belongs at
         // the top of the document, where the admin notices are (see
         // showStep()'s moveFocus param).
-        showStep(FIRST_STEP, false);
+        // startStep arrives as the STRING "4" (wp_localize_script casts
+        // scalars), hence parseInt. Guarded like hasData(): a missing
+        // ptkNlData must never throw here and leave the wizard inert.
+        showStep((typeof ptkNlData !== 'undefined' && ptkNlData && parseInt(ptkNlData.startStep, 10)) || FIRST_STEP, false);
 
         // Straight away, not debounced: the preview column must never sit
         // blank while a volunteer wonders whether it's broken.
