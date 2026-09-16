@@ -311,4 +311,65 @@ ptk_test_ok( PTK_Share_Image::dateline( '2026-01-05' ) === 'Week of January 5', 
 ptk_test_ok( PTK_Share_Image::dateline( 'Winter term' ) === 'Winter term', 'a non-ISO date is left alone' );
 ptk_test_ok( PTK_Share_Image::dateline( '' ) === '', 'an empty date stays empty' );
 
+// No widows. A wrapped school name must never leave one word alone on its
+// last line -- "Watchung Elementary / PTA" is a real Montclair school and it
+// did exactly that at 54pt before this was fixed. Width is SIZE - 2 * PAD.
+$school_font = PTK_Share_Image::font_files();
+$school_font = $school_font['school'];
+$school_w    = PTK_Share_Image::SIZE - 2 * PTK_Share_Image::PAD;
+$names = array(
+    'Watchung Elementary PTA',
+    'Glenfield Middle School PTA',
+    'Northeast Elementary School PTA',
+    'Bradford Avenue Elementary School Parent Teacher Association',
+    'Charles H. Bullock Elementary School PTA',
+    'Hillside Elementary School Parent Teacher Association',
+    'Buzz Aldrin Middle School Parent Teacher Organization',
+    'Montclair High School Parent Teacher Student Association',
+    'Renaissance Middle School at Rand PTA',
+    'Montclair Community Pre-K PTA',
+    'Nishuane Elementary School PTA',
+);
+foreach ( $names as $name ) {
+    list( $lines, $size ) = PTK_Share_Image::fit_block( $name, $school_font, 54, 22, $school_w, 2 );
+    $last_words = preg_split( '/\s+/', trim( end( $lines ) ), -1, PREG_SPLIT_NO_EMPTY );
+    ptk_test_ok(
+        count( $lines ) === 1 || count( $last_words ) >= 2,
+        'no widow: ' . $name . ' => ' . implode( ' / ', $lines ) . ' @' . $size . 'pt'
+    );
+    // Nothing lost or reordered in the process.
+    ptk_test_ok( implode( ' ', $lines ) === $name, 'every word kept, in order: ' . $name );
+    foreach ( $lines as $line ) {
+        ptk_test_ok(
+            PTK_Share_Image::text_width( $line, $school_font, $size ) <= $school_w,
+            'fits the square: ' . $line . ' @' . $size . 'pt'
+        );
+    }
+}
+
+// Short names should not be broken just to dodge a widow -- if a name fits
+// on one line at a size close to the maximum, keep it on one line.
+list( $wl, $ws ) = PTK_Share_Image::fit_block( 'Watchung Elementary PTA', $school_font, 54, 22, $school_w, 2 );
+ptk_test_ok( 1 === count( $wl ), 'a short name that nearly fits stays on one line rather than breaking' );
+ptk_test_ok( $ws >= 40, 'and it is not shrunk to nothing to get there' );
+
+// The rebalancing path, forced deterministically. Real names rarely hit it
+// once the one-line rule has run, so choose a width that fits "Alpha Beta"
+// but not "Alpha Beta Gamma": greedy wrapping would leave "Gamma" alone.
+ptk_test_ok( PTK_Share_Image::is_widowed( array( 'Alpha Beta', 'Gamma' ) ) === true, 'is_widowed: one word on the last line' );
+ptk_test_ok( PTK_Share_Image::is_widowed( array( 'Alpha', 'Beta Gamma' ) ) === false, 'is_widowed: two words on the last line' );
+ptk_test_ok( PTK_Share_Image::is_widowed( array( 'Alpha Beta Gamma' ) ) === false, 'is_widowed: a single line is never a widow' );
+
+$pair_w = PTK_Share_Image::text_width( 'Alpha Beta', $school_font, 54 ) + 4;
+ptk_test_ok( PTK_Share_Image::text_width( 'Alpha Beta Gamma', $school_font, 54 ) > $pair_w, 'fixture: the three words really do overflow that width' );
+$rw = PTK_Share_Image::wrap_text( 'Alpha Beta Gamma', $school_font, 54, $pair_w, 2 );
+ptk_test_ok( $rw === array( 'Alpha', 'Beta Gamma' ), 'wrap_text pulls a word down instead of widowing: ' . implode( ' / ', $rw ) );
+
+// Two words cannot be rebalanced one-and-one, so the size shrinks until the
+// name sits on one line instead.
+$two_w = PTK_Share_Image::text_width( 'Alpha Beta', $school_font, 40 ) + 2;
+list( $tl, $ts ) = PTK_Share_Image::fit_block( 'Alpha Beta', $school_font, 54, 22, $two_w, 2 );
+ptk_test_ok( 1 === count( $tl ), 'a two-word name shrinks onto one line rather than splitting one-and-one' );
+ptk_test_ok( ! PTK_Share_Image::is_widowed( $tl ), 'and is not widowed' );
+
 ptk_test_done();

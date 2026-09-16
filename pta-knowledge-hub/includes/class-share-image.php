@@ -29,6 +29,16 @@ class PTK_Share_Image {
     const PAD    = 96;
 
     /**
+     * Keep a name on one line when it fits at this share of the maximum size.
+     *
+     * Measured, not picked: names that would otherwise widow ("Watchung
+     * Elementary / PTA") fit on one line at 89-93% of full size, while names
+     * that wrap into two good lines ("Northeast Elementary / School PTA") only
+     * fit on one at 74-78%. 85% sits in the gap between them.
+     */
+    const ONE_LINE_RATIO = 0.85;
+
+    /**
      * Where the bundled fonts live. Falls back to a path relative to this
      * file so a plain-php test harness (which defines no PTK_PLUGIN_DIR)
      * still finds them.
@@ -292,9 +302,25 @@ class PTK_Share_Image {
         $max = (int) $max;
         $min = (int) $min;
 
+        // A name that nearly fits on one line stays on one line. Breaking
+        // "Watchung Elementary PTA" to avoid a widow would just trade one
+        // awkward shape for another.
+        $one_line_floor = max( $min, (int) ceil( $max * self::ONE_LINE_RATIO ) );
+        for ( $size = $max; $size >= $one_line_floor; $size-- ) {
+            if ( self::text_width( $text, $font, $size ) <= $limit ) {
+                return array( array( trim( (string) $text ) ), $size );
+            }
+        }
+
         for ( $size = $max; $size >= $min; $size-- ) {
             $lines = self::wrap_text( $text, $font, $size, $limit, $max_lines );
             if ( count( $lines ) > $max_lines ) {
+                continue;
+            }
+            // Never a widow. wrap_text() rebalances where it can; this
+            // catches the case it cannot (a two-word name split one-and-one)
+            // and lets the size shrink until the name fits on one line.
+            if ( self::is_widowed( $lines ) ) {
                 continue;
             }
             $fits = true;
@@ -352,6 +378,43 @@ class PTK_Share_Image {
 
         $lines[] = $current;
 
+        return self::rebalance_widow( $lines );
+    }
+
+    /**
+     * True when the last of two or more lines holds a single word.
+     *
+     * @param array<int,string> $lines
+     */
+    public static function is_widowed( array $lines ) {
+        if ( count( $lines ) < 2 ) {
+            return false;
+        }
+        $last = preg_split( '/\s+/', trim( (string) end( $lines ) ), -1, PREG_SPLIT_NO_EMPTY );
+        return count( $last ) === 1;
+    }
+
+    /**
+     * Pull one word down onto a widowed last line, when the line above can
+     * spare it and still keep a word of its own. "Glenfield Middle School /
+     * PTA" becomes "Glenfield Middle / School PTA". The line that grows may
+     * no longer fit -- fit_block() measures again and shrinks if it must.
+     *
+     * @param array<int,string> $lines
+     * @return array<int,string>
+     */
+    private static function rebalance_widow( array $lines ) {
+        if ( ! self::is_widowed( $lines ) ) {
+            return $lines;
+        }
+        $n     = count( $lines );
+        $above = preg_split( '/\s+/', trim( (string) $lines[ $n - 2 ] ), -1, PREG_SPLIT_NO_EMPTY );
+        if ( count( $above ) < 2 ) {
+            return $lines;
+        }
+        $moved           = array_pop( $above );
+        $lines[ $n - 2 ] = implode( ' ', $above );
+        $lines[ $n - 1 ] = $moved . ' ' . trim( (string) $lines[ $n - 1 ] );
         return $lines;
     }
 
