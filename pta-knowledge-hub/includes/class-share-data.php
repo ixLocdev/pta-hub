@@ -14,6 +14,8 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+require_once dirname( __FILE__ ) . '/class-focal-point.php';
+
 class PTK_Share_Data {
 
     const CHANNELS = array( 'facebook', 'instagram', 'whatsapp' );
@@ -23,6 +25,11 @@ class PTK_Share_Data {
     const META_SQUARE_ID     = '_ptk_share_square_id';
     const META_SQUARE_CUSTOM = '_ptk_share_square_custom';
     const META_SQUARE_HASH   = '_ptk_share_square_hash';
+
+    const META_SQUARE_PHOTO_ID      = '_ptk_share_square_photo_id';
+    const META_SQUARE_PHOTO_FOCAL_X = '_ptk_share_square_photo_focal_x';
+    const META_SQUARE_PHOTO_FOCAL_Y = '_ptk_share_square_photo_focal_y';
+    const META_SQUARE_PHOTO_ZOOM    = '_ptk_share_square_photo_zoom';
 
     /**
      * Hash of everything a caption is made from: the newsletter's own
@@ -43,12 +50,22 @@ class PTK_Share_Data {
      * the other's square is stale, which is why the caller passes the
      * DRAWN colors (post contrast-guard), not the raw option values.
      *
+     * Round 3 adds the four "photo behind the words" inputs (photo_id,
+     * photo_focal_x, photo_focal_y, photo_zoom) so changing the
+     * background photo, or reframing/rezooming it, invalidates a stale
+     * PNG the same way a color change already does. $photo_id is hashed
+     * even when 0 (no photo): every input is hashed as given, accepting
+     * that a no-op focal/zoom edit on a photo-less square could
+     * theoretically mark it stale even though nothing visible changed --
+     * the simpler, correct-by-default choice, matching is_stale()'s own
+     * "no baseline -> stale by definition" bias.
+     *
      * $version is passed in rather than read from a PTK_VERSION constant
      * so this stays reachable from a plain-php test harness that defines
      * no such constant.
      */
-    public static function square_inputs_hash( $issue, $date, $school_name, $background, $text, $version ) {
-        return md5( $issue . '|' . $date . '|' . $school_name . '|' . $background . '|' . $text . '|' . $version );
+    public static function square_inputs_hash( $issue, $date, $school_name, $background, $text, $photo_id, $photo_focal_x, $photo_focal_y, $photo_zoom, $version ) {
+        return md5( $issue . '|' . $date . '|' . $school_name . '|' . $background . '|' . $text . '|' . $photo_id . '|' . $photo_focal_x . '|' . $photo_focal_y . '|' . $photo_zoom . '|' . $version );
     }
 
     /**
@@ -143,5 +160,46 @@ class PTK_Share_Data {
         update_post_meta( $post_id, self::META_SQUARE_ID, absint( $image_id ) );
         update_post_meta( $post_id, self::META_SQUARE_CUSTOM, $custom ? 1 : 0 );
         update_post_meta( $post_id, self::META_SQUARE_HASH, $hash );
+    }
+
+    /**
+     * The "photo behind the words" background photo -- a THIRD picture
+     * concept alongside the drawn/custom square (see class docblock and
+     * the round-3 spec, fact 8): a source photo render_png() crops and
+     * composes UNDER the drawn text, still subject to the same staleness
+     * hash as everything else. A photo_id of 0 (default) means "no photo,
+     * flat square, exactly as before."
+     */
+    public static function get_square_photo( $post_id ) {
+        return array(
+            'photo_id' => absint( get_post_meta( $post_id, self::META_SQUARE_PHOTO_ID, true ) ),
+            'focal_x'  => PTK_Focal_Point::clamp_percent( get_post_meta( $post_id, self::META_SQUARE_PHOTO_FOCAL_X, true ) ),
+            'focal_y'  => PTK_Focal_Point::clamp_percent( get_post_meta( $post_id, self::META_SQUARE_PHOTO_FOCAL_Y, true ) ),
+            'zoom'     => PTK_Focal_Point::sanitize_zoom( get_post_meta( $post_id, self::META_SQUARE_PHOTO_ZOOM, true ) ),
+        );
+    }
+
+    public static function save_square_photo( $post_id, $photo_id, $focal_x, $focal_y, $zoom ) {
+        update_post_meta( $post_id, self::META_SQUARE_PHOTO_ID, absint( $photo_id ) );
+        update_post_meta( $post_id, self::META_SQUARE_PHOTO_FOCAL_X, PTK_Focal_Point::clamp_percent( $focal_x ) );
+        update_post_meta( $post_id, self::META_SQUARE_PHOTO_FOCAL_Y, PTK_Focal_Point::clamp_percent( $focal_y ) );
+        update_post_meta( $post_id, self::META_SQUARE_PHOTO_ZOOM, PTK_Focal_Point::sanitize_zoom( $zoom ) );
+    }
+
+    /** Back to the flat square -- no background photo. */
+    public static function clear_square_photo( $post_id ) {
+        delete_post_meta( $post_id, self::META_SQUARE_PHOTO_ID );
+        delete_post_meta( $post_id, self::META_SQUARE_PHOTO_FOCAL_X );
+        delete_post_meta( $post_id, self::META_SQUARE_PHOTO_FOCAL_Y );
+        delete_post_meta( $post_id, self::META_SQUARE_PHOTO_ZOOM );
+    }
+
+    /**
+     * True when the square carries its own background photo -- used to
+     * extend the main photo-privacy gate (blocks_have_images()) to cover
+     * a newsletter whose ONLY photo lives here rather than in any block.
+     */
+    public static function square_has_custom_photo( $post_id ) {
+        return 0 !== self::get_square_photo( $post_id )['photo_id'];
     }
 }

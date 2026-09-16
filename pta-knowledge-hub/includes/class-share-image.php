@@ -23,6 +23,8 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+require_once dirname( __FILE__ ) . '/class-focal-point.php';
+
 class PTK_Share_Image {
 
     const SIZE   = 1080;
@@ -209,13 +211,31 @@ class PTK_Share_Image {
 
         imagefilledrectangle( $im, 0, 0, self::SIZE - 1, self::SIZE - 1, $bg_col );
 
+        // "Photo behind the words": a source photo cropped/composed under
+        // a dark scrim, drawn between the flat fill and the eyebrow. Never
+        // fatal -- any failure to load/crop the photo (missing file,
+        // unrecognized mime, unsupported format) leaves the flat fill
+        // already drawn above as the fallback, exactly as if no photo_id
+        // had been given at all.
+        $photo_id  = isset( $args['photo_id'] ) ? absint( $args['photo_id'] ) : 0;
+        $has_photo = false;
+        if ( $photo_id > 0 && function_exists( 'get_attached_file' ) ) {
+            $has_photo = self::draw_square_photo( $im, $photo_id, $args );
+        }
+
         $left  = self::PAD;
         $right = self::SIZE - self::PAD;
         $width = $right - $left;
 
+        // "Smaller, over a dark scrim": the numerals still dominate the
+        // frame but leave more of the photo visible. Pinned ratio, not a
+        // user-facing setting -- see the class docblock's "cosmetic, not
+        // configurable" precedent (hairline_for()).
+        $scale = $has_photo ? 0.72 : 1.0;
+
         // Eyebrow, letterspaced, in the accent. Full-width hairline under
         // it -- a masthead rule, never a side bar.
-        self::draw_tracked( $im, 'NEWSLETTER', $fonts['eyebrow'], 30, $left, 168, $text_col, 11 );
+        self::draw_tracked( $im, 'NEWSLETTER', $fonts['eyebrow'], 30 * $scale, $left, 168, $text_col, 11 );
         imagefilledrectangle( $im, $left, 210, $right, 213, $hairline );
 
         // The issue number, as big as it can be without touching the
@@ -227,16 +247,16 @@ class PTK_Share_Image {
             // page. The № sign is left off here: the ISSUE label above already
             // says what the number is, and the bundled font may not carry №.
             $issue = PTK_Share_Text::issue_label( $issue );
-            self::draw_tracked( $im, 'ISSUE', $fonts['eyebrow'], 34, $left, 296, $text_col, 12 );
+            self::draw_tracked( $im, 'ISSUE', $fonts['eyebrow'], 34 * $scale, $left, 296, $text_col, 12 );
 
-            $issue_size = self::fit_text( $issue, $fonts['issue'], 300, 96, $width );
+            $issue_size = self::fit_text( $issue, $fonts['issue'], 300 * $scale, 96 * $scale, $width );
             imagettftext( $im, $issue_size, 0, $left, 640, $text_col, $fonts['issue'], $issue );
         }
 
         // The week, in the serif, in the accent.
         $dateline = self::dateline( $date );
         if ( '' !== $dateline ) {
-            $date_size = self::fit_text( $dateline, $fonts['date'], 56, 28, $width );
+            $date_size = self::fit_text( $dateline, $fonts['date'], 56 * $scale, 28, $width );
             imagettftext( $im, $date_size, 0, $left, 736, $text_col, $fonts['date'], $dateline );
         }
 
@@ -249,7 +269,7 @@ class PTK_Share_Image {
         imagefilledrectangle( $im, $left, self::SIZE - 250, $right, self::SIZE - 247, $hairline );
 
         if ( '' !== $school ) {
-            list( $lines, $size ) = self::fit_block( $school, $fonts['school'], 54, 22, $width, 2 );
+            list( $lines, $size ) = self::fit_block( $school, $fonts['school'], 54 * $scale, 22 * $scale, $width, 2 );
 
             $line_height   = (int) round( $size * 1.24 );
             $last_baseline = self::SIZE - 110;
@@ -271,6 +291,119 @@ class PTK_Share_Image {
         }
 
         return $png;
+    }
+
+    /**
+     * Resolve a photo attachment to a file + mime and draw it, WordPress-
+     * coupled thin wrapper around draw_square_photo_from_file() (the pure,
+     * testable core). Never fatal: any failure to resolve the attachment
+     * is treated exactly like "no photo," leaving the flat fill already
+     * drawn on $im as the fallback.
+     *
+     * @param resource|GdImage $im       The 1080x1080 canvas, flat fill already drawn.
+     * @param int              $photo_id Attachment ID.
+     * @param array            $args     photo_focal_x, photo_focal_y, photo_zoom.
+     * @return bool True when a photo was actually drawn.
+     */
+    private static function draw_square_photo( $im, $photo_id, array $args ) {
+        $path = get_attached_file( $photo_id );
+        if ( ! is_string( $path ) || '' === $path || ! is_readable( $path ) ) {
+            return false;
+        }
+
+        $info = @getimagesize( $path );
+        if ( ! is_array( $info ) || empty( $info['mime'] ) ) {
+            return false;
+        }
+
+        return self::draw_square_photo_from_file( $im, $path, $info['mime'], $args );
+    }
+
+    /**
+     * The pure drawing core: load $path (already known to be $mime),
+     * crop it per PTK_Focal_Point::square_crop_rect() (Part B's already-
+     * tested math), draw it over the full canvas, then a dark scrim so
+     * the text drawn afterward stays readable. WordPress-free -- callable
+     * directly from a plain-php test with a fixture file, no attachment
+     * id or WordPress runtime required.
+     *
+     * Never fatal: an unreadable file, an unrecognized mime, a missing GD
+     * loader (webp is host-variable, fact 10 of the round-3 spec), or a
+     * corrupt image that fails to decode all leave $im untouched -- the
+     * flat fill already drawn stands as the fallback, exactly the
+     * "never fatal, never blank" contract render_png() already keeps.
+     *
+     * @param resource|GdImage $im   The 1080x1080 canvas, flat fill already drawn.
+     * @param string           $path Readable image file path.
+     * @param string           $mime image/jpeg, image/png, or image/webp.
+     * @param array            $args photo_focal_x, photo_focal_y, photo_zoom.
+     * @return bool True when the photo (and scrim) were actually drawn.
+     */
+    public static function draw_square_photo_from_file( $im, $path, $mime, array $args ) {
+        switch ( $mime ) {
+            case 'image/jpeg':
+                $loader = 'imagecreatefromjpeg';
+                break;
+            case 'image/png':
+                $loader = 'imagecreatefrompng';
+                break;
+            case 'image/webp':
+                // Host-variable: only present when GD was compiled with
+                // libwebp. Absence degrades to "no photo," never a fatal.
+                $loader = 'imagecreatefromwebp';
+                break;
+            default:
+                return false;
+        }
+
+        if ( ! function_exists( $loader ) ) {
+            return false;
+        }
+
+        $src = @$loader( $path );
+        if ( ! $src ) {
+            return false;
+        }
+
+        $src_w = imagesx( $src );
+        $src_h = imagesy( $src );
+        if ( $src_w < 1 || $src_h < 1 ) {
+            self::free( $src );
+            return false;
+        }
+
+        list( $cx, $cy, $cs ) = PTK_Focal_Point::square_crop_rect(
+            $src_w,
+            $src_h,
+            isset( $args['photo_focal_x'] ) ? $args['photo_focal_x'] : 50,
+            isset( $args['photo_focal_y'] ) ? $args['photo_focal_y'] : 50,
+            isset( $args['photo_zoom'] ) ? $args['photo_zoom'] : 0
+        );
+
+        imagecopyresampled(
+            $im,
+            $src,
+            0,
+            0,
+            (int) round( $cx ),
+            (int) round( $cy ),
+            self::SIZE,
+            self::SIZE,
+            (int) round( $cs ),
+            (int) round( $cs )
+        );
+
+        self::free( $src );
+
+        // A dark scrim over the whole canvas so the text drawn after this
+        // stays readable -- roughly 50% black (alpha is GD's 0-127 range,
+        // 127 fully transparent).
+        imagealphablending( $im, true );
+        $scrim = imagecolorallocatealpha( $im, 0, 0, 0, 64 );
+        imagefilledrectangle( $im, 0, 0, self::SIZE - 1, self::SIZE - 1, $scrim );
+        imagealphablending( $im, false );
+
+        return true;
     }
 
     /**
@@ -637,6 +770,14 @@ class PTK_Share_Image {
         $school  = isset( $args['school_name'] ) ? (string) $args['school_name'] : '';
         $version = isset( $args['version'] ) ? (string) $args['version'] : ( defined( 'PTK_VERSION' ) ? PTK_VERSION : '0' );
 
+        // "Photo behind the words" -- see PTK_Share_Data::get_square_photo()
+        // (round 3). photo_id 0 is the default: the flat square, exactly
+        // as before.
+        $photo_id       = isset( $args['photo_id'] ) ? absint( $args['photo_id'] ) : 0;
+        $photo_focal_x  = isset( $args['photo_focal_x'] ) ? $args['photo_focal_x'] : 50;
+        $photo_focal_y  = isset( $args['photo_focal_y'] ) ? $args['photo_focal_y'] : 50;
+        $photo_zoom     = isset( $args['photo_zoom'] ) ? $args['photo_zoom'] : 0;
+
         // Hash the colors actually DRAWN, not the ones requested -- two
         // schools whose picks both get corrected to the same readable pair
         // should not each think the other's square is stale.
@@ -648,7 +789,7 @@ class PTK_Share_Image {
             $background
         );
 
-        $current_hash = PTK_Share_Data::square_inputs_hash( $issue, $date, $school, $background, $text, $version );
+        $current_hash = PTK_Share_Data::square_inputs_hash( $issue, $date, $school, $background, $text, $photo_id, $photo_focal_x, $photo_focal_y, $photo_zoom, $version );
         $exists       = $square['image_id'] && self::attachment_exists( $square['image_id'] );
 
         if ( ! self::should_regenerate( $square['hash'], $current_hash, $exists, false ) ) {
@@ -663,11 +804,15 @@ class PTK_Share_Image {
         }
 
         $png = self::render_png( array(
-            'issue'       => $issue,
-            'date'        => $date,
-            'school_name' => $school,
-            'background'  => $background,
-            'text'        => $text,
+            'issue'          => $issue,
+            'date'           => $date,
+            'school_name'    => $school,
+            'background'     => $background,
+            'text'           => $text,
+            'photo_id'       => $photo_id,
+            'photo_focal_x'  => $photo_focal_x,
+            'photo_focal_y'  => $photo_focal_y,
+            'photo_zoom'     => $photo_zoom,
         ) );
 
         if ( ! is_string( $png ) || '' === $png ) {

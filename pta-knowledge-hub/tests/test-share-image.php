@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/bootstrap.php';
+require __DIR__ . '/../includes/class-focal-point.php';
 require __DIR__ . '/../includes/class-share-color.php';
 require __DIR__ . '/../includes/class-share-text.php';
 require __DIR__ . '/../includes/class-share-data.php';
@@ -230,6 +231,66 @@ $w = $t::text_width( 'Northeast Elementary School PTA', $font['school'], $big );
 ptk_test_ok( $w <= 880, "fit_text got the long name inside 880px (measured {$w}px at {$big}pt)" );
 $short = $t::fit_text( 'NE PTA', $font['school'], 64, 24, 880 );
 ptk_test_ok( 64 === $short, 'fit_text leaves a short name at full size' );
+
+// ---------------------------------------------------------------------
+// Round 3: the square's "photo behind the words" layer.
+// ---------------------------------------------------------------------
+
+// render_png() with no photo_id (or photo_id => 0): unchanged behavior --
+// the existing "the ground is navy" assertion above already proves this
+// path draws nothing new; this just confirms the arg is accepted as a
+// no-op.
+$no_photo = $t::render_png( array_merge( $args, array( 'photo_id' => 0 ) ), array( 'gd' => true, 'freetype' => true ) );
+ptk_test_ok( is_string( $no_photo ) && substr( $no_photo, 0, 4 ) === "\x89PNG", 'render_png with photo_id 0 still returns a valid PNG (existing squares are untouched)' );
+
+// A photo_id pointing at a file that does not exist (no WordPress
+// runtime here, so get_attached_file() -- and every WP-coupled path --
+// is unreachable from this plain-php test; draw_square_photo() must
+// treat that exactly like "no photo," never a fatal). We exercise the
+// pure fallback by pointing at a photo_id it cannot resolve.
+$missing_photo = $t::render_png( array_merge( $args, array( 'photo_id' => 999999 ) ), array( 'gd' => true, 'freetype' => true ) );
+ptk_test_ok( is_string( $missing_photo ) && substr( $missing_photo, 0, 4 ) === "\x89PNG", 'render_png with an unresolvable photo_id still returns a valid PNG -- never fatal, never blank (falls back to the flat square)' );
+
+// draw_square_photo() itself, called directly on a real GD image + a real
+// JPEG fixture built inline with imagecreatetruecolor()+imagejpeg() (no
+// fixture file in tests/fixtures/ to reuse) -- confirms it draws real
+// photo pixels using PTK_Focal_Point::square_crop_rect()'s already-tested
+// math, without going through get_attached_file()/WordPress at all.
+$photo_path = sys_get_temp_dir() . '/ptk-test-square-photo-' . uniqid() . '.jpg';
+$photo_im   = imagecreatetruecolor( 200, 100 ); // 2:1 landscape, like the spec's worked example.
+$red        = imagecolorallocate( $photo_im, 220, 20, 20 );
+$blue       = imagecolorallocate( $photo_im, 20, 20, 220 );
+imagefilledrectangle( $photo_im, 0, 0, 99, 99, $red );   // left half
+imagefilledrectangle( $photo_im, 100, 0, 199, 99, $blue ); // right half
+imagejpeg( $photo_im, $photo_path, 95 );
+if ( PHP_VERSION_ID < 80000 ) { imagedestroy( $photo_im ); }
+
+$canvas = imagecreatetruecolor( $t::SIZE, $t::SIZE );
+imagefilledrectangle( $canvas, 0, 0, $t::SIZE - 1, $t::SIZE - 1, imagecolorallocate( $canvas, 26, 47, 92 ) );
+// Focal far right (100%), unzoomed: square_crop_rect() on a 200x100
+// source takes the full height (crop_side 100) and slides the window to
+// the right edge (avail_x = 200-100 = 100 -> crop_x = 100), i.e. a slice
+// that is ENTIRELY inside the blue half.
+$t::draw_square_photo_from_file( $canvas, $photo_path, 'image/jpeg', array( 'photo_focal_x' => 100, 'photo_focal_y' => 50, 'photo_zoom' => 0 ) );
+$sample = imagecolorat( $canvas, (int) ( $t::SIZE / 2 ), (int) ( $t::SIZE / 2 ) );
+$srgb   = array( ( $sample >> 16 ) & 0xFF, ( $sample >> 8 ) & 0xFF, $sample & 0xFF );
+ptk_test_ok( $srgb[2] > $srgb[0], 'draw_square_photo: focal_x=100 crops the blue (right) half onto the canvas center, per square_crop_rect() math' );
+if ( PHP_VERSION_ID < 80000 ) { imagedestroy( $canvas ); }
+
+// A non-image file (or a deleted/unreadable path): never fatal, the flat
+// fill already drawn stands unchanged.
+$canvas2 = imagecreatetruecolor( $t::SIZE, $t::SIZE );
+imagefilledrectangle( $canvas2, 0, 0, $t::SIZE - 1, $t::SIZE - 1, imagecolorallocate( $canvas2, 26, 47, 92 ) );
+$bogus_path = sys_get_temp_dir() . '/ptk-test-not-an-image-' . uniqid() . '.txt';
+file_put_contents( $bogus_path, 'not a photo' );
+$t::draw_square_photo_from_file( $canvas2, $bogus_path, 'text/plain', array( 'photo_focal_x' => 50, 'photo_focal_y' => 50, 'photo_zoom' => 0 ) );
+$corner2 = imagecolorat( $canvas2, 6, 6 );
+$rgb2    = array( ( $corner2 >> 16 ) & 0xFF, ( $corner2 >> 8 ) & 0xFF, $corner2 & 0xFF );
+ptk_test_ok( $rgb2 === array( 26, 47, 92 ), 'draw_square_photo: a non-image mime is a no-op, the flat fill is untouched -- never a fatal' );
+if ( PHP_VERSION_ID < 80000 ) { imagedestroy( $canvas2 ); }
+
+@unlink( $photo_path );
+@unlink( $bogus_path );
 
 // ---------------------------------------------------------------------
 // should_regenerate() -- the decision ensure_square() makes, pulled out
