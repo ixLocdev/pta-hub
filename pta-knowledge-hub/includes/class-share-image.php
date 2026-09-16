@@ -295,43 +295,37 @@ class PTK_Share_Image {
      * @return array<int,string>
      */
     public static function wrap_text( $text, $font, $size, $limit, $max_lines = 2 ) {
-        $words = preg_split( '/\s+/', trim( $text ) );
-        if ( ! $words || array( '' ) === $words ) {
+        $words = preg_split( '/\s+/', trim( (string) $text ), -1, PREG_SPLIT_NO_EMPTY );
+        if ( ! $words ) {
             return array( '' );
         }
 
         $lines   = array();
         $current = '';
+        $total   = count( $words );
 
-        foreach ( $words as $word ) {
-            $try = ( '' === $current ) ? $word : $current . ' ' . $word;
-            if ( self::text_width( $try, $font, $size ) <= $limit || '' === $current ) {
+        for ( $i = 0; $i < $total; $i++ ) {
+            $try = ( '' === $current ) ? $words[ $i ] : $current . ' ' . $words[ $i ];
+
+            // A single word longer than the limit still goes on the line;
+            // fit_text()/fit_block() shrink it rather than clipping it.
+            if ( '' === $current || self::text_width( $try, $font, $size ) <= $limit ) {
                 $current = $try;
                 continue;
             }
+
             $lines[] = $current;
-            $current = $word;
+            $current = $words[ $i ];
+
+            // On the last line everything left over joins it, whatever
+            // that does to its width -- again, the size shrinks to suit.
             if ( count( $lines ) === $max_lines - 1 ) {
+                $current = implode( ' ', array_slice( $words, $i ) );
                 break;
             }
         }
 
-        // Anything not yet placed joins the final line.
-        $placed = count( $lines );
-        if ( $placed > 0 && $placed === $max_lines - 1 ) {
-            $used = array();
-            foreach ( $lines as $line ) {
-                foreach ( explode( ' ', $line ) as $w ) {
-                    $used[] = $w;
-                }
-            }
-            $rest    = array_slice( $words, count( $used ) );
-            $current = implode( ' ', $rest );
-        }
-
-        if ( '' !== $current ) {
-            $lines[] = $current;
-        }
+        $lines[] = $current;
 
         return $lines;
     }
