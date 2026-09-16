@@ -148,10 +148,24 @@ Output shapes:
 
 **Story shortening rule.** Card bodies are multi-sentence textareas
 (`class-newsletter-builder.php:1132`, rows=3), while the reference post's "Also in
-this issue" lines are hand-condensed. Rule: **use the card's heading; if it has
-none, use the first sentence of the body, truncated at 120 characters on a word
-boundary.** This is the single highest-leverage detail in the feature and should
-be tuned against the `fb-post-*.md` files during implementation.
+this issue" lines are hand-condensed.
+
+Checked against the real thing rather than guessed. In `newsletter-040`, the story
+headings are *already complete sentences carrying the fact* — "Film on the Field
+moves to Friday, October 16.", "Can you help on Tuesdays? Your child gets a free
+class." — and the Facebook lines in `fb-post-newsletter-040.md` are those headings,
+lightly adjusted. The heading is the line.
+
+Rule: **use the card's heading.** If the heading is under 30 characters or carries
+no sentence-ending punctuation — a PTA writing "Film on the Field" as a label
+rather than a sentence — append the first sentence of the body. If there is no
+heading, use the first sentence of the body. Truncate at 120 characters on a word
+boundary.
+
+This is the single highest-leverage detail in the feature. Re-check it against the
+`fb-post-*.md` files during implementation, and re-check it again the first time a
+PTA that is not Northeast writes an issue, since the rule leans on a house-style
+habit that may not travel.
 
 **Footer links are untyped `{label, url}` pairs** (`class-newsletter-data.php:234-237`)
 — nothing marks which is membership vs. submissions. The generator lists every
