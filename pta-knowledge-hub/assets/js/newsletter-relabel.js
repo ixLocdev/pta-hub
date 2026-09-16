@@ -111,6 +111,19 @@ function ptkRelabelForDate( eventISO, todayISO ) {
 }
 
 /**
+ * Past by whole day: the fade rule for event rows and timeline rows. The same
+ * bucket rule as the tags, so a row can never fade while its tag says
+ * "This week". Pure function -- no DOM access.
+ *
+ * @param {string} dateISO  'YYYY-MM-DD'
+ * @param {string} todayISO 'YYYY-MM-DD'
+ * @return {boolean}
+ */
+function ptkIsPast( dateISO, todayISO ) {
+    return 'past' === ptkRelabelForDate( dateISO, todayISO );
+}
+
+/**
  * Display label for each relabel bucket. Mirrors
  * PTK_Newsletter_Renderer::EVENT_LABELS.
  */
@@ -137,17 +150,49 @@ function ptkTodayISOLocal() {
 }
 
 /**
- * Find every [data-event-date] element on the page and set its text to the
- * label for that date relative to the reader's local "today".
+ * Colors for a Coming up row, faded (past) and normal. Mirrors the inline
+ * styles PTK_Newsletter_Renderer::render_events() writes. The normal values
+ * are set explicitly, not cleared, because the server may have painted the
+ * row as past on the day the issue was saved.
+ */
+var PTK_ROW_PAST   = { opacity: '0.45', numeral: '#6b6b6b', tagBg: '#e6e3dc', tagColor: '#4a4a4a' };
+var PTK_ROW_NORMAL = { opacity: '', numeral: '#1a2f5c', tagBg: '#f0eee7', tagColor: '#1a2f5c' };
+
+/**
+ * For the reader's local "today": relabel every [data-event-date] tag, fade
+ * past Coming up rows, and fade past announcement timeline rows.
  */
 function ptkInitRelabel() {
     var today = ptkTodayISOLocal();
     var pills = document.querySelectorAll( '[data-event-date]' );
 
     pills.forEach( function( el ) {
-        var bucket = ptkRelabelForDate( el.getAttribute( 'data-event-date' ), today );
+        var date   = el.getAttribute( 'data-event-date' );
+        var bucket = ptkRelabelForDate( date, today );
         var label  = PTK_EVENT_LABELS[ bucket ] || PTK_EVENT_LABELS.upcoming;
         el.textContent = label;
+
+        // 4.1.x newsletters have tags but no data-event-row: leave their
+        // styles exactly as they were published.
+        var row = el.closest ? el.closest( '[data-event-row]' ) : null;
+        if ( ! row ) {
+            return;
+        }
+        var look    = ptkIsPast( date, today ) ? PTK_ROW_PAST : PTK_ROW_NORMAL;
+        var numeral = row.querySelector( '[data-event-numeral]' );
+        row.style.opacity = look.opacity;
+        if ( numeral ) {
+            numeral.style.color = look.numeral;
+        }
+        el.style.background = look.tagBg;
+        el.style.color      = look.tagColor;
+    } );
+
+    // Announcement dates: fade once the day is over; un-fade for a reader
+    // who opens the issue earlier than the day it was saved (a preview link).
+    // The deadline row's yellow is static markup and is never touched.
+    document.querySelectorAll( '[data-timeline-date]' ).forEach( function( el ) {
+        el.style.opacity = ptkIsPast( el.getAttribute( 'data-timeline-date' ), today ) ? '0.45' : '';
     } );
 }
 
@@ -163,5 +208,5 @@ if ( typeof document !== 'undefined' ) {
 
 // Export the pure function for node-based unit testing.
 if ( typeof module !== 'undefined' && module.exports ) {
-    module.exports = { ptkRelabelForDate: ptkRelabelForDate };
+    module.exports = { ptkRelabelForDate: ptkRelabelForDate, ptkIsPast: ptkIsPast };
 }

@@ -52,6 +52,15 @@ ok( ptkRelabelForDate( '', today ) === 'upcoming', 'blank event date -> upcoming
 ok( ptkRelabelForDate( 'not-a-date', today ) === 'upcoming', 'garbage event date -> upcoming' );
 ok( ptkRelabelForDate( '2026-06-25', 'garbage' ) === 'upcoming', 'garbage today -> upcoming' );
 
+// ptkIsPast(): the timeline and event-row fade rule -- past by whole day,
+// the same bucket rule as the pills, so the two can never disagree.
+const { ptkIsPast } = require( path.join( __dirname, '..', 'assets', 'js', 'newsletter-relabel.js' ) );
+ok( ptkIsPast( '2026-09-14', '2026-09-15' ) === true,  'yesterday is past' );
+ok( ptkIsPast( '2026-09-15', '2026-09-15' ) === false, 'today is not past' );
+ok( ptkIsPast( '2026-09-16', '2026-09-15' ) === false, 'tomorrow is not past' );
+ok( ptkIsPast( '', '2026-09-15' ) === false,           'no date is never past' );
+ok( ptkIsPast( 'nope', '2026-09-15' ) === false,       'garbage date is never past' );
+
 if ( failed ) {
     console.log( 'FAILED' );
     process.exit( 1 );
