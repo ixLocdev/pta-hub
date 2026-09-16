@@ -195,4 +195,50 @@ ptk_test_ok( $mf2['eyebrow'] === '', 'a blank label in the source leaves the def
 $merged3 = $d::merge_start_from_last( $d::default_blocks(), array() );
 ptk_test_ok( $merged3 === $d::default_blocks(), 'no previous newsletter: defaults pass through unchanged' );
 
+// Round 3: image_fit/focal/zoom sit next to every image_id.
+
+// A saved newsletter with no crop fields at all (pre-4.4.0 data) sanitizes
+// to safe defaults -- "existing data is untouched."
+$legacy = $d::sanitize_blocks( array(
+    array( 'type' => 'featured', 'data' => array( 'image_id' => 12 ) ),
+) );
+$feat = $legacy[ array_search( 'featured', array_column( $legacy, 'type' ), true ) ]['data'];
+ptk_test_ok( $feat['image_id'] === 12, 'legacy image_id survives untouched' );
+ptk_test_ok( $feat['image_fit'] === 'whole', 'legacy data defaults to Show whole' );
+ptk_test_ok( $feat['image_focal_x'] === 50 && $feat['image_focal_y'] === 50, 'legacy data defaults to centered' );
+ptk_test_ok( $feat['image_zoom'] === 0, 'legacy data defaults to unzoomed (the sentinel)' );
+
+// A submitted crop, in range.
+$cropped = $d::sanitize_blocks( array(
+    array( 'type' => 'featured', 'data' => array( 'image_id' => 12, 'image_fit' => 'crop', 'image_focal_x' => 30, 'image_focal_y' => 80, 'image_zoom' => 175 ) ),
+) );
+$feat2 = $cropped[ array_search( 'featured', array_column( $cropped, 'type' ), true ) ]['data'];
+ptk_test_ok( $feat2['image_fit'] === 'crop' && $feat2['image_focal_x'] === 30 && $feat2['image_focal_y'] === 80 && $feat2['image_zoom'] === 175, 'a valid crop round-trips unchanged' );
+
+// Garbage in, safe defaults out -- never a fatal, never an out-of-range value stored.
+$garbage = $d::sanitize_blocks( array(
+    array( 'type' => 'featured', 'data' => array( 'image_id' => 12, 'image_fit' => 'whatever', 'image_focal_x' => 'nope', 'image_focal_y' => -900, 'image_zoom' => 99999 ) ),
+) );
+$feat3 = $garbage[ array_search( 'featured', array_column( $garbage, 'type' ), true ) ]['data'];
+ptk_test_ok( $feat3['image_fit'] === 'whole', 'garbage fit value falls back to whole' );
+ptk_test_ok( $feat3['image_focal_x'] === 50, 'non-numeric focal_x falls back to center' );
+ptk_test_ok( $feat3['image_focal_y'] === 0, 'out-of-range focal_y clamps, does not become garbage' );
+ptk_test_ok( $feat3['image_zoom'] === 250, 'over-range zoom clamps to the ceiling, is not dropped' );
+
+// Story cards: same four fields, per card.
+$cards = $d::sanitize_blocks( array(
+    array( 'type' => 'story_cards', 'data' => array( 'cards' => array(
+        array( 'image_id' => 5, 'image_fit' => 'crop', 'image_focal_x' => 10, 'image_focal_y' => 20, 'image_zoom' => 130 ),
+        array( 'image_id' => 6 ),
+    ) ) ),
+) );
+$card_data = $cards[ array_search( 'story_cards', array_column( $cards, 'type' ), true ) ]['data']['cards'];
+ptk_test_ok( $card_data[0]['image_fit'] === 'crop' && $card_data[0]['image_zoom'] === 130, 'first card keeps its crop' );
+ptk_test_ok( $card_data[1]['image_fit'] === 'whole' && $card_data[1]['image_focal_x'] === 50, 'second card (no crop fields posted) defaults' );
+
+// default_blocks() carries the four fields at their defaults on the featured block.
+$defaults = $d::default_blocks();
+$default_featured = $defaults[ array_search( 'featured', array_column( $defaults, 'type' ), true ) ]['data'];
+ptk_test_ok( $default_featured['image_fit'] === 'whole' && $default_featured['image_zoom'] === 0, 'default_blocks() featured starts at Show whole, unzoomed' );
+
 ptk_test_done();

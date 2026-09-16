@@ -12,6 +12,8 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+require_once dirname( __FILE__ ) . '/class-focal-point.php';
+
 class PTK_Newsletter_Data {
 
     const DATE_PATTERN = '/^\d{4}-\d{2}-\d{2}$/';
@@ -78,12 +80,16 @@ class PTK_Newsletter_Data {
             array(
                 'type' => self::TYPE_FEATURED,
                 'data' => array(
-                    'eyebrow'  => '',
-                    'headline' => '',
-                    'body'      => '',
-                    'image_id'  => 0,
-                    'link_url'  => '',
-                    'link_text' => '',
+                    'eyebrow'       => '',
+                    'headline'      => '',
+                    'body'          => '',
+                    'image_id'      => 0,
+                    'image_fit'     => 'whole',
+                    'image_focal_x' => 50,
+                    'image_focal_y' => 50,
+                    'image_zoom'    => 0,
+                    'link_url'      => '',
+                    'link_text'     => '',
                 ),
             ),
             array(
@@ -189,6 +195,25 @@ class PTK_Newsletter_Data {
     }
 
     /**
+     * The four fields every cropped photo carries, sanitized identically
+     * wherever an image_id appears (featured, each story card). Safe
+     * defaults ('whole', centered, unzoomed) so a newsletter saved before
+     * round 3 -- with no crop keys in its stored JSON at all -- renders
+     * exactly as it did before.
+     *
+     * @param array $data The block (or card) data the image_id lives in.
+     * @return array The four sanitized crop fields.
+     */
+    protected static function sanitize_image_crop( array $data ) {
+        return array(
+            'image_fit'     => ( isset( $data['image_fit'] ) && 'crop' === $data['image_fit'] ) ? 'crop' : 'whole',
+            'image_focal_x' => PTK_Focal_Point::clamp_percent( isset( $data['image_focal_x'] ) ? $data['image_focal_x'] : 50 ),
+            'image_focal_y' => PTK_Focal_Point::clamp_percent( isset( $data['image_focal_y'] ) ? $data['image_focal_y'] : 50 ),
+            'image_zoom'    => PTK_Focal_Point::sanitize_zoom( isset( $data['image_zoom'] ) ? $data['image_zoom'] : 0 ),
+        );
+    }
+
+    /**
      * Sanitize the data payload for a single block, per the data model.
      *
      * @param string $type Block type.
@@ -246,13 +271,16 @@ class PTK_Newsletter_Data {
                 return array( 'rows' => $clean_rows );
 
             case self::TYPE_FEATURED:
-                return array(
-                    'eyebrow'  => sanitize_text_field( self::str_field( isset( $data['eyebrow'] ) ? $data['eyebrow'] : '' ) ),
-                    'headline' => sanitize_text_field( self::str_field( isset( $data['headline'] ) ? $data['headline'] : '' ) ),
-                    'body'     => wp_kses_post( self::str_field( isset( $data['body'] ) ? $data['body'] : '' ) ),
-                    'image_id'  => absint( isset( $data['image_id'] ) ? $data['image_id'] : 0 ),
-                    'link_url'  => esc_url_raw( self::str_field( isset( $data['link_url'] ) ? $data['link_url'] : '' ) ),
-                    'link_text' => sanitize_text_field( self::str_field( isset( $data['link_text'] ) ? $data['link_text'] : '' ) ),
+                return array_merge(
+                    array(
+                        'eyebrow'  => sanitize_text_field( self::str_field( isset( $data['eyebrow'] ) ? $data['eyebrow'] : '' ) ),
+                        'headline' => sanitize_text_field( self::str_field( isset( $data['headline'] ) ? $data['headline'] : '' ) ),
+                        'body'     => wp_kses_post( self::str_field( isset( $data['body'] ) ? $data['body'] : '' ) ),
+                        'image_id'  => absint( isset( $data['image_id'] ) ? $data['image_id'] : 0 ),
+                        'link_url'  => esc_url_raw( self::str_field( isset( $data['link_url'] ) ? $data['link_url'] : '' ) ),
+                        'link_text' => sanitize_text_field( self::str_field( isset( $data['link_text'] ) ? $data['link_text'] : '' ) ),
+                    ),
+                    self::sanitize_image_crop( $data )
                 );
 
             case self::TYPE_STORY_CARDS:
@@ -262,13 +290,16 @@ class PTK_Newsletter_Data {
                     if ( ! is_array( $card ) ) {
                         continue;
                     }
-                    $clean_cards[] = array(
-                        'eyebrow'   => sanitize_text_field( self::str_field( isset( $card['eyebrow'] ) ? $card['eyebrow'] : '' ) ),
-                        'heading'   => sanitize_text_field( self::str_field( isset( $card['heading'] ) ? $card['heading'] : '' ) ),
-                        'body'      => wp_kses_post( self::str_field( isset( $card['body'] ) ? $card['body'] : '' ) ),
-                        'image_id'  => absint( isset( $card['image_id'] ) ? $card['image_id'] : 0 ),
-                        'link_url'  => esc_url_raw( self::str_field( isset( $card['link_url'] ) ? $card['link_url'] : '' ) ),
-                        'link_text' => sanitize_text_field( self::str_field( isset( $card['link_text'] ) ? $card['link_text'] : '' ) ),
+                    $clean_cards[] = array_merge(
+                        array(
+                            'eyebrow'   => sanitize_text_field( self::str_field( isset( $card['eyebrow'] ) ? $card['eyebrow'] : '' ) ),
+                            'heading'   => sanitize_text_field( self::str_field( isset( $card['heading'] ) ? $card['heading'] : '' ) ),
+                            'body'      => wp_kses_post( self::str_field( isset( $card['body'] ) ? $card['body'] : '' ) ),
+                            'image_id'  => absint( isset( $card['image_id'] ) ? $card['image_id'] : 0 ),
+                            'link_url'  => esc_url_raw( self::str_field( isset( $card['link_url'] ) ? $card['link_url'] : '' ) ),
+                            'link_text' => sanitize_text_field( self::str_field( isset( $card['link_text'] ) ? $card['link_text'] : '' ) ),
+                        ),
+                        self::sanitize_image_crop( $card )
                     );
                 }
                 return array( 'cards' => $clean_cards );
