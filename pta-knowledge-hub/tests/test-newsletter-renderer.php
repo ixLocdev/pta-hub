@@ -147,4 +147,8 @@ ptk_test_ok( strpos( $published, 'data-ptk-block="featured"' ) === false, 'publi
 ptk_test_ok( strpos( $published, 'data-ptk-block="story_cards"' ) === false, 'published: empty story cards render nothing' );
 ptk_test_ok( stripos( $published, 'will appear here' ) === false, 'published: no placeholder text leaks out' );
 
+// --- Event dates never wrap ("Sep" / "24"). ------------------------------
+ptk_test_ok( strpos( $html, 'flex:0 0 112px;' ) !== false, 'event date column is wide enough for "May 28"' );
+ptk_test_ok( strpos( $html, 'font-size:30px;line-height:0.95;white-space:nowrap;' ) !== false, 'event date does not wrap' );
+
 ptk_test_done();

@@ -226,8 +226,11 @@ class PTK_Newsletter_Renderer {
             $bottom_border = ( $count - 1 === $i ) ? 'border-bottom:1px solid ' . self::PALETTE['hairline'] . ';' : '';
 
             $html .= '<div style="display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-start;padding:18px 0;border-top:' . esc_attr( $top_border ) . ';' . $bottom_border . '">';
-            $html .= '<div style="flex:0 0 88px;">';
-            $html .= '<div style="font-family:' . self::FONT_SERIF . ';font-weight:500;font-size:30px;line-height:0.95;color:' . esc_attr( $date_color ) . ';">' . esc_html( $date_display ) . '</div>';
+            // 112px fits the widest realistic date, "May 28" (~100px at 30px
+            // serif). At 88px two-digit days wrapped: "Sep" / "24". nowrap so
+            // a wider font fallback overflows a little instead of breaking.
+            $html .= '<div style="flex:0 0 112px;">';
+            $html .= '<div style="font-family:' . self::FONT_SERIF . ';font-weight:500;font-size:30px;line-height:0.95;white-space:nowrap;color:' . esc_attr( $date_color ) . ';">' . esc_html( $date_display ) . '</div>';
             $html .= '</div>';
             $html .= '<div style="flex:1 1 220px;min-width:200px;">';
             $html .= '<div style="font-size:17px;font-weight:600;line-height:1.35;margin-bottom:4px;">' . esc_html( $title ) . '</div>';
