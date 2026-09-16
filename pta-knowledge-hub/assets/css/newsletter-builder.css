@@ -389,6 +389,27 @@
     margin-top: 4px;
 }
 
+/* "Add dates to this announcement". A native <details>: nothing here is
+   toggled by jQuery, so it may look however it likes. Full border, no
+   accent bar. */
+.ptk-nl-disclosure {
+    margin: 4px 0 16px;
+    padding: 12px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f9fafb;
+}
+.ptk-nl-disclosure > summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    color: #1f2937;
+    min-height: 28px;
+}
+.ptk-nl-disclosure[open] > summary { margin-bottom: 10px; }
+.ptk-nl-disclosure .ptk-nl-rows { margin-top: 8px; }
+.ptk-nl-disclosure .ptk-nl-row { background: #ffffff; }
+
 /* ── Selected-image chip ── */
 .ptk-nl-image-chip {
     display: inline-flex;

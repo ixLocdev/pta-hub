@@ -10,8 +10,9 @@
  * '#ptk-nl-blocks > .ptk-nl-block' and takes the newsletter's order from
  * DOM order. Which step edits a section is a property of its TYPE
  * (step_for_type()); its position in the newsletter is separate and
- * mutable. The fixed fields (Header/Announcement/Featured/Footer) and the
- * repeatable-row placeholders (Events/Story Cards) are rendered
+ * mutable. The fixed fields (Header/Announcement/Top story/Footer) and the
+ * repeatable-row placeholders (Coming up/Stories/Quick notes, plus the
+ * announcement's dates and the footer's links) are rendered
  * server-side with a `data-field` scheme a client-side JS task
  * reads/writes, and a hidden `ptk_nl_blocks` field carries the layout as
  * JSON for handle_submission() to consume on save.
@@ -689,10 +690,11 @@ class PTK_Newsletter_Builder {
     protected static function label_for_type( $type ) {
         $labels = array(
             'header'       => 'Header',
-            'announcement' => 'Key announcement',
-            'events'       => 'Upcoming events',
-            'featured'     => 'Featured story',
-            'story_cards'  => 'Story cards',
+            'announcement' => 'Announcement',
+            'events'       => 'Coming up',
+            'featured'     => 'Top story',
+            'story_cards'  => 'Stories',
+            'quick_notes'  => 'Quick notes',
             'footer'       => 'Footer',
         );
 
@@ -711,10 +713,11 @@ class PTK_Newsletter_Builder {
     protected static function intro_for_type( $type ) {
         $intros = array(
             'header'       => 'The top of every newsletter — your school name, the week, and a hello.',
-            'announcement' => 'The one thing families shouldn\'t miss this week. It shows as a colored bar near the top. Skip it if there isn\'t one.',
-            'events'       => 'Dates coming up. Each one shows with a “This week” or “Next week” tag that updates itself.',
-            'featured'     => 'The big story of the week, in its own colored block. Optional.',
-            'story_cards'  => 'Shorter articles — a heading, a paragraph, an optional link. Add as many as you need.',
+            'announcement' => 'The one thing families must not miss this week. It\'s the only colored block in the newsletter. Skip it if there isn\'t one.',
+            'events'       => 'Dates coming up. Each one gets a “This week” or “Next week” tag that updates itself, and past dates fade out.',
+            'featured'     => 'The main story, at the top of the stories. Optional.',
+            'story_cards'  => 'Shorter articles, each with its own “§ label” line. Add as many as you need.',
+            'quick_notes'  => 'Small reminders and useful links, grouped under one heading. Good for “three things worth bookmarking”.',
             'footer'       => 'Your sign-off and links.',
         );
 
@@ -736,6 +739,7 @@ class PTK_Newsletter_Builder {
             PTK_Newsletter_Data::TYPE_EVENTS       => 2,
             PTK_Newsletter_Data::TYPE_FEATURED     => 3,
             PTK_Newsletter_Data::TYPE_STORY_CARDS  => 3,
+            PTK_Newsletter_Data::TYPE_QUICK_NOTES  => 3,
             PTK_Newsletter_Data::TYPE_FOOTER       => 4,
         );
 
@@ -757,11 +761,11 @@ class PTK_Newsletter_Builder {
             ),
             2 => array(
                 'title' => "What's happening",
-                'blurb' => "The dates, and the one big thing families shouldn't miss. Skip anything you don't need.",
+                'blurb' => "The one big thing families must not miss, and the dates coming up. Skip anything you don't need.",
             ),
             3 => array(
                 'title' => 'Stories',
-                'blurb' => 'The longer bits — a featured story and any shorter articles. All optional.',
+                'blurb' => 'The top story, shorter stories and quick notes. All optional.',
             ),
             4 => array(
                 'title' => 'Finish & publish',
@@ -1245,6 +1249,11 @@ class PTK_Newsletter_Builder {
                     <p class="description" id="ptk-nl-header-headline-hint">The big title at the top — for example "Week of September 14." Leave blank and we'll use the week of your issue date.</p>
                 </div>
                 <div class="ptk-nl-field-group">
+                    <label for="ptk-nl-header-summary">One-line summary</label>
+                    <input type="text" id="ptk-nl-header-summary" data-field="summary" value="<?php echo esc_attr( isset( $data['summary'] ) ? $data['summary'] : '' ); ?>" aria-describedby="ptk-nl-header-summary-hint">
+                    <p class="description" id="ptk-nl-header-summary-hint">Optional. One short line under the date saying what the issue is about. For example: ASE registration is open this week. About 60 characters fits on one line.</p>
+                </div>
+                <div class="ptk-nl-field-group">
                     <label for="ptk-nl-header-greeting">Greeting</label>
                     <textarea id="ptk-nl-header-greeting" data-field="greeting" rows="2" aria-describedby="ptk-nl-header-greeting-hint"><?php echo esc_textarea( isset( $data['greeting'] ) ? $data['greeting'] : '' ); ?></textarea>
                     <p class="description" id="ptk-nl-header-greeting-hint">A friendly hello and what&#8217;s coming up. For example: Hi Northeast families &#8212; it&#8217;s the last week of school!</p>
@@ -1255,15 +1264,60 @@ class PTK_Newsletter_Builder {
             case 'announcement':
                 ?>
                 <div class="ptk-nl-field-group">
-                    <label for="ptk-nl-announcement-pill">Short label</label>
-                    <input type="text" id="ptk-nl-announcement-pill" data-field="pill" value="<?php echo esc_attr( isset( $data['pill'] ) ? $data['pill'] : '' ); ?>" aria-describedby="ptk-nl-announcement-pill-hint">
-                    <p class="description" id="ptk-nl-announcement-pill-hint">The little tag in the colored bar &#8212; usually when it happens. For example: Thursday &middot; Jun 25</p>
+                    <label for="ptk-nl-announcement-when">When</label>
+                    <input type="text" id="ptk-nl-announcement-when" data-field="when" value="<?php echo esc_attr( isset( $data['when'] ) ? $data['when'] : '' ); ?>" aria-describedby="ptk-nl-announcement-when-hint">
+                    <p class="description" id="ptk-nl-announcement-when-hint">Optional. When it happens or closes, in a few words. For example: Closes Thursday, Sept 17 at noon. About 60 characters fits on one line.</p>
                 </div>
                 <div class="ptk-nl-field-group">
-                    <label for="ptk-nl-announcement-text">Announcement text</label>
-                    <textarea id="ptk-nl-announcement-text" data-field="text" rows="3" aria-describedby="ptk-nl-announcement-text-hint"><?php echo esc_textarea( isset( $data['text'] ) ? $data['text'] : '' ); ?></textarea>
-                    <p class="description" id="ptk-nl-announcement-text-hint">The one sentence families shouldn&#8217;t miss. For example: The last day of school is this Thursday, June 25.</p>
+                    <label for="ptk-nl-announcement-headline">Headline</label>
+                    <input type="text" id="ptk-nl-announcement-headline" data-field="headline" value="<?php echo esc_attr( isset( $data['headline'] ) ? $data['headline'] : '' ); ?>" aria-describedby="ptk-nl-announcement-headline-hint">
+                    <p class="description" id="ptk-nl-announcement-headline-hint">One sentence that says the news. For example: ASE registration opens Monday. PTA members go first. About 30 characters reads best at this size; longer still works.</p>
                 </div>
+                <div class="ptk-nl-field-group">
+                    <label for="ptk-nl-announcement-text">Text</label>
+                    <textarea id="ptk-nl-announcement-text" data-field="text" rows="3" aria-describedby="ptk-nl-announcement-text-hint"><?php echo esc_textarea( isset( $data['text'] ) ? $data['text'] : '' ); ?></textarea>
+                    <p class="description" id="ptk-nl-announcement-text-hint">A sentence or two with the details. For example: Twelve classes for grades K&#8211;5, Tuesdays and Wednesdays, 3 to 4 PM. About 90 characters keeps it to two lines.</p>
+                </div>
+                <div class="ptk-nl-field-group">
+                    <label for="ptk-nl-announcement-button_text">Button words</label>
+                    <input type="text" id="ptk-nl-announcement-button_text" data-field="button_text" value="<?php echo esc_attr( isset( $data['button_text'] ) ? $data['button_text'] : '' ); ?>" aria-describedby="ptk-nl-announcement-button_text-hint">
+                    <p class="description" id="ptk-nl-announcement-button_text-hint">Optional. What the button says. For example: Go to ASE registration</p>
+                </div>
+                <div class="ptk-nl-field-group">
+                    <label for="ptk-nl-announcement-button_url">Button link</label>
+                    <?php /* type="text", not "url": the browser would reject a bare email
+                            address (leslie@example.org) and block the save before
+                            sanitize_link_url() could turn it into an email link. */ ?>
+                    <input type="text" inputmode="url" id="ptk-nl-announcement-button_url" data-field="button_url" value="<?php echo esc_attr( isset( $data['button_url'] ) ? $data['button_url'] : '' ); ?>" aria-describedby="ptk-nl-announcement-button_url-hint">
+                    <p class="description" id="ptk-nl-announcement-button_url-hint">A web address (https://&#8230;) or an email address.</p>
+                </div>
+                <details class="ptk-nl-disclosure" data-disclosure>
+                    <summary>Add dates to this announcement</summary>
+                    <p class="description">Optional. One row for each date that matters. Rows in the past grey out by themselves, and the last row is shown as the deadline.</p>
+                    <div class="ptk-nl-rows" data-rows data-rows-for="timeline"></div>
+                    <button type="button" class="button ptk-nl-add">+ Add a date</button>
+                    <template data-row-template>
+                        <!-- Row fields intentionally have no static ids: assignRowIds() gives them out. -->
+                        <div class="ptk-nl-row" data-row>
+                            <div class="ptk-nl-field-group">
+                                <label>Date</label>
+                                <input type="date" data-field="date">
+                                <p class="description">When.</p>
+                            </div>
+                            <div class="ptk-nl-field-group">
+                                <label>Time</label>
+                                <input type="text" data-field="time">
+                                <p class="description">Optional. For example: 8:30 AM&#8211;12:30 PM, or noon.</p>
+                            </div>
+                            <div class="ptk-nl-field-group">
+                                <label>What happens</label>
+                                <input type="text" data-field="what">
+                                <p class="description">For example: PTA members only, or Registration closes.</p>
+                            </div>
+                            <button type="button" class="button ptk-nl-remove-row">Remove</button>
+                        </div>
+                    </template>
+                </details>
                 <?php
                 break;
 
@@ -1298,14 +1352,14 @@ class PTK_Newsletter_Builder {
             case 'featured':
                 ?>
                 <div class="ptk-nl-field-group">
-                    <label for="ptk-nl-featured-eyebrow">Small line above</label>
+                    <label for="ptk-nl-featured-eyebrow">Short label</label>
                     <input type="text" id="ptk-nl-featured-eyebrow" data-field="eyebrow" value="<?php echo esc_attr( isset( $data['eyebrow'] ) ? $data['eyebrow'] : '' ); ?>" aria-describedby="ptk-nl-featured-eyebrow-hint">
-                    <p class="description" id="ptk-nl-featured-eyebrow-hint">A short lead-in above the big headline. For example: &#8212; To our teachers &amp; staff &#128153;</p>
+                    <p class="description" id="ptk-nl-featured-eyebrow-hint">Optional. Two or three words naming the section, shown as &#8220;&#167; &#8230;&#8221; above the headline. For example: Date change. If you leave it blank we use &#8220;Top story&#8221;.</p>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-featured-headline">Headline</label>
                     <input type="text" id="ptk-nl-featured-headline" data-field="headline" value="<?php echo esc_attr( isset( $data['headline'] ) ? $data['headline'] : '' ); ?>" aria-describedby="ptk-nl-featured-headline-hint">
-                    <p class="description" id="ptk-nl-featured-headline-hint">The big headline for this story. For example: Congratulations to our 5th graders.</p>
+                    <p class="description" id="ptk-nl-featured-headline-hint">A whole sentence that carries the news. For example: Film on the Field moves to Friday, October 16. About 40 characters fits on one line.</p>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-featured-body">Story</label>
@@ -1323,6 +1377,16 @@ class PTK_Newsletter_Builder {
                     <p class="description" id="ptk-nl-featured-image-hint">Optional. Please don&#8217;t use photos of students&#8217; faces.</p>
                     <button type="button" class="button ptk-nl-add-image" aria-describedby="ptk-nl-featured-image-hint">Add image</button>
                 </div>
+                <div class="ptk-nl-field-group">
+                    <label for="ptk-nl-featured-link_url">Link address</label>
+                    <input type="url" id="ptk-nl-featured-link_url" data-field="link_url" value="<?php echo esc_attr( isset( $data['link_url'] ) ? $data['link_url'] : '' ); ?>" aria-describedby="ptk-nl-featured-link_url-hint">
+                    <p class="description" id="ptk-nl-featured-link_url-hint">Optional. Where the link goes. For example: https://northeastpta.org/volunteer/</p>
+                </div>
+                <div class="ptk-nl-field-group">
+                    <label for="ptk-nl-featured-link_text">Link wording</label>
+                    <input type="text" id="ptk-nl-featured-link_text" data-field="link_text" value="<?php echo esc_attr( isset( $data['link_text'] ) ? $data['link_text'] : '' ); ?>" aria-describedby="ptk-nl-featured-link_text-hint">
+                    <p class="description" id="ptk-nl-featured-link_text-hint">What the link says. For example: Sign up for a shift</p>
+                </div>
                 <?php
                 break;
 
@@ -1334,9 +1398,14 @@ class PTK_Newsletter_Builder {
                     <!-- Row fields intentionally have no static ids: the later JS task assigns a unique id per cloned row and points each label's for at it. -->
                     <div class="ptk-nl-row" data-row>
                         <div class="ptk-nl-field-group">
+                            <label>Short label</label>
+                            <input type="text" data-field="eyebrow">
+                            <p class="description">Optional. Two or three words naming the section, shown as &#8220;&#167; &#8230;&#8221; above the headline. For example: Date change. If you leave it blank we use &#8220;More news&#8221;.</p>
+                        </div>
+                        <div class="ptk-nl-field-group">
                             <label>Heading</label>
                             <input type="text" data-field="heading">
-                            <p class="description">A short headline for this article. For example: Volunteers needed: Book Fair</p>
+                            <p class="description">A whole sentence that carries the news. For example: Film on the Field moves to Friday, October 16. About 40 characters fits on one line.</p>
                         </div>
                         <div class="ptk-nl-field-group">
                             <label>Story</label>
@@ -1360,6 +1429,45 @@ class PTK_Newsletter_Builder {
                             <label>Link wording</label>
                             <input type="text" data-field="link_text">
                             <p class="description">What the link says. For example: Sign up for a shift</p>
+                        </div>
+                        <button type="button" class="button ptk-nl-remove-row">Remove</button>
+                    </div>
+                </template>
+                <?php
+                break;
+
+            case 'quick_notes':
+                ?>
+                <div class="ptk-nl-field-group">
+                    <label for="ptk-nl-quick_notes-label">Group label</label>
+                    <input type="text" id="ptk-nl-quick_notes-label" data-field="label" value="<?php echo esc_attr( isset( $data['label'] ) ? $data['label'] : '' ); ?>" aria-describedby="ptk-nl-quick_notes-label-hint">
+                    <p class="description" id="ptk-nl-quick_notes-label-hint">Shown as &#8220;&#167; &#8230;&#8221; above the notes. For example: Good to know. If you leave it blank we use &#8220;Quick notes&#8221;.</p>
+                </div>
+                <div class="ptk-nl-rows" data-rows data-rows-for="items"></div>
+                <button type="button" class="button ptk-nl-add">+ Add note</button>
+                <template data-row-template>
+                    <!-- Row fields intentionally have no static ids: assignRowIds() gives them out. -->
+                    <div class="ptk-nl-row" data-row>
+                        <div class="ptk-nl-field-group">
+                            <label>Headline</label>
+                            <input type="text" data-field="heading">
+                            <p class="description">A few words. For example: Lunch menu. About 40 characters fits on one line.</p>
+                        </div>
+                        <div class="ptk-nl-field-group">
+                            <label>Text</label>
+                            <textarea data-field="body" rows="2"></textarea>
+                            <p class="description">A sentence or two. For example: This week&#8217;s menus are always on the site.</p>
+                        </div>
+                        <div class="ptk-nl-field-group">
+                            <label>Link address</label>
+                            <?php /* type="text", not "url": an email address must be accepted (see the button link). */ ?>
+                            <input type="text" inputmode="url" data-field="link_url">
+                            <p class="description">Optional. A web address (https://&#8230;) or an email address.</p>
+                        </div>
+                        <div class="ptk-nl-field-group">
+                            <label>Link wording</label>
+                            <input type="text" data-field="link_text">
+                            <p class="description">What the link says. For example: See the menu</p>
                         </div>
                         <button type="button" class="button ptk-nl-remove-row">Remove</button>
                     </div>
