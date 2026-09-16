@@ -56,7 +56,7 @@ class PTK_Share_Text {
      * Zero-pad a numeric issue to the house style ("040"), leaving anything
      * non-numeric ("Winter") exactly as the PTA typed it.
      */
-    private static function issue_label( $issue ) {
+    public static function issue_label( $issue ) {
         $issue = trim( (string) $issue );
         if ( '' === $issue || ! ctype_digit( $issue ) ) {
             return $issue;

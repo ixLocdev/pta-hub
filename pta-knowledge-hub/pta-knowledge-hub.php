@@ -59,6 +59,7 @@ require_once PTK_PLUGIN_DIR . 'includes/class-share-data.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-share-color.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-share-image.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-share-panel.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-share-page.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-search-engine.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-single-enhancements.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-qr-codes.php';
@@ -140,6 +141,7 @@ function ptk_init() {
     PTK_Newsletter_Builder::init();
     PTK_Share_Image::init();
     PTK_Share_Panel::init();
+    PTK_Share_Page::init();
     PTK_Search_Engine::init();
     PTK_Single_Enhancements::init();
     PTK_QR_Codes::init();
