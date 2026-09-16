@@ -48,7 +48,10 @@
     // which sidebar button currently owns aria-current).
     var currentStep = 1;
     var FIRST_STEP = 1;
-    var LAST_STEP = 4;
+    // Round 3.1 (spec item 5): the old step 4 "Finish & publish" is now two
+    // steps -- 4 "Finish editing" (order + the footer) and 5 "Publish &
+    // share" (photo check, Save/Publish/Update, sharing).
+    var LAST_STEP = 5;
 
     // Live preview. The iframe is a REAL 840px-wide viewport — the width the
     // newsletter design is built for — so the design's clamp(..., Nvw, ...)
@@ -114,7 +117,11 @@
         safeBoot(bindPreviewLinks);
         safeBoot(bindUnsavedGuard);
         safeBoot(focusConsentIfRefused);
-        safeBoot(bindRevealInvalidFields);
+        // Round 3.1 (spec items 7 & 8): replaces the old native-validation
+        // "reveal the step, then rely on the browser" approach, which is
+        // exactly what made the first Publish click silently fail -- see
+        // bindValidation()'s docblock.
+        safeBoot(bindValidation);
         // Added in 4.2.0, fenced off the same way.
         safeBoot(openFilledDisclosures);
         // Added in 4.4.0 (round 3): an existing "crop" photo shows its
@@ -134,28 +141,236 @@
         });
     }
 
+    /* ──────────────────────────────────────────
+     * Visible validation (round 3.1, spec items 7 & 8)
+     *
+     * ROOT CAUSE OF "the first Publish click doesn't work" (item 8,
+     * reproduced in Playground before this fix): the form relied on the
+     * BROWSER's own constraint validation (the issue number's `required`,
+     * and `type="url"` on the featured/story-card/footer link fields). A
+     * browser blocks submission when any field fails that check -- but it
+     * can only show its native red-outline/tooltip on a field that is
+     * VISIBLE, and every step but the current one is `display:none`. So
+     * when an invalid field sat on a step the volunteer wasn't looking at
+     * (a required issue number back on step 1, or a link typed without
+     * https:// on step 3), clicking Publish on the last step:
+     *   1. The browser silently refused to submit (no visible error --
+     *      it cannot show a tooltip on a hidden element).
+     *   2. The OLD `invalid` handler (removed here) switched to that
+     *      field's step, but never resubmitted.
+     * So the newsletter simply didn't save, with no visible reason, and
+     * the volunteer had to click Publish a SECOND time -- now that the
+     * field was on a visible step, the browser could finally do its job
+     * (or the value turned out fine and nothing had actually been wrong
+     * except its visibility). That exactly matches "first click doesn't
+     * work, second one does."
+     *
+     * FIX: the form now carries `novalidate` (see class-newsletter-
+     * builder.php), so the browser's own validation never runs at all.
+     * This file owns validation completely instead: on submit, check every
+     * `[data-validate]` field plus the required issue number, mark each
+     * invalid one in place (red outline, inline message, its section's
+     * heading flagged), jump to the FIRST invalid field's step and focus
+     * it, and show a summary at the top of "Publish & share". Nothing here
+     * blocks a valid submission, and a fixed field clears its own error the
+     * moment it's fixed.
+     * ────────────────────────────────────────── */
+
+    var VALIDATE_MESSAGES = {
+        required: 'Please enter the issue number for this newsletter.',
+        link: 'This link needs to start with https:// — paste the full address.',
+        'link-or-email': 'This needs to be a web address starting with https://, or an email address.'
+    };
+
     /**
-     * A required field on a hidden step (the issue number, on step 1, when
-     * Publish is pressed on step 4) would otherwise make the browser refuse
-     * to submit with no visible reason -- it can't point at a hidden field.
-     * `invalid` fires before the browser reports the problem, so switching to
-     * that field's step here lets the browser show its message on it.
+     * Whether one field is currently valid. Empty is always valid for an
+     * optional (non-required) field -- only a field with something typed
+     * into it that doesn't look right is flagged.
+     *
+     * @param {jQuery} $field
+     * @return {boolean}
      */
-    function bindRevealInvalidFields() {
-        var form = document.getElementById('ptk-nl-form');
-        if (!form) {
-            return;
+    function fieldIsValid($field) {
+        if ($field.is('[name="ptk_nl_issue"]')) {
+            return !$field.prop('required') || '' !== $.trim($field.val());
         }
-        form.addEventListener('invalid', function (e) {
-            var $step = $(e.target).closest('[data-step]');
-            if (!$step.length || $step.is(':visible')) {
+        var kind = $field.attr('data-validate');
+        if (!kind) {
+            return true;
+        }
+        var value = $.trim($field.val());
+        if ('' === value) {
+            return true; // Every data-validate field here is optional.
+        }
+        if (typeof window.ptkNlLooksLikeLinkOrEmail !== 'function') {
+            return true; // Validator script failed to load -- never block on that.
+        }
+        return 'link-or-email' === kind
+            ? window.ptkNlLooksLikeLinkOrEmail(value)
+            : window.ptkNlLooksLikeUrl(value);
+    }
+
+    /** The plain-English message for one field's current problem. */
+    function fieldMessage($field) {
+        if ($field.is('[name="ptk_nl_issue"]')) {
+            return VALIDATE_MESSAGES.required;
+        }
+        var kind = $field.attr('data-validate');
+        return VALIDATE_MESSAGES[kind] || 'Please check this field.';
+    }
+
+    /** Give a field a stable id if it doesn't have one (for aria-describedby). */
+    function ensureId($field) {
+        var id = $field.attr('id');
+        if (id) {
+            return id;
+        }
+        uidCounter++;
+        id = 'ptk-nl-dyn-' + uidCounter;
+        $field.attr('id', id);
+        return id;
+    }
+
+    /** Mark one field invalid: full red outline, inline message, heading flagged. */
+    function markFieldInvalid($field) {
+        var id = ensureId($field);
+        var msgId = id + '-error';
+
+        $field.addClass('ptk-nl-field-invalid').attr('aria-invalid', 'true');
+        addDescribedBy($field, msgId);
+
+        var $msg = $field.nextAll('.ptk-nl-field-error-msg').first();
+        if (!$msg.length || $msg.attr('id') !== msgId) {
+            $msg = $('<p class="ptk-nl-field-error-msg" role="alert"></p>').attr('id', msgId);
+            $field.after($msg);
+        }
+        $msg.text(fieldMessage($field));
+
+        var $section = $field.closest('.ptk-nl-block');
+        $section.find('.ptk-nl-block-header h3').first().addClass('ptk-nl-heading-invalid');
+    }
+
+    /** Clear one field's invalid state, and its section heading's flag if nothing else in it is invalid. */
+    function clearFieldInvalid($field) {
+        var id = $field.attr('id');
+        $field.removeClass('ptk-nl-field-invalid').removeAttr('aria-invalid');
+        if (id) {
+            $('#' + id + '-error').remove();
+        }
+
+        var $section = $field.closest('.ptk-nl-block');
+        if (!$section.find('.ptk-nl-field-invalid').length) {
+            $section.find('.ptk-nl-block-header h3').first().removeClass('ptk-nl-heading-invalid');
+        }
+    }
+
+    /** Every field this page knows how to validate. */
+    function validatableFields() {
+        var $fields = $('[data-validate]');
+        var $issue = $('[name="ptk_nl_issue"]');
+        return $issue.length ? $fields.add($issue) : $fields;
+    }
+
+    /**
+     * Run every validator, mark each invalid field, and return the list of
+     * problems found (each: {$field, step, label}), in document order.
+     * Fields inside an excluded (left-out) section are skipped -- they
+     * aren't part of what gets saved.
+     */
+    function runValidation() {
+        var problems = [];
+
+        validatableFields().each(function () {
+            var $field = $(this);
+            if ($field.closest('[data-excluded]').length) {
+                clearFieldInvalid($field);
                 return;
             }
-            var step = parseInt($step.attr('data-step'), 10);
-            if (!isNaN(step)) {
-                showStep(step, false);
+            if (fieldIsValid($field)) {
+                clearFieldInvalid($field);
+                return;
             }
-        }, true);
+            markFieldInvalid($field);
+            var $section = $field.closest('[data-step]');
+            var step = parseInt($section.attr('data-step'), 10);
+            problems.push({
+                $field: $field,
+                step: isNaN(step) ? currentStep : step,
+                label: sectionLabel($section.hasClass('ptk-nl-block') ? $section : $field.closest('.ptk-nl-block'))
+            });
+        });
+
+        return problems;
+    }
+
+    /** Build/update/clear the "N things need fixing" summary atop "Publish & share". */
+    function renderValidationSummary(problems) {
+        var $box = $('#ptk-nl-validation-summary');
+        if (!$box.length) {
+            return;
+        }
+        if (!problems.length) {
+            $box.attr('hidden', true).empty();
+            return;
+        }
+
+        var count = problems.length;
+        var $list = $('<ul></ul>');
+        problems.forEach(function (problem, i) {
+            var id = ensureId(problem.$field);
+            var $li = $('<li></li>');
+            var $link = $('<a href="#"></a>')
+                .text(problem.label + ': ' + fieldMessage(problem.$field))
+                .on('click', function (e) {
+                    e.preventDefault();
+                    showStep(problem.step, false);
+                    $('#' + id).trigger('focus');
+                });
+            $li.append($link);
+            $list.append($li);
+            void i;
+        });
+
+        $box.empty()
+            .append($('<p></p>').text(count === 1 ? '1 thing needs fixing:' : count + ' things need fixing:'))
+            .append($list)
+            .removeAttr('hidden');
+    }
+
+    /**
+     * Own the form's validation completely (see the block comment above):
+     * run on submit, block an invalid submission, jump to and focus the
+     * first problem, and clear each field's own error the moment it's
+     * fixed.
+     */
+    function bindValidation() {
+        var $form = $('#ptk-nl-form');
+        if (!$form.length) {
+            return;
+        }
+
+        $form.on('submit', function (e) {
+            serialize();
+            var problems = runValidation();
+            renderValidationSummary(problems);
+
+            if (!problems.length) {
+                return; // Let the real submit through.
+            }
+
+            e.preventDefault();
+            showStep(problems[0].step, false);
+            problems[0].$field.trigger('focus');
+        });
+
+        // Errors clear themselves the moment the field is fixed -- no need
+        // to press Save/Publish again to find out.
+        $(document).on('input change', '[data-validate], [name="ptk_nl_issue"]', function () {
+            var $field = $(this);
+            if (fieldIsValid($field)) {
+                clearFieldInvalid($field);
+            }
+        });
     }
 
     /**
@@ -1115,7 +1330,7 @@
         var $excluded = $movable.filter('[data-excluded]');
 
         $included.each(function (index) {
-            $list.append(buildArrangeRow($(this), index === 0, index === $included.length - 1));
+            $list.append(buildArrangeRow($(this)));
         });
 
         if (!$included.length) {
@@ -1136,14 +1351,15 @@
     }
 
     /**
-     * One row of the arrange list: drag handle, name, and the buttons that
-     * do the same job from the keyboard.
+     * One row of the arrange list: drag handle, name, and the actions that
+     * aren't reordering -- Edit (jump straight to the section's own step)
+     * and Remove. Round 3.1 (spec item 5): dragging is now the ONLY way to
+     * reorder -- the Move up/down buttons are gone, and Edit is the
+     * keyboard/no-mouse path to a section instead.
      *
      * @param {jQuery} $section The section this row stands for.
-     * @param {boolean} isFirst Whether it's the topmost included section.
-     * @param {boolean} isLast Whether it's the bottommost included section.
      */
-    function buildArrangeRow($section, isFirst, isLast) {
+    function buildArrangeRow($section) {
         var label = sectionLabel($section);
 
         var $row = $('<li class="ptk-nl-arrange-row"></li>')
@@ -1154,17 +1370,9 @@
 
         var $actions = $('<span class="ptk-nl-arrange-actions"></span>');
 
-        // Disabled at the boundaries rather than hidden: a control that
-        // vanishes is more confusing than one that's plainly unavailable.
         $actions.append(
-            $('<button type="button" class="button button-small ptk-nl-arr-up">Move up</button>')
-                .attr('aria-label', 'Move ' + label + ' up')
-                .prop('disabled', isFirst)
-        );
-        $actions.append(
-            $('<button type="button" class="button button-small ptk-nl-arr-down">Move down</button>')
-                .attr('aria-label', 'Move ' + label + ' down')
-                .prop('disabled', isLast)
+            $('<button type="button" class="button button-small ptk-nl-arr-edit">Edit</button>')
+                .attr('aria-label', 'Edit ' + label)
         );
         $actions.append(
             $('<button type="button" class="button button-small ptk-nl-arr-remove">Remove</button>')
@@ -1192,126 +1400,41 @@
         return $row;
     }
 
-    /**
-     * The nearest sibling section a move should swap with: the next one in
-     * `dir` that's actually in the newsletter. Excluded sections are skipped
-     * (they aren't in the list, so swapping with one would look like the
-     * button did nothing), and the pinned header/footer are a hard stop —
-     * they always bookend the newsletter.
-     *
-     * @param {jQuery} $section Section being moved.
-     * @param {number} dir -1 for up, 1 for down.
-     * @return {jQuery} The neighbour, or an empty set if there isn't one.
-     */
-    function movableNeighbour($section, dir) {
-        var $sibling = dir < 0 ? $section.prev('.ptk-nl-block') : $section.next('.ptk-nl-block');
-
-        while ($sibling.length && $sibling.is('[data-excluded]') && !$sibling.is('[data-pinned]')) {
-            $sibling = dir < 0 ? $sibling.prev('.ptk-nl-block') : $sibling.next('.ptk-nl-block');
-        }
-
-        if (!$sibling.length || $sibling.is('[data-pinned]')) {
-            return $();
-        }
-
-        return $sibling;
-    }
-
-    /**
-     * Move a section one place up or down in the real newsletter, then
-     * rebuild the list from the result.
-     *
-     * @param {string} type Block type to move.
-     * @param {number} dir -1 for up, 1 for down.
-     */
-    function moveSection(type, dir) {
-        var $section = sectionByType(type);
-        if (!$section.length || $section.is('[data-pinned]') || $section.is('[data-excluded]')) {
-            return;
-        }
-
-        var $neighbour = movableNeighbour($section, dir);
-        if (!$neighbour.length) {
-            return;
-        }
-
-        var label = sectionLabel($section);
-
-        if (dir < 0) {
-            $section.insertBefore($neighbour);
-        } else {
-            $section.insertAfter($neighbour);
-        }
-
-        renderArrangeList();
-        serializeAndPreview();
-
-        // The re-render above replaced the button that was just clicked, so
-        // put focus back and say what happened — this is the whole keyboard
-        // path, and re-tabbing into the list for every single move would
-        // make it the worse way to do the same job.
-        restoreMoveFocus(type, dir);
-        announceMove(type, dir, label);
-    }
-
-    /**
-     * Put focus back on the moved row's button after the list is rebuilt.
-     *
-     * If the move landed the row at an end of the list, the button that was
-     * pressed is now disabled — and focusing a disabled button drops focus
-     * to the body all over again. Fall back to the row's other move button,
-     * which is necessarily still enabled, so the user stays where they are.
-     *
-     * @param {string} type Block type that moved.
-     * @param {number} dir -1 for up, 1 for down.
-     */
-    function restoreMoveFocus(type, dir) {
-        var $row = arrangeRowByType(type);
-        if (!$row.length) {
-            return;
-        }
-
-        var pressed = dir < 0 ? '.ptk-nl-arr-up' : '.ptk-nl-arr-down';
-        var other = dir < 0 ? '.ptk-nl-arr-down' : '.ptk-nl-arr-up';
-
-        var $button = $row.find(pressed).first();
-        if (!$button.length || $button.prop('disabled')) {
-            $button = $row.find(other).first();
-        }
-
-        $button.focus();
-    }
-
-    /**
-     * Say where a section ended up, in plain positional English — "Featured
-     * story moved down. Now 3 of 4." The status element is aria-live, so a
-     * screen reader announces it; everyone else can just read it.
-     *
-     * @param {string} type Block type that moved.
-     * @param {number} dir -1 for up, 1 for down.
-     * @param {string} label The section's plain-English name.
-     */
-    function announceMove(type, dir, label) {
-        var $status = $('[data-arrange-status]');
-        if (!$status.length) {
-            return;
-        }
-
-        var $rows = $('[data-arrange] > .ptk-nl-arrange-row');
-        var position = $rows.index(arrangeRowByType(type)) + 1;
-        if (!position) {
-            return;
-        }
-
-        $status.text(
-            label + ' moved ' + (dir < 0 ? 'up' : 'down') + '. ' +
-            'Now ' + position + ' of ' + $rows.length + '.'
-        );
-    }
-
     /** The arrange-list row standing for a block type, if it's listed. */
     function arrangeRowByType(type) {
         return $('[data-arrange] > .ptk-nl-arrange-row[data-type="' + type + '"]').first();
+    }
+
+    /**
+     * Round 3.1 (spec item 5): open a section from its "Finish editing" row
+     * -- jump to the step that owns it and focus its first real field, the
+     * same job the removed Move up/down buttons used to help with from the
+     * keyboard, now done by going straight to where the volunteer can type.
+     *
+     * @param {string} type Block type to edit.
+     */
+    function editSection(type) {
+        var $section = sectionByType(type);
+        if (!$section.length) {
+            return;
+        }
+        var step = parseInt($section.attr('data-step'), 10);
+        if (isNaN(step)) {
+            return;
+        }
+        showStep(step, false);
+
+        // The section's own heading is a safe fallback focus target if it
+        // turns out to have no field (shouldn't happen, but never worse
+        // than landing nowhere); prefer the first real field.
+        var $target = $section.find('[data-field]').not('[type="hidden"]').first();
+        if (!$target.length) {
+            $target = $section.find('h3').first();
+        }
+        $target.trigger('focus');
+        if ($target[0] && typeof $target[0].scrollIntoView === 'function') {
+            $target[0].scrollIntoView({ block: 'center' });
+        }
     }
 
     /**
@@ -1320,14 +1443,9 @@
      * by TYPE, never by walking up from the row.
      */
     function bindArrangeList() {
-        $(document).on('click', '.ptk-nl-arr-up', function (e) {
+        $(document).on('click', '.ptk-nl-arr-edit', function (e) {
             e.preventDefault();
-            moveSection(rowType(this), -1);
-        });
-
-        $(document).on('click', '.ptk-nl-arr-down', function (e) {
-            e.preventDefault();
-            moveSection(rowType(this), 1);
+            editSection(rowType(this));
         });
 
         $(document).on('click', '.ptk-nl-arr-remove', function (e) {
@@ -1399,6 +1517,11 @@
                 applyRowOrderToSections();
                 renderArrangeList();
                 serializeAndPreview();
+                // renderArrangeList() clears the status line right above
+                // this -- a screen reader user dragging a row gets the same
+                // "something changed" confirmation a sighted volunteer sees
+                // (the row visibly moving), where before there was nothing.
+                $('[data-arrange-status]').text('Order updated.');
             }
         });
     }

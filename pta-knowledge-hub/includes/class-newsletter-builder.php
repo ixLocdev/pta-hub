@@ -670,14 +670,24 @@ class PTK_Newsletter_Builder {
             true
         );
 
+        // Round 3.1 (spec item 7): pure link/email validators, loaded before
+        // newsletter-builder.js so its runValidation() can call them.
+        wp_enqueue_script(
+            'ptk-newsletter-validate',
+            PTK_PLUGIN_URL . 'assets/js/newsletter-validate.js',
+            array(),
+            PTK_VERSION,
+            true
+        );
+
         wp_enqueue_script(
             'ptk-newsletter-builder',
             PTK_PLUGIN_URL . 'assets/js/newsletter-builder.js',
-            // jquery-ui-sortable powers step 4's drag-to-reorder. Dragging is
-            // never the only way to reorder — the arrange list's Move up/down
-            // buttons do the same thing from the keyboard. ptk-focal-point-picker
-            // must load first: the boot block calls into it (initFocalPickers()).
-            array( 'jquery', 'media-upload', 'jquery-ui-sortable', 'ptk-focal-point-picker' ),
+            // jquery-ui-sortable powers "Finish editing"'s drag-to-reorder
+            // (round 3.1: drag and drop only, no Move up/down buttons — see
+            // the arrange-panel markup). ptk-focal-point-picker must load
+            // first: the boot block calls into it (initFocalPickers()).
+            array( 'jquery', 'media-upload', 'jquery-ui-sortable', 'ptk-focal-point-picker', 'ptk-newsletter-validate' ),
             PTK_VERSION,
             true
         );
@@ -690,14 +700,15 @@ class PTK_Newsletter_Builder {
 
         $nl_data['previewLinkNonce'] = wp_create_nonce( 'ptk_nl_preview_link' );
 
-        // Just saved or published: land on the last step, where the notice's
+        // Just saved or published: land on the last step ("Publish & share",
+        // round 3.1 -- was step 4 before the split), where the notice's
         // follow-up lives (the share panel, the photo check). Without this the
-        // wizard boots on step 1 and the share panel sits hidden on step 4.
+        // wizard boots on step 1 and the share panel sits hidden.
         // ptk_nl_step does the same for the no-JavaScript preview-link forms,
         // which reload the page.
-        // wp_localize_script() stringifies this to "4" -- the JS parseInt()s it.
+        // wp_localize_script() stringifies this to "5" -- the JS parseInt()s it.
         if ( ! empty( $_GET['ptk_nl_msg'] ) ) {
-            $nl_data['startStep'] = 4;
+            $nl_data['startStep'] = count( self::steps() );
             // Publishing was refused for want of the photo check: put the
             // volunteer ON the checkbox, where the explanation is.
             if ( 'pii' === sanitize_key( wp_unslash( $_GET['ptk_nl_msg'] ) ) ) {
@@ -898,6 +909,10 @@ class PTK_Newsletter_Builder {
             PTK_Newsletter_Data::TYPE_FEATURED     => 3,
             PTK_Newsletter_Data::TYPE_STORY_CARDS  => 3,
             PTK_Newsletter_Data::TYPE_QUICK_NOTES  => 3,
+            // Round 3.1 (spec item 5): the footer's own fields stay on the
+            // "Finish editing" step, alongside the (drag-only) section order
+            // -- Publish & share (step 5) is only the photo check, the
+            // Save/Publish/Update buttons, the preview link, and sharing.
             PTK_Newsletter_Data::TYPE_FOOTER       => 4,
         );
 
@@ -908,6 +923,11 @@ class PTK_Newsletter_Builder {
      * The wizard's steps, in order: the sidebar entries and the heading that
      * opens each step. Plain English — this is the first thing a first-time
      * volunteer reads.
+     *
+     * Round 3.1 (spec item 5): what was one "Finish & publish" step is now
+     * two -- "Finish editing" (order + the footer) and "Publish & share"
+     * (the photo check, Save/Publish/Update, and sharing) -- so a volunteer
+     * meets one decision at a time instead of everything at once.
      *
      * @return array[] Step number => array( 'title' => string, 'blurb' => string ).
      */
@@ -926,8 +946,12 @@ class PTK_Newsletter_Builder {
                 'blurb' => 'The top story, shorter stories and quick notes. All optional.',
             ),
             4 => array(
-                'title' => 'Finish & publish',
-                'blurb' => 'Put it in order, check the photos, and send it out.',
+                'title' => 'Finish editing',
+                'blurb' => 'Put the sections in the order you want, and finish your sign-off.',
+            ),
+            5 => array(
+                'title' => 'Publish & share',
+                'blurb' => 'Check the photos, send it out, then share it.',
             ),
         );
     }
@@ -1041,7 +1065,7 @@ class PTK_Newsletter_Builder {
         <div class="wrap ptk-nl-builder">
             <h1><?php echo $edit_id ? 'Edit Newsletter' : 'New Newsletter'; ?></h1>
             <?php self::render_notice( $edit_id ); ?>
-            <p class="ptk-nl-intro">Four short steps. We&#8217;ve filled in what we can — you write the news.</p>
+            <p class="ptk-nl-intro">Five short steps. We&#8217;ve filled in what we can — you write the news.</p>
             <?php if ( ! $edit_id ) : $last_id = self::most_recent_newsletter_id(); if ( $last_id ) : $last_issue = get_post_meta( $last_id, 'ptk_nl_issue', true ); if ( $last_issue ) : ?>
                 <div class="ptk-nl-msg ptk-nl-msg-ok" role="status">
                     <p>We copied your footer and section names from No. <?php echo esc_html( PTK_Share_Text::issue_label( $last_issue ) ); ?>. Everything else — stories, events, the announcement, the greeting — starts blank.</p>
@@ -1063,7 +1087,12 @@ class PTK_Newsletter_Builder {
                 </nav>
 
                 <div class="ptk-nl-fields">
-                    <form method="post" id="ptk-nl-form">
+                    <?php /* novalidate (round 3.1, spec items 7 & 8): the browser's own constraint
+                            validation is invisible when the invalid field sits on a hidden step --
+                            that's the root cause of "the first Publish click doesn't work" (see the
+                            final report). newsletter-builder.js's runValidation() fully replaces it
+                            with visible, in-context messages and jumps to the first problem. */ ?>
+                    <form method="post" id="ptk-nl-form" novalidate>
                         <?php wp_nonce_field( 'ptk_nl_save', 'ptk_nl_nonce' ); ?>
                         <input type="hidden" name="ptk_nl_edit_id" value="<?php echo esc_attr( $edit_id ); ?>">
 
@@ -1078,15 +1107,25 @@ class PTK_Newsletter_Builder {
                             </div>
                         <?php endforeach; ?>
 
-                        <?php /* Sits here, immediately above #ptk-nl-blocks, so step 4 reads in plain DOM
-                                order: arrange panel → the footer's fields (the only section shown on step 4)
-                                → the photo check and buttons (.ptk-nl-finish) → share a preview link. No CSS
-                                ordering needed. It's a SIBLING of #ptk-nl-blocks, never a child — the
-                                flat-DOM rule governs that container's children, which stay exactly the six
-                                sections. */ ?>
-                        <div class="ptk-nl-arrange-panel" data-step="<?php echo (int) $step_last; ?>">
+                        <?php /* Round 3.1 (spec item 7): "N things need fixing", with jump links, filled
+                                in by JS right before a blocked Save/Publish. data-step="5" so showStep()
+                                shows/hides it with the rest of "Publish & share"; empty + hidden until
+                                there is something to report. */ ?>
+                        <div class="ptk-nl-validation-summary" id="ptk-nl-validation-summary" data-step="<?php echo (int) $step_last; ?>" role="alert" hidden></div>
+
+                        <?php /* Sits here, immediately above #ptk-nl-blocks, so step 4 ("Finish editing")
+                                reads in plain DOM order: arrange panel → the footer's fields (the only
+                                section shown on step 4). No CSS ordering needed. It's a SIBLING of
+                                #ptk-nl-blocks, never a child — the flat-DOM rule governs that container's
+                                children, which stay exactly the seven sections. */ ?>
+                        <div class="ptk-nl-arrange-panel" data-step="<?php echo (int) ( $step_last - 1 ); ?>">
                             <h3>Order of your newsletter</h3>
-                            <p class="description">Drag to change the order, or use the arrows.</p>
+                            <?php /* Round 3.1 (spec item 5): drag and drop only -- the Move up/down
+                                    buttons are gone. Each row's Edit button is the equal way to reach a
+                                    section without a mouse: it jumps straight to that section's own step
+                                    and focuses its first field, which is a more useful keyboard path than
+                                    reordering ever was. */ ?>
+                            <p class="description">Drag a row to change the order. Use Edit to open a section.</p>
 
                             <div class="ptk-nl-arrange-pinned"><span aria-hidden="true">&#128274;</span> Header — always first</div>
 
@@ -1101,14 +1140,17 @@ class PTK_Newsletter_Builder {
                                 <ul></ul>
                             </div>
 
-                            <?php /* Says what just happened after a Move up/down — "Featured story moved
-                                    down. Now 3 of 4." A screen reader announces it because it's aria-live,
-                                    and everyone else can simply read it. Must be in the page from the
-                                    start: a live region added at the moment of the change isn't announced.
-                                    Empty until the JS has something to say. */ ?>
+                            <?php /* Says what just happened after a drag or Remove/Add back -- "Featured
+                                    story moved down. Now 3 of 4." A screen reader announces it because
+                                    it's aria-live, and everyone else can simply read it. Must be in the
+                                    page from the start: a live region added at the moment of the change
+                                    isn't announced. Empty until the JS has something to say. */ ?>
                             <p class="ptk-nl-arrange-status" data-arrange-status role="status" aria-live="polite"></p>
 
                             <p class="description">Once you save, a section you&#8217;ve left out won&#8217;t keep its text.</p>
+
+                            <p class="ptk-nl-arrange-next">Next: publish and share.</p>
+                            <button type="button" class="button button-primary" data-goto-step="<?php echo (int) $step_last; ?>">Next: Publish &amp; share</button>
                         </div>
 
                         <?php /* The six sections MUST stay direct children of #ptk-nl-blocks: serialize() reads
@@ -1168,7 +1210,7 @@ class PTK_Newsletter_Builder {
                         <?php self::render_preview_panel( $edit_id ); ?>
 
                         <?php /* Same pattern as the preview panel: a sibling of #ptk-nl-form with its own
-                                data-step="4", so showStep() owns it. It saves by AJAX, never by this form. */ ?>
+                                data-step="5", so showStep() owns it. It saves by AJAX, never by this form. */ ?>
                         <?php if ( class_exists( 'PTK_Share_Panel' ) ) : ?>
                             <?php PTK_Share_Panel::render( $edit_id ); ?>
                         <?php endif; ?>
@@ -1198,7 +1240,7 @@ class PTK_Newsletter_Builder {
      * (unsaved) newsletter has no post id to attach a token to.
      *
      * Sharing a preview is part of finishing up, so the panel carries
-     * data-step="4" and the wizard's JS shows it with the rest of that step.
+     * data-step="5" and the wizard's JS shows it with the rest of that step.
      * It sits alongside #ptk-nl-form rather than inside it because its
      * no-JavaScript fallback is a pair of <form>s, and forms can't nest.
      *
@@ -1217,7 +1259,7 @@ class PTK_Newsletter_Builder {
         if ( 'publish' === get_post_status( $edit_id ) ) {
             $live_url = (string) get_permalink( $edit_id );
             ?>
-            <div class="ptk-nl-preview-panel" data-step="4">
+            <div class="ptk-nl-preview-panel" data-step="5">
                 <h3>Link to your newsletter</h3>
                 <p class="description"><label for="ptk-nl-live-url">Your newsletter is live. Anyone with this link can read it:</label></p>
                 <input type="text" readonly value="<?php echo esc_attr( $live_url ); ?>" id="ptk-nl-live-url" onclick="this.select();" />
@@ -1228,7 +1270,7 @@ class PTK_Newsletter_Builder {
             return;
         }
         ?>
-        <div class="ptk-nl-preview-panel" data-step="4" data-preview-link-panel data-post-id="<?php echo esc_attr( $edit_id ); ?>">
+        <div class="ptk-nl-preview-panel" data-step="5" data-preview-link-panel data-post-id="<?php echo esc_attr( $edit_id ); ?>">
             <h3>Share a preview link</h3>
             <p class="description">Let someone &#8212; like a principal or PTA president &#8212; see this draft before it&#8217;s published, without needing a login. The link stops working after 7 days.</p>
             <div data-preview-link-body>
@@ -1454,7 +1496,7 @@ class PTK_Newsletter_Builder {
                     <?php /* type="text", not "url": the browser would reject a bare email
                             address (leslie@example.org) and block the save before
                             sanitize_link_url() could turn it into an email link. */ ?>
-                    <input type="text" inputmode="url" id="ptk-nl-announcement-button_url" data-field="button_url" value="<?php echo esc_attr( isset( $data['button_url'] ) ? $data['button_url'] : '' ); ?>" aria-describedby="ptk-nl-announcement-button_url-hint">
+                    <input type="text" inputmode="url" id="ptk-nl-announcement-button_url" data-field="button_url" data-validate="link-or-email" value="<?php echo esc_attr( isset( $data['button_url'] ) ? $data['button_url'] : '' ); ?>" aria-describedby="ptk-nl-announcement-button_url-hint">
                     <p class="description" id="ptk-nl-announcement-button_url-hint">A web address (https://&#8230;) or an email address.</p>
                 </div>
                 <details class="ptk-nl-disclosure" data-disclosure>
@@ -1560,7 +1602,7 @@ class PTK_Newsletter_Builder {
                 </div>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-featured-link_url">Link address</label>
-                    <input type="url" id="ptk-nl-featured-link_url" data-field="link_url" value="<?php echo esc_attr( isset( $data['link_url'] ) ? $data['link_url'] : '' ); ?>" aria-describedby="ptk-nl-featured-link_url-hint">
+                    <input type="url" id="ptk-nl-featured-link_url" data-field="link_url" data-validate="link" value="<?php echo esc_attr( isset( $data['link_url'] ) ? $data['link_url'] : '' ); ?>" aria-describedby="ptk-nl-featured-link_url-hint">
                     <p class="description" id="ptk-nl-featured-link_url-hint">Optional. Where the link goes. For example: https://northeastpta.org/volunteer/</p>
                 </div>
                 <div class="ptk-nl-field-group">
@@ -1611,7 +1653,7 @@ class PTK_Newsletter_Builder {
                         </div>
                         <div class="ptk-nl-field-group">
                             <label>Link address</label>
-                            <input type="url" data-field="link_url">
+                            <input type="url" data-field="link_url" data-validate="link">
                             <p class="description">Where the link goes. For example: https://northeastpta.org/volunteer/</p>
                         </div>
                         <div class="ptk-nl-field-group">
@@ -1650,7 +1692,7 @@ class PTK_Newsletter_Builder {
                         <div class="ptk-nl-field-group">
                             <label>Link address</label>
                             <?php /* type="text", not "url": an email address must be accepted (see the button link). */ ?>
-                            <input type="text" inputmode="url" data-field="link_url">
+                            <input type="text" inputmode="url" data-field="link_url" data-validate="link-or-email">
                             <p class="description">Optional. A web address (https://&#8230;) or an email address.</p>
                         </div>
                         <div class="ptk-nl-field-group">
@@ -1685,7 +1727,7 @@ class PTK_Newsletter_Builder {
                             </div>
                             <div class="ptk-nl-field-group">
                                 <label>Link address</label>
-                                <input type="url" data-field="url">
+                                <input type="url" data-field="url" data-validate="link">
                                 <p class="description">Where it goes.</p>
                             </div>
                             <button type="button" class="button ptk-nl-remove-row">Remove</button>

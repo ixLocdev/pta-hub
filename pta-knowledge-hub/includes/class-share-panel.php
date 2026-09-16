@@ -8,10 +8,12 @@
  * WHERE IT LIVES, AND WHY: pta_newsletter has no post-publish screen and no
  * edit-screen sidebar -- redirect_edit_to_builder() sends every edit into
  * the Builder page, and handle_submission() owns the save redirect. So the
- * panel is rendered by PTK_Newsletter_Builder::render_page() on step 4, as
- * a SIBLING of #ptk-nl-form (forms cannot nest) carrying data-step="4",
- * exactly like the preview-link panel. The Builder's showStep() owns its
- * visibility; nothing here may hide it or make it display:flex.
+ * panel is rendered by PTK_Newsletter_Builder::render_page() on the
+ * "Publish & share" step (round 3.1 split this off step 4's old, more
+ * crowded "Finish & publish" step), as a SIBLING of #ptk-nl-form (forms
+ * cannot nest) carrying data-step="5", exactly like the preview-link
+ * panel. The Builder's showStep() owns its visibility; nothing here may
+ * hide it or make it display:flex.
  *
  * It never fatals and never shows a broken image: no GD, no FreeType, or a
  * WP_Error from ensure_square() each degrade to a plain sentence, and the
@@ -448,7 +450,7 @@ class PTK_Share_Panel {
         $published = self::is_published( $post_id );
         $caps      = PTK_Share_Image::capabilities();
         ?>
-        <div class="ptk-nl-share-panel" data-step="4" data-share-panel data-post-id="<?php echo esc_attr( $post_id ); ?>">
+        <div class="ptk-nl-share-panel" data-step="5" data-share-panel data-post-id="<?php echo esc_attr( $post_id ); ?>">
             <div class="ptk-nl-share-intro">
                 <h3>Share this newsletter</h3>
                 <p class="description">Ready-to-paste posts for your PTA&#8217;s pages and groups. Nothing is posted for you &#8212; copy, paste, and change anything you like. Your changes are kept.</p>
