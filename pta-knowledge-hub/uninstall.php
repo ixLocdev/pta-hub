@@ -35,6 +35,8 @@ $ptk_cleanup_site = function () {
     delete_option( 'ptk_glossary_slug' );
     delete_option( 'ptk_rewrite_flushed' );
     delete_option( 'ptk_rewrite_ver' );
+    delete_option( 'ptk_share_color' );
+    delete_option( 'ptk_share_facebook_url' );
 
     // Remove per-site tables if they exist.
     $search_table   = $wpdb->prefix . 'ptk_search_log';
@@ -61,9 +63,39 @@ $ptk_cleanup_site = function () {
             OR option_name LIKE '_transient_ptk_popularity%'
             OR option_name LIKE '_transient_timeout_ptk_popularity%'
             OR option_name LIKE '_transient_ptk_update%'
-            OR option_name LIKE '_transient_timeout_ptk_update%'"
+            OR option_name LIKE '_transient_timeout_ptk_update%'
+            OR option_name LIKE '_transient_ptk_share_settings_notice_%'
+            OR option_name LIKE '_transient_timeout_ptk_share_settings_notice_%'"
     ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
     delete_transient( 'ptk_glossary_terms' );
+
+    // Share this newsletter: the squares we drew are ours to remove, since a
+    // reinstall redraws them. A square the PTA uploaded themselves is THEIR
+    // picture -- it may be used elsewhere -- so it stays. This must run before
+    // the share meta below is deleted, because that meta is how we tell them
+    // apart. The plugin is not loaded during uninstall, so no delete hook fires.
+    $ptk_generated_squares = $wpdb->get_col(
+        "SELECT pm.meta_value FROM {$wpdb->postmeta} pm
+         WHERE pm.meta_key = '_ptk_share_square_id'
+           AND NOT EXISTS (
+               SELECT 1 FROM {$wpdb->postmeta} c
+               WHERE c.post_id = pm.post_id
+                 AND c.meta_key = '_ptk_share_square_custom'
+                 AND c.meta_value NOT IN ( '', '0' )
+           )"
+    ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+    foreach ( (array) $ptk_generated_squares as $ptk_square_id ) {
+        $ptk_square_id = absint( $ptk_square_id );
+        if ( $ptk_square_id && 'attachment' === get_post_type( $ptk_square_id ) ) {
+            wp_delete_attachment( $ptk_square_id, true );
+        }
+    }
+    $wpdb->query(
+        $wpdb->prepare(
+            "DELETE FROM {$wpdb->postmeta} WHERE meta_key LIKE %s",
+            $wpdb->esc_like( '_ptk_share_' ) . '%'
+        )
+    ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 
     // Clean up post meta added by plugin features (posts themselves preserved).
     //
