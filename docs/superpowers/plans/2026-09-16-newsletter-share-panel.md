@@ -57,7 +57,6 @@ Every newsletter body field is HTML (`wp_kses_post`), so captions must be flatte
 **Files:**
 - Create: `pta-knowledge-hub/includes/class-share-text.php`
 - Create: `pta-knowledge-hub/tests/test-share-text.php`
-- Modify: `pta-knowledge-hub/tests/bootstrap.php`
 
 - [ ] **Step 1: Write the failing test**
 
@@ -91,19 +90,14 @@ ptk_test_done();
 Run: `php tests/test-share-text.php`
 Expected: fatal — `Failed opening required .../class-share-text.php`.
 
-- [ ] **Step 3: Add the shim `bootstrap.php` is missing**
+- [ ] **Step 3: Write the minimal implementation**
 
-`bootstrap.php` has `wp_strip_all_tags` but no entity decoder. Add after the `wp_kses_post` shim:
-
-```php
-if ( ! function_exists( 'wp_specialchars_decode' ) ) {
-    function wp_specialchars_decode( $s, $quote_style = ENT_QUOTES ) {
-        return html_entity_decode( (string) $s, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
-    }
-}
-```
-
-- [ ] **Step 4: Write the minimal implementation**
+**Do not reach for `wp_specialchars_decode()` here.** Core's version reverses only
+`&amp;amp; &amp;lt; &amp;gt; &amp;quot; &amp;#039;` — it does **not** decode `&amp;nbsp;`, `&amp;mdash;` or `&amp;hellip;`.
+A test shim built on `html_entity_decode` would pass in CLI while production
+captions carried the literal text `Mum&amp;nbsp;Sale`. Call `html_entity_decode()`
+directly: it is plain PHP, needs no shim, and serves the WordPress-free contract
+better.
 
 ```php
 <?php
@@ -144,8 +138,8 @@ class PTK_Share_Text {
         $s = preg_replace( '#<br\s*/?>#i', "\n", $s );
         $s = preg_replace( '#</p\s*>#i', "\n", $s );
         $s = wp_strip_all_tags( $s );
-        $s = wp_specialchars_decode( $s );
-        $s = str_replace( "\xc2\xa0", ' ', $s );          // nbsp
+        $s = html_entity_decode( $s, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+        $s = str_replace( "\xc2\xa0", ' ', $s );          // nbsp, now a real char
         $s = preg_replace( '/[ \t]+/', ' ', $s );
         $s = preg_replace( '/\n{2,}/', "\n", $s );
 
@@ -154,15 +148,15 @@ class PTK_Share_Text {
 }
 ```
 
-- [ ] **Step 5: Run it and watch it pass**
+- [ ] **Step 4: Run it and watch it pass**
 
 Run: `php tests/test-share-text.php`
 Expected: eight `ok -` lines, then `PASSED`.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add pta-knowledge-hub/includes/class-share-text.php pta-knowledge-hub/tests/test-share-text.php pta-knowledge-hub/tests/bootstrap.php
+git add pta-knowledge-hub/includes/class-share-text.php pta-knowledge-hub/tests/test-share-text.php
 git commit -m "Flatten newsletter HTML into text a social post can carry"
 ```
 
@@ -194,9 +188,18 @@ ptk_test_ok( $t::story_line( array( 'heading' => '', 'body' => '' ) ) === '', 'a
 
 $long = array( 'heading' => '', 'body' => '<p>' . str_repeat( 'word ', 60 ) . '</p>' );
 $cut  = $t::story_line( $long );
-ptk_test_ok( strlen( $cut ) <= 121, 'long text is truncated near 120 chars' );
-ptk_test_ok( substr( $cut, -1 ) === '…', 'truncation is marked with an ellipsis' );
+// Count CHARACTERS, not bytes: '…' is three bytes in UTF-8, so strlen() would
+// read 122 here and the assertion would fail against correct code.
+ptk_test_ok( mb_strlen( $cut ) <= 121, 'long text is truncated near 120 chars' );
+// Likewise substr( $cut, -1 ) returns a single byte ("\xa6") and can never
+// equal '…' — this assertion has to be multibyte-aware too.
+ptk_test_ok( mb_substr( $cut, -1 ) === '…', 'truncation is marked with an ellipsis' );
 ptk_test_ok( strpos( $cut, 'wor…' ) === false, 'truncation lands on a word boundary' );
+
+// A cut landing mid-character must not emit broken UTF-8 into a caption.
+$dashes = array( 'heading' => '', 'body' => '<p>' . str_repeat( 'a—b ', 40 ) . '</p>' );
+$dcut   = $t::story_line( $dashes );
+ptk_test_ok( mb_check_encoding( $dcut, 'UTF-8' ), 'truncation never splits a multibyte character' );
 ```
 
 - [ ] **Step 2: Run it and watch it fail**
@@ -247,12 +250,18 @@ Expected: `FAIL- PHP error: ... undefined method ... story_line`.
         return trim( $parts[0] );
     }
 
+    /**
+     * Multibyte throughout. Our newsletters are full of en and em dashes, so a
+     * byte-based substr() would split a character and emit invalid UTF-8 into a
+     * caption, and a byte-based rtrim( $cut, "—" ) would strip the em dash's
+     * three bytes individually and could eat the front of another character.
+     */
     private static function truncate( $s ) {
-        if ( strlen( $s ) <= self::LINE_MAX ) { return $s; }
-        $cut = substr( $s, 0, self::LINE_MAX );
-        $sp  = strrpos( $cut, ' ' );
-        if ( false !== $sp ) { $cut = substr( $cut, 0, $sp ); }
-        return rtrim( $cut, " ,;:—-" ) . '…';
+        if ( mb_strlen( $s ) <= self::LINE_MAX ) { return $s; }
+        $cut = mb_substr( $s, 0, self::LINE_MAX );
+        $sp  = mb_strrpos( $cut, ' ' );
+        if ( false !== $sp ) { $cut = mb_substr( $cut, 0, $sp ); }
+        return preg_replace( '/[\s,;:—–-]+$/u', '', $cut ) . '…';
     }
 ```
 
@@ -279,7 +288,13 @@ git commit -m "Turn a story card into the one line a Facebook post wants"
 - Modify: `pta-knowledge-hub/includes/class-share-text.php`
 - Modify: `pta-knowledge-hub/tests/test-share-text.php`
 
-`generate( array $blocks, array $opts )`. `$opts` carries `url`, `issue`, `date`, `school_name`. **Do not try to reuse `PTK_Newsletter_Builder::render_opts()`** — it is `private` and supplies no `url`.
+`generate( array $blocks, array $opts )`. `$opts` carries `url`, `issue`, `date`, `school_name` and **`today`**. **Do not try to reuse `PTK_Newsletter_Builder::render_opts()`** — it is `private` and supplies no `url`.
+
+**`today` is not optional.** The blocks contain every event row, including ones
+already past. "Upcoming events" needs a clock, and the renderer already solves
+this the same way (`class-newsletter-renderer.php:178`, supplied by `render_opts()`
+at builder `:328`). Without it the generator either lists stale events or invents
+its own now — and then the tests are not reproducible.
 
 Facebook order, per the spec: featured block as the lead, then the announcement, then one `story_line()` per card, then events, then the URL, then footer links (untyped `{label,url}` pairs — list them all with their labels).
 
@@ -287,7 +302,15 @@ Facebook order, per the spec: featured block as the lead, then the announcement,
 - [ ] **Step 2: Run it and watch it fail.**
 - [ ] **Step 3: Implement `generate()`**, plus private `facebook()`, `instagram()`, `whatsapp()` helpers. Return `array( 'facebook' => ..., 'instagram' => ..., 'whatsapp' => ... )`.
 - [ ] **Step 4: Run it and watch it pass.**
-- [ ] **Step 5: Commit** — `git commit -m "Write the three posts from what the newsletter already says"`
+- [ ] **Step 5: Tune against one real issue.** Structural assertions prove the
+  shape, not the quality, and this is the output the whole feature is judged on.
+  Build a fixture from `NEPTANewsletter/newsletter-040-week-of-9-14-26.html` —
+  blocks plus a fixed `today` — and put the generated Facebook text beside
+  `NEPTANewsletter/fb-post-newsletter-040.md`. They will not match word for word
+  and should not; the hand-written one has judgement in it. What matters is
+  whether a volunteer would post the generated one unedited. Tune until they
+  would, and say what you changed.
+- [ ] **Step 6: Commit** — `git commit -m "Write the three posts from what the newsletter already says"`
 
 ---
 
@@ -304,9 +327,17 @@ Meta keys (from the spec, use exactly these):
 
 ```php
 // Captions depend on the words. The square does not.
-caption_inputs_hash = md5( wp_json_encode( $blocks ) . '|' . $url . '|' . $issue . '|' . $date . '|' . $school_name )
-square_inputs_hash  = md5( $issue . '|' . $date . '|' . $school_name . '|' . $share_color . '|' . PTK_VERSION )
+caption_inputs_hash( $blocks, $url, $issue, $date, $school_name )
+    => md5( json_encode( $blocks ) . '|' . $url . '|' . $issue . '|' . $date . '|' . $school_name )
+
+square_inputs_hash( $issue, $date, $school_name, $share_color, $version )
+    => md5( $issue . '|' . $date . '|' . $school_name . '|' . $share_color . '|' . $version )
 ```
+
+**Plain `json_encode`, and the version passed in as an argument.** `tests/bootstrap.php`
+defines neither `wp_json_encode()` nor `PTK_VERSION`, so reaching for either
+fatals on the test's first run — for a reason that costs time to diagnose. The
+caller supplies `PTK_VERSION`.
 
 Reusing one for both is the mistake this plan exists to prevent: the square's hash ignores the blocks on purpose, so a shared hash would never raise the stale-caption warning when someone edits a story — the common case.
 
@@ -355,7 +386,12 @@ function_exists( 'imagettftext' )           // FreeType — only the square need
 
 Missing FreeType → the Instagram section falls back to "upload a square picture" and stays usable. Missing GD → the QR handoff is dead too, and the panel must say so. Neither may fatal; neither may emit a blank image.
 
-- [ ] **Step 1: Write the failing test:** `capabilities()` returns both booleans; `render_png( $args )` returns a binary string whose first bytes are the PNG signature `\x89PNG`; the image is 1080×1080; and with FreeType stubbed unavailable, `render_png()` returns `false` rather than throwing.
+- [ ] **Step 1: Write the failing test:** `capabilities()` returns both booleans; `render_png( $args )` returns a binary string whose first bytes are the PNG signature `\x89PNG`; the image is 1080×1080; and `render_png( $args, array( 'gd' => true, 'freetype' => false ) )` returns `false` rather than throwing.
+
+**Signature: `render_png( $args, $caps = null )`.** Plain PHP cannot stub
+`function_exists('imagettftext')`, so the capabilities have to be injectable or
+the degradation path is untestable — `null` means detect for real. Both GD and
+FreeType are present in this machine's CLI, so the happy path runs locally.
 - [ ] **Step 2: Run it and watch it fail.**
 - [ ] **Step 3: Implement `render_png()`** — navy `#1a2f5c` ground, the school's `share_color()` as the accent (already run through `readable_pair()`), issue number, week, school name. Drawing only; **no** media-library access in this method.
 - [ ] **Step 4: Run it and watch it pass.**
@@ -393,8 +429,10 @@ There is no post-publish screen and no sidebar for this post type: `redirect_edi
 - [ ] **Step 1:** Render three sections — Facebook, Instagram, WhatsApp. Each: a textarea, a Copy button, a "reset to generated" control, and the stale warning when the stored hash no longer matches.
 - [ ] **Step 2:** Instagram section additionally shows the square, "upload your own instead", "use the generated square again", and the QR. When FreeType is missing, show the upload prompt instead of a broken image; when GD is missing, say the phone handoff is unavailable and keep the captions working.
 - [ ] **Step 3:** A published newsletter gets the QR and the real link. **A draft gets neither** — say the link appears once published rather than handing over a broken URL.
-- [ ] **Step 4:** Register the panel from the Builder's step-4 render. Enqueue the CSS on the Builder hook only.
-- [ ] **Step 5: Commit** — `git commit -m "Put the three posts on the last step of the builder"`
+- [ ] **Step 4: `require_once` the new classes** in `pta-knowledge-hub.php`, beside the existing block. This is the first task that wires into WordPress, and without it the Builder change references an undefined class and fatals the Builder page — the same dead wizard Task 9 Step 4 warns about, arriving from a different direction. The Playground checks in Tasks 9 and 10 depend on this.
+- [ ] **Step 5:** Register the panel from the Builder's step-4 render. Enqueue the CSS on the Builder hook only.
+- [ ] **Step 6: Where the Facebook group link comes from.** The panel links out to the PTA's Facebook group, and **no such URL exists anywhere in the plugin** — Northeast's is hard-coded in prose in the spec, which is no use to the other ten PTAs. Read it from a `ptk_share_facebook_url` blog option (set on the Task 11 page). When it is empty, show the caption and the copy button with no link-out rather than a dead button. Same for the panel's `wa.me` link, which is a plain URL scheme and needs no setting.
+- [ ] **Step 7: Commit** — `git commit -m "Put the three posts on the last step of the builder"`
 
 ---
 
@@ -438,8 +476,9 @@ There is no post-publish screen and no sidebar for this post type: `redirect_edi
 
 - [ ] **Step 1:** A new admin page — the existing picker is main-site only and hangs off `edit.php?post_type=pta_knowledge` (`class-site-colors.php:164`). Put this one under the **Newsletters** menu, where the person setting it is already working. Capability `manage_options` on the subsite. Option key `ptk_share_color` (a blog option, distinct from the network `ptk_site_colors`).
 - [ ] **Step 2:** Show a live preview of the square using the chosen colour, and refuse (or auto-darken, saying so) anything failing the contrast guard.
-- [ ] **Step 3: Confirm the Owner-column dots are unchanged** on both the main site and a subsite. If any dot moved, the override leaked into `color_for()` — back it out.
-- [ ] **Step 4: Commit** — `git commit -m "Let a school pick its own colour, from where it is already working"`
+- [ ] **Step 3: Add the Facebook group URL field** — option `ptk_share_facebook_url`, validated as an `https://` URL, empty allowed. It belongs on this page: it is the other per-PTA setting the share panel needs, and a second settings page for one field would be worse.
+- [ ] **Step 4: Confirm the Owner-column dots are unchanged** on both the main site and a subsite. If any dot moved, the override leaked into `color_for()` — back it out.
+- [ ] **Step 5: Commit** — `git commit -m "Let a school pick its own colour, from where it is already working"`
 
 ---
 
@@ -449,16 +488,15 @@ There is no post-publish screen and no sidebar for this post type: `redirect_edi
 - Modify: `pta-knowledge-hub/pta-knowledge-hub.php`
 - Modify: `update-info.json`
 
-- [ ] **Step 1: Require the new classes** in the plugin bootstrap, beside the existing `require_once` block.
-- [ ] **Step 2: BUMP `PTK_VERSION`.** It is still `4.0.1` (`:16`) — identical to the shipped zip. Both `ptk_maybe_clear_cache_on_update` (`:170`) and `ptk_maybe_flush_rewrites_on_update` (`:189`) are gated on that constant changing. **Ship the Newsletter Builder without bumping it and the rewrite flush never runs, so `/newsletters/` 404s on all 11 sites.** This predates this feature and would break the Builder's debut on its own.
-- [ ] **Step 3: Update `update-info.json`** — version and a plain-language changelog entry matching the existing voice (what it does for a volunteer, not what changed in the code).
-- [ ] **Step 4: Full Playground pass.** Create a newsletter, publish it, confirm you land on step 4 with the panel showing. Edit a caption, reload, confirm it persisted and still saves. Change the issue number, confirm the stale warning appears. Scan the QR with an actual phone. Trash the newsletter, then delete it, and confirm the square is gone from the media library.
-- [ ] **Step 5: Run every test.**
+- [ ] **Step 1: BUMP `PTK_VERSION`.** It is still `4.0.1` (`:16`) — identical to the shipped zip. Both `ptk_maybe_clear_cache_on_update` (`:170`) and `ptk_maybe_flush_rewrites_on_update` (`:189`) are gated on that constant changing. **Ship the Newsletter Builder without bumping it and the rewrite flush never runs, so `/newsletters/` 404s on all 11 sites.** This predates this feature and would break the Builder's debut on its own.
+- [ ] **Step 2: Update `update-info.json`** — version and a plain-language changelog entry matching the existing voice (what it does for a volunteer, not what changed in the code).
+- [ ] **Step 3: Full Playground pass.** Create a newsletter, publish it, confirm you land on step 4 with the panel showing. Edit a caption, reload, confirm it persisted and still saves. Change the issue number, confirm the stale warning appears. Scan the QR with an actual phone. Trash the newsletter, then delete it, and confirm the square is gone from the media library.
+- [ ] **Step 4: Run every test.**
 
 ```bash
 cd "/Users/lucas/apps/PTA/PTA HUB/pta-knowledge-hub" && for f in tests/test-*.php; do echo "== $f"; php "$f" || exit 1; done
 ```
 
-- [ ] **Step 6: Rebuild the zip** and confirm it contains the newsletter *and* share classes — the current zip contains neither.
-- [ ] **Step 7: Stop before uploading.** Deployment is Lucas's call: Network Admin → Plugins → Add Plugin → Upload → "Replace current with uploaded", which updates all 11 sites at once. Ask; do not upload.
-- [ ] **Step 8: Commit** — `git commit -m "Bump the version so the newsletter links survive the update"`
+- [ ] **Step 5: Rebuild the zip** and confirm it contains the newsletter *and* share classes — the current zip contains neither.
+- [ ] **Step 6: Stop before uploading.** Deployment is Lucas's call: Network Admin → Plugins → Add Plugin → Upload → "Replace current with uploaded", which updates all 11 sites at once. Ask; do not upload.
+- [ ] **Step 7: Commit** — `git commit -m "Bump the version so the newsletter links survive the update"`

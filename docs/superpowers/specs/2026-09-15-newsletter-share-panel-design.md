@@ -129,7 +129,12 @@ the renderer's existing `$opts` bag (`class-newsletter-renderer.php:52-57`).
 supplies `issue`, `date`, `today`, `theme`, `logo_url`, `school_name` and
 `image_url_cb` but **no `url`**. The panel builds its own opts — or a new public
 helper does — adding `url = get_permalink( $post_id )`. `$opts` carries `url`,
-`issue`, `date`, `school_name`.
+`issue`, `date`, `school_name` and **`today`**.
+
+`today` is required, not decorative: the blocks hold every event row including
+past ones, so "upcoming events" needs a clock. The renderer already does exactly
+this (`class-newsletter-renderer.php:178`, supplied at builder `:328`). Passing it
+in also keeps the generator deterministic under test.
 
 **All body fields are HTML**, not plain text — `announcement.text`,
 `featured.body`, `card.body`, `event.desc`, `greeting`, `signoff` all pass through
@@ -181,6 +186,12 @@ Rendered on the Builder's final step. Three sections — Facebook, Instagram,
 WhatsApp — each a textarea, a copy button, and a "reset to generated" control.
 Facebook links out to the group; WhatsApp gets a `wa.me` link; Instagram shows the
 square and the QR.
+
+**The group URL needs somewhere to live.** No Facebook URL exists anywhere in the
+plugin today — Northeast's is a fact about Northeast, not about the other ten
+PTAs. Read it from a `ptk_share_facebook_url` blog option, set on the same subsite
+page as the share colour. When it is empty, show the caption and copy button with
+no link-out rather than a dead button.
 
 ### 3. Storage and the regeneration rule
 
@@ -326,8 +337,8 @@ The subsite picker is a **new admin page** — the existing one is main-site onl
 and hangs off `edit.php?post_type=pta_knowledge` (`class-site-colors.php:164`). The
 subsite picker belongs under the **Newsletters** menu instead, where the person
 setting it is already working. Capability: `manage_options` on the subsite (a site
-admin). Option key: `ptk_share_color` (a blog option, distinct from the network
-`ptk_site_colors`).
+admin). Option keys: `ptk_share_color` and `ptk_share_facebook_url`, both blog options,
+the first distinct from the network `ptk_site_colors`.
 
 ## Risks
 
