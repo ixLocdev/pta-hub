@@ -1,6 +1,6 @@
 # Newsletter Share Panel — Design
 
-> **STATUS: DRAFT** (2026-09-16, rev 3 after two code audits). Brainstormed with Lucas;
+> **STATUS: READY TO PLAN** (2026-09-16, rev 4, after three code audits). Brainstormed with Lucas;
 > not yet planned or built.
 
 ## The problem
@@ -88,8 +88,13 @@ toggles every `[data-step]` in `.ptk-nl-wizard` (`newsletter-builder.js:141-146`
 boot unconditionally calls `showStep(FIRST_STEP, false)` (`js:101`) and there is
 no deep-link to a step anywhere in that file. The volunteer would land on step 1
 with a "Newsletter published" notice while the share panel sat hidden three steps
-away. Fix: PHP localizes `startStep = 4` when `ptk_nl_msg` is set, and the boot
-calls `showStep( ptkNlData.startStep || FIRST_STEP, false )`.
+away. Fix: PHP localizes `startStep = 4` when `ptk_nl_msg` is set, and the boot calls
+`showStep( parseInt( ptkNlData.startStep, 10 ) || FIRST_STEP, false )`. The
+`parseInt` is not optional dressing: `wp_localize_script()` casts scalars to
+strings, so the value arrives as `"4"`. It happens to survive today because
+`showStep()` clamps with `Math.max`/`Math.min` (`js:136`) and coerces on the way
+through — the spec does not want that behaviour resting on an accident.
+(`FIRST_STEP = 1`, `LAST_STEP = 4`, `js:50-51`.)
 
 **CSS contract** (`newsletter-builder.css:9-26`): any new `[data-step]` element
 must be a plain block, never `display:flex`, and never hidden by the stylesheet.
@@ -176,9 +181,25 @@ meta.**
 
 **A frozen caption can go stale.** The dirty rule protects a hand-fixed caption,
 but it also means "PTA Newsletter #040 is out" survives the issue being renumbered
-to 41. Store the generation-time inputs hash alongside each edited caption; when it
-no longer matches, show "the newsletter changed since you edited this" beside the
+to 41. Store `_ptk_share_caption_hash_{channel}` alongside each edited caption; when
+it no longer matches, show "the newsletter changed since you edited this" beside the
 reset control. Warn, do not silently overwrite.
+
+**Two hashes, not one — they cover different inputs.**
+`caption_inputs_hash = hash( wp_json_encode($blocks), url, issue, date, school_name )`.
+The square's hash (section 4) deliberately excludes the blocks. Reusing the square's
+hash for captions would miss the common case entirely: editing a story, adding an
+event or fixing a typo in the announcement would never raise the stale warning.
+
+**Dirty state on load.** A channel with stored meta loads **already dirty**, so
+subsequent edits keep saving; a channel without meta is clean until the first
+`input`. Without this, the first reload after an edit shows the stored text and then
+silently stops saving. Meta keys: `_ptk_share_caption_{channel}`,
+`_ptk_share_caption_hash_{channel}`, `_ptk_share_square_id`,
+`_ptk_share_square_custom` (bool), `_ptk_share_square_hash`.
+
+**Caption generation is stateless and may run anywhere, including the share page.**
+Only the *square* is restricted to admin render, because only the square writes.
 
 **Capabilities on the AJAX save.** The existing preview endpoint checks only
 `current_user_can('edit_posts')` (`:218`) — fine for a stateless render, wrong for
@@ -203,9 +224,11 @@ may be bundled. **Bundle only the weights and the Latin subset the square actual
 draws** — two full families would add roughly 1 MB to a 218 KB plugin. The plugin
 bundles no fonts today.
 
-**Change detection is a stored hash**, not a guess: a hash of
-`(issue, date, school_name, share_color, PTK_VERSION)` saved in post meta, compared
-when the Builder panel renders. Regeneration happens **only there** — never on the
+**Change detection is a stored hash**, not a guess:
+`square_inputs_hash = hash( issue, date, school_name, share_color, PTK_VERSION )`
+saved in post meta, compared when the Builder panel renders. This is a **separate**
+hash from the caption's (section 3) — it deliberately excludes the blocks, since
+newsletter copy does not change the square. Regeneration happens **only there** — never on the
 public share page.
 
 A custom uploaded square is **never** regenerated over. It needs a way back,
@@ -219,9 +242,14 @@ for `wp_generate_attachment_metadata` and respect per-site upload quotas.
 **Cleanup needs an explicit hook — `post_parent` does not delete anything.**
 `wp_delete_post()` *reparents* child attachments rather than deleting them, and
 `wp_trash_post()` leaves them alone entirely. Store the square's attachment ID in
-post meta and hook `before_delete_post` for `pta_newsletter`, calling
-`wp_delete_attachment( $id, true )` — the pattern `PTK_Multisite` already uses
-(`class-multisite.php:39-40`). **Only the auto-generated square is deleted**, never
+post meta and hook `before_delete_post`, calling `wp_delete_attachment( $id, true )`
+— half of the pattern `PTK_Multisite` uses (`class-multisite.php:39-40`, which hooks
+both `before_delete_post` and `trashed_post`). **Only `before_delete_post` here**:
+trash is restorable, and deleting the square on trash would force a regeneration on
+restore. The handler must check `get_post_type( $post_id ) === 'pta_newsletter'`
+first — `before_delete_post` fires for every post type, including the attachment
+being deleted — and must verify the stored attachment still exists, since a
+volunteer may have deleted it from the Media Library by hand. **Only the auto-generated square is deleted**, never
 a user-uploaded one, which may be an existing library image used elsewhere.
 `post_parent` is still worth setting for the "Uploaded to" column. Uploads land per-site
 (`sites/N/`), which is correct; `PTK_Multisite` syncs only `pta_knowledge`
@@ -258,8 +286,10 @@ nothing. No other code claims that var.
 writes to the media library — otherwise an unauthenticated GET could trigger image
 work on the server.
 
-Shows: the square (long-press to save), the caption with a copy button, and a
-WhatsApp share button.
+Shows: the square (long-press to save), then **the Instagram caption first** —
+Instagram is the reason the phone is involved at all — followed by the WhatsApp
+text with its own copy button and `wa.me` share button. Both captions, in that
+order.
 
 ### 6. School color override
 
@@ -278,8 +308,12 @@ palette defaults already fail AA against white (`#d97706` 3.19:1, `#16a34a` 3.30
 against navy (`#475569` 1.73:1, `#4338ca` 1.66:1, `#7c3aed` 2.30:1). The square
 must darken or re-pair any color that fails, whoever chose it.
 
-The subsite picker is a **new admin page** — the existing one is main-site only.
-The spec names the capability as `manage_options` on the subsite (a site admin).
+The subsite picker is a **new admin page** — the existing one is main-site only,
+and hangs off `edit.php?post_type=pta_knowledge` (`class-site-colors.php:164`). The
+subsite picker belongs under the **Newsletters** menu instead, where the person
+setting it is already working. Capability: `manage_options` on the subsite (a site
+admin). Option key: `ptk_share_color` (a blog option, distinct from the network
+`ptk_site_colors`).
 
 ## Risks
 
