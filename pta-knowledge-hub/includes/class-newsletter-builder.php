@@ -623,7 +623,41 @@ class PTK_Newsletter_Builder {
             }
         }
 
+        // "Start from last issue" (4.3.0): footer + the two § labels carry
+        // over from the most recent newsletter, everything else stays
+        // blank. See PTK_Newsletter_Data::merge_start_from_last() for the
+        // (unit-tested) copy rule itself.
+        $last_id = self::most_recent_newsletter_id();
+        if ( $last_id ) {
+            $last_blocks = PTK_Newsletter_Data::sanitize_blocks( json_decode( get_post_meta( $last_id, 'ptk_nl_blocks', true ), true ) );
+            $blocks      = PTK_Newsletter_Data::merge_start_from_last( $blocks, $last_blocks );
+        }
+
         return $blocks;
+    }
+
+    /**
+     * The most recent pta_newsletter post on this site, any status -- 0 if
+     * there are none yet. Shared by next_issue_number() (which issue comes
+     * next), default_blocks_for_site() ("start from last issue"), and
+     * PTK_Welcome's Start Here card (the "Last issue: …" line), so the
+     * query runs once per concept instead of being hand-rolled three times.
+     *
+     * @return int 0 when there is no previous newsletter.
+     */
+    public static function most_recent_newsletter_id() {
+        $recent = get_posts( array(
+            'post_type'      => 'pta_newsletter',
+            'post_status'    => 'any',
+            'posts_per_page' => 1,
+            'meta_key'       => 'ptk_nl_issue',
+            'orderby'        => 'meta_value_num',
+            'order'          => 'DESC',
+            'fields'         => 'ids',
+            'no_found_rows'  => true,
+        ) );
+
+        return empty( $recent ) ? 0 : (int) $recent[0];
     }
 
     /**
@@ -661,22 +695,13 @@ class PTK_Newsletter_Builder {
      * @return int 0 when unknown.
      */
     public static function next_issue_number() {
-        $recent = get_posts( array(
-            'post_type'      => 'pta_newsletter',
-            'post_status'    => 'any',
-            'posts_per_page' => 1,
-            'meta_key'       => 'ptk_nl_issue',
-            'orderby'        => 'meta_value_num',
-            'order'          => 'DESC',
-            'fields'         => 'ids',
-            'no_found_rows'  => true,
-        ) );
+        $last_id = self::most_recent_newsletter_id();
 
-        if ( empty( $recent ) ) {
+        if ( ! $last_id ) {
             return 0;
         }
 
-        $last = get_post_meta( $recent[0], 'ptk_nl_issue', true );
+        $last = get_post_meta( $last_id, 'ptk_nl_issue', true );
 
         return PTK_Newsletter_Data::compute_next_issue( $last );
     }
@@ -881,6 +906,11 @@ class PTK_Newsletter_Builder {
             <h1><?php echo $edit_id ? 'Edit Newsletter' : 'New Newsletter'; ?></h1>
             <?php self::render_notice( $edit_id ); ?>
             <p class="ptk-nl-intro">Four short steps. We&#8217;ve filled in what we can — you write the news.</p>
+            <?php if ( ! $edit_id ) : $last_id = self::most_recent_newsletter_id(); if ( $last_id ) : $last_issue = get_post_meta( $last_id, 'ptk_nl_issue', true ); if ( $last_issue ) : ?>
+                <div class="ptk-nl-msg ptk-nl-msg-ok" role="status">
+                    <p>We copied your footer and section names from No. <?php echo esc_html( PTK_Share_Text::issue_label( $last_issue ) ); ?>. Everything else — stories, events, the announcement, the greeting — starts blank.</p>
+                </div>
+            <?php endif; endif; endif; ?>
 
             <div class="ptk-nl-wizard">
                 <nav class="ptk-nl-steps" aria-label="Newsletter steps">
