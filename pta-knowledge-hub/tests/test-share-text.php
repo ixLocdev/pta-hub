@@ -44,4 +44,114 @@ $dashes = array( 'heading' => '', 'body' => '<p>' . str_repeat( 'a—b ', 40 ) .
 $dcut   = $t::story_line( $dashes );
 ptk_test_ok( mb_check_encoding( $dcut, 'UTF-8' ), 'truncation never splits a multibyte character' );
 
+// ---------------------------------------------------------------------
+// generate() -- the three captions
+// ---------------------------------------------------------------------
+
+function ptk_share_test_blocks() {
+    return array(
+        array(
+            'type' => 'header',
+            'data' => array(
+                'school_name' => 'Northeast Elementary',
+                'headline'    => 'Back to School',
+                'greeting'    => '<p>Hi families,</p>',
+            ),
+        ),
+        array(
+            'type' => 'announcement',
+            'data' => array(
+                'pill' => 'Reminder',
+                'text' => '<p>Picture day is <strong>Friday</strong>.</p>',
+            ),
+        ),
+        array(
+            'type' => 'events',
+            'data' => array(
+                'rows' => array(
+                    array( 'date' => '2026-09-01', 'title' => 'Past Bake Sale', 'desc' => '<p>Already happened.</p>' ),
+                    array( 'date' => '2026-09-20', 'title' => 'Fall Festival', 'desc' => '<p>Bring the family.</p>' ),
+                ),
+            ),
+        ),
+        array(
+            'type' => 'featured',
+            'data' => array(
+                'eyebrow'  => 'Spotlight',
+                'headline' => 'Film on the Field moves to Friday, October 16.',
+                'body'     => '<p>Bring a blanket. Rain date October 23.</p>',
+                'image_id' => 0,
+            ),
+        ),
+        array(
+            'type' => 'story_cards',
+            'data' => array(
+                'cards' => array(
+                    array( 'heading' => 'Mum Sale', 'body' => '<p>Open through September 25.</p>', 'image_id' => 0, 'link_url' => '', 'link_text' => '' ),
+                    array( 'heading' => 'Book Fair returns next week.', 'body' => '<p>See you there.</p>', 'image_id' => 0, 'link_url' => '', 'link_text' => '' ),
+                ),
+            ),
+        ),
+        array(
+            'type' => 'footer',
+            'data' => array(
+                'signoff' => '<p>Thanks,<br>The PTA</p>',
+                'links'   => array(
+                    array( 'label' => 'Volunteer', 'url' => 'https://x.test/volunteer' ),
+                ),
+            ),
+        ),
+    );
+}
+
+$opts = array(
+    'url'         => 'https://x.test/newsletter/40',
+    'issue'       => 40,
+    'date'        => '2026-09-16',
+    'school_name' => 'Northeast Elementary',
+    'today'       => '2026-09-16',
+);
+
+$captions = $t::generate( ptk_share_test_blocks(), $opts );
+
+ptk_test_ok( is_array( $captions ) && isset( $captions['facebook'], $captions['instagram'], $captions['whatsapp'] ), 'generate() returns all three channels' );
+
+$fb = $captions['facebook'];
+$ig = $captions['instagram'];
+$wa = $captions['whatsapp'];
+
+ptk_test_ok( strpos( $fb, 'Film on the Field moves to Friday, October 16.' ) !== false, 'facebook: featured headline appears' );
+ptk_test_ok( strpos( $fb, 'Film on the Field' ) < strpos( $fb, 'Mum Sale' ), 'facebook: featured headline leads before story cards' );
+
+$mum_line   = $t::story_line( array( 'heading' => 'Mum Sale', 'body' => '<p>Open through September 25.</p>' ) );
+$book_line  = $t::story_line( array( 'heading' => 'Book Fair returns next week.', 'body' => '<p>See you there.</p>' ) );
+ptk_test_ok( substr_count( $fb, $mum_line ) === 1, 'facebook: mum sale card contributes exactly one line' );
+ptk_test_ok( substr_count( $fb, $book_line ) === 1, 'facebook: book fair card contributes exactly one line' );
+
+ptk_test_ok( substr_count( $fb, $opts['url'] ) === 1, 'facebook: url appears exactly once' );
+
+ptk_test_ok( strpos( $fb, 'Fall Festival' ) !== false, 'facebook: future event is included' );
+ptk_test_ok( strpos( $fb, 'Past Bake Sale' ) === false, 'facebook: past event is excluded' );
+
+ptk_test_ok( strpos( $fb, 'Volunteer' ) !== false && strpos( $fb, 'https://x.test/volunteer' ) !== false, 'facebook: footer link is present as label and url' );
+
+foreach ( array( 'facebook' => $fb, 'instagram' => $ig, 'whatsapp' => $wa ) as $label => $text ) {
+    ptk_test_ok( preg_match( '/[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}]/u', $text ) === 0, "$label: no emoji" );
+}
+
+ptk_test_ok( strpos( $ig, 'http' ) === false, 'instagram: no bare url' );
+ptk_test_ok( stripos( $ig, 'link in bio' ) !== false, 'instagram: has a link-in-bio pointer' );
+
+ptk_test_ok( strlen( $wa ) < 400, 'whatsapp: under 400 chars' );
+ptk_test_ok( strpos( $wa, $opts['url'] ) !== false, 'whatsapp: contains the url' );
+
+// A bare-bones newsletter (no featured, no cards, no events) still yields text, no warnings.
+$bare_blocks = array(
+    array( 'type' => 'header', 'data' => array( 'school_name' => 'Northeast Elementary', 'headline' => 'Hi', 'greeting' => '' ) ),
+    array( 'type' => 'announcement', 'data' => array( 'pill' => '', 'text' => '' ) ),
+    array( 'type' => 'footer', 'data' => array( 'signoff' => '', 'links' => array() ) ),
+);
+$bare = $t::generate( $bare_blocks, $opts );
+ptk_test_ok( '' !== trim( $bare['facebook'] ), 'facebook text is non-empty even with no featured/cards/events' );
+
 ptk_test_done();
