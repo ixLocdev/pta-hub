@@ -374,7 +374,17 @@
             return false;
         }
 
-        function sendPhoto($root, data, busyText) {
+        /**
+         * @param {boolean} [quiet] True for a reframe save (drag/wheel/
+         *   keyboard, mode=photo_reframe): the picker itself already shows
+         *   the new framing locally, so re-rendering $area's whole HTML on
+         *   every single change would tear down the very picker the
+         *   volunteer is mid-drag on and steal keyboard focus off the dot.
+         *   A quiet save skips the DOM replace and the busy/status churn --
+         *   only a real photo CHANGE (new photo, removed, switched to
+         *   custom) needs the picture area to visibly re-render.
+         */
+        function sendPhoto($root, data, busyText, quiet) {
             if (!piiOk($root)) {
                 data.pii_ok = 0;
             } else {
@@ -384,12 +394,17 @@
             data.nonce = ptkNlShare.nonce;
             data.post_id = postId;
 
-            $area.addClass('is-busy').attr('aria-busy', 'true');
-            $status.text(busyText);
+            if (!quiet) {
+                $area.addClass('is-busy').attr('aria-busy', 'true');
+                $status.text(busyText);
+            }
 
             $.post(ptkNlShare.ajaxUrl, data)
                 .done(function (res) {
                     if (res && res.success && res.data && typeof res.data.html === 'string') {
+                        if (quiet) {
+                            return; // Saved silently; the picker's own DOM already reflects it.
+                        }
                         $area.html(res.data.html);
                         initPhotoPicker($area);
                         $status.text('Picture updated');
@@ -405,9 +420,20 @@
                     }
                 })
                 .always(function () {
-                    $area.removeClass('is-busy').removeAttr('aria-busy');
+                    if (!quiet) {
+                        $area.removeClass('is-busy').removeAttr('aria-busy');
+                    }
                 });
         }
+
+        // The choice buttons start disabled (server-rendered) until the
+        // consent checkbox is ticked -- otherwise a volunteer could click
+        // straight through to a 409 refusal with no visible reason why.
+        $area.on('change', '[data-share-photo-pii-ok]', function () {
+            var $root = $(this).closest('[data-share-photo]');
+            var checked = $(this).prop('checked');
+            $root.find('[data-share-photo-featured], [data-share-photo-choose]').prop('disabled', !checked);
+        });
 
         $area.on('click', '[data-share-photo-featured]', function (e) {
             e.preventDefault();
@@ -466,7 +492,7 @@
                     focal_x: $mount.find('[data-field="image_focal_x"]').val(),
                     focal_y: $mount.find('[data-field="image_focal_y"]').val(),
                     zoom: $mount.find('[data-field="image_zoom"]').val()
-                }, 'Saving the framing…');
+                }, 'Saving the framing…', true);
             }, 400);
         });
 
