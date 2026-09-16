@@ -186,17 +186,37 @@ class PTK_Newsletter_Builder {
             $forced_draft = true;
         }
 
-        $post_status = ( 'publish' === $status_req ) ? 'publish' : 'draft';
+        // Once a newsletter is live, this form must never take it down again.
+        // Families already have its link, and the share captions point at it.
+        // So whatever button was posted -- including Save draft or Preview
+        // from a tab opened before this rule existed -- an already-published
+        // newsletter is saved as published. The step 4 buttons say "Update"
+        // for these, but the rule lives HERE, not in the buttons.
+        $was_published = $edit_id && isset( $existing ) && 'publish' === $existing->post_status;
+
+        if ( $was_published ) {
+            $post_status  = 'publish';
+            $forced_draft = false;
+        } else {
+            $post_status = ( 'publish' === $status_req ) ? 'publish' : 'draft';
+        }
 
         // Build the post, write it, and persist the structured meta.
         $post_id = self::persist_newsletter( $blocks, $issue, $date, $post_status, $edit_id );
 
-        if ( 'preview' === $status_req ) {
+        // Preview is only offered for drafts. A published newsletter has no
+        // Preview button (View newsletter does that job), so a stray preview
+        // request for one lands back on the builder like an update.
+        if ( 'preview' === $status_req && ! $was_published ) {
             wp_safe_redirect( get_preview_post_link( $post_id ) );
             exit;
         }
 
-        $msg = $forced_draft ? 'pii' : ( 'publish' === $post_status ? 'published' : 'saved' );
+        if ( $was_published ) {
+            $msg = 'updated';
+        } else {
+            $msg = $forced_draft ? 'pii' : ( 'publish' === $post_status ? 'published' : 'saved' );
+        }
 
         wp_safe_redirect( add_query_arg( array(
             'page'           => self::PAGE_SLUG,
@@ -369,6 +389,7 @@ class PTK_Newsletter_Builder {
         $notices = array(
             'saved'     => array( 'success', 'Draft saved.' ),
             'published' => array( 'success', 'Newsletter published.' ),
+            'updated'   => array( 'success', 'Newsletter updated.' ),
             'pii'       => array( 'warning', 'Confirm the photo/privacy check before publishing. Your newsletter was saved as a draft instead.' ),
         );
 
@@ -735,6 +756,8 @@ class PTK_Newsletter_Builder {
             $date_value   = date_i18n( 'Y-m-d' );
         }
 
+        $is_published = $edit_id && 'publish' === get_post_status( $edit_id );
+
         $steps     = self::steps();
         $step_last = count( $steps );
         $sections  = self::sections_to_render( $blocks );
@@ -828,9 +851,17 @@ class PTK_Newsletter_Builder {
                             </div>
 
                             <div class="ptk-nl-submit-row">
-                                <button type="submit" name="ptk_nl_status" value="draft" class="button button-secondary">Save draft</button>
-                                <button type="submit" name="ptk_nl_status" value="preview" class="button button-secondary">Preview</button>
-                                <button type="submit" name="ptk_nl_status" value="publish" class="button button-primary">Publish</button>
+                                <?php if ( $is_published ) : ?>
+                                    <?php /* Live already: no Save draft (it would take the newsletter down) and no
+                                            Preview (View newsletter shows the real thing). handle_submission()
+                                            keeps it published whatever is posted. */ ?>
+                                    <button type="submit" name="ptk_nl_status" value="publish" class="button button-primary">Update</button>
+                                    <a class="button button-secondary" href="<?php echo esc_url( get_permalink( $edit_id ) ); ?>" target="_blank" rel="noopener">View newsletter</a>
+                                <?php else : ?>
+                                    <button type="submit" name="ptk_nl_status" value="draft" class="button button-secondary">Save draft</button>
+                                    <button type="submit" name="ptk_nl_status" value="preview" class="button button-secondary">Preview</button>
+                                    <button type="submit" name="ptk_nl_status" value="publish" class="button button-primary">Publish</button>
+                                <?php endif; ?>
                             </div>
                         </div>
 
