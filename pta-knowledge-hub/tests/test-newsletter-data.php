@@ -151,4 +151,48 @@ ptk_test_ok( $qd['label'] === 'Good to know', 'quick notes label is plain text' 
 ptk_test_ok( strpos( $qd['items'][0]['body'], '<strong>' ) !== false && strpos( $qd['items'][0]['body'], '<script>' ) === false, 'note body keeps safe html, drops scripts' );
 ptk_test_ok( $qd['items'][1]['heading'] === '' && $qd['items'][1]['link_url'] === '', 'note: array heading and ftp link become empty' );
 
+// --- 4.3.0: "start from last issue" merge rule. ---
+$d = 'PTK_Newsletter_Data';
+
+$defaults = $d::default_blocks();
+$last = $d::sanitize_blocks( array(
+    array( 'type' => 'header', 'data' => array( 'school_name' => 'NE PTA' ) ),
+    array( 'type' => 'announcement', 'data' => array( 'headline' => 'Stale news' ) ),
+    array( 'type' => 'featured', 'data' => array( 'eyebrow' => 'Date change', 'headline' => 'Old story' ) ),
+    array( 'type' => 'story_cards', 'data' => array( 'cards' => array( array( 'eyebrow' => 'Old card label', 'heading' => 'x' ) ) ) ),
+    array( 'type' => 'quick_notes', 'data' => array( 'label' => 'Good to know', 'items' => array( array( 'heading' => 'Old note' ) ) ) ),
+    array( 'type' => 'footer', 'data' => array( 'signoff' => 'Thanks!', 'links' => array( array( 'label' => 'Site', 'url' => 'https://x.org' ) ) ) ),
+) );
+
+$merged = $d::merge_start_from_last( $defaults, $last );
+$mtype  = array_column( $merged, 'type' );
+
+$mf = $merged[ array_search( 'featured', $mtype, true ) ]['data'];
+ptk_test_ok( $mf['eyebrow'] === 'Date change', 'top story label copies from last issue' );
+ptk_test_ok( $mf['headline'] === '', 'top story headline does NOT copy' );
+
+$mq = $merged[ array_search( 'quick_notes', $mtype, true ) ]['data'];
+ptk_test_ok( $mq['label'] === 'Good to know', 'quick notes label copies from last issue' );
+ptk_test_ok( $mq['items'] === array(), 'quick notes items do NOT copy' );
+
+$ma = $merged[ array_search( 'announcement', $mtype, true ) ]['data'];
+ptk_test_ok( $ma['headline'] === '', 'announcement does NOT copy' );
+
+$mc = $merged[ array_search( 'story_cards', $mtype, true ) ]['data'];
+ptk_test_ok( $mc['cards'] === array(), 'story cards do NOT copy (card eyebrow is per-card, not a section label)' );
+
+$mfoot = $merged[ array_search( 'footer', $mtype, true ) ]['data'];
+ptk_test_ok( $mfoot['signoff'] === 'Thanks!', 'footer signoff copies wholesale' );
+ptk_test_ok( count( $mfoot['links'] ) === 1 && $mfoot['links'][0]['url'] === 'https://x.org', 'footer links copy wholesale' );
+
+// Blank labels in the source stay blank in the default, not overwritten with ''.
+$blank_last = $d::sanitize_blocks( array( array( 'type' => 'featured', 'data' => array( 'eyebrow' => '' ) ) ) );
+$merged2 = $d::merge_start_from_last( $d::default_blocks(), $blank_last );
+$mf2 = $merged2[ array_search( 'featured', array_column( $merged2, 'type' ), true ) ]['data'];
+ptk_test_ok( $mf2['eyebrow'] === '', 'a blank label in the source leaves the default blank (no-op, not an error)' );
+
+// An empty "last" array (no previous newsletter) returns the defaults unchanged.
+$merged3 = $d::merge_start_from_last( $d::default_blocks(), array() );
+ptk_test_ok( $merged3 === $d::default_blocks(), 'no previous newsletter: defaults pass through unchanged' );
+
 ptk_test_done();

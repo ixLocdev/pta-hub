@@ -388,6 +388,56 @@ class PTK_Newsletter_Data {
     }
 
     /**
+     * "Start from last issue" (4.3.0): copy the footer wholesale and two
+     * section labels (the top story's eyebrow, the quick notes label) from
+     * the most recent newsletter's SANITIZED blocks into a fresh set of
+     * defaults. Everything else -- stories, events, the announcement, the
+     * greeting, the summary -- stays exactly as default_blocks() left it,
+     * because none of it is a "set it once" label; it's per-issue content
+     * that would otherwise show up stale.
+     *
+     * Pure and WordPress-free on purpose (spec Decision 7) so the copy rule
+     * itself is unit-tested without a post query -- the WordPress-coupled
+     * caller (PTK_Newsletter_Builder::default_blocks_for_site()) only has
+     * to find the last newsletter's id and hand its sanitized blocks here.
+     *
+     * @param array $defaults    From default_blocks() (or already partly
+     *                            filled in, e.g. with school_name).
+     * @param array $last_blocks Sanitized blocks of the most recent
+     *                            newsletter, or an empty array when there
+     *                            is none yet.
+     * @return array[]
+     */
+    public static function merge_start_from_last( array $defaults, array $last_blocks ) {
+        if ( empty( $last_blocks ) ) {
+            return $defaults;
+        }
+
+        $by_type = array();
+        foreach ( $last_blocks as $block ) {
+            if ( is_array( $block ) && isset( $block['type'] ) && ! isset( $by_type[ $block['type'] ] ) ) {
+                $by_type[ $block['type'] ] = $block;
+            }
+        }
+
+        foreach ( $defaults as $i => $block ) {
+            if ( ! isset( $block['type'] ) ) {
+                continue;
+            }
+
+            if ( self::TYPE_FOOTER === $block['type'] && isset( $by_type[ self::TYPE_FOOTER ]['data'] ) ) {
+                $defaults[ $i ]['data'] = $by_type[ self::TYPE_FOOTER ]['data'];
+            } elseif ( self::TYPE_FEATURED === $block['type'] && isset( $by_type[ self::TYPE_FEATURED ]['data']['eyebrow'] ) ) {
+                $defaults[ $i ]['data']['eyebrow'] = $by_type[ self::TYPE_FEATURED ]['data']['eyebrow'];
+            } elseif ( self::TYPE_QUICK_NOTES === $block['type'] && isset( $by_type[ self::TYPE_QUICK_NOTES ]['data']['label'] ) ) {
+                $defaults[ $i ]['data']['label'] = $by_type[ self::TYPE_QUICK_NOTES ]['data']['label'];
+            }
+        }
+
+        return $defaults;
+    }
+
+    /**
      * Bump a "last issue number" to the next issue, flooring at 1.
      *
      * @param mixed $last Last issue number (expected numeric).
