@@ -434,4 +434,15 @@ ptk_test_ok( false === strpos( $html_none, 'aspect-ratio' ), 'No image_id: fit m
 ptk_test_ok( strpos( $html_crop, 'border-left' ) === false && strpos( $html_crop, 'border-right' ) === false, 'Crop to fit: no one-sided borders' );
 ptk_test_ok( strpos( $html_cards, 'border-left' ) === false && strpos( $html_cards, 'border-right' ) === false, 'Story cards crop: no one-sided borders' );
 
+// "Got news?" with an email address instead of a form: the link says so, shows
+// the address, and doesn't repeat it as "Questions? Email …".
+$mail_news = PTK_Newsletter_Renderer::render( $base_blocks, array( 'issue' => 41, 'date' => '2026-09-13', 'today' => '2026-09-13', 'news_url' => 'mailto:news@example.org', 'contact_email' => 'news@example.org' ) );
+ptk_test_ok( strpos( $mail_news, 'Got news? Put it in the newsletter.' ) !== false, 'news CTA (email): the closing actually rendered' );
+ptk_test_ok( strpos( $mail_news, 'Email your news to news@example.org' ) !== false, 'news CTA: an email address says "Email your news to …"' );
+ptk_test_ok( strpos( $mail_news, 'Open the submission form' ) === false, 'news CTA: an email address never says "submission form"' );
+ptk_test_ok( strpos( $mail_news, 'Questions? Email' ) === false, 'news CTA: the same address is not repeated as Questions' );
+$form_news = PTK_Newsletter_Renderer::render( $base_blocks, array( 'issue' => 41, 'date' => '2026-09-13', 'today' => '2026-09-13', 'news_url' => 'https://example.org/submit', 'contact_email' => 'office@example.org' ) );
+ptk_test_ok( strpos( $form_news, 'Open the submission form' ) !== false, 'news CTA: a web form still says "Open the submission form"' );
+ptk_test_ok( strpos( $form_news, 'Questions? Email' ) !== false, 'news CTA: a form plus a contact email shows both' );
+
 ptk_test_done();

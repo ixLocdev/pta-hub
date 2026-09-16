@@ -584,14 +584,25 @@ class PTK_Newsletter_Renderer {
 
         $email = isset( $opts['contact_email'] ) ? self::str( $opts['contact_email'] ) : '';
 
+        // The news setting takes a web page (a submission form) or an email
+        // address, which sanitize_link_url() already stored as mailto:. Say
+        // what clicking actually does, and show the address so people can
+        // copy it.
+        $news_email = '';
+        if ( 0 === stripos( $news_url, 'mailto:' ) ) {
+            $news_email = strtok( substr( $news_url, 7 ), '?' );
+        }
+
         $html  = '<div style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:40px 20px 8px;box-sizing:border-box;">';
         $html .= '<div style="max-width:840px;margin:0 auto;">';
         $html .= self::section_rule( 'Your news' );
         $html .= '<h2 style="font-family:' . self::FONT_SANS . ';font-weight:800;font-size:clamp(24px,5vw,30px);line-height:1.05;letter-spacing:-0.02em;margin:0 0 12px;color:' . esc_attr( self::PALETTE['text'] ) . ';">Got news? Put it in the newsletter.</h2>';
         $html .= '<p style="font-size:16px;line-height:1.65;color:' . esc_attr( self::PALETTE['muted'] ) . ';margin:0 0 20px;max-width:620px;">Send it our way and we\'ll get it in the next issue.</p>';
         $html .= '<p style="margin:20px 0 0;">';
-        $html .= '<a href="' . esc_url( $news_url ) . '" style="font-size:16px;font-weight:700;' . self::link_style() . '">Open the submission form →</a>';
-        if ( '' !== trim( $email ) ) {
+        $news_label = '' !== $news_email ? 'Email your news to ' . $news_email . ' →' : 'Open the submission form →';
+        $html .= '<a href="' . esc_url( $news_url ) . '" style="font-size:16px;font-weight:700;' . self::link_style() . '">' . esc_html( $news_label ) . '</a>';
+        // Skip "Questions? Email …" when it would repeat the same address.
+        if ( '' !== trim( $email ) && strtolower( trim( $email ) ) !== strtolower( $news_email ) ) {
             $html .= ' <span style="font-size:16px;color:' . esc_attr( self::PALETTE['muted'] ) . ';">Questions? Email <a href="' . esc_url( 'mailto:' . $email ) . '" style="' . self::link_style() . '">' . esc_html( $email ) . '</a>.</span>';
         }
         $html .= '</p>';

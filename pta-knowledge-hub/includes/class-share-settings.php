@@ -571,17 +571,17 @@ class PTK_Share_Settings {
                 <?php if ( '' !== $notice['news_error'] ) : ?>
                     <p class="ptk-ss-field-error" id="ptk-news-error"><?php echo esc_html( $notice['news_error'] ); ?></p>
                 <?php endif; ?>
-                <p class="description">Adds a "Got news? Put it in the newsletter." closing to every newsletter, right before the footer. Leave it empty and that closing is left out entirely.</p>
+                <p class="description">Your news submission form, or an email address -- either works. Adds a "Got news? Put it in the newsletter." closing to every newsletter, right before the footer, with "Open the submission form" or "Email your news to …" to match. Leave it empty and that closing is left out.</p>
 
-                <h2>Calendar page</h2>
+                <h2>Calendar page on your website</h2>
                 <p>
                     <label for="ptk-calendar-url">Where families see the full calendar</label><br>
-                    <input type="text" inputmode="url" class="regular-text" id="ptk-calendar-url" name="ptk_calendar_url" value="<?php echo esc_attr( $cal_value ); ?>" placeholder="https://yourschool.org/calendar or calendar@yourschool.org" autocomplete="off"<?php echo '' !== $notice['cal_error'] ? ' aria-invalid="true" aria-describedby="ptk-calendar-error"' : ''; ?>>
+                    <input type="text" inputmode="url" class="regular-text" id="ptk-calendar-url" name="ptk_calendar_url" value="<?php echo esc_attr( $cal_value ); ?>" placeholder="https://yourschool.org/calendar" autocomplete="off"<?php echo '' !== $notice['cal_error'] ? ' aria-invalid="true" aria-describedby="ptk-calendar-error"' : ''; ?>>
                 </p>
                 <?php if ( '' !== $notice['cal_error'] ) : ?>
                     <p class="ptk-ss-field-error" id="ptk-calendar-error"><?php echo esc_html( $notice['cal_error'] ); ?></p>
                 <?php endif; ?>
-                <p class="description">Adds a "See full calendar →" link next to "What's coming up" -- only shown once there's at least one date listed. Leave it empty to leave the link out.</p>
+                <p class="description">The calendar page on your own website, like https://northeastpta.org/calendar -- not your Google Calendar address. Adds a "See full calendar →" link next to "What's coming up", shown once there's at least one date listed. Leave it empty to leave the link out.</p>
 
                 <h2>Contact email</h2>
                 <p>
