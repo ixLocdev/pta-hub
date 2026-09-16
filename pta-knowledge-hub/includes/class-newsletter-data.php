@@ -21,6 +21,7 @@ class PTK_Newsletter_Data {
     const TYPE_EVENTS       = 'events';
     const TYPE_FEATURED     = 'featured';
     const TYPE_STORY_CARDS  = 'story_cards';
+    const TYPE_QUICK_NOTES  = 'quick_notes';
     const TYPE_FOOTER       = 'footer';
 
     /**
@@ -35,6 +36,7 @@ class PTK_Newsletter_Data {
             self::TYPE_EVENTS,
             self::TYPE_FEATURED,
             self::TYPE_STORY_CARDS,
+            self::TYPE_QUICK_NOTES,
             self::TYPE_FOOTER,
         );
     }
@@ -52,14 +54,19 @@ class PTK_Newsletter_Data {
                 'data' => array(
                     'school_name' => '',
                     'headline'    => '',
+                    'summary'     => '',
                     'greeting'    => '',
                 ),
             ),
             array(
                 'type' => self::TYPE_ANNOUNCEMENT,
                 'data' => array(
-                    'pill' => '',
-                    'text' => '',
+                    'when'        => '',
+                    'headline'    => '',
+                    'text'        => '',
+                    'button_text' => '',
+                    'button_url'  => '',
+                    'timeline'    => array(),
                 ),
             ),
             array(
@@ -73,14 +80,24 @@ class PTK_Newsletter_Data {
                 'data' => array(
                     'eyebrow'  => '',
                     'headline' => '',
-                    'body'     => '',
-                    'image_id' => 0,
+                    'body'      => '',
+                    'image_id'  => 0,
+                    'link_url'  => '',
+                    'link_text' => '',
                 ),
             ),
             array(
                 'type' => self::TYPE_STORY_CARDS,
                 'data' => array(
+                    // Each card: eyebrow, heading, body, image_id, link_url, link_text.
                     'cards' => array(),
+                ),
+            ),
+            array(
+                'type' => self::TYPE_QUICK_NOTES,
+                'data' => array(
+                    'label' => '',
+                    'items' => array(),
                 ),
             ),
             array(
@@ -96,7 +113,10 @@ class PTK_Newsletter_Data {
     /**
      * Normalize a submitted blocks array: keep only known block types,
      * sanitize every field per the data model, and guarantee a single
-     * header block first and a single footer block last.
+     * header block first and a single footer block last. Every other type
+     * appears at most once too -- the first one wins, which is also the one
+     * PTK_Share_Text::generate() reads -- so a newsletter can never carry
+     * two announcements (two navy bands).
      *
      * @param mixed $raw Submitted blocks (expected to be an array of
      *                    { type, data } arrays).
@@ -111,6 +131,7 @@ class PTK_Newsletter_Data {
         $clean  = array();
         $header = null;
         $footer = null;
+        $seen   = array();
 
         foreach ( $raw as $block ) {
             if ( ! is_array( $block ) || empty( $block['type'] ) || ! in_array( $block['type'], $known, true ) ) {
@@ -138,6 +159,11 @@ class PTK_Newsletter_Data {
                 }
                 continue;
             }
+
+            if ( isset( $seen[ $type ] ) ) {
+                continue;
+            }
+            $seen[ $type ] = true;
 
             $clean[] = $sanitized;
         }
@@ -175,13 +201,33 @@ class PTK_Newsletter_Data {
                 return array(
                     'school_name' => sanitize_text_field( self::str_field( isset( $data['school_name'] ) ? $data['school_name'] : '' ) ),
                     'headline'    => sanitize_text_field( self::str_field( isset( $data['headline'] ) ? $data['headline'] : '' ) ),
+                    'summary'     => sanitize_text_field( self::str_field( isset( $data['summary'] ) ? $data['summary'] : '' ) ),
                     'greeting'    => wp_kses_post( self::str_field( isset( $data['greeting'] ) ? $data['greeting'] : '' ) ),
                 );
 
             case self::TYPE_ANNOUNCEMENT:
+                // 4.1.x called the "when" line a pill. isset, not empty: a
+                // posted-but-cleared "when" must still win over an old pill.
+                $when = isset( $data['when'] ) ? $data['when'] : ( isset( $data['pill'] ) ? $data['pill'] : '' );
+                $timeline = isset( $data['timeline'] ) && is_array( $data['timeline'] ) ? $data['timeline'] : array();
+                $clean_timeline = array();
+                foreach ( $timeline as $row ) {
+                    if ( ! is_array( $row ) ) {
+                        continue;
+                    }
+                    $clean_timeline[] = array(
+                        'date' => self::sanitize_date( isset( $row['date'] ) ? $row['date'] : '' ),
+                        'time' => sanitize_text_field( self::str_field( isset( $row['time'] ) ? $row['time'] : '' ) ),
+                        'what' => sanitize_text_field( self::str_field( isset( $row['what'] ) ? $row['what'] : '' ) ),
+                    );
+                }
                 return array(
-                    'pill' => sanitize_text_field( self::str_field( isset( $data['pill'] ) ? $data['pill'] : '' ) ),
-                    'text' => wp_kses_post( self::str_field( isset( $data['text'] ) ? $data['text'] : '' ) ),
+                    'when'        => sanitize_text_field( self::str_field( $when ) ),
+                    'headline'    => sanitize_text_field( self::str_field( isset( $data['headline'] ) ? $data['headline'] : '' ) ),
+                    'text'        => wp_kses_post( self::str_field( isset( $data['text'] ) ? $data['text'] : '' ) ),
+                    'button_text' => sanitize_text_field( self::str_field( isset( $data['button_text'] ) ? $data['button_text'] : '' ) ),
+                    'button_url'  => self::sanitize_link_url( isset( $data['button_url'] ) ? $data['button_url'] : '' ),
+                    'timeline'    => $clean_timeline,
                 );
 
             case self::TYPE_EVENTS:
@@ -204,7 +250,9 @@ class PTK_Newsletter_Data {
                     'eyebrow'  => sanitize_text_field( self::str_field( isset( $data['eyebrow'] ) ? $data['eyebrow'] : '' ) ),
                     'headline' => sanitize_text_field( self::str_field( isset( $data['headline'] ) ? $data['headline'] : '' ) ),
                     'body'     => wp_kses_post( self::str_field( isset( $data['body'] ) ? $data['body'] : '' ) ),
-                    'image_id' => absint( isset( $data['image_id'] ) ? $data['image_id'] : 0 ),
+                    'image_id'  => absint( isset( $data['image_id'] ) ? $data['image_id'] : 0 ),
+                    'link_url'  => esc_url_raw( self::str_field( isset( $data['link_url'] ) ? $data['link_url'] : '' ) ),
+                    'link_text' => sanitize_text_field( self::str_field( isset( $data['link_text'] ) ? $data['link_text'] : '' ) ),
                 );
 
             case self::TYPE_STORY_CARDS:
@@ -215,6 +263,7 @@ class PTK_Newsletter_Data {
                         continue;
                     }
                     $clean_cards[] = array(
+                        'eyebrow'   => sanitize_text_field( self::str_field( isset( $card['eyebrow'] ) ? $card['eyebrow'] : '' ) ),
                         'heading'   => sanitize_text_field( self::str_field( isset( $card['heading'] ) ? $card['heading'] : '' ) ),
                         'body'      => wp_kses_post( self::str_field( isset( $card['body'] ) ? $card['body'] : '' ) ),
                         'image_id'  => absint( isset( $card['image_id'] ) ? $card['image_id'] : 0 ),
@@ -223,6 +272,25 @@ class PTK_Newsletter_Data {
                     );
                 }
                 return array( 'cards' => $clean_cards );
+
+            case self::TYPE_QUICK_NOTES:
+                $items = isset( $data['items'] ) && is_array( $data['items'] ) ? $data['items'] : array();
+                $clean_items = array();
+                foreach ( $items as $item ) {
+                    if ( ! is_array( $item ) ) {
+                        continue;
+                    }
+                    $clean_items[] = array(
+                        'heading'   => sanitize_text_field( self::str_field( isset( $item['heading'] ) ? $item['heading'] : '' ) ),
+                        'body'      => wp_kses_post( self::str_field( isset( $item['body'] ) ? $item['body'] : '' ) ),
+                        'link_url'  => self::sanitize_link_url( isset( $item['link_url'] ) ? $item['link_url'] : '' ),
+                        'link_text' => sanitize_text_field( self::str_field( isset( $item['link_text'] ) ? $item['link_text'] : '' ) ),
+                    );
+                }
+                return array(
+                    'label' => sanitize_text_field( self::str_field( isset( $data['label'] ) ? $data['label'] : '' ) ),
+                    'items' => $clean_items,
+                );
 
             case self::TYPE_FOOTER:
                 $links = isset( $data['links'] ) && is_array( $data['links'] ) ? $data['links'] : array();
@@ -256,6 +324,24 @@ class PTK_Newsletter_Data {
      */
     protected static function str_field( $v ) {
         return is_scalar( $v ) ? (string) $v : '';
+    }
+
+    /**
+     * A link a volunteer typed for a button or a quick note: a web address
+     * (http or https) or an email link. A bare email address becomes an email
+     * link, so nobody has to know the word "mailto". Anything else --
+     * javascript:, data:, junk -- becomes '' rather than a link that surprises.
+     *
+     * @param mixed $url Raw link.
+     * @return string
+     */
+    public static function sanitize_link_url( $url ) {
+        $url = trim( self::str_field( $url ) );
+        if ( preg_match( '/^[^@\s:\/]+@[^@\s\/]+\.[^@\s\/]+$/', $url ) ) {
+            $url = 'mailto:' . $url;
+        }
+        $url = esc_url_raw( $url );
+        return preg_match( '#^(https?://|mailto:)#i', $url ) ? $url : '';
     }
 
     /**

@@ -60,4 +60,95 @@ ptk_test_ok( true === PTK_Newsletter_Data::blocks_have_images( $feat ), 'feature
 $card = $no_img; $card[2]['data']['cards'][] = array( 'heading' => 'B', 'image_id' => '7' );
 ptk_test_ok( true === PTK_Newsletter_Data::blocks_have_images( $card ), 'a story card image counts (string id too)' );
 
+// --- 4.2.0 shape: new fields, quick notes, and the pill -> when migration. ---
+$d = 'PTK_Newsletter_Data';
+
+$defaults = $d::default_blocks();
+$dtypes   = array_column( $defaults, 'type' );
+ptk_test_ok( in_array( 'quick_notes', $dtypes, true ), 'default layout includes quick notes' );
+ptk_test_ok( array_search( 'quick_notes', $dtypes, true ) === array_search( 'story_cards', $dtypes, true ) + 1, 'quick notes sits right after stories' );
+ptk_test_ok( end( $dtypes ) === 'footer', 'footer is still last' );
+$dh = $defaults[ array_search( 'header', $dtypes, true ) ]['data'];
+ptk_test_ok( array_key_exists( 'summary', $dh ), 'header default has a summary key' );
+$da = $defaults[ array_search( 'announcement', $dtypes, true ) ]['data'];
+foreach ( array( 'when', 'headline', 'text', 'button_text', 'button_url', 'timeline' ) as $k ) {
+    ptk_test_ok( array_key_exists( $k, $da ), "announcement default has $k" );
+}
+ptk_test_ok( ! array_key_exists( 'pill', $da ), 'announcement default no longer has pill' );
+
+// A literal 4.1.x newsletter, exactly as the old plugin saved it.
+$old = array(
+    array( 'type' => 'header', 'data' => array( 'school_name' => 'NE PTA', 'headline' => '', 'greeting' => 'Hi' ) ),
+    array( 'type' => 'announcement', 'data' => array( 'pill' => 'Thursday · Jun 25', 'text' => 'Last day of school.' ) ),
+    array( 'type' => 'featured', 'data' => array( 'eyebrow' => 'Year in review', 'headline' => 'What a year', 'body' => 'Thanks', 'image_id' => 3 ) ),
+    array( 'type' => 'story_cards', 'data' => array( 'cards' => array( array( 'heading' => 'Mum Sale', 'body' => 'Open', 'image_id' => 0, 'link_url' => 'mailto:x@y.org', 'link_text' => 'Email' ) ) ) ),
+    array( 'type' => 'footer', 'data' => array( 'signoff' => 'Bye', 'links' => array() ) ),
+);
+$mig   = $d::sanitize_blocks( $old );
+$mtype = array_column( $mig, 'type' );
+$ma    = $mig[ array_search( 'announcement', $mtype, true ) ]['data'];
+ptk_test_ok( $ma['when'] === 'Thursday · Jun 25', 'old pill becomes the when line' );
+ptk_test_ok( ! isset( $ma['pill'] ), 'pill key is not carried forward' );
+ptk_test_ok( $ma['headline'] === '' && $ma['button_text'] === '' && $ma['button_url'] === '' && $ma['timeline'] === array(), 'new announcement keys default blank' );
+ptk_test_ok( $mig[ array_search( 'header', $mtype, true ) ]['data']['summary'] === '', 'old header gains a blank summary' );
+$mf = $mig[ array_search( 'featured', $mtype, true ) ]['data'];
+ptk_test_ok( $mf['eyebrow'] === 'Year in review' && $mf['image_id'] === 3 && $mf['link_url'] === '' && $mf['link_text'] === '', 'old featured keeps its values and gains blank link keys' );
+$mc = $mig[ array_search( 'story_cards', $mtype, true ) ]['data']['cards'][0];
+ptk_test_ok( $mc['eyebrow'] === '' && $mc['link_url'] === 'mailto:x@y.org', 'old card gains a blank eyebrow and keeps a mailto link' );
+ptk_test_ok( ! in_array( 'quick_notes', $mtype, true ), 'sanitize does not invent a quick notes block' );
+
+// When both keys arrive (a tab open across the update), the new key wins.
+$both = $d::sanitize_blocks( array( array( 'type' => 'announcement', 'data' => array( 'pill' => 'old', 'when' => 'new', 'text' => '' ) ) ) );
+ptk_test_ok( $both[1]['data']['when'] === 'new', 'when wins over pill when both are posted' );
+
+// Timeline rows and links.
+$ann = $d::sanitize_blocks( array( array( 'type' => 'announcement', 'data' => array(
+    'headline'    => 'ASE <b>opens</b>',
+    'button_text' => 'Go',
+    'button_url'  => 'javascript:alert(1)',
+    'timeline'    => array(
+        array( 'date' => '2026-09-14', 'time' => '8:30 AM–12:30 PM', 'what' => 'Members only' ),
+        array( 'date' => 'nope', 'time' => array( 'x' ), 'what' => '' ),
+        'junk',
+    ),
+) ) ) );
+$aa = $ann[1]['data'];
+ptk_test_ok( $aa['headline'] === 'ASE opens', 'announcement headline is plain text' );
+ptk_test_ok( $aa['button_url'] === '', 'a javascript: button link is blanked' );
+ptk_test_ok( count( $aa['timeline'] ) === 2 && $aa['timeline'][0]['time'] === '8:30 AM–12:30 PM', 'timeline rows are kept in order, non-arrays dropped' );
+ptk_test_ok( $aa['timeline'][1]['date'] === '' && $aa['timeline'][1]['time'] === '', 'bad date and array time become empty strings' );
+
+ptk_test_ok( $d::sanitize_link_url( ' https://x.test/a ' ) === 'https://x.test/a', 'http url: trimmed and kept' );
+ptk_test_ok( $d::sanitize_link_url( 'HTTP://x.test' ) !== '', 'http url: an upper-case scheme is still a web address' );
+ptk_test_ok( $d::sanitize_link_url( 'mailto:a@b.org' ) === 'mailto:a@b.org', 'link url: an email link is kept (#040 uses one)' );
+ptk_test_ok( $d::sanitize_link_url( 'leslie@example.org' ) === 'mailto:leslie@example.org', 'link url: a bare email address becomes an email link' );
+ptk_test_ok( $d::sanitize_link_url( 'data:text/html,x' ) === '', 'link url: data is rejected' );
+ptk_test_ok( $d::sanitize_link_url( 'javascript:alert(1)' ) === '', 'http url: javascript is rejected' );
+ptk_test_ok( $d::sanitize_link_url( array( 'x' ) ) === '', 'http url: array becomes empty, no warning' );
+// Not asserted: a bare "x.test/page". Real esc_url_raw() prepends "http://"
+// to a scheme-less address, so production KEEPS it; the test shim does not,
+// so an assertion either way would describe the wrong environment.
+
+$qn = $d::sanitize_blocks( array( array( 'type' => 'quick_notes', 'data' => array(
+    'label' => 'Good to <i>know</i>',
+    'items' => array(
+        array( 'heading' => 'Lunch menu', 'body' => 'On the <strong>site</strong>. <script>x</script>', 'link_url' => 'https://x.test/lunch', 'link_text' => 'See the menu' ),
+        array( 'heading' => array( 'x' ), 'body' => '', 'link_url' => 'ftp://x', 'link_text' => '' ),
+    ),
+) ) ) );
+$qd = $qn[1]['data'];
+
+// Only one of each section type: first one wins, like PTK_Share_Text::generate() reads them.
+$dup = $d::sanitize_blocks( array(
+    array( 'type' => 'announcement', 'data' => array( 'headline' => 'First' ) ),
+    array( 'type' => 'announcement', 'data' => array( 'headline' => 'Second' ) ),
+) );
+$dup_types = array_column( $dup, 'type' );
+ptk_test_ok( count( array_keys( $dup_types, 'announcement', true ) ) === 1, 'two announcements become one' );
+ptk_test_ok( $dup[ array_search( 'announcement', $dup_types, true ) ]['data']['headline'] === 'First', 'the first announcement is the one kept' );
+ptk_test_ok( $qn[1]['type'] === 'quick_notes', 'quick notes is a known type' );
+ptk_test_ok( $qd['label'] === 'Good to know', 'quick notes label is plain text' );
+ptk_test_ok( strpos( $qd['items'][0]['body'], '<strong>' ) !== false && strpos( $qd['items'][0]['body'], '<script>' ) === false, 'note body keeps safe html, drops scripts' );
+ptk_test_ok( $qd['items'][1]['heading'] === '' && $qd['items'][1]['link_url'] === '', 'note: array heading and ftp link become empty' );
+
 ptk_test_done();
