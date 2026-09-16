@@ -253,16 +253,22 @@ class PTK_Share_Settings {
      * WordPress
      * ----------------------------------------------------------------*/
 
+    /**
+     * 4.3.0: parented on the real top-level PTA Hub slug, same reason and
+     * same fix as PTK_Newsletter_Builder::add_page() — see its docblock.
+     * PTK_Newsletter_Builder::redirect_old_bookmark() keeps the old
+     * `post_type=pta_newsletter` URL shape working.
+     */
     public static function page_url( $args = array() ) {
         return add_query_arg(
-            array_merge( array( 'post_type' => 'pta_newsletter', 'page' => self::PAGE_SLUG ), $args ),
+            array_merge( array( 'post_type' => 'pta_knowledge', 'page' => self::PAGE_SLUG ), $args ),
             admin_url( 'edit.php' )
         );
     }
 
     public static function add_page() {
         self::$hook = (string) add_submenu_page(
-            'edit.php?post_type=pta_newsletter',
+            'edit.php?post_type=pta_knowledge',
             'Newsletter settings',
             'Newsletter settings',
             'manage_options',

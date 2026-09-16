@@ -148,7 +148,7 @@ class PTK_Welcome {
                 $last_issue = get_post_meta( $last_id, 'ptk_nl_issue', true );
                 $last_date  = (string) get_post_meta( $last_id, 'ptk_nl_date', true );
                 if ( $last_issue && class_exists( 'PTK_Share_Text' ) ) {
-                    $edit_url  = admin_url( 'edit.php?post_type=pta_newsletter&page=' . PTK_Newsletter_Builder::PAGE_SLUG . '&ptk_nl_edit_id=' . $last_id );
+                    $edit_url  = add_query_arg( 'ptk_nl_edit_id', $last_id, PTK_Newsletter_Builder::url() );
                     $date_str  = preg_match( '/^\d{4}-\d{2}-\d{2}$/', $last_date ) ? date_i18n( 'M j', strtotime( $last_date ) ) : '';
                     $last_line = 'No. ' . PTK_Share_Text::issue_label( $last_issue )
                         . ( '' !== $date_str ? ' · ' . $date_str : '' )

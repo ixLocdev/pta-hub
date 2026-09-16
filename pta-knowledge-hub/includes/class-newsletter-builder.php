@@ -71,6 +71,13 @@ class PTK_Newsletter_Builder {
         add_action( 'wp_ajax_ptk_nl_preview_link', array( __CLASS__, 'handle_preview_link_ajax' ) );
         add_action( 'load-post-new.php', array( __CLASS__, 'redirect_add_new' ) );
         add_action( 'load-post.php', array( __CLASS__, 'redirect_edit_to_builder' ) );
+        // admin_init, not load-edit.php: an old-shape URL (post_type=
+        // pta_newsletter&page=...) no longer resolves to a registered admin
+        // page at all (see add_page()'s docblock), so WordPress's own
+        // "Cannot load …" / access-denied wp_die() fires from inside
+        // wp-admin/admin.php BEFORE any load-{hook} action would — this has
+        // to run earlier, on admin_init, to catch the request first.
+        add_action( 'admin_init', array( __CLASS__, 'redirect_old_bookmark' ) );
         add_filter( 'post_row_actions', array( __CLASS__, 'add_edit_row_action' ), 10, 2 );
     }
 
@@ -542,21 +549,63 @@ class PTK_Newsletter_Builder {
      * @return string
      */
     public static function url() {
-        return admin_url( 'edit.php?post_type=pta_newsletter&page=' . self::PAGE_SLUG );
+        return admin_url( 'edit.php?post_type=pta_knowledge&page=' . self::PAGE_SLUG );
     }
 
     /**
-     * Add the builder as a submenu under Newsletters, in the "Add New" slot.
+     * Add the builder as a submenu under PTA Hub.
+     *
+     * 4.3.0: parented on 'edit.php?post_type=pta_knowledge' (the real,
+     * stable top-level PTA Hub menu), NOT 'edit.php?post_type=pta_newsletter'.
+     * Once pta_newsletter itself became a NESTED post type (the menu move),
+     * WordPress's own admin-page access check (wp-admin/admin.php,
+     * user_can_access_admin_page()) stops resolving a submenu parented on a
+     * non-top-level post type's edit.php consistently — confirmed in
+     * Playground: it 403's every request for a good, capability-passing
+     * user. Parenting directly on the real top-level slug sidesteps that
+     * core quirk entirely (verified working). old_bookmark_redirect() below
+     * keeps the OLD `edit.php?post_type=pta_newsletter&page=...` URL shape
+     * working for existing bookmarks/links.
      */
     public static function add_page() {
         self::$hook = (string) add_submenu_page(
-            'edit.php?post_type=pta_newsletter',
+            'edit.php?post_type=pta_knowledge',
             'New Newsletter',
             'Add New',
             'edit_posts',
             self::PAGE_SLUG,
             array( __CLASS__, 'render_page' )
         );
+    }
+
+    /**
+     * Old bookmarks/links used `edit.php?post_type=pta_newsletter&page=...`
+     * (the shape the Builder's own URL had before the 4.3.0 menu move).
+     * That shape no longer resolves (see add_page()'s docblock), so send it
+     * to the current, working URL instead — carrying over every other query
+     * arg (ptk_nl_edit_id, ptk_nl_msg, ptk_nl_step, saved, …) unchanged.
+     * Hooked to 'load-edit.php', which fires for exactly this request shape.
+     *
+     * @return void
+     */
+    public static function redirect_old_bookmark() {
+        $post_type = isset( $_GET['post_type'] ) ? sanitize_key( wp_unslash( $_GET['post_type'] ) ) : '';
+        $page      = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+
+        if ( 'pta_newsletter' !== $post_type ) {
+            return;
+        }
+        if ( ! in_array( $page, array( self::PAGE_SLUG, PTK_Share_Settings::PAGE_SLUG ), true ) ) {
+            return;
+        }
+
+        // Carry over every other query arg unchanged (ptk_nl_edit_id,
+        // ptk_nl_msg, ptk_nl_step, saved, …) — only post_type changes.
+        $args = wp_unslash( $_GET );
+        $args['post_type'] = 'pta_knowledge';
+
+        wp_safe_redirect( add_query_arg( $args, admin_url( 'edit.php' ) ) );
+        exit;
     }
 
     /**
