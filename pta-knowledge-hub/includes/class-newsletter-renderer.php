@@ -496,10 +496,15 @@ class PTK_Newsletter_Renderer {
         $html  = '<div data-ptk-block="' . esc_attr( 'quick_notes' ) . '" style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:40px 20px 24px;box-sizing:border-box;">';
         $html .= '<div style="max-width:840px;margin:0 auto;">';
         $html .= self::section_rule( '' !== trim( $label ) ? $label : 'Quick notes' );
-        $html .= '<div style="border-top:1px solid ' . esc_attr( self::PALETTE['hairline'] ) . ';max-width:700px;">';
+        // House style: the § rule above a list is its only strong line, and
+        // rows are separated by hairlines. So no line under the rule and none
+        // after the last item -- a hairline only BETWEEN items. Otherwise the
+        // first note sat under two lines and the last one above two.
+        $html .= '<div style="max-width:700px;">';
 
-        foreach ( $valid as $n ) {
-            $html .= '<div style="padding:16px 0;border-bottom:1px solid ' . esc_attr( self::PALETTE['hairline'] ) . ';">';
+        foreach ( array_values( $valid ) as $i => $n ) {
+            $between = $i > 0 ? 'border-top:1px solid ' . esc_attr( self::PALETTE['hairline'] ) . ';' : '';
+            $html   .= '<div style="padding:16px 0;' . $between . '">';
             if ( '' !== trim( $n['heading'] ) ) {
                 $html .= '<h3 style="font-family:' . self::FONT_SANS . ';font-size:17px;font-weight:700;line-height:1.35;color:' . esc_attr( self::PALETTE['text'] ) . ';margin:0 0 4px;">' . esc_html( $n['heading'] ) . '</h3>';
             }

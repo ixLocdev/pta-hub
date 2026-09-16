@@ -205,6 +205,16 @@ ptk_test_ok( substr_count( $fb2, "\nLunch menu" ) === 1, 'facebook: the blank no
 ptk_test_ok( strpos( $v2['instagram'], 'ASE registration opens Monday.' ) !== false, 'instagram: leads with the announcement headline' );
 ptk_test_ok( strpos( $v2['whatsapp'], 'ASE registration opens Monday.' ) !== false, 'whatsapp: with no top story the announcement headline is the middle line' );
 
+// WhatsApp carries one line, and it goes to the time-sensitive announcement
+// even when a top story exists -- #040 would otherwise have sent families
+// "Can you help on Tuesdays?" instead of "registration opens Monday".
+$both = PTK_Share_Text::generate( array(
+    array( 'type' => 'announcement', 'data' => array( 'when' => '', 'headline' => 'ASE registration opens Monday.', 'text' => '', 'button_text' => '', 'button_url' => '', 'timeline' => array() ) ),
+    array( 'type' => 'featured', 'data' => array( 'eyebrow' => '', 'headline' => 'Can you help on Tuesdays?', 'body' => '', 'image_id' => 0, 'link_url' => '', 'link_text' => '' ) ),
+), array( 'url' => 'https://x.test/n', 'issue' => 41, 'date' => '2026-09-20', 'school_name' => 'NE', 'today' => '2026-09-20' ) );
+ptk_test_ok( strpos( $both['whatsapp'], 'ASE registration opens Monday.' ) !== false, 'whatsapp: the announcement wins over the top story' );
+ptk_test_ok( strpos( $both['whatsapp'], 'Can you help on Tuesdays?' ) === false, 'whatsapp: the top story is not the one line' );
+
 // A migrated announcement with no headline: the text leads, the When line follows.
 $nohead = PTK_Share_Text::generate( array(
     array( 'type' => 'announcement', 'data' => array( 'when' => 'Thursday · Jun 25', 'headline' => '', 'text' => 'Last day of school.', 'button_text' => '', 'button_url' => '', 'timeline' => array() ) ),

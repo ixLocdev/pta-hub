@@ -270,7 +270,10 @@ class PTK_Share_Text {
 
     /** Two or three lines plus the url, kept under WHATSAPP_MAX chars. */
     private static function generate_whatsapp( $opening, $featured_headline, $announce_headline, $announce_text, $url ) {
-        $middle = '' !== $featured_headline ? $featured_headline : ( '' !== $announce_headline ? $announce_headline : $announce_text );
+        // WhatsApp gets one line, so it goes to the time-sensitive thing: the
+        // announcement (registration closes Thursday) before the top story
+        // (can you volunteer?). Instagram already leads the same way.
+        $middle = '' !== $announce_headline ? $announce_headline : ( '' !== $announce_text ? $announce_text : $featured_headline );
 
         $lines = array( $opening );
         if ( '' !== $middle ) { $lines[] = $middle; }

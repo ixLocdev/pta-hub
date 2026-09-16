@@ -309,4 +309,15 @@ ptk_test_ok( strpos( $rt, '<a href="mailto:a@b.org" style="color:#ffffff;text-de
 ptk_test_ok( strpos( $rt, '<strong style="color:#ffffff;">12 classes</strong>' ) !== false, 'bold text on navy is white' );
 ptk_test_ok( strpos( $rt, 'flex:1 1 200px;min-width:200px;' ) !== false, 'event title sits beside the date on a 375px phone (112 + 20 + 200 fits)' );
 
+// Quick notes: hairlines only BETWEEN items -- the section rule is the list's
+// one strong line, so nothing doubles it above the first note or below the last.
+$qn3 = PTK_Newsletter_Renderer::render( array( array( 'type' => 'quick_notes', 'data' => array( 'label' => 'Good to know', 'items' => array(
+    array( 'heading' => 'One', 'body' => 'a', 'link_url' => '', 'link_text' => '' ),
+    array( 'heading' => 'Two', 'body' => 'b', 'link_url' => '', 'link_text' => '' ),
+    array( 'heading' => 'Three', 'body' => 'c', 'link_url' => '', 'link_text' => '' ),
+) ) ) ), $st_opts );
+$qn_block = substr( $qn3, strpos( $qn3, 'data-ptk-block="quick_notes"' ) );
+ptk_test_ok( substr_count( $qn_block, 'padding:16px 0;border-top:1px solid' ) === 2, 'three quick notes are separated by exactly two hairlines' );
+ptk_test_ok( strpos( $qn_block, 'border-bottom' ) === false, 'no hairline under the last quick note' );
+
 ptk_test_done();
