@@ -370,105 +370,149 @@ class PTK_Newsletter_Renderer {
     }
 
     /**
-     * Featured hero: navy block with eyebrow, headline, body, optional image.
+     * Top story: a white section opened by "§ {label}" (default "Top story"),
+     * with a section headline, the story, an optional photo below the text
+     * and an optional link.
      */
     private static function render_featured( array $data, array $opts ) {
-        $eyebrow  = isset( $data['eyebrow'] ) ? self::str( $data['eyebrow'] ) : '';
-        $headline = isset( $data['headline'] ) ? self::str( $data['headline'] ) : '';
-        $body     = isset( $data['body'] ) ? self::str( $data['body'] ) : '';
-        $image_id = isset( $data['image_id'] ) ? (int) $data['image_id'] : 0;
+        $eyebrow   = isset( $data['eyebrow'] ) ? self::str( $data['eyebrow'] ) : '';
+        $headline  = isset( $data['headline'] ) ? self::str( $data['headline'] ) : '';
+        $body      = isset( $data['body'] ) ? self::str( $data['body'] ) : '';
+        $image_id  = isset( $data['image_id'] ) ? (int) $data['image_id'] : 0;
+        $link_url  = isset( $data['link_url'] ) ? self::str( $data['link_url'] ) : '';
+        $link_text = isset( $data['link_text'] ) ? self::str( $data['link_text'] ) : '';
 
         $image_html = self::maybe_image( $image_id, $opts, $headline );
 
-        // Nothing to feature (no text and no rendered image): skip the hero.
-        if ( '' === trim( $eyebrow ) && '' === trim( $headline ) && '' === trim( $body ) && '' === $image_html ) {
-            return self::placeholder( 'featured', 'Your featured story will appear here.', $opts );
+        // Nothing to feature (no text and no rendered image): skip the section.
+        if ( '' === trim( $eyebrow ) && '' === trim( $headline ) && '' === trim( $body ) && '' === $image_html
+            && ( '' === trim( $link_url ) || '' === trim( $link_text ) ) ) {
+            return self::placeholder( 'featured', 'Your top story will appear here.', $opts );
         }
 
-        $html  = '<div data-ptk-block="' . esc_attr( 'featured' ) . '" style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['primary'] ) . ';padding:48px 20px;box-sizing:border-box;">';
-        $html .= '<div style="max-width:840px;margin:0 auto;">';
-
-        if ( '' !== trim( $eyebrow ) ) {
-            $html .= '<div style="font-family:' . self::FONT_SERIF . ';font-style:italic;font-weight:500;font-size:14px;color:' . esc_attr( self::PALETTE['accent'] ) . ';margin-bottom:14px;">' . esc_html( $eyebrow ) . '</div>';
-        }
-
-        if ( '' !== trim( $headline ) ) {
-            $html .= '<h2 style="font-family:' . self::FONT_SANS . ';font-weight:800;font-size:clamp(32px,6vw,52px);line-height:1.0;letter-spacing:-0.03em;margin:0 0 18px;color:#ffffff;max-width:720px;">' . esc_html( $headline ) . '</h2>';
-        }
-
-        $html .= $image_html;
-
-        if ( '' !== trim( $body ) ) {
-            $html .= '<div style="font-size:16px;line-height:1.65;color:#cfd8e3;max-width:660px;">' . wp_kses_post( $body ) . '</div>';
-        }
-
-        $html .= '</div>';
+        $mark  = '' !== trim( $eyebrow ) ? $eyebrow : 'Top story';
+        $html  = '<div data-ptk-block="' . esc_attr( 'featured' ) . '" style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:40px 20px 8px;box-sizing:border-box;">';
+        $html .= self::story_section( self::section_rule( $mark ), $headline, $body, $image_html, $link_url, $link_text );
         $html .= '</div>';
 
         return $html;
     }
 
     /**
-     * Story cards: each a bordered card with heading, body, optional image,
-     * and an optional read-more link.
+     * Stories: every story is its own white section with a "§ {label}" rule
+     * (default "More news"). "§ More news" is never repeated: in a run of
+     * unlabeled stories only the first carries it, and the rest open with a
+     * plain hairline. A labeled story always shows its own mark.
      */
     private static function render_story_cards( array $data, array $opts ) {
         $cards = isset( $data['cards'] ) && is_array( $data['cards'] ) ? $data['cards'] : array();
 
-        // Keep only cards that are arrays with some content: a non-blank
-        // heading/body/link, or an image. All-blank cards are dropped so an
-        // empty bordered box never renders.
+        // Keep only cards with some content: a label, heading, body or link,
+        // or an image. All-blank cards are dropped so nothing empty renders.
         $valid_cards = array();
         foreach ( $cards as $card ) {
             if ( ! is_array( $card ) ) {
                 continue;
             }
+            $eyebrow   = isset( $card['eyebrow'] ) ? self::str( $card['eyebrow'] ) : '';
             $heading   = isset( $card['heading'] ) ? self::str( $card['heading'] ) : '';
             $body      = isset( $card['body'] ) ? self::str( $card['body'] ) : '';
             $image_id  = isset( $card['image_id'] ) ? (int) $card['image_id'] : 0;
             $link_url  = isset( $card['link_url'] ) ? self::str( $card['link_url'] ) : '';
             $link_text = isset( $card['link_text'] ) ? self::str( $card['link_text'] ) : '';
-            if ( '' === trim( $heading ) && '' === trim( $body ) && '' === trim( $link_url ) && '' === trim( $link_text ) && $image_id <= 0 ) {
+            if ( '' === trim( $eyebrow ) && '' === trim( $heading ) && '' === trim( $body ) && '' === trim( $link_url ) && '' === trim( $link_text ) && $image_id <= 0 ) {
                 continue;
             }
             $valid_cards[] = $card;
         }
 
         if ( empty( $valid_cards ) ) {
-            return self::placeholder( 'story_cards', 'Your story cards will appear here.', $opts );
+            return self::placeholder( 'story_cards', 'Your stories will appear here.', $opts );
         }
 
-        $html  = '<div data-ptk-block="' . esc_attr( 'story_cards' ) . '" style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:24px 20px;box-sizing:border-box;">';
-        $html .= '<div style="max-width:840px;margin:0 auto;">';
+        // One outer div: the Builder's preview highlight keys on it.
+        $html = '<div data-ptk-block="' . esc_attr( 'story_cards' ) . '">';
 
-        foreach ( $valid_cards as $card ) {
+        $previous_unlabeled = false;
+        foreach ( $valid_cards as $i => $card ) {
+            $eyebrow   = isset( $card['eyebrow'] ) ? self::str( $card['eyebrow'] ) : '';
             $heading   = isset( $card['heading'] ) ? self::str( $card['heading'] ) : '';
             $body      = isset( $card['body'] ) ? self::str( $card['body'] ) : '';
             $image_id  = isset( $card['image_id'] ) ? (int) $card['image_id'] : 0;
             $link_url  = isset( $card['link_url'] ) ? self::str( $card['link_url'] ) : '';
             $link_text = isset( $card['link_text'] ) ? self::str( $card['link_text'] ) : '';
 
-            $image_html = self::maybe_image( $image_id, $opts, $heading );
-
-            $html .= '<div style="border:1px solid ' . esc_attr( self::PALETTE['hairline'] ) . ';border-radius:14px;padding:36px 28px;background:#f6f4ef;margin-bottom:20px;">';
-
-            if ( '' !== trim( $heading ) ) {
-                $html .= '<h3 style="font-family:' . self::FONT_SANS . ';font-weight:800;font-size:clamp(24px,4.5vw,32px);line-height:1.06;letter-spacing:-0.02em;margin:0 0 14px;color:' . esc_attr( self::PALETTE['text'] ) . ';">' . esc_html( $heading ) . '</h3>';
+            $labeled = '' !== trim( $eyebrow );
+            if ( $labeled ) {
+                $rule = self::section_rule( $eyebrow );
+            } elseif ( $previous_unlabeled ) {
+                $rule = '<div style="height:1px;background:' . esc_attr( self::PALETTE['hairline'] ) . ';margin-bottom:16px;"></div>';
+            } else {
+                $rule = self::section_rule( 'More news' );
             }
+            $previous_unlabeled = ! $labeled;
 
-            $html .= $image_html;
+            $padding = ( 0 === $i ) ? '40px 20px 8px' : '24px 20px 8px';
+            $html   .= '<div style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:' . $padding . ';box-sizing:border-box;">';
+            $html   .= self::story_section( $rule, $heading, $body, self::maybe_image( $image_id, $opts, $heading ), $link_url, $link_text );
+            $html   .= '</div>';
+        }
 
-            if ( '' !== trim( $body ) ) {
-                $html .= '<div style="font-size:16px;line-height:1.65;color:' . esc_attr( self::PALETTE['muted'] ) . ';max-width:620px;">' . wp_kses_post( $body ) . '</div>';
+        $html .= '</div>';
+
+        return $html;
+    }
+
+    /**
+     * Quick notes: "§ {label}" (default "Quick notes") over a hairline list
+     * of short items, each a small headline, a sentence and an optional link.
+     */
+    private static function render_quick_notes( array $data, array $opts ) {
+        $label = isset( $data['label'] ) ? self::str( $data['label'] ) : '';
+        $items = isset( $data['items'] ) && is_array( $data['items'] ) ? $data['items'] : array();
+
+        $valid = array();
+        foreach ( $items as $item ) {
+            if ( ! is_array( $item ) ) {
+                continue;
             }
-
-            if ( '' !== trim( $link_url ) && '' !== trim( $link_text ) ) {
-                $html .= '<p style="margin:14px 0 0;"><a href="' . esc_url( $link_url ) . '" style="font-size:14px;font-weight:600;color:' . esc_attr( self::PALETTE['primary'] ) . ';text-decoration:none;border-bottom:1px solid ' . esc_attr( self::PALETTE['primary'] ) . ';padding-bottom:1px;">' . esc_html( $link_text ) . '</a></p>';
+            $n = array(
+                'heading'   => isset( $item['heading'] ) ? self::str( $item['heading'] ) : '',
+                'body'      => isset( $item['body'] ) ? self::str( $item['body'] ) : '',
+                'link_url'  => isset( $item['link_url'] ) ? self::str( $item['link_url'] ) : '',
+                'link_text' => isset( $item['link_text'] ) ? self::str( $item['link_text'] ) : '',
+            );
+            $has_link = '' !== trim( $n['link_url'] ) && '' !== trim( $n['link_text'] );
+            if ( '' === trim( $n['heading'] ) && '' === trim( $n['body'] ) && ! $has_link ) {
+                continue;
             }
+            $valid[] = $n;
+        }
 
+        if ( empty( $valid ) ) {
+            return self::placeholder( 'quick_notes', 'Your quick notes will appear here.', $opts );
+        }
+
+        $html  = '<div data-ptk-block="' . esc_attr( 'quick_notes' ) . '" style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:40px 20px 24px;box-sizing:border-box;">';
+        $html .= '<div style="max-width:840px;margin:0 auto;">';
+        $html .= self::section_rule( '' !== trim( $label ) ? $label : 'Quick notes' );
+        $html .= '<div style="border-top:1px solid ' . esc_attr( self::PALETTE['hairline'] ) . ';max-width:700px;">';
+
+        foreach ( $valid as $n ) {
+            $html .= '<div style="padding:16px 0;border-bottom:1px solid ' . esc_attr( self::PALETTE['hairline'] ) . ';">';
+            if ( '' !== trim( $n['heading'] ) ) {
+                $html .= '<h3 style="font-family:' . self::FONT_SANS . ';font-size:17px;font-weight:700;line-height:1.35;color:' . esc_attr( self::PALETTE['text'] ) . ';margin:0 0 4px;">' . esc_html( $n['heading'] ) . '</h3>';
+            }
+            if ( '' !== trim( $n['body'] ) ) {
+                $html .= '<div style="font-size:15px;line-height:1.6;color:' . esc_attr( self::PALETTE['muted'] ) . ';">' . wp_kses_post( $n['body'] ) . '</div>';
+            }
+            if ( '' !== trim( $n['link_url'] ) && '' !== trim( $n['link_text'] ) ) {
+                $html .= '<p style="margin:8px 0 0;"><a href="' . esc_url( $n['link_url'] ) . '" style="font-size:14px;font-weight:700;' . self::link_style() . '">' . esc_html( $n['link_text'] ) . '</a></p>';
+            }
             $html .= '</div>';
         }
 
+        $html .= '</div>';
         $html .= '</div>';
         $html .= '</div>';
 
@@ -511,7 +555,7 @@ class PTK_Newsletter_Renderer {
         if ( ! empty( $valid_links ) ) {
             $html .= '<div style="border-top:1px solid ' . esc_attr( self::PALETTE['hairline'] ) . ';padding-top:24px;display:flex;flex-wrap:wrap;gap:24px;font-size:13px;color:' . esc_attr( self::PALETTE['muted'] ) . ';line-height:1.55;">';
             foreach ( $valid_links as $link ) {
-                $html .= '<div><a href="' . esc_url( $link['url'] ) . '" style="color:' . esc_attr( self::PALETTE['primary'] ) . ';text-decoration:none;border-bottom:1px solid ' . esc_attr( self::PALETTE['primary'] ) . ';word-break:break-word;">' . esc_html( $link['label'] ) . '</a></div>';
+                $html .= '<div><a href="' . esc_url( $link['url'] ) . '" style="' . self::link_style() . 'word-break:break-word;">' . esc_html( $link['label'] ) . '</a></div>';
             }
             $html .= '</div>';
         }
@@ -520,6 +564,34 @@ class PTK_Newsletter_Renderer {
         $html .= '</div>';
 
         return $html;
+    }
+
+    /**
+     * The body of a top story or a story: the opening rule (or hairline),
+     * headline, story, photo below the text, and link.
+     */
+    private static function story_section( $rule_html, $headline, $body, $image_html, $link_url, $link_text ) {
+        $html  = '<div style="max-width:840px;margin:0 auto;">';
+        $html .= $rule_html;
+        if ( '' !== trim( $headline ) ) {
+            $html .= '<h2 style="font-family:' . self::FONT_SANS . ';font-weight:800;font-size:clamp(24px,5vw,30px);line-height:1.05;letter-spacing:-0.02em;margin:0 0 12px;color:' . esc_attr( self::PALETTE['text'] ) . ';">' . esc_html( $headline ) . '</h2>';
+        }
+        if ( '' !== trim( $body ) ) {
+            $html .= '<div style="font-size:16px;line-height:1.65;color:' . esc_attr( self::PALETTE['muted'] ) . ';margin:0 0 20px;max-width:620px;">' . wp_kses_post( $body ) . '</div>';
+        }
+        if ( '' !== $image_html ) {
+            $html .= '<figure style="margin:28px 0 0;">' . $image_html . '</figure>';
+        }
+        if ( '' !== trim( $link_url ) && '' !== trim( $link_text ) ) {
+            $html .= '<p style="margin:20px 0 0;"><a href="' . esc_url( $link_url ) . '" style="font-size:16px;font-weight:700;' . self::link_style() . '">' . esc_html( $link_text ) . '</a></p>';
+        }
+        $html .= '</div>';
+        return $html;
+    }
+
+    /** Navy text link with the house 1px underline (never a border hack). */
+    private static function link_style() {
+        return 'color:' . self::PALETTE['primary'] . ';text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;';
     }
 
     /**
@@ -572,7 +644,7 @@ class PTK_Newsletter_Renderer {
             return '';
         }
 
-        return '<img src="' . esc_url( $url ) . '" alt="' . esc_attr( $alt ) . '" style="width:100%;height:auto;display:block;border-radius:10px;margin:0 0 18px;" />';
+        return '<img src="' . esc_url( $url ) . '" alt="' . esc_attr( $alt ) . '" style="display:block;width:100%;height:auto;border-radius:4px;margin:0;" />';
     }
 
     /**

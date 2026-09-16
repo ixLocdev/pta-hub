@@ -84,7 +84,7 @@ $full_blocks = array(
 $full_html = PTK_Newsletter_Renderer::render( $full_blocks, $empty_opts );
 ptk_test_ok( strpos( $full_html, 'Bake sale today' ) !== false, 'populated announcement still renders' );
 ptk_test_ok( strpos( $full_html, 'Field Day' ) !== false && strpos( $full_html, 'Coming up' ) !== false, 'populated events still render' );
-ptk_test_ok( strpos( $full_html, 'What a year' ) !== false && strpos( $full_html, 'background:#1a2f5c' ) !== false, 'populated featured hero still renders' );
+ptk_test_ok( strpos( $full_html, 'What a year' ) !== false, 'populated top story still renders' );
 ptk_test_ok( strpos( $full_html, 'Volunteers wanted' ) !== false, 'populated story card still renders' );
 ptk_test_ok( strpos( $full_html, 'Thanks' ) !== false && strpos( $full_html, 'Website' ) !== false, 'populated footer still renders' );
 
@@ -233,5 +233,53 @@ ptk_test_ok( preg_match( '/<h2[^>]*>Last day of school\.<\/h2>/', $an_old ) === 
 ptk_test_ok( strpos( $an_old, 'color:#cfd8e3' ) === false, 'old text-only announcement: no separate paragraph' );
 $an_none = PTK_Newsletter_Renderer::render( array( array( 'type' => 'announcement', 'data' => array( 'when' => '', 'headline' => '', 'text' => '', 'button_text' => '', 'button_url' => '', 'timeline' => array( array( 'date' => '', 'time' => '', 'what' => '' ) ) ) ) ), $an_opts );
 ptk_test_ok( strpos( $an_none, 'data-ptk-block="announcement"' ) === false, 'all-blank announcement (blank timeline row included) renders nothing' );
+
+// --- 4.2.0 stories on white, with § labels; quick notes. --------------------
+$st_opts = array( 'issue' => 40, 'date' => '2026-09-13', 'today' => '2026-09-13', 'theme' => 'harbor-navy', 'logo_url' => '', 'school_name' => 'NE',
+    'image_url_cb' => function ( $id ) { return 'https://x.test/img-' . $id . '.jpg'; } );
+$st = PTK_Newsletter_Renderer::render( array(
+    array( 'type' => 'featured', 'data' => array( 'eyebrow' => 'ASE volunteers', 'headline' => 'Can you help on Tuesdays?', 'body' => '<p>Free class.</p>', 'image_id' => 7, 'link_url' => 'https://x.test/v', 'link_text' => 'Email Leslie' ) ),
+    array( 'type' => 'story_cards', 'data' => array( 'cards' => array(
+        array( 'eyebrow' => 'Date change', 'heading' => 'Film on the Field moves.', 'body' => 'Oct 16.', 'image_id' => 0, 'link_url' => '', 'link_text' => '' ),
+        array( 'eyebrow' => '', 'heading' => 'Second story', 'body' => '', 'image_id' => 0, 'link_url' => '', 'link_text' => '' ),
+    ) ) ),
+    array( 'type' => 'quick_notes', 'data' => array( 'label' => 'Good to know', 'items' => array(
+        array( 'heading' => 'Lunch menu', 'body' => 'On the site.', 'link_url' => 'https://x.test/lunch', 'link_text' => 'See the menu' ),
+        array( 'heading' => 'Handbook', 'body' => '', 'link_url' => '', 'link_text' => '' ),
+    ) ) ),
+), $st_opts );
+ptk_test_ok( strpos( $st, 'background:#1a2f5c' ) === false, 'no navy band among the stories' );
+ptk_test_ok( strpos( $st, '#f6f4ef' ) === false && strpos( $st, 'border-radius:14px' ) === false, 'no beige card boxes' );
+ptk_test_ok( strpos( $st, '§ ASE volunteers' ) !== false, 'top story uses its label as the § mark' );
+ptk_test_ok( strpos( $st, '§ Date change' ) !== false, 'a story uses its label as the § mark' );
+ptk_test_ok( strpos( $st, '§ More news' ) !== false, 'a story with no label falls back to "More news"' );
+ptk_test_ok( strpos( $st, '§ Good to know' ) !== false, 'quick notes use the group label' );
+ptk_test_ok( substr_count( $st, '<h2' ) === 3, 'top story and each story are h2s' );
+ptk_test_ok( substr_count( $st, '<h3' ) === 2, 'quick-note items are h3s' );
+ptk_test_ok( strpos( $st, 'https://x.test/img-7.jpg' ) !== false && strpos( $st, 'border-radius:4px' ) !== false, 'the photo renders with 4px corners' );
+ptk_test_ok( strpos( $st, '<figure' ) > strpos( $st, 'Free class.' ), 'the photo sits below the text' );
+ptk_test_ok( strpos( $st, 'text-underline-offset:3px' ) !== false && strpos( $st, 'border-bottom:1px solid #1a2f5c' ) === false, 'links are underlined, not bordered' );
+ptk_test_ok( strpos( $st, '>See the menu<' ) !== false, 'a quick note link renders' );
+ptk_test_ok( strpos( $st, 'data-ptk-block="quick_notes"' ) !== false, 'quick notes carry the preview hook' );
+ptk_test_ok( strpos( $st, 'border-left' ) === false && strpos( $st, 'border-right' ) === false, 'no one-sided borders' );
+
+// "§ More news" never repeats: only the first of a run of unlabeled stories gets it.
+$mn = PTK_Newsletter_Renderer::render( array( array( 'type' => 'story_cards', 'data' => array( 'cards' => array(
+    array( 'eyebrow' => '', 'heading' => 'One', 'body' => '', 'image_id' => 0, 'link_url' => '', 'link_text' => '' ),
+    array( 'eyebrow' => '', 'heading' => 'Two', 'body' => '', 'image_id' => 0, 'link_url' => '', 'link_text' => '' ),
+    array( 'eyebrow' => 'Membership', 'heading' => 'Three', 'body' => '', 'image_id' => 0, 'link_url' => '', 'link_text' => '' ),
+    array( 'eyebrow' => '', 'heading' => 'Four', 'body' => '', 'image_id' => 0, 'link_url' => '', 'link_text' => '' ),
+    array( 'eyebrow' => '', 'heading' => 'Five', 'body' => '', 'image_id' => 0, 'link_url' => '', 'link_text' => '' ),
+) ) ) ), $st_opts );
+ptk_test_ok( substr_count( $mn, '§ More news' ) === 2, 'More news: once per run of unlabeled stories' );
+ptk_test_ok( strpos( $mn, '§ Membership' ) !== false, 'a labeled story always shows its own mark' );
+ptk_test_ok( substr_count( $mn, '<h2' ) === 5, 'every story still renders' );
+
+$qn_empty = PTK_Newsletter_Renderer::render( array( array( 'type' => 'quick_notes', 'data' => array( 'label' => 'Good to know', 'items' => array() ) ) ), $st_opts );
+ptk_test_ok( strpos( $qn_empty, 'data-ptk-block' ) === false, 'a label with no items renders nothing when published' );
+$qn_ph = PTK_Newsletter_Renderer::render( array( array( 'type' => 'quick_notes', 'data' => array( 'label' => '', 'items' => array() ) ) ), array_merge( $st_opts, array( 'preview_placeholders' => true ) ) );
+ptk_test_ok( strpos( $qn_ph, 'data-ptk-block="quick_notes"' ) !== false, 'preview mode outlines empty quick notes' );
+$ft_default = PTK_Newsletter_Renderer::render( array( array( 'type' => 'featured', 'data' => array( 'eyebrow' => '', 'headline' => 'X', 'body' => '', 'image_id' => 0, 'link_url' => '', 'link_text' => '' ) ) ), $st_opts );
+ptk_test_ok( strpos( $ft_default, '§ Top story' ) !== false, 'top story with no label falls back to "Top story"' );
 
 ptk_test_done();
