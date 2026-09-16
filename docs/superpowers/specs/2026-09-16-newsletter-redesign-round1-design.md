@@ -12,8 +12,11 @@ newsletter that looks like the Northeast site did *before* its 2026-09-11 redesi
 № 040, hand-built by Lucas, is what the site looks like now and is the target:
 
 - Source: `/Users/lucas/apps/PTA/NEPTANewsletter/newsletter-040-week-of-9-14-26.html`
-  (inline-styled, email-safe). Every size, color and spacing value below that says
+  (inline-styled, email-safe, 646 lines). Every size, color and spacing value below that says
   "from #040" was copied from that file.
+- **Never copy from #040 lines 400-504** (the 5th-grade fundraisers, the "Good to know" 3-up and
+  the Bike Bus card). Those blocks were kept verbatim from #039 and still use the retired
+  Inter/Fraunces/`#f6f4ef` style. Their *words* may be used as sample content; their styles may not.
 - Live: https://northeastpta.org/2026/09/13/pta-newsletter-040-ase-registration-opens-monday/
 - House style (authoritative): `/Users/lucas/apps/PTA/HOUSE-STYLE.md`.
 
@@ -96,7 +99,9 @@ featured-image handling; re-rendering already-published newsletters (see Decisio
 
 4. **Data model** (`includes/class-newsletter-data.php`): types at `:19-24`, `known_types()`
    `:31-40`, `default_blocks()` `:48-94`, `sanitize_blocks()` `:105-163` (header first, footer
-   last, unknown types dropped), `sanitize_block_data()` `:172-247`, `sanitize_date()`
+   last, unknown types dropped; round 1 extends its header/footer dedupe to **every** type,
+   first one wins, matching how `PTK_Share_Text::generate()` reads them — that is what
+   guarantees "only one navy band"), `sanitize_block_data()` `:172-247`, `sanitize_date()`
    `:267-270`, `blocks_have_images()` `:280-302` (any `image_id > 0`, including inside row
    arrays — new row arrays are covered automatically), `relabel_for_date()` `:358-391`.
    The `sanitize_blocks()` pass runs on **every** read of stored blocks: the Builder
@@ -177,7 +182,7 @@ this week. It's the only colored block in the newsletter. Skip it if there isn't
 | **`headline`** (new) | Headline | One sentence that says the news. For example: ASE registration opens Monday. PTA members go first. About 30 characters reads best at this size; longer still works. |
 | `text` | Text | A sentence or two with the details. For example: Twelve classes for grades K–5, Tuesdays and Wednesdays, 3 to 4 PM. About 90 characters keeps it to two lines. |
 | **`button_text`** (new) | Button words | Optional. What the button says. For example: Go to ASE registration |
-| **`button_url`** (new) | Button link | Where the button goes. Must start with https:// (or http://). |
+| **`button_url`** (new) | Button link | A web address (https://…) or an email address. |
 | **`timeline`** (new repeater) | disclosure: **Add dates to this announcement** | Optional. Add a row for each date that matters. Rows in the past grey out by themselves, and the last row is shown as the deadline. |
 
 Each timeline row: `date` (Date — "When."), `time` (Time — "Optional. For example: 8:30
@@ -217,7 +222,7 @@ under one heading. Good for "three things worth bookmarking".*
 | `items[]` | repeater "+ Add note" | |
 | — `heading` | Headline | A few words. For example: Lunch menu. About 40 characters fits on one line. |
 | — `body` | Text | A sentence or two. For example: This week's menus are always on the site. |
-| — `link_url` | Link address | Optional. Must start with https:// (or http://). |
+| — `link_url` | Link address | Optional. A web address (https://…) or an email address. |
 | — `link_text` | Link wording | What the link says. For example: See the menu |
 
 ### Step 4 · Finish & publish — unchanged
@@ -273,7 +278,7 @@ label. `tests/test-newsletter-data.php` gets a test that feeds a literal 4.1.x b
 ## What the published newsletter looks like
 
 All styles inline. Fonts: `FONT_SANS = "'Libre Franklin',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"`,
-`FONT_SERIF = "Newsreader,Georgia,serif"` (from #040 line 278/305). Palette additions:
+`FONT_SERIF = "Newsreader,Georgia,serif"` (from #040 lines 83/110). Palette additions:
 `'on_navy' => '#cfd8e3'`, `'small' => '#6b6b6b'`, `'chip' => '#f0eee7'` (HOUSE-STYLE Color
 table). Every date numeral gets `font-variant-numeric:lining-nums tabular-nums;` (HOUSE-STYLE
 "Type"). The renderer's outer wrapper `<div style="background:#efece6;">` and each block's
@@ -285,7 +290,7 @@ yellow appears only inside it; links are `text-decoration:underline;text-decorat
 (replacing the old `border-bottom` hack at `class-newsletter-renderer.php:343, :391`); `№`
 via `&#8470;`; US spelling.
 
-### Masthead (`render_header`) — from #040 lines 278-299
+### Masthead (`render_header`) — from #040 lines 82-105
 
 ```
 div[data-ptk-block=header]  font-family:FONT_SANS;color:#111;background:#fff;padding:32px 20px;border-bottom:1px solid #e6e3dc;box-sizing:border-box;
@@ -310,7 +315,7 @@ The eyebrow is omitted entirely when there is no issue number (a site's first, u
 preview). When the date is blank or unparseable the ` · {school_year}` part is omitted. The
 existing test string `&#8470;&nbsp;039` must still appear.
 
-### Announcement (`render_announcement`) — from #040 lines 303-337 ("FEATURED HERO")
+### Announcement (`render_announcement`) — from #040 lines 107-143 ("FEATURED HERO")
 
 Rendered when any of `when`, `headline`, `text`, `button_text`+`button_url`, or a non-blank
 timeline row exists; otherwise `placeholder()`.
@@ -331,12 +336,17 @@ div[data-ptk-block=announcement]  font-family:FONT_SANS;color:#111;background:#1
       a    display:inline-block;background:#ffffff;color:#1a2f5c;font-size:14px;font-weight:700;letter-spacing:0.02em;padding:14px 24px;border-radius:8px;text-decoration:none;   {button_text}
 ```
 
+**A migrated 4.1.x announcement must not render half-built.** Old announcements have only
+`text` (one sentence). When `headline` is blank and `text` is not, the text is rendered as plain
+text (tags stripped) in the `h2` headline slot and the paragraph is omitted, so the callout never
+shows an empty headline above a lone paragraph.
+
 The `h2` is white on navy (HOUSE-STYLE "Callout"). The button is white on navy, as #040 does
-inside its navy block (line 331); the house "one navy button per page" rule is not broken
+inside its navy block (line 136); the house "one navy button per page" rule is not broken
 because there is no navy button anywhere. Timeline row states: see Decisions 2 and 3. The
 old `pill` chip markup (`class-newsletter-renderer.php:165-168`) is deleted.
 
-### Coming up (`render_events`) — from #040 lines 371-376 and 387-397
+### Coming up (`render_events`) — from #040 lines 175-190 (the § divider and the events head) and 192-298 (the rows)
 
 ```
 div[data-ptk-block=events]  font-family:FONT_SANS;color:#111;background:#fff;padding:40px 20px 40px;box-sizing:border-box;
@@ -362,7 +372,7 @@ above the list that strong line is the rule itself (HOUSE-STYLE "Event row": *th
 above the list is the only strong line*), so every row uses the hairline. The weekday line is
 new (`$dt->format('l')`). The red past numeral goes (Decision 8).
 
-### Top story (`render_featured`) — from #040 lines 341-367 and 499-527
+### Top story (`render_featured`) — from #040 lines 145-173 (the "§ ASE volunteers" section)
 
 ```
 div[data-ptk-block=featured]  font-family:FONT_SANS;color:#111;background:#fff;padding:40px 20px 8px;box-sizing:border-box;
@@ -385,12 +395,15 @@ gone from this block; that treatment now belongs to the announcement.
 ### Stories (`render_story_cards`) — same block as Top story, per card
 
 Each card renders exactly the Top story structure with `mark = "§ " + (card.eyebrow or "More
-news")`, `padding:40px 20px 8px` on the first card and `padding:24px 20px 8px` on the rest, so
+news")` — except that **only the first story in a run of consecutive unlabeled stories gets the
+default "§ More news" mark**; the unlabeled stories that follow it get the hairline rule with no
+mark (a full-width 1px `#e6e3dc` line), so "§ More news" never repeats. A labeled story always
+shows its own mark. Padding is `padding:40px 20px 8px` on the first card and `padding:24px 20px 8px` on the rest, so
 consecutive sections keep the house 40/24 rhythm. The old card box
 (`border:1px solid …;border-radius:14px;padding:36px 28px;background:#f6f4ef;`, `:330`) is
 deleted. Headline is `<h2>` (a section headline), not `<h3>`.
 
-### Quick notes (`render_quick_notes`) — from #040 lines 566-592 (the "Membership" list)
+### Quick notes (`render_quick_notes`) — from #040 lines 371-398 (the "Membership" list)
 
 Rendered when at least one item has a heading, body or link; otherwise `placeholder(
 'quick_notes', 'Your quick notes will appear here.', $opts )`.
@@ -429,8 +442,7 @@ the script corrects everything for the reader:
 
 1. Event pills: unchanged relabeling, **plus** past rows fade: the pill's row (the closest
    ancestor `div` with `data-event-date`'s parent) gets `opacity:0.45`, the numeral turns
-   `#6b6b6b`, and the pill's background becomes `#e6e3dc` / color `#4a4a4a` (#040 lines
-   781-788). To find the numeral without a class, the renderer marks it
+   `#6b6b6b`, and the pill's background becomes `#e6e3dc` / color `#4a4a4a` (#040's fade script, lines 566-595). To find the numeral without a class, the renderer marks it
    `data-event-numeral` and the row `data-event-row`.
 2. Timeline rows: every `[data-timeline-date]` gets `opacity` `0.45` when
    `ptkRelabelForDate(date, today) === 'past'`, else `''` (cleared, so a row the server
@@ -449,6 +461,8 @@ cases for the new pure helper `ptkIsPast(dateISO, todayISO)` (a thin wrapper ove
   for un-resaved 4.1.x meta — cheap insurance even though `context()` sanitizes). The
   Facebook announcement paragraph is the non-blank ones of `[headline, text, when]` joined by
   `"\n"`. A headline-only announcement therefore still produces a line.
+- **When there is no headline** (a 4.1.x announcement), the text is the lead line and the
+  "When" line follows it — the same order, with the text standing in for the headline.
 - Instagram's lead (`generate_instagram()`, `:246`) becomes: announcement `headline`, else
   announcement `text`, else featured headline. WhatsApp's middle (`:261`): featured headline,
   else announcement headline, else announcement text.
@@ -491,12 +505,12 @@ handle `ptk-newsletter-fonts`, version `null` (Google's URL is the version).
 
 | # | Decision | Chosen, and why |
 |---|---|---|
-| 1 | **School year rule** | August–July: an issue dated in months 8–12 is `Y–(Y+1)`; months 1–7 is `(Y−1)–Y`. Rendered "2026–2027" with an en dash (from #040 line 289). Reason: Montclair's year starts the first week of September and ends in June; #038 (June 22, 2026) is a 2025–2026 issue, and an August back-to-school issue belongs to the year about to start. July is the only ambiguous month; a July issue is a wrap-up far more often than a preview, so it stays with the year just ended. Implemented as `PTK_Newsletter_Data::school_year_label( $date )`, returning `''` for an unparseable date. |
+| 1 | **School year rule** | August–July: an issue dated in months 8–12 is `Y–(Y+1)`; months 1–7 is `(Y−1)–Y`. Rendered "2026–2027" with an en dash (from #040 line 94). Reason: Montclair's year starts the first week of September and ends in June; #038 (June 22, 2026) is a 2025–2026 issue, and an August back-to-school issue belongs to the year about to start. July is the only ambiguous month; a July issue is a wrap-up far more often than a preview, so it stays with the year just ended. Implemented as `PTK_Newsletter_Data::school_year_label( $date )`, returning `''` for an unparseable date. |
 | 2 | **When a timeline row is past** | At the end of that calendar day: `relabel_for_date( row.date, today ) === 'past'`, i.e. `date < today`. Reason: the time field is free text ("8:30 AM–12:30 PM", "noon") so it can be typed the way it is spoken, the plugin has no reliable reader timezone, and this is exactly the rule the event tags already use — one rule, one JS port, one set of tests. #040's hour-precise fading needed a hand-written script per issue; that is not something a volunteer can fill in. |
 | 3 | **"Last row = deadline"** | The last row **as entered** is the deadline (yellow numeral and time, `data-timeline-deadline`); rows are not sorted. "Deadline" is a role, "past" is a state: once the last row's day has passed it greys like the others and stays yellow underneath, exactly as #040's Thu Sept 17 row carries both `color:#ffd166` and `data-fade-after`. No sorting because a volunteer who lists "Mon opens / Thu closes" has already said which is last, and silently reordering rows would surprise them. |
 | 4 | **Quick notes in the default layout** | Yes, between Stories and the footer. Empty sections publish nothing (fact 7), so a volunteer who never uses it pays nothing, and it is in the arrange list from the start rather than hidden under "Not included". Old newsletters get it as an excluded shell (fact 5, `sections_to_render()`), so they are unchanged until someone adds it back. |
 | 5 | **Field names, labels, help text** | As tabled above. Keys are snake_case matching their neighbours; the character guidance (headline ~30, When ~60, text ~90, story heading ~40, note headline ~40) is help text only — never `maxlength`, never validation — because a longer line still renders, just on two lines. |
-| 6 | **Link validation** | New helper `PTK_Newsletter_Data::sanitize_link_url()`: trim; **a bare email address (`leslie@example.org`) becomes `mailto:leslie@example.org`** so a volunteer never needs to know the word "mailto"; then `esc_url_raw()`; keep only if it matches `/^(https?:\/\/|mailto:)/i`, else `''`. **Revised by Lucas's controller after spec review: email links are allowed** -- #040's own "Email Leslie to volunteer" is one, and easy-to-use is the governing rule. Applied to `announcement.button_url` and `quick_notes.items[].link_url`. Existing `story_cards.cards[].link_url` and `footer.links[].url` keep `esc_url_raw()` so stored data is not silently blanked. Note that WordPress's `esc_url_raw()` prepends `http://` to a scheme-less address, so a volunteer who types `northeastpta.org/traffic` gets a working link in production; the test shim does not do this, so the plan deliberately does not assert on bare domains. (The earlier http/https-only rule, which would have rejected #040's own email link, is superseded.) |
+| 6 | **Link validation** | New helper `PTK_Newsletter_Data::sanitize_link_url()`: trim; **a bare email address (`leslie@example.org`) becomes `mailto:leslie@example.org`** so a volunteer never needs to know the word "mailto"; then `esc_url_raw()`; keep only if it matches `/^(https?:\/\/|mailto:)/i`, else `''`. **Revised by Lucas's controller after spec review: email links are allowed** -- #040's own "Email Leslie to volunteer" is one, and easy-to-use is the governing rule. Applied to `announcement.button_url` and `quick_notes.items[].link_url`. **In the form, those two inputs are `type="text" inputmode="url"`, not `type="url"`**: a `type="url"` input makes the browser reject `leslie@example.org`, the form refuses to submit, `sanitize_link_url()` never sees the value, and 4.1.1's `bindRevealInvalidFields()` jumps the volunteer back to that step. Story-card and footer links stay as they are (they use `esc_url_raw()`, which would turn a bare email into `http://leslie@…`). Existing `story_cards.cards[].link_url` and `footer.links[].url` keep `esc_url_raw()` so stored data is not silently blanked. Note that WordPress's `esc_url_raw()` prepends `http://` to a scheme-less address, so a volunteer who types `northeastpta.org/traffic` gets a working link in production; the test shim does not do this, so the plan deliberately does not assert on bare domains. (The earlier http/https-only rule, which would have rejected #040's own email link, is superseded.) |
 | 7 | **Default § labels** | `featured`: "Top story"; each card: "More news"; quick notes: "Quick notes". The § rule needs a mark, and a blank one would break the pattern; these defaults are the least category-like fallbacks available, and the help text pushes for a real label ("Date change", "Volunteers"). |
 | 8 | **Past event dates are grey, not red** | The renderer paints past numerals `#a51d23` (`class-newsletter-renderer.php:222`). House style reserves red for no school, deadlines and urgent; #040 greys past rows. Past → numeral `#6b6b6b`, row `opacity:0.45`. Red is not produced by the renderer at all in round 1 (a "no school" flag is a later feature). |
 | 9 | **No automatic re-render of published newsletters** | `post_content` is static HTML written at save time (`persist_newsletter()`, `:345`). A 4.1.x newsletter keeps its old look until someone opens it and presses Update, which re-renders through the new code. Reason: a version-gated rewrite of every `pta_newsletter` on eleven sites with nobody looking is the kind of thing that goes wrong; there is one live test issue today. The changelog says so in plain words. |
@@ -521,6 +535,7 @@ handle `ptk-newsletter-fonts`, version `null` (Google's URL is the version).
 | The existing "Upcoming" heading assertion (`tests/test-newsletter-renderer.php:65, :86`) breaks with the new heading | The test is updated in the same commit as the renderer change (the plan says exactly which lines). |
 | Announcement grows to 5 fields + a repeater and stops feeling easy | The timeline is behind a `<details>` disclosure; the button and When are marked Optional; the section intro says "skip it if there isn't one". |
 | `blocks_have_images()` misses images in a new place | No new image fields are added; quick notes have none. The existing function covers `featured.image_id` and `cards[].image_id`. |
+| Every stored newsletter's caption hash changes once | `caption_inputs_hash()` hashes the whole sanitized block array, so the new keys (blank `summary`, `when`, …) change the hash of every stored newsletter, and a share caption someone had edited by hand shows "The newsletter changed since you edited this." once. Accepted: the Builder shipped days ago, so almost no edited captions exist; the hashing is not changed. |
 | Version not bumped → rewrite/cached-asset gates never fire | Task 12 bumps `PTK_VERSION` and the plugin header together; the changelog goes in `update-info.json`. |
 
 ---
