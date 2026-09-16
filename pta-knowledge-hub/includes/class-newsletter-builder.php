@@ -49,6 +49,19 @@ class PTK_Newsletter_Builder {
     /** The only theme shipped in Phase 1. */
     const DEFAULT_THEME = 'harbor-navy';
 
+    /**
+     * The hook suffix add_submenu_page() actually returned for this page,
+     * captured once in add_page(). enqueue_assets() compares against THIS,
+     * never a hand-built 'pta_newsletter_page_...' string — see page_hook()
+     * and the 4.3.0 menu move (class-newsletter-post-type.php nests
+     * pta_newsletter under PTA Hub, which changes what that string would
+     * have to be; a captured value is correct regardless of where the
+     * CPT's menu lives).
+     *
+     * @var string
+     */
+    private static $hook = '';
+
     public static function init() {
         add_action( 'admin_menu', array( __CLASS__, 'add_page' ) );
         add_action( 'admin_menu', array( __CLASS__, 'remove_default_add_new' ), 99 );
@@ -536,7 +549,7 @@ class PTK_Newsletter_Builder {
      * Add the builder as a submenu under Newsletters, in the "Add New" slot.
      */
     public static function add_page() {
-        add_submenu_page(
+        self::$hook = (string) add_submenu_page(
             'edit.php?post_type=pta_newsletter',
             'New Newsletter',
             'Add New',
@@ -547,12 +560,24 @@ class PTK_Newsletter_Builder {
     }
 
     /**
+     * The Builder page's real hook suffix, for other classes that enqueue
+     * assets on this same page but have no add_page() of their own to
+     * capture it from (PTK_Share_Panel — the share panel is rendered on
+     * step 4 of THIS page, not its own).
+     *
+     * @return string
+     */
+    public static function page_hook() {
+        return self::$hook;
+    }
+
+    /**
      * Enqueue builder assets only on our page.
      *
      * @param string $hook Current admin page hook.
      */
     public static function enqueue_assets( $hook ) {
-        if ( 'pta_newsletter_page_' . self::PAGE_SLUG !== $hook ) {
+        if ( '' === self::$hook || $hook !== self::$hook ) {
             return;
         }
 

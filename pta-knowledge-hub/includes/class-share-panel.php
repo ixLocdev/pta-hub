@@ -42,7 +42,13 @@ class PTK_Share_Panel {
      * @param string $hook Current admin page hook.
      */
     public static function enqueue_assets( $hook ) {
-        if ( 'pta_newsletter_page_' . PTK_Newsletter_Builder::PAGE_SLUG !== $hook ) {
+        // Compares against the Builder's OWN captured hook, never a
+        // hand-built 'pta_newsletter_page_...' string — the share panel
+        // has no add_page() of its own (it renders on the Builder's step
+        // 4), and that string stopped being derivable by hand once the
+        // 4.3.0 menu move nested pta_newsletter under PTA Hub.
+        $builder_hook = PTK_Newsletter_Builder::page_hook();
+        if ( '' === $builder_hook || $hook !== $builder_hook ) {
             return;
         }
 

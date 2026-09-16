@@ -137,6 +137,35 @@ class PTK_Welcome {
     private static function get_cards() {
         $cards = array();
 
+        // 4.3.0: the newsletter is the most-repeated weekly task, so it
+        // takes the first, primary-styled slot — "Add or update an entry"
+        // (below) steps back to secondary. Two blue "primary" buttons on
+        // one page is no primary action at all (spec Decision 8).
+        if ( current_user_can( 'edit_posts' ) && class_exists( 'PTK_Newsletter_Builder' ) ) {
+            $last_line = '';
+            $last_id   = PTK_Newsletter_Builder::most_recent_newsletter_id();
+            if ( $last_id ) {
+                $last_issue = get_post_meta( $last_id, 'ptk_nl_issue', true );
+                $last_date  = (string) get_post_meta( $last_id, 'ptk_nl_date', true );
+                if ( $last_issue && class_exists( 'PTK_Share_Text' ) ) {
+                    $edit_url  = admin_url( 'edit.php?post_type=pta_newsletter&page=' . PTK_Newsletter_Builder::PAGE_SLUG . '&ptk_nl_edit_id=' . $last_id );
+                    $date_str  = preg_match( '/^\d{4}-\d{2}-\d{2}$/', $last_date ) ? date_i18n( 'M j', strtotime( $last_date ) ) : '';
+                    $last_line = 'No. ' . PTK_Share_Text::issue_label( $last_issue )
+                        . ( '' !== $date_str ? ' · ' . $date_str : '' )
+                        . ' · <a href="' . esc_url( $edit_url ) . '">Edit</a>';
+                }
+            }
+            $cards[] = array(
+                'icon'    => '📰',
+                'title'   => "Write this week's newsletter",
+                'desc'    => 'Four short steps, with a live preview as you go.' . ( $last_line ? ' Last issue: ' . $last_line : '' ),
+                'button'  => 'Start the newsletter',
+                'url'     => PTK_Newsletter_Builder::url(),
+                'primary' => true,
+                'new_tab' => false,
+            );
+        }
+
         if ( current_user_can( 'edit_posts' ) && class_exists( 'PTK_Content_Wizard' ) ) {
             $cards[] = array(
                 'icon'    => '➕',
@@ -144,7 +173,7 @@ class PTK_Welcome {
                 'desc'    => 'Answer a common question or write a how-to. Fill in a few boxes and we format it for you.',
                 'button'  => 'Start the guided form',
                 'url'     => PTK_Content_Wizard::url(),
-                'primary' => true,
+                'primary' => false,
                 'new_tab' => false,
             );
         }
@@ -211,7 +240,10 @@ class PTK_Welcome {
                     <div class="ptk-welcome-card">
                         <div class="ptk-welcome-card-icon"><?php echo esc_html( $c['icon'] ); ?></div>
                         <div class="ptk-welcome-card-title"><?php echo esc_html( $c['title'] ); ?></div>
-                        <div class="ptk-welcome-card-desc"><?php echo esc_html( $c['desc'] ); ?></div>
+                        <?php /* wp_kses_post, not esc_html: the newsletter card's "Last issue: … · Edit"
+                                line carries a real link. Every other card's desc is a plain hard-coded
+                                string with nothing to escape, so this is a no-op for them. */ ?>
+                        <div class="ptk-welcome-card-desc"><?php echo wp_kses_post( $c['desc'] ); ?></div>
                         <a class="ptk-welcome-btn <?php echo $c['primary'] ? 'ptk-welcome-btn-primary' : 'ptk-welcome-btn-secondary'; ?>"
                            href="<?php echo esc_url( $c['url'] ); ?>"<?php echo $c['new_tab'] ? ' target="_blank" rel="noopener"' : ''; ?>>
                             <?php echo esc_html( $c['button'] ); ?>

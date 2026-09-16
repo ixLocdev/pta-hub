@@ -65,10 +65,13 @@ class PTK_Newsletter_Post_Type {
             'public'             => true,
             'publicly_queryable' => true,
             'show_ui'            => true,
-            'show_in_menu'       => true,
+            // 4.3.0: nested under the PTA Hub menu instead of its own
+            // top-level entry, the same pattern class-vendor-directory.php
+            // and class-suggestions.php already use. menu_position and
+            // menu_icon only apply to a top-level entry, so they're removed
+            // rather than left as dead config.
+            'show_in_menu'       => 'edit.php?post_type=pta_knowledge',
             'show_in_rest'       => false,
-            'menu_position'      => 6,
-            'menu_icon'          => 'dashicons-email',
             'supports'           => array( 'title', 'thumbnail', 'revisions', 'author' ),
             'has_archive'        => 'newsletters',
             'rewrite'            => array( 'slug' => 'newsletters' ),
