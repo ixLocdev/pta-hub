@@ -132,6 +132,16 @@ class PTK_Share_Panel {
             $text = substr( $text, 0, self::MAX_CAPTION );
         }
 
+        // Belt and braces for the read-only draft preview: a tab left open from
+        // before an unpublish, or a pagehide beacon, must not freeze a caption
+        // that has no link in it.
+        if ( ! self::is_published( $post_id ) ) {
+            wp_send_json_error(
+                array( 'message' => 'Publish the newsletter first -- the posts get their link when it goes live.' ),
+                409
+            );
+        }
+
         $ctx = self::context( $post_id );
 
         if ( '' === trim( $text ) ) {
@@ -334,7 +344,7 @@ class PTK_Share_Panel {
                 <h3>Share this newsletter</h3>
                 <p class="description">Ready-to-paste posts for your PTA&#8217;s pages and groups. Nothing is posted for you &#8212; copy, paste, and change anything you like. Your changes are kept.</p>
                 <?php if ( ! $published ) : ?>
-                    <p class="ptk-nl-share-note">The link and phone handoff appear once this newsletter is published.</p>
+                    <p class="ptk-nl-share-note">These are previews. Once this newsletter is published, the link is added to each post and you can change and copy them here.</p>
                 <?php endif; ?>
             </div>
 
@@ -349,8 +359,15 @@ class PTK_Share_Panel {
                     <p class="ptk-nl-share-stale" data-share-stale<?php echo ( $caption['stored'] && $caption['stale'] ) ? '' : ' hidden'; ?>>The newsletter changed since you edited this.</p>
 
                     <label class="screen-reader-text" for="<?php echo esc_attr( $field ); ?>"><?php echo esc_html( $label . ' post text' ); ?></label>
-                    <textarea id="<?php echo esc_attr( $field ); ?>" class="ptk-nl-share-text" rows="<?php echo 'whatsapp' === $channel ? 5 : 9; ?>" data-share-text><?php echo esc_textarea( $caption['text'] ); ?></textarea>
+                    <?php
+                    // A draft has no permalink yet, so its captions carry no link. Letting
+                    // a volunteer edit one would freeze a post that goes out link-less the
+                    // moment they press Publish -- which sits on this same step. Previews
+                    // only, until the link exists.
+                    ?>
+                    <textarea id="<?php echo esc_attr( $field ); ?>" class="ptk-nl-share-text" rows="<?php echo 'whatsapp' === $channel ? 5 : 9; ?>" data-share-text<?php echo $published ? '' : ' readonly aria-readonly="true"'; ?>><?php echo esc_textarea( $caption['text'] ); ?></textarea>
 
+                    <?php if ( $published ) : ?>
                     <div class="ptk-nl-share-actions">
                         <button type="button" class="button button-primary" data-share-copy>Copy text</button>
                         <?php if ( 'facebook' === $channel && $published && '' !== self::facebook_url() ) : ?>
@@ -362,6 +379,7 @@ class PTK_Share_Panel {
                         <button type="button" class="button-link ptk-nl-share-reset" data-share-reset>Reset to generated</button>
                         <span class="ptk-nl-share-status" data-share-status role="status" aria-live="polite"></span>
                     </div>
+                    <?php endif; ?>
 
                     <?php if ( 'instagram' === $channel ) : ?>
                         <div class="ptk-nl-share-square" data-share-square>
