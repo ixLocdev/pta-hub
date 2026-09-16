@@ -715,7 +715,7 @@ class PTK_Newsletter_Builder {
             'events'       => 'Dates coming up. Each one shows with a “This week” or “Next week” tag that updates itself.',
             'featured'     => 'The big story of the week, in its own colored block. Optional.',
             'story_cards'  => 'Shorter articles — a heading, a paragraph, an optional link. Add as many as you need.',
-            'footer'       => 'Your sign-off and links. Set it once and it\'ll be here next time.',
+            'footer'       => 'Your sign-off and links.',
         );
 
         return isset( $intros[ $type ] ) ? $intros[ $type ] : '';
