@@ -141,4 +141,30 @@ ptk_test_ok( 'ptk_share_bg_color' === $t::BG_OPTION, 'BG_OPTION is ptk_share_bg_
 ptk_test_ok( '#ffffff' === $t::TEXT_FALLBACK, 'TEXT_FALLBACK is white' );
 ptk_test_ok( '#1a2f5c' === $t::FALLBACK, 'FALLBACK (background default) stays navy' );
 
+// ---------------------------------------------------------------------
+// Round 3.1 (spec item 4): the photo-square-only text/bar pair. Like
+// square_background_color()/square_text_color() above, the WordPress-
+// coupled getters themselves (square_photo_text_color()/
+// square_photo_bar_color()) are exercised in Playground, not here -- this
+// covers the constants and the contrast maths PTK_Share_Panel uses to
+// decide whether to show the plain "hard to read together" warning.
+// ---------------------------------------------------------------------
+ptk_test_ok( 'ptk_share_photo_text_color' === $t::PHOTO_TEXT_OPTION, 'PHOTO_TEXT_OPTION is ptk_share_photo_text_color' );
+ptk_test_ok( 'ptk_share_photo_bar_color' === $t::PHOTO_BAR_OPTION, 'PHOTO_BAR_OPTION is ptk_share_photo_bar_color' );
+ptk_test_ok( '#ffffff' === $t::PHOTO_TEXT_FALLBACK, 'PHOTO_TEXT_FALLBACK is white' );
+ptk_test_ok( '#1a2f5c' === $t::PHOTO_BAR_FALLBACK, 'PHOTO_BAR_FALLBACK is navy' );
+
+ptk_test_ok(
+    $t::contrast_ratio( $t::PHOTO_TEXT_FALLBACK, $t::PHOTO_BAR_FALLBACK ) >= $t::MIN_CONTRAST,
+    'the default photo-square pair (white on navy) clears AA on its own, so the warning never shows out of the box'
+);
+
+// A pair a school might genuinely pick that reads poorly -- the panel's
+// warning is meant for exactly this, and the render must NOT silently
+// correct it (spec: "don't block").
+ptk_test_ok(
+    $t::contrast_ratio( '#1a2f5c', '#0f172a' ) < $t::MIN_CONTRAST,
+    'navy text on near-navy bar fails AA -- this is the case the plain warning is for'
+);
+
 ptk_test_done();

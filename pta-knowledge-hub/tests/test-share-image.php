@@ -293,6 +293,39 @@ if ( PHP_VERSION_ID < 80000 ) { imagedestroy( $canvas2 ); }
 @unlink( $bogus_path );
 
 // ---------------------------------------------------------------------
+// Round 3.1 (spec item 4): the bar drawn behind a photo square's text
+// uses the CHOSEN photo_bar color, not a fixed 50% black -- confirms the
+// fix for "dark text unreadable over a photo" actually changes what gets
+// drawn, not just what color is asked for.
+// ---------------------------------------------------------------------
+$photo_path2 = sys_get_temp_dir() . '/ptk-test-square-photo-bar-' . uniqid() . '.jpg';
+$photo_im2   = imagecreatetruecolor( 100, 100 );
+imagefilledrectangle( $photo_im2, 0, 0, 99, 99, imagecolorallocate( $photo_im2, 0, 255, 0 ) ); // solid green
+imagejpeg( $photo_im2, $photo_path2, 95 );
+if ( PHP_VERSION_ID < 80000 ) { imagedestroy( $photo_im2 ); }
+
+$canvas3 = imagecreatetruecolor( $t::SIZE, $t::SIZE );
+imagefilledrectangle( $canvas3, 0, 0, $t::SIZE - 1, $t::SIZE - 1, imagecolorallocate( $canvas3, 255, 255, 255 ) );
+$t::draw_square_photo_from_file( $canvas3, $photo_path2, 'image/jpeg', array(
+    'photo_focal_x' => 50,
+    'photo_focal_y' => 50,
+    'photo_zoom'    => 0,
+    'photo_bar'     => '#ff0000', // pure red
+) );
+$sample3 = imagecolorat( $canvas3, (int) ( $t::SIZE / 2 ), (int) ( $t::SIZE / 2 ) );
+$rgb3    = array( ( $sample3 >> 16 ) & 0xFF, ( $sample3 >> 8 ) & 0xFF, $sample3 & 0xFF );
+ptk_test_ok( $rgb3[0] > 200 && $rgb3[1] < 40, 'draw_square_photo_from_file: a near-opaque RED photo_bar dominates over the solid green photo underneath' );
+if ( PHP_VERSION_ID < 80000 ) { imagedestroy( $canvas3 ); }
+@unlink( $photo_path2 );
+
+// render_png() itself can only reach draw_square_photo() through
+// get_attached_file(), which needs WordPress (see the "unresolvable
+// photo_id" test above) -- so render_png()'s use of photo_text/photo_bar
+// is covered live (Playground GD can't draw text at all, per the spec's
+// note). The drawing primitive that actually paints the bar color
+// (draw_square_photo_from_file, tested above) is proven correct here.
+
+// ---------------------------------------------------------------------
 // should_regenerate() -- the decision ensure_square() makes, pulled out
 // so it can be tested without a WordPress runtime.
 // ---------------------------------------------------------------------

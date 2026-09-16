@@ -516,6 +516,50 @@
             }, 500);
         });
 
+        /* ──────────────────────────────────────────
+         * "Text color" / "Bar color" for photo squares (round 3.1, item 4)
+         * ────────────────────────────────────────── */
+
+        var colorTimer = null;
+
+        function syncPhotoHex($root, kind, value) {
+            $root.find('[data-photo-color-hex="' + kind + '"]').val(value);
+            $root.find('[data-photo-color-picker="' + kind + '"]').val(value);
+        }
+
+        $area.on('input change', '[data-photo-color-picker], [data-photo-color-hex]', function () {
+            var $input = $(this);
+            var kind = $input.attr('data-photo-color-picker') || $input.attr('data-photo-color-hex');
+            var $colors = $input.closest('[data-photo-colors]');
+            var value = $input.val();
+
+            // A typed hex box and its matching native picker stay mirrored,
+            // whichever one changed -- same pattern as Newsletter settings.
+            if (/^#?[0-9a-fA-F]{6}$/.test(value)) {
+                syncPhotoHex($colors, kind, value.charAt(0) === '#' ? value : '#' + value);
+            }
+
+            window.clearTimeout(colorTimer);
+            colorTimer = window.setTimeout(function () {
+                var textVal = $colors.find('[data-photo-color-hex="text"]').val();
+                var barVal = $colors.find('[data-photo-color-hex="bar"]').val();
+                $.post(ptkNlShare.ajaxUrl, {
+                    action: 'ptk_nl_share_photo_colors',
+                    nonce: ptkNlShare.nonce,
+                    post_id: postId,
+                    text_color: textVal,
+                    bar_color: barVal
+                }).done(function (res) {
+                    if (res && res.success && res.data) {
+                        if (typeof res.data.html === 'string') {
+                            $area.html(res.data.html);
+                            initPhotoPicker($area);
+                        }
+                    }
+                });
+            }, 500);
+        });
+
         initPhotoPicker($area);
     }
 

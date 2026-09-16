@@ -161,3 +161,38 @@
 .ptk-nl-share-photo-picker {
     max-width: 270px;
 }
+
+/* ── Photo-square text/bar colors (round 3.1) ── */
+.ptk-nl-photo-colors {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 20px;
+    margin: 0 0 10px;
+}
+.ptk-nl-photo-colorfield {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.ptk-nl-photo-colorfield label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #3c434a;
+}
+.ptk-nl-photo-hex {
+    width: 6.5em;
+    min-height: 30px;
+    font-family: Menlo, Consolas, monospace;
+    font-size: 12px;
+}
+.ptk-nl-photo-colors-warning {
+    flex-basis: 100%;
+    margin: 0;
+    padding: 6px 10px;
+    background: #fef3c7;
+    border: 1px solid #f5d78e;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #7a5b00;
+}

@@ -34,6 +34,7 @@ class PTK_Share_Panel {
         add_action( 'wp_ajax_ptk_nl_share_save', array( __CLASS__, 'ajax_save' ) );
         add_action( 'wp_ajax_ptk_nl_share_reset', array( __CLASS__, 'ajax_reset' ) );
         add_action( 'wp_ajax_ptk_nl_share_square', array( __CLASS__, 'ajax_square' ) );
+        add_action( 'wp_ajax_ptk_nl_share_photo_colors', array( __CLASS__, 'ajax_photo_colors' ) );
     }
 
     /**
@@ -534,6 +535,10 @@ class PTK_Share_Panel {
                 'photo_focal_x' => $photo['focal_x'],
                 'photo_focal_y' => $photo['focal_y'],
                 'photo_zoom'    => $photo['zoom'],
+                // Round 3.1: the photo-only text/bar pair (item 4) -- only
+                // used by render_png() when a photo is actually drawn.
+                'photo_text'    => PTK_Share_Color::square_photo_text_color(),
+                'photo_bar'     => PTK_Share_Color::square_photo_bar_color(),
             ) );
         }
 
@@ -614,6 +619,8 @@ class PTK_Share_Panel {
         <div class="ptk-nl-share-photo" data-share-photo data-has-photo="<?php echo $photo['photo_id'] ? '1' : '0'; ?>" data-pii-confirmed="<?php echo $pii_confirmed ? '1' : '0'; ?>" data-featured-image-id="<?php echo (int) $featured_image_id; ?>">
             <p class="ptk-nl-share-photo-label">Use a photo behind the words</p>
 
+            <?php self::render_photo_color_fields(); ?>
+
             <?php if ( ! $pii_confirmed ) : ?>
                 <div class="ptk-nl-share-photo-consent" data-share-photo-consent>
                     <p class="description">Please confirm the photos are OK before using one here — the same checkbox as Publish.</p>
@@ -645,6 +652,70 @@ class PTK_Share_Panel {
         </div>
         <?php
         return (string) ob_get_clean();
+    }
+
+    /**
+     * Round 3.1 (spec item 4): "Text color" and "Bar color" for photo
+     * squares only -- same color-input + hex box pattern as Newsletter
+     * settings' square colors, shown right next to "Use a photo behind the
+     * words" since that's the only place they matter. Set once for the
+     * whole site (like the flat square's colors), saved via
+     * ptk_nl_share_photo_colors. If the pair fails WCAG AA, a plain warning
+     * is shown -- the colors are still used exactly as picked (spec: "don't
+     * block").
+     */
+    protected static function render_photo_color_fields() {
+        $text_value = PTK_Share_Color::square_photo_text_color();
+        $bar_value  = PTK_Share_Color::square_photo_bar_color();
+        $ratio      = PTK_Share_Color::contrast_ratio( $text_value, $bar_value );
+        $low        = $ratio < PTK_Share_Color::MIN_CONTRAST;
+        ?>
+        <div class="ptk-nl-photo-colors" data-photo-colors>
+            <div class="ptk-nl-photo-colorfield">
+                <label for="ptk-nl-photo-text-color">Text color</label>
+                <input type="color" id="ptk-nl-photo-text-color" value="<?php echo esc_attr( $text_value ); ?>" data-photo-color-picker="text">
+                <label for="ptk-nl-photo-text-color-hex" class="screen-reader-text">Text color code</label>
+                <input type="text" id="ptk-nl-photo-text-color-hex" class="ptk-nl-photo-hex" value="<?php echo esc_attr( $text_value ); ?>" maxlength="7" spellcheck="false" autocomplete="off" autocapitalize="off" data-photo-color-hex="text">
+            </div>
+            <div class="ptk-nl-photo-colorfield">
+                <label for="ptk-nl-photo-bar-color">Bar color</label>
+                <input type="color" id="ptk-nl-photo-bar-color" value="<?php echo esc_attr( $bar_value ); ?>" data-photo-color-picker="bar">
+                <label for="ptk-nl-photo-bar-color-hex" class="screen-reader-text">Bar color code</label>
+                <input type="text" id="ptk-nl-photo-bar-color-hex" class="ptk-nl-photo-hex" value="<?php echo esc_attr( $bar_value ); ?>" maxlength="7" spellcheck="false" autocomplete="off" autocapitalize="off" data-photo-color-hex="bar">
+            </div>
+            <p class="ptk-nl-photo-colors-warning" data-photo-colors-warning<?php echo $low ? '' : ' hidden'; ?>>These colors are hard to read together.</p>
+        </div>
+        <?php
+    }
+
+    /**
+     * Save the photo-square text/bar colors (round 3.1). Set-once site
+     * settings, like the flat square's own two colors, so this is a plain
+     * option save -- not tied to one newsletter -- that replies with the
+     * re-rendered square so the change is visible right away.
+     */
+    public static function ajax_photo_colors() {
+        $post_id = self::authorize_request();
+
+        $text = isset( $_POST['text_color'] ) ? sanitize_text_field( wp_unslash( $_POST['text_color'] ) ) : '';
+        $bar  = isset( $_POST['bar_color'] ) ? sanitize_text_field( wp_unslash( $_POST['bar_color'] ) ) : '';
+
+        if ( PTK_Share_Color::is_hex( $text ) ) {
+            update_option( PTK_Share_Color::PHOTO_TEXT_OPTION, PTK_Share_Color::normalize_hex( $text ) );
+        }
+        if ( PTK_Share_Color::is_hex( $bar ) ) {
+            update_option( PTK_Share_Color::PHOTO_BAR_OPTION, PTK_Share_Color::normalize_hex( $bar ) );
+        }
+
+        $ratio = PTK_Share_Color::contrast_ratio(
+            PTK_Share_Color::square_photo_text_color(),
+            PTK_Share_Color::square_photo_bar_color()
+        );
+
+        wp_send_json_success( array(
+            'html' => self::square_html( $post_id, self::context( $post_id ) ),
+            'low'  => $ratio < PTK_Share_Color::MIN_CONTRAST,
+        ) );
     }
 
     /**

@@ -32,6 +32,14 @@ class PTK_Share_Image {
     const PAD    = 96;
 
     /**
+     * Round 3.1 (spec item 4): how opaque the bar drawn behind a photo
+     * square's text is (GD alpha, 0 opaque .. 127 transparent). Low on
+     * purpose -- close enough to solid that the color actually seen is, for
+     * contrast purposes, the chosen bar color itself.
+     */
+    const PHOTO_BAR_ALPHA = 12;
+
+    /**
      * Keep a name on one line when it fits at this share of the maximum size.
      *
      * Measured, not picked: names that would otherwise widow ("Watchung
@@ -194,6 +202,18 @@ class PTK_Share_Image {
             $background
         );
 
+        // Round 3.1 (spec item 4): the PHOTO square's own text/bar pair,
+        // used ONLY once a photo is actually drawn (below). Deliberately
+        // NOT run through text_for()/readable_pair() -- the spec calls for
+        // a plain warning when this pair is hard to read, never a silent
+        // override, unlike the flat square's $text above.
+        $photo_text = PTK_Share_Color::normalize_hex(
+            isset( $args['photo_text'] ) && '' !== $args['photo_text'] ? $args['photo_text'] : PTK_Share_Color::PHOTO_TEXT_FALLBACK
+        );
+        $photo_bar = PTK_Share_Color::normalize_hex(
+            isset( $args['photo_bar'] ) && '' !== $args['photo_bar'] ? $args['photo_bar'] : PTK_Share_Color::PHOTO_BAR_FALLBACK
+        );
+
         // Nothing to say, so nothing to draw. A square with only the rules
         // on it IS the blank image this must never return.
         if ( '' === $issue && '' === $date && '' === $school ) {
@@ -205,23 +225,26 @@ class PTK_Share_Image {
             return false;
         }
 
-        $bg_col   = self::allocate( $im, $background );
-        $text_col = self::allocate( $im, $text );
-        $hairline = self::allocate( $im, self::hairline_for( $background ) );
-
+        $bg_col = self::allocate( $im, $background );
         imagefilledrectangle( $im, 0, 0, self::SIZE - 1, self::SIZE - 1, $bg_col );
 
         // "Photo behind the words": a source photo cropped/composed under
-        // a dark scrim, drawn between the flat fill and the eyebrow. Never
-        // fatal -- any failure to load/crop the photo (missing file,
-        // unrecognized mime, unsupported format) leaves the flat fill
-        // already drawn above as the fallback, exactly as if no photo_id
-        // had been given at all.
+        // a near-opaque bar in the chosen bar color, drawn between the flat
+        // fill and the eyebrow. Never fatal -- any failure to load/crop the
+        // photo (missing file, unrecognized mime, unsupported format) leaves
+        // the flat fill already drawn above as the fallback, exactly as if
+        // no photo_id had been given at all.
         $photo_id  = isset( $args['photo_id'] ) ? absint( $args['photo_id'] ) : 0;
         $has_photo = false;
         if ( $photo_id > 0 && function_exists( 'get_attached_file' ) ) {
-            $has_photo = self::draw_square_photo( $im, $photo_id, $args );
+            $has_photo = self::draw_square_photo( $im, $photo_id, array_merge( $args, array( 'photo_bar' => $photo_bar ) ) );
         }
+
+        // The text actually drawn: the photo pair over a photo (its own bar
+        // sits behind every line of text, so it is well-defined to check
+        // for contrast against), the flat pair otherwise.
+        $text_col = self::allocate( $im, $has_photo ? $photo_text : $text );
+        $hairline = self::allocate( $im, self::hairline_for( $has_photo ? $photo_bar : $background ) );
 
         $left  = self::PAD;
         $right = self::SIZE - self::PAD;
@@ -395,11 +418,24 @@ class PTK_Share_Image {
 
         self::free( $src );
 
-        // A dark scrim over the whole canvas so the text drawn after this
-        // stays readable -- roughly 50% black (alpha is GD's 0-127 range,
-        // 127 fully transparent).
+        // Round 3.1 (spec item 4): a near-opaque bar in the chosen bar
+        // color over the whole canvas, so the text drawn after this reads
+        // reliably against a KNOWN color rather than whatever the photo
+        // happens to show underneath -- a translucent scrim over an
+        // unpredictable photo is exactly what produced Lucas's "dark text
+        // on a dark photo, unreadable" report. PHOTO_BAR_ALPHA is GD's
+        // 0-127 range (127 fully transparent); 12 leaves the photo only
+        // faintly visible through the bar, close enough to solid that the
+        // resulting color is effectively the bar color itself, so the
+        // text/bar contrast ratio computed in PHP is what actually gets
+        // drawn.
+        $bar = isset( $args['photo_bar'] ) && is_string( $args['photo_bar'] ) && '' !== $args['photo_bar']
+            ? $args['photo_bar']
+            : PTK_Share_Color::PHOTO_BAR_FALLBACK;
+        list( $br, $bg, $bb ) = PTK_Share_Color::to_rgb( $bar );
+
         imagealphablending( $im, true );
-        $scrim = imagecolorallocatealpha( $im, 0, 0, 0, 64 );
+        $scrim = imagecolorallocatealpha( $im, $br, $bg, $bb, self::PHOTO_BAR_ALPHA );
         imagefilledrectangle( $im, 0, 0, self::SIZE - 1, self::SIZE - 1, $scrim );
         imagealphablending( $im, false );
 
@@ -789,7 +825,21 @@ class PTK_Share_Image {
             $background
         );
 
-        $current_hash = PTK_Share_Data::square_inputs_hash( $issue, $date, $school, $background, $text, $photo_id, $photo_focal_x, $photo_focal_y, $photo_zoom, $version );
+        // Round 3.1: the photo-only pair, never auto-corrected (see
+        // render_png()'s matching comment).
+        $photo_text = PTK_Share_Color::normalize_hex(
+            isset( $args['photo_text'] ) && '' !== $args['photo_text'] ? $args['photo_text'] : PTK_Share_Color::PHOTO_TEXT_FALLBACK
+        );
+        $photo_bar = PTK_Share_Color::normalize_hex(
+            isset( $args['photo_bar'] ) && '' !== $args['photo_bar'] ? $args['photo_bar'] : PTK_Share_Color::PHOTO_BAR_FALLBACK
+        );
+
+        // square_inputs_hash()'s signature is unit-tested and shared with
+        // callers that have no photo colors at all -- append the photo pair
+        // to its result rather than widening it, so a school that changes
+        // only the photo text/bar color still regenerates.
+        $current_hash = PTK_Share_Data::square_inputs_hash( $issue, $date, $school, $background, $text, $photo_id, $photo_focal_x, $photo_focal_y, $photo_zoom, $version )
+            . '|' . $photo_text . $photo_bar;
         $exists       = $square['image_id'] && self::attachment_exists( $square['image_id'] );
 
         if ( ! self::should_regenerate( $square['hash'], $current_hash, $exists, false ) ) {
@@ -813,6 +863,8 @@ class PTK_Share_Image {
             'photo_focal_x'  => $photo_focal_x,
             'photo_focal_y'  => $photo_focal_y,
             'photo_zoom'     => $photo_zoom,
+            'photo_text'     => $photo_text,
+            'photo_bar'      => $photo_bar,
         ) );
 
         if ( ! is_string( $png ) || '' === $png ) {

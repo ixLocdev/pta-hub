@@ -36,6 +36,22 @@ class PTK_Share_Color {
     const OPTION = 'ptk_share_color';
 
     /**
+     * Round 3.1 (spec item 4): the square's text/bar colors used ONLY when
+     * a photo sits behind the words -- kept separate from OPTION/BG_OPTION
+     * (the flat-square colors) because the same pair that reads fine on a
+     * plain navy fill can be unreadable over a photo, and a photo square
+     * draws a solid bar behind the text rather than the flat fill. Neither
+     * falls back to the Council palette, matching BG_OPTION/OPTION's own
+     * "self-contained pair" rule.
+     */
+    const PHOTO_TEXT_OPTION = 'ptk_share_photo_text_color';
+    const PHOTO_BAR_OPTION  = 'ptk_share_photo_bar_color';
+
+    /** Defaults for the photo-square pair: white text on a navy bar. */
+    const PHOTO_TEXT_FALLBACK = '#ffffff';
+    const PHOTO_BAR_FALLBACK  = '#1a2f5c';
+
+    /**
      * 4.3.0: the share square's SECOND color, its background. A blog
      * option like OPTION, and -- unlike OPTION's own resolution chain --
      * deliberately has no Council fallback: the square is a two-color
@@ -306,5 +322,33 @@ class PTK_Share_Color {
         $blog_id = ( null === $blog_id ) ? (int) get_current_blog_id() : (int) $blog_id;
         $own     = get_option( self::OPTION, '' );
         return self::is_hex( $own ) ? self::normalize_hex( $own ) : self::TEXT_FALLBACK;
+    }
+
+    /**
+     * Round 3.1: the text color for a PHOTO square -- this site's own pick,
+     * else white. NOT run through readable_pair() here; callers show a
+     * plain warning instead of silently overriding what was chosen (spec
+     * item 4: "don't block").
+     *
+     * @param int|null $blog_id Defaults to the current site.
+     * @return string Normalized '#rrggbb'.
+     */
+    public static function square_photo_text_color( $blog_id = null ) {
+        $blog_id = ( null === $blog_id ) ? (int) get_current_blog_id() : (int) $blog_id;
+        $own     = get_option( self::PHOTO_TEXT_OPTION, '' );
+        return self::is_hex( $own ) ? self::normalize_hex( $own ) : self::PHOTO_TEXT_FALLBACK;
+    }
+
+    /**
+     * Round 3.1: the bar/scrim color drawn behind the words on a PHOTO
+     * square -- this site's own pick, else navy.
+     *
+     * @param int|null $blog_id Defaults to the current site.
+     * @return string Normalized '#rrggbb'.
+     */
+    public static function square_photo_bar_color( $blog_id = null ) {
+        $blog_id = ( null === $blog_id ) ? (int) get_current_blog_id() : (int) $blog_id;
+        $own     = get_option( self::PHOTO_BAR_OPTION, '' );
+        return self::is_hex( $own ) ? self::normalize_hex( $own ) : self::PHOTO_BAR_FALLBACK;
     }
 }
