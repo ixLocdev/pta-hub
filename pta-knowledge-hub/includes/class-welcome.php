@@ -49,18 +49,29 @@ class PTK_Welcome {
             return;
         }
         $items = $submenu[ self::MENU_PARENT ];
-        $ours  = null;
-        foreach ( $items as $i => $item ) {
-            // $item[2] is the menu slug.
-            if ( isset( $item[2] ) && self::PAGE_SLUG === $item[2] ) {
-                $ours = $item;
-                unset( $items[ $i ] );
-                break;
+
+        // Start Here first, then the three newsletter pages together, in the
+        // order a volunteer uses them. WordPress lists submenus in the order
+        // they were registered, which scattered them among Vendors and
+        // Suggestions. $item[2] is the menu slug.
+        $wanted = array(
+            self::PAGE_SLUG,
+            'edit.php?post_type=pta_newsletter',
+            'ptk-newsletter-builder',
+            'ptk-share-settings',
+        );
+        $front = array();
+        foreach ( $wanted as $slug ) {
+            foreach ( $items as $i => $item ) {
+                if ( isset( $item[2] ) && $slug === $item[2] ) {
+                    $front[] = $item;
+                    unset( $items[ $i ] );
+                    break;
+                }
             }
         }
-        if ( $ours ) {
-            array_unshift( $items, $ours );
-            $submenu[ self::MENU_PARENT ] = array_values( $items );
+        if ( $front ) {
+            $submenu[ self::MENU_PARENT ] = array_values( array_merge( $front, $items ) );
         }
     }
 

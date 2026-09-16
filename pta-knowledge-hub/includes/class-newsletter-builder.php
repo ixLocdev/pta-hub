@@ -571,7 +571,8 @@ class PTK_Newsletter_Builder {
         self::$hook = (string) add_submenu_page(
             'edit.php?post_type=pta_knowledge',
             'New Newsletter',
-            'Add New',
+            // Not "Add New": this menu also creates Hub entries and vendors.
+            'New newsletter',
             'edit_posts',
             self::PAGE_SLUG,
             array( __CLASS__, 'render_page' )

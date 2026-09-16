@@ -386,8 +386,8 @@ class PTK_Share_Settings {
 
         // ---- Join / News / Calendar links ----
         $link_fields = array(
-            'join'  => array( 'option' => self::JOIN_OPTION, 'post' => 'ptk_join_url', 'label' => 'Join the PTA link', 'example' => 'join@yourschool.org' ),
-            'news'  => array( 'option' => self::NEWS_OPTION, 'post' => 'ptk_news_url', 'label' => 'Send us your news link', 'example' => 'news@yourschool.org' ),
+            'join'  => array( 'option' => self::JOIN_OPTION, 'post' => 'ptk_join_url', 'label' => 'Join the PTA link', 'example' => 'https://yourschool.givebacks.com/shop' ),
+            'news'  => array( 'option' => self::NEWS_OPTION, 'post' => 'ptk_news_url', 'label' => 'Send us your news link', 'example' => 'https://yourschool.org/newsletter-submission-form' ),
             'cal'   => array( 'option' => self::CAL_OPTION, 'post' => 'ptk_calendar_url', 'label' => 'Calendar page link', 'example' => 'https://yourschool.org/calendar' ),
         );
         foreach ( $link_fields as $key => $field ) {
@@ -561,7 +561,7 @@ class PTK_Share_Settings {
                 <?php if ( '' !== $notice['join_error'] ) : ?>
                     <p class="ptk-ss-field-error" id="ptk-join-error"><?php echo esc_html( $notice['join_error'] ); ?></p>
                 <?php endif; ?>
-                <p class="description">A web address, or a plain email address. Shows as "Join the PTA for {school year} →" in the masthead of every newsletter. Leave it empty to leave the link out.</p>
+                <p class="description">A web address, or a plain email address. Shows as "Join the PTA for 2026–2027 →" in the masthead of every newsletter. Leave it empty to leave the link out.</p>
 
                 <h2>Send us your news</h2>
                 <p>
