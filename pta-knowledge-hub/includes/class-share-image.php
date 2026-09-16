@@ -200,6 +200,10 @@ class PTK_Share_Image {
         // numerals stand about 300px tall, so a label baseline anywhere
         // near the digits' baseline lands inside them.
         if ( '' !== $issue ) {
+            // "042", not "42" -- the same padding as the masthead and share
+            // page. The № sign is left off here: the ISSUE label above already
+            // says what the number is, and the bundled font may not carry №.
+            $issue = PTK_Share_Text::issue_label( $issue );
             self::draw_tracked( $im, 'ISSUE', $fonts['eyebrow'], 34, $left, 296, $white, 12 );
 
             $issue_size = self::fit_text( $issue, $fonts['issue'], 300, 96, $width );

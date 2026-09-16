@@ -15,6 +15,11 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+// issue_label() lives with the share text so every surface pads the issue
+// number the same way. require_once resolves real paths, so this and the
+// plugin bootstrap's own require never load it twice.
+require_once __DIR__ . '/class-share-text.php';
+
 class PTK_Newsletter_Renderer {
 
     /**
@@ -107,7 +112,9 @@ class PTK_Newsletter_Renderer {
 
         $issue_html = '';
         if ( '' !== trim( self::str( $issue ) ) ) {
-            $issue_html = '<div style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:' . esc_attr( self::PALETTE['muted'] ) . ';font-weight:600;margin-bottom:10px;">No.&nbsp;' . esc_html( self::str( $issue ) ) . '</div>';
+            // "№ 042": the house style, and the same label the share page and
+            // settings preview use (PTK_Share_Text::issue_label pads to 3).
+            $issue_html = '<div style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:' . esc_attr( self::PALETTE['muted'] ) . ';font-weight:600;margin-bottom:10px;">&#8470;&nbsp;' . esc_html( PTK_Share_Text::issue_label( self::str( $issue ) ) ) . '</div>';
         }
 
         $headline_html = '';

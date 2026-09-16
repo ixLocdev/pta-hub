@@ -114,7 +114,32 @@
         safeBoot(bindPreviewLinks);
         safeBoot(bindUnsavedGuard);
         safeBoot(focusConsentIfRefused);
+        safeBoot(bindRevealInvalidFields);
     });
+
+    /**
+     * A required field on a hidden step (the issue number, on step 1, when
+     * Publish is pressed on step 4) would otherwise make the browser refuse
+     * to submit with no visible reason -- it can't point at a hidden field.
+     * `invalid` fires before the browser reports the problem, so switching to
+     * that field's step here lets the browser show its message on it.
+     */
+    function bindRevealInvalidFields() {
+        var form = document.getElementById('ptk-nl-form');
+        if (!form) {
+            return;
+        }
+        form.addEventListener('invalid', function (e) {
+            var $step = $(e.target).closest('[data-step]');
+            if (!$step.length || $step.is(':visible')) {
+                return;
+            }
+            var step = parseInt($step.attr('data-step'), 10);
+            if (!isNaN(step)) {
+                showStep(step, false);
+            }
+        }, true);
+    }
 
     /**
      * Publishing was turned into a draft because the photo check wasn't

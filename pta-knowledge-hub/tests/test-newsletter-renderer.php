@@ -19,7 +19,8 @@ $html = PTK_Newsletter_Renderer::render( $blocks, array(
 ptk_test_ok( strpos( $html, 'Northeast PTA' ) !== false, 'renders school name' );
 ptk_test_ok( strpos( $html, 'Last Day of School' ) !== false, 'renders event title' );
 ptk_test_ok( strpos( $html, '#1a2f5c' ) !== false, 'uses Harbor Navy primary color' );
-ptk_test_ok( strpos( $html, 'No.&nbsp;39' ) !== false || strpos( $html, '39' ) !== false, 'renders issue number' );
+ptk_test_ok( strpos( $html, '&#8470;&nbsp;039' ) !== false, 'renders issue number zero-padded as № 039' );
+ptk_test_ok( strpos( $html, 'No.&nbsp;' ) === false, 'no old "No." label' );
 ptk_test_ok( strpos( $html, '<script' ) === false, 'no raw script tags in output' );
 
 // --- Masthead: a provided headline renders as the big H1. ------------------
@@ -56,7 +57,7 @@ $empty_opts  = array(
 $empty_html = PTK_Newsletter_Renderer::render( PTK_Newsletter_Data::default_blocks(), $empty_opts );
 
 // Header still renders (issue number present) — proves we didn't skip everything.
-ptk_test_ok( strpos( $empty_html, 'No.&nbsp;39' ) !== false, 'empty layout still renders header issue number' );
+ptk_test_ok( strpos( $empty_html, '&#8470;&nbsp;039' ) !== false, 'empty layout still renders header issue number' );
 // Announcement + featured are the only blocks that use a navy background fill;
 // absence proves both empty blocks were skipped (header uses navy as a text color only).
 ptk_test_ok( strpos( $empty_html, 'background:#1a2f5c' ) === false, 'empty announcement/featured navy bars are skipped' );

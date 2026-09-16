@@ -166,10 +166,19 @@ class PTK_Newsletter_Builder {
 
         // Floor the issue number: absint() yields 0 on a missing/malformed
         // value, which would produce a "Newsletter No. 0" title. Fall back to
-        // the next issue number instead.
+        // the next issue number -- but on a site with no newsletters yet there
+        // is no "next" to guess (a PTA on issue 41 must not become No. 1), so
+        // ask. The field is required in the form, so this is a last resort.
         $issue = absint( $_POST['ptk_nl_issue'] ?? 0 );
         if ( $issue < 1 ) {
             $issue = self::next_issue_number();
+        }
+        if ( $issue < 1 ) {
+            wp_die(
+                'Please fill in the issue number on step 1 (The basics). If you&#8217;ve sent newsletters before, use the next number. Go back to return to your newsletter.',
+                'PTA Hub',
+                array( 'back_link' => true )
+            );
         }
 
         $date_posted = isset( $_POST['ptk_nl_date'] ) ? sanitize_text_field( wp_unslash( $_POST['ptk_nl_date'] ) ) : '';
@@ -257,9 +266,11 @@ class PTK_Newsletter_Builder {
         // Issue + date live OUTSIDE the blocks JSON and the renderer reads them
         // from opts, so they must be posted separately or the masthead would show
         // no issue number, no date, and no auto-derived "Week of ..." headline.
+        // No number yet (a site's very first newsletter): show none rather
+        // than invent "1".
         $issue = absint( isset( $_POST['issue'] ) ? $_POST['issue'] : 0 );
         if ( $issue < 1 ) {
-            $issue = 1;
+            $issue = '';
         }
         $date = isset( $_POST['date'] ) ? sanitize_text_field( wp_unslash( $_POST['date'] ) ) : '';
         if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date ) ) {
@@ -640,9 +651,13 @@ class PTK_Newsletter_Builder {
     /**
      * Work out the next issue number: one more than the highest
      * `ptk_nl_issue` meta value found on any pta_newsletter post
-     * (any status), or 1 if there are no newsletters yet.
+     * (any status), or 0 if there are no newsletters yet.
      *
-     * @return int
+     * 0, never 1, for a first run: most PTAs were sending newsletters long
+     * before this site, so the builder leaves the number blank and asks
+     * rather than publishing "No. 1" for what is really issue 41.
+     *
+     * @return int 0 when unknown.
      */
     public static function next_issue_number() {
         $recent = get_posts( array(
@@ -657,7 +672,7 @@ class PTK_Newsletter_Builder {
         ) );
 
         if ( empty( $recent ) ) {
-            return 1;
+            return 0;
         }
 
         $last = get_post_meta( $recent[0], 'ptk_nl_issue', true );
@@ -1183,13 +1198,21 @@ class PTK_Newsletter_Builder {
      * @param string     $date  Issue date, Y-m-d.
      */
     protected static function render_issue_details( $issue, $date ) {
+        // Unknown number (this site's first newsletter): blank and required,
+        // with a prompt, instead of a confident but wrong "1".
+        $unknown = absint( $issue ) < 1;
         ?>
         <div class="ptk-nl-issue-details">
-            <h4>Issue details &#8212; we filled these in</h4>
+            <h4><?php echo $unknown ? 'Issue details' : 'Issue details &#8212; we filled these in'; ?></h4>
             <div class="ptk-nl-issue-details-row">
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-issue">Issue number</label>
-                    <input type="number" id="ptk-nl-issue" name="ptk_nl_issue" value="<?php echo esc_attr( $issue ); ?>" min="1">
+                    <?php if ( $unknown ) : ?>
+                        <input type="number" id="ptk-nl-issue" name="ptk_nl_issue" value="" min="1" required aria-describedby="ptk-nl-issue-hint">
+                        <p class="description" id="ptk-nl-issue-hint">What number is this issue? If you&#8217;ve sent newsletters before, use the next number.</p>
+                    <?php else : ?>
+                        <input type="number" id="ptk-nl-issue" name="ptk_nl_issue" value="<?php echo esc_attr( absint( $issue ) ); ?>" min="1">
+                    <?php endif; ?>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-date">Issue date</label>
