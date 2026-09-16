@@ -87,9 +87,34 @@
 
 .ptk-ss-picker {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 10px;
     margin: 6px 0 0 24px;
+}
+
+.ptk-ss-picker .ptk-ss-hex {
+    width: 7.5em;
+    min-height: 36px;
+    font-family: Menlo, Consolas, monospace;
+}
+
+.ptk-ss-hex[aria-invalid="true"] {
+    border-color: #a51d23;
+    box-shadow: 0 0 0 1px #a51d23;
+}
+
+.ptk-ss-hex-hint {
+    margin: 6px 0 0 24px;
+    max-width: 44ch;
+}
+
+.ptk-ss-choices .ptk-ss-field-error {
+    margin: 6px 0 0 24px;
+}
+
+.ptk-ss-field-error:empty {
+    display: none;
 }
 
 .ptk-ss-picker input[type="color"] {
@@ -100,10 +125,6 @@
     border-radius: 4px;
     background: #ffffff;
     cursor: pointer;
-}
-
-.ptk-ss-picker.is-off {
-    opacity: 0.5;
 }
 
 .ptk-ss-preview {

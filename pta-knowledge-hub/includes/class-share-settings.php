@@ -118,6 +118,44 @@ class PTK_Share_Settings {
     }
 
     /**
+     * Work out which color was submitted: the typed color code or the
+     * picker. Both are sent, and JavaScript keeps them in step -- but without
+     * JavaScript they can disagree, so the one the person actually CHANGED
+     * wins: the typed code if it differs from what the page showed
+     * ($initial), otherwise the picker.
+     *
+     * Typed codes are forgiving: "1a2f5c", "#1a2f5c" and "#abc" all work.
+     *
+     * @param mixed $picker  The native color input's value.
+     * @param mixed $typed   The text field's value.
+     * @param mixed $initial The color the page was rendered with.
+     * @return array{value:string,error:string} value '#rrggbb', or '' with an error.
+     */
+    public static function submitted_color( $picker, $typed, $initial ) {
+        $typed   = is_string( $typed ) ? trim( $typed ) : '';
+        $initial = PTK_Share_Color::is_hex( $initial ) ? PTK_Share_Color::normalize_hex( $initial ) : '';
+
+        $typed_changed = '' !== $typed
+            && ( ! PTK_Share_Color::is_hex( $typed ) || PTK_Share_Color::normalize_hex( $typed ) !== $initial );
+
+        if ( $typed_changed ) {
+            if ( PTK_Share_Color::is_hex( $typed ) ) {
+                return array( 'value' => PTK_Share_Color::normalize_hex( $typed ), 'error' => '' );
+            }
+            return array(
+                'value' => '',
+                'error' => sprintf( '“%s” isn’t a color code. Type six letters and numbers, like 1a2f5c.', substr( $typed, 0, 40 ) ),
+            );
+        }
+
+        if ( PTK_Share_Color::is_hex( $picker ) ) {
+            return array( 'value' => PTK_Share_Color::normalize_hex( $picker ), 'error' => '' );
+        }
+
+        return array( 'value' => '', 'error' => 'Please pick a color or type its code, like 1a2f5c.' );
+    }
+
+    /**
      * Which of the three places the color came from, in plain words.
      *
      * @param string $source 'own' | 'council' | 'default'
@@ -128,9 +166,9 @@ class PTK_Share_Settings {
             case 'own':
                 return 'your school’s own pick';
             case 'council':
-                return 'the color the Council chose for your school';
+                return 'the color the district council set for your school';
             default:
-                return 'the standard color for your school';
+                return 'the color your school’s website came with, since nobody has set one yet';
         }
     }
 
@@ -207,6 +245,8 @@ class PTK_Share_Settings {
             'messages' => array(),
             'fb_error' => '',
             'fb_typed' => '',
+            'color_error' => '',
+            'color_typed' => '',
         );
 
         // ---- Color ----
@@ -216,14 +256,20 @@ class PTK_Share_Settings {
             $had_own = PTK_Share_Color::is_hex( get_option( PTK_Share_Color::OPTION, '' ) );
             delete_option( PTK_Share_Color::OPTION );
             if ( $had_own ) {
-                $notice['messages'][] = array( 'ok', 'Your own color is cleared. The square now uses the Council’s color for your school.' );
+                $notice['messages'][] = array( 'ok', 'Your own color is cleared. The square now uses the color the district council set for your school.' );
             }
         } elseif ( 'own' === $mode ) {
-            $picked = isset( $_POST['ptk_share_color'] ) ? sanitize_hex_color( wp_unslash( $_POST['ptk_share_color'] ) ) : '';
-            if ( ! $picked ) {
-                $notice['messages'][] = array( 'error', 'Please pick a color, or choose “Use the Council’s color”.' );
+            $choice = self::submitted_color(
+                isset( $_POST['ptk_share_color'] ) ? (string) wp_unslash( $_POST['ptk_share_color'] ) : '',
+                isset( $_POST['ptk_share_color_hex'] ) ? sanitize_text_field( wp_unslash( $_POST['ptk_share_color_hex'] ) ) : '',
+                isset( $_POST['ptk_share_color_initial'] ) ? sanitize_text_field( wp_unslash( $_POST['ptk_share_color_initial'] ) ) : ''
+            );
+            if ( '' !== $choice['error'] ) {
+                $notice['color_error'] = $choice['error'];
+                $notice['color_typed'] = isset( $_POST['ptk_share_color_hex'] ) ? substr( sanitize_text_field( wp_unslash( $_POST['ptk_share_color_hex'] ) ), 0, 40 ) : '';
+                $notice['messages'][] = array( 'error', 'The color was not saved. ' . $choice['error'] );
             } else {
-                $picked   = PTK_Share_Color::normalize_hex( $picked );
+                $picked   = $choice['value'];
                 $saved    = PTK_Share_Color::readable_pair( $picked, self::GROUND );
                 $previous = get_option( PTK_Share_Color::OPTION, '' );
                 update_option( PTK_Share_Color::OPTION, $saved );
@@ -286,6 +332,7 @@ class PTK_Share_Settings {
         if ( ! is_array( $notice ) ) {
             $notice = array( 'messages' => array(), 'fb_error' => '', 'fb_typed' => '' );
         }
+        $notice = array_merge( array( 'color_error' => '', 'color_typed' => '' ), $notice );
 
         $own_raw  = get_option( PTK_Share_Color::OPTION, '' );
         $has_own  = PTK_Share_Color::is_hex( $own_raw );
@@ -294,6 +341,7 @@ class PTK_Share_Settings {
         $drawn    = PTK_Share_Color::readable_pair( $current, self::GROUND );
         $source   = self::color_source();
         $picker   = $has_own ? PTK_Share_Color::normalize_hex( $own_raw ) : $council;
+        $typed    = '' !== $notice['color_error'] ? (string) $notice['color_typed'] : $picker;
 
         $fb_value = '' !== $notice['fb_error'] ? (string) $notice['fb_typed'] : (string) get_option( self::FB_OPTION, '' );
         ?>
@@ -332,7 +380,7 @@ class PTK_Share_Settings {
                         <legend class="screen-reader-text">Which color to use</legend>
                         <label class="ptk-ss-choice">
                             <input type="radio" name="ptk_share_color_mode" value="council" data-color="<?php echo esc_attr( $council ); ?>" <?php checked( ! $has_own ); ?>>
-                            Use the Council’s color
+                            Use the color the district council set for your school
                             <span class="ptk-ss-chip" style="background:<?php echo esc_attr( $council ); ?>;" aria-hidden="true"></span>
                             <code><?php echo esc_html( $council ); ?></code>
                         </label>
@@ -340,10 +388,18 @@ class PTK_Share_Settings {
                             <input type="radio" name="ptk_share_color_mode" value="own" <?php checked( $has_own ); ?>>
                             Use our own color
                         </label>
-                        <p class="ptk-ss-picker">
-                            <label for="ptk-share-color">Our color</label>
+                        <?php /* Never dimmed: picking or typing a color selects "Use our own color"
+                                (share-settings.js). The text field is there because the native picker
+                                hides the color code -- on Safari, deep in a system panel. */ ?>
+                        <div class="ptk-ss-picker">
+                            <label for="ptk-share-color">Pick our color</label>
                             <input type="color" id="ptk-share-color" name="ptk_share_color" value="<?php echo esc_attr( $picker ); ?>">
-                        </p>
+                            <label for="ptk-share-color-hex">or type its code</label>
+                            <input type="text" id="ptk-share-color-hex" name="ptk_share_color_hex" class="ptk-ss-hex" value="<?php echo esc_attr( $typed ); ?>" maxlength="7" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="1a2f5c" aria-describedby="ptk-share-color-hint ptk-share-color-error"<?php echo '' !== $notice['color_error'] ? ' aria-invalid="true"' : ''; ?>>
+                            <input type="hidden" name="ptk_share_color_initial" value="<?php echo esc_attr( $picker ); ?>">
+                        </div>
+                        <p class="description ptk-ss-hex-hint" id="ptk-share-color-hint">A color code is six letters and numbers, like 1a2f5c. The # is optional.</p>
+                        <p class="ptk-ss-field-error" id="ptk-share-color-error" data-color-error role="alert"><?php echo esc_html( $notice['color_error'] ); ?></p>
                     </fieldset>
 
                     <div class="ptk-ss-preview-wrap">

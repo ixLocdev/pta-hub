@@ -20,6 +20,11 @@
         return /^[0-9a-f]{6}$/.test(hex) ? '#' + hex : '#1a2f5c';
     }
 
+    /** A color code a person might type: 1a2f5c, #1a2f5c, abc, #abc. */
+    function isHex(value) {
+        return /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(value || '').trim());
+    }
+
     function rgb(hex) {
         hex = norm(hex).slice(1);
         return [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)];
@@ -87,8 +92,22 @@
         var council = form.querySelector('input[name="ptk_share_color_mode"][value="council"]');
         var preview = form.querySelector('[data-preview]');
         var note = form.querySelector('[data-preview-note]');
+        var hex = form.querySelector('#ptk-share-color-hex');
+        var error = form.querySelector('[data-color-error]');
         if (!picker || !own || !council || !preview || !note) {
             return;
+        }
+
+        function setError(text) {
+            if (!hex || !error) {
+                return;
+            }
+            error.textContent = text;
+            if (text) {
+                hex.setAttribute('aria-invalid', 'true');
+            } else {
+                hex.removeAttribute('aria-invalid');
+            }
         }
 
         function update() {
@@ -96,7 +115,6 @@
             var chosen = norm(useOwn ? picker.value : council.getAttribute('data-color'));
             var drawn = readableOn(chosen, ground);
             preview.style.setProperty('--ptk-ss-accent', drawn);
-            picker.parentNode.classList.toggle('is-off', !useOwn);
 
             if (drawn === chosen) {
                 note.textContent = 'Reads clearly on the navy square.';
@@ -107,14 +125,47 @@
             }
         }
 
-        picker.addEventListener('input', function () {
+        function fromPicker() {
             own.checked = true;
+            if (hex) {
+                hex.value = picker.value;
+            }
+            setError('');
             update();
-        });
-        picker.addEventListener('change', function () {
-            own.checked = true;
-            update();
-        });
+        }
+        picker.addEventListener('input', fromPicker);
+        picker.addEventListener('change', fromPicker);
+
+        if (hex) {
+            // Typing a valid code moves the swatch and selects "our own".
+            // An unfinished code is left alone while typing; it's only called
+            // wrong once it's clearly finished (six characters) or they move on.
+            hex.addEventListener('input', function () {
+                var v = hex.value.trim();
+                if (isHex(v)) {
+                    picker.value = norm(v);
+                    own.checked = true;
+                    setError('');
+                    update();
+                } else if (v.replace(/^#/, '').length >= 6) {
+                    setError('That isn’t a color code. Type six letters and numbers, like 1a2f5c.');
+                } else {
+                    setError('');
+                }
+            });
+            hex.addEventListener('change', function () {
+                var v = hex.value.trim();
+                if (v === '') {
+                    hex.value = picker.value;
+                    setError('');
+                } else if (!isHex(v)) {
+                    setError('That isn’t a color code. Type six letters and numbers, like 1a2f5c.');
+                } else {
+                    own.checked = true;
+                    update();
+                }
+            });
+        }
         own.addEventListener('change', update);
         council.addEventListener('change', update);
         update();

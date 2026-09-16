@@ -60,9 +60,27 @@ ptk_test_ok( 0 === strpos( $msg, 'Saved.' ) && false !== strpos( $msg, '#ffd166'
 $msg = $t::color_message( '#eeeeee', '#555555' );
 ptk_test_ok( false !== strpos( $msg, 'darkened' ), 'a darker saved color is described as darkened' );
 
-ptk_test_ok( false !== strpos( $t::source_label( 'council' ), 'Council' ), 'source label: council' );
+ptk_test_ok( false !== strpos( $t::source_label( 'council' ), 'district council set' ), 'source label: council, in plain words' );
 ptk_test_ok( false !== strpos( $t::source_label( 'own' ), 'own pick' ), 'source label: own' );
-ptk_test_ok( false !== strpos( $t::source_label( 'nonsense' ), 'standard' ), 'source label: anything else is the standard color' );
+ptk_test_ok( false !== strpos( $t::source_label( 'nonsense' ), 'website came with' ), 'source label: anything else is described as what it is' );
+
+// ---------------------------------------------------------------------
+// submitted_color()
+// ---------------------------------------------------------------------
+$c = $t::submitted_color( '#336699', '1a2f5c', '#336699' );
+ptk_test_ok( '#1a2f5c' === $c['value'] && '' === $c['error'], 'typed 1a2f5c (no #) wins over an unchanged picker' );
+$c = $t::submitted_color( '#336699', '#1A2F5C', '#336699' );
+ptk_test_ok( '#1a2f5c' === $c['value'], 'typed #1A2F5C is normalized' );
+$c = $t::submitted_color( '#336699', '#abc', '#336699' );
+ptk_test_ok( '#aabbcc' === $c['value'], 'typed #abc expands' );
+$c = $t::submitted_color( '#ff0000', '#336699', '#336699' );
+ptk_test_ok( '#ff0000' === $c['value'], 'picker wins when the text field was left as it was (no JavaScript)' );
+$c = $t::submitted_color( '#ff0000', '', '#336699' );
+ptk_test_ok( '#ff0000' === $c['value'], 'empty text falls back to the picker' );
+$c = $t::submitted_color( '#ff0000', 'blue', '#336699' );
+ptk_test_ok( '' === $c['value'] && false !== strpos( $c['error'], '1a2f5c' ), 'a non-code is refused with an example' );
+$c = $t::submitted_color( 'junk', '', '' );
+ptk_test_ok( '' === $c['value'] && '' !== $c['error'], 'no usable color at all is an error, never navy by accident' );
 
 // The admin CSS must never draw a one-sided accent bar.
 $css = file_get_contents( __DIR__ . '/../assets/css/share-settings.css' ) . file_get_contents( __DIR__ . '/../assets/css/share-page.css' );
