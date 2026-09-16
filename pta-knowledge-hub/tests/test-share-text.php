@@ -173,4 +173,14 @@ ptk_test_ok( strpos( $ent['facebook'], 'Join & Renew' ) !== false, 'footer label
 ptk_test_ok( strpos( $ent['instagram'], '&ndash;' ) === false, 'instagram decodes entities too' );
 ptk_test_ok( strpos( $ent['whatsapp'], '&ndash;' ) === false, 'whatsapp decodes entities too' );
 
+// Issue numbers read as "040" in our newsletters, and a PTA that names its
+// issues in words keeps whatever it typed.
+ptk_test_ok( strpos( $ent['facebook'], 'PTA Newsletter #040 is out.' ) === 0, 'issue number is zero-padded to three digits' );
+$named = PTK_Share_Text::generate(
+    array( array( 'type' => 'header', 'data' => array( 'school_name' => 'NE PTA', 'headline' => '', 'greeting' => '' ) ) ),
+    array( 'url' => 'https://x.test/n', 'issue' => 'Winter', 'date' => '2026-01-05', 'school_name' => 'NE PTA', 'today' => '2026-01-05' )
+);
+ptk_test_ok( strpos( $named['facebook'], 'PTA Newsletter #Winter is out.' ) === 0, 'a non-numeric issue is left alone' );
+ptk_test_ok( mb_strlen( $ent['instagram'] ) < mb_strlen( $ent['facebook'] ), 'instagram is shorter than facebook' );
+
 ptk_test_done();

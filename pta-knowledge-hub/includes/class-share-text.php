@@ -46,6 +46,24 @@ class PTK_Share_Text {
 
     const LINE_MAX = 120;
 
+    /** Issue numbers read as "040" in our newsletters, not "40". */
+    const ISSUE_PAD = 3;
+
+    /** Instagram truncates at roughly 125 characters; keep the tail short. */
+    const INSTAGRAM_STORY_LINES = 2;
+
+    /**
+     * Zero-pad a numeric issue to the house style ("040"), leaving anything
+     * non-numeric ("Winter") exactly as the PTA typed it.
+     */
+    private static function issue_label( $issue ) {
+        $issue = trim( (string) $issue );
+        if ( '' === $issue || ! ctype_digit( $issue ) ) {
+            return $issue;
+        }
+        return str_pad( $issue, self::ISSUE_PAD, '0', STR_PAD_LEFT );
+    }
+
     /**
      * One "also in this issue" line for a story card.
      *
@@ -132,7 +150,7 @@ class PTK_Share_Text {
         $footer     = isset( $by_type['footer'] ) ? $by_type['footer'] : array();
 
         $opening = '' !== (string) $issue
-            ? 'PTA Newsletter #' . $issue . ' is out.'
+            ? 'PTA Newsletter #' . self::issue_label( $issue ) . ' is out.'
             : 'A new PTA newsletter is out.';
 
         $featured_headline = self::html_to_text( isset( $featured['headline'] ) ? $featured['headline'] : '' );
@@ -220,14 +238,14 @@ class PTK_Share_Text {
     private static function generate_instagram( $opening, $featured_headline, $announce_text, array $story_lines ) {
         $parts = array( $opening );
 
-        if ( '' !== $featured_headline ) {
-            $parts[] = $featured_headline;
-        }
-        if ( '' !== $announce_text ) {
-            $parts[] = $announce_text;
+        // One lead, not two. Instagram shows roughly the first 125 characters
+        // before "more", so the timely announcement wins when both exist.
+        $lead = '' !== $announce_text ? $announce_text : $featured_headline;
+        if ( '' !== $lead ) {
+            $parts[] = $lead;
         }
         if ( ! empty( $story_lines ) ) {
-            $parts[] = implode( "\n", array_slice( $story_lines, 0, 3 ) );
+            $parts[] = implode( "\n", array_slice( $story_lines, 0, self::INSTAGRAM_STORY_LINES ) );
         }
 
         $parts[] = 'Link in bio for the full newsletter.';
