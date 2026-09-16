@@ -111,10 +111,21 @@
         return Math.hypot(live[0].x - live[1].x, live[0].y - live[1].y);
     }
 
+    /**
+     * "Whole photo" vs "Crop to fit" (round 3.1, spec item 2): the picker is
+     * now mounted in BOTH fit modes, so a volunteer always sees the photo
+     * inline. In "whole" mode the focal dot, zoom readout and reset button
+     * are hidden and the drag/pinch/wheel/keyboard handlers are no-ops --
+     * there's nothing to frame, the newsletter shows the photo byte for
+     * byte. Switching modes calls ptkSetFocalMode() to update an existing
+     * picker in place, so toggling Whole/Crop back and forth never tears
+     * down and rebuilds the surface (which would refetch the image src).
+     */
     window.ptkInitFocalPicker = function ($group, options) {
         options = options || {};
         var aspect = options.aspect || '16:9';
         var src = options.src || '';
+        var mode = 'whole' === options.mode ? 'whole' : 'crop';
 
         window.ptkDestroyFocalPicker($group);
 
@@ -127,7 +138,7 @@
                     '<button type="button" class="ptk-focal-dot" data-focal-dot tabindex="0"></button>' +
                 '</div>' +
                 '<div class="ptk-focal-meta">' +
-                    '<p class="ptk-focal-hint">Drag the dot onto what has to stay in view. Pinch or scroll to zoom. Arrow keys nudge it; hold Shift to move further, plus and minus to zoom.</p>' +
+                    '<p class="ptk-focal-hint" data-focal-hint>Drag the dot onto what has to stay in view. Pinch or scroll to zoom. Arrow keys nudge it; hold Shift to move further, plus and minus to zoom.</p>' +
                     '<span class="ptk-focal-readout" data-focal-readout></span>' +
                     '<button type="button" class="ptk-focal-reset" data-focal-reset>Reset to center</button>' +
                 '</div>' +
@@ -141,16 +152,34 @@
             $surface: $wrap.find('[data-focal-surface]'),
             $img: $wrap.find('.ptk-focal-img'),
             $dot: $wrap.find('[data-focal-dot]'),
+            $hint: $wrap.find('[data-focal-hint]'),
             $readout: $wrap.find('[data-focal-readout]'),
             $reset: $wrap.find('[data-focal-reset]'),
             pointers: new Map(),
             pinchStart: null,
-            dragging: false
+            dragging: false,
+            mode: mode
         };
 
         var surfaceEl = state.$surface[0];
 
+        var WHOLE_HINT = 'Showing the whole photo.';
+        var CROP_HINT = 'Drag the dot onto what has to stay in view. Pinch or scroll to zoom. Arrow keys nudge it; hold Shift to move further, plus and minus to zoom.';
+
+        /** Apply the current state.mode to the DOM: dot/readout/reset visibility and the hint text. */
+        function applyMode() {
+            var whole = 'whole' === state.mode;
+            $wrap.attr('data-focal-mode', state.mode);
+            state.$dot.toggle(!whole);
+            state.$readout.toggle(!whole);
+            state.$reset.toggle(!whole);
+            state.$hint.text(whole ? WHOLE_HINT : CROP_HINT);
+        }
+
         function report(clientX, clientY) {
+            if ('whole' === state.mode) {
+                return;
+            }
             var rect = surfaceEl.getBoundingClientRect();
             var next = ptkFocalPointerToFocal(rect, clientX, clientY);
             var focal = readFocal($group);
@@ -189,7 +218,7 @@
             }
             if (state.pinchStart) {
                 var distance = pinchDistance(state.pointers);
-                if (distance) {
+                if (distance && 'whole' !== state.mode) {
                     // Scaled from the zoom the pinch BEGAN at, so letting go
                     // and pinching again continues rather than jumping.
                     writeZoom($group, ( state.pinchStart.zoom * distance ) / state.pinchStart.distance);
@@ -234,6 +263,9 @@
         // registers passively, which makes preventDefault() do nothing and
         // the page would scroll out from under the photo while it zooms.
         function onWheel(e) {
+            if ('whole' === state.mode) {
+                return;
+            }
             e.preventDefault();
             var focal = readFocal($group);
             writeZoom($group, ptkFocalEffectiveZoom(focal.zoom) - e.deltaY * 0.25);
@@ -296,7 +328,29 @@
         };
 
         $group.data('ptkFocalPicker', state);
+        applyMode();
         updateSurface($group, state);
+    };
+
+    /**
+     * Switch an already-mounted picker between "whole" and "crop" without
+     * rebuilding it (a rebuild would refetch the image src and reset scroll/
+     * focus). No-op if no picker is mounted on $group.
+     */
+    window.ptkSetFocalMode = function ($group, mode) {
+        var state = $group.data('ptkFocalPicker');
+        if (!state) {
+            return;
+        }
+        state.mode = ( 'whole' === mode ) ? 'whole' : 'crop';
+        var whole = 'whole' === state.mode;
+        state.$wrap.attr('data-focal-mode', state.mode);
+        state.$dot.toggle(!whole);
+        state.$readout.toggle(!whole);
+        state.$reset.toggle(!whole);
+        state.$hint.text(whole
+            ? 'Showing the whole photo.'
+            : 'Drag the dot onto what has to stay in view. Pinch or scroll to zoom. Arrow keys nudge it; hold Shift to move further, plus and minus to zoom.');
     };
 
     window.ptkDestroyFocalPicker = function ($group) {

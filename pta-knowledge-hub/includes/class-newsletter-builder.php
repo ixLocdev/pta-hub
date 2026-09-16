@@ -1545,16 +1545,18 @@ class PTK_Newsletter_Builder {
                             on the button, the only real control in this group. */ ?>
                     <p class="description" id="ptk-nl-featured-image-hint">Optional. Please don&#8217;t use photos of students&#8217; faces.</p>
                     <button type="button" class="button ptk-nl-add-image" aria-describedby="ptk-nl-featured-image-hint">Add image</button>
-                    <?php /* image_fit is the ONE crop field with a visible control: a plain
-                            select, so it needs no special-casing in getFieldValue/setFieldValue
-                            (falls through to .val() like every non-image_id field). Hidden by
-                            default; refreshFocalPicker() (assets/js/newsletter-builder.js) shows
-                            it once an image is chosen, and shows/builds the focal-point picker
-                            surface below it when the value is "crop". */ ?>
-                    <select class="ptk-nl-image-fit" data-field="image_fit" style="display:none;">
-                        <option value="whole"<?php selected( ! isset( $data['image_fit'] ) || 'crop' !== $data['image_fit'] ); ?>>Show whole photo</option>
-                        <option value="crop"<?php selected( isset( $data['image_fit'] ) && 'crop' === $data['image_fit'] ); ?>>Crop to fit (16:9)</option>
-                    </select>
+                    <?php /* Round 3.1 (spec item 2): image_fit's actual value lives in this
+                            hidden input, unchanged since 4.4.0 — getFieldValue/setFieldValue and
+                            serialize() need no special-casing. The VISIBLE control is now the
+                            segmented Whole photo / Crop to fit buttons below (data-fit-toggle),
+                            never a <select>. refreshFocalPicker() (assets/js/newsletter-builder.js)
+                            shows the toggle once an image is chosen, and always mounts the inline
+                            focal-point preview underneath it. */ ?>
+                    <input type="hidden" class="ptk-nl-image-fit" data-field="image_fit" value="<?php echo esc_attr( isset( $data['image_fit'] ) && 'crop' === $data['image_fit'] ? 'crop' : 'whole' ); ?>">
+                    <div class="ptk-nl-fit-toggle" data-fit-toggle role="group" aria-label="Photo crop" style="display:none;">
+                        <button type="button" class="ptk-nl-fit-btn" data-fit-value="whole">Whole photo</button>
+                        <button type="button" class="ptk-nl-fit-btn" data-fit-value="crop">Crop to fit</button>
+                    </div>
                 </div>
                 <div class="ptk-nl-field-group">
                     <label for="ptk-nl-featured-link_url">Link address</label>
@@ -1601,10 +1603,11 @@ class PTK_Newsletter_Builder {
                                     "Image #N selected" chip to the END of this group. */ ?>
                             <p class="description">Optional. Please don&#8217;t use photos of students&#8217; faces.</p>
                             <button type="button" class="button ptk-nl-add-image">Add image</button>
-                            <select class="ptk-nl-image-fit" data-field="image_fit" style="display:none;">
-                                <option value="whole" selected>Show whole photo</option>
-                                <option value="crop">Crop to fit (16:9)</option>
-                            </select>
+                            <input type="hidden" class="ptk-nl-image-fit" data-field="image_fit" value="whole">
+                            <div class="ptk-nl-fit-toggle" data-fit-toggle role="group" aria-label="Photo crop" style="display:none;">
+                                <button type="button" class="ptk-nl-fit-btn" data-fit-value="whole">Whole photo</button>
+                                <button type="button" class="ptk-nl-fit-btn" data-fit-value="crop">Crop to fit</button>
+                            </div>
                         </div>
                         <div class="ptk-nl-field-group">
                             <label>Link address</label>

@@ -1455,13 +1455,45 @@
             }
         });
 
-        // Fit-mode ("Show whole photo" / "Crop to fit") select: show/hide/
-        // (re)build the focal-point picker surface. Delegated alongside the
-        // existing bindSerializeTriggers() listener on the same element (it
-        // also re-serializes/re-previews on this change; the two listeners
+        // Fit-mode changes (fired by the hidden field, either from the
+        // segmented buttons below or programmatically): show/hide/(re)build
+        // the focal-point picker surface. Delegated alongside the existing
+        // bindSerializeTriggers() listener on the same element (it also
+        // re-serializes/re-previews on this change; the two listeners
         // don't conflict).
         $(document).on('change', '.ptk-nl-image-fit', function () {
             refreshFocalPicker($(this).closest('.ptk-nl-field-group'));
+        });
+
+        // Round 3.1 (spec item 2): the visible "Whole photo" / "Crop to fit"
+        // segmented buttons replacing the old <select>. They only flip the
+        // hidden image_fit field's value and dispatch 'change' -- the
+        // listener above (and refreshFocalPicker()) does the rest, so there
+        // is exactly one place that knows how to react to a fit change.
+        $(document).on('click', '.ptk-nl-fit-btn', function (e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var $group = $btn.closest('.ptk-nl-field-group');
+            var value = 'crop' === $btn.attr('data-fit-value') ? 'crop' : 'whole';
+            var $fitField = $group.find('[data-field="image_fit"]').first();
+            if (!$fitField.length || $fitField.val() === value) {
+                return;
+            }
+            $fitField.val(value);
+            $fitField[0].dispatchEvent(new Event('change', { bubbles: true }));
+            // Keyboard/screen-reader users: land back on the button they
+            // just used to confirm the choice, rather than losing focus
+            // when the picker surface updates.
+            $btn.trigger('focus');
+        });
+    }
+
+    /** Reflect `fit` ('whole'|'crop') on a fit-toggle's two buttons. */
+    function syncFitButtons($toggle, fit) {
+        $toggle.find('.ptk-nl-fit-btn').each(function () {
+            var $b = $(this);
+            var active = $b.attr('data-fit-value') === fit;
+            $b.toggleClass('is-active', active).attr('aria-pressed', active ? 'true' : 'false');
         });
     }
 
@@ -1478,30 +1510,38 @@
     }
 
     /**
-     * Show/hide the "Show whole photo / Crop to fit" select once an image
-     * is chosen, and show/build (or hide/destroy) the focal-point picker
-     * surface underneath it when the fit is "crop". Runs on page load
+     * Round 3.1 (spec item 2): show the "Whole photo" / "Crop to fit"
+     * segmented toggle once an image is chosen, and always keep the inline
+     * focal-point preview mounted (in both fit modes -- see
+     * assets/js/focal-point-picker.js's whole/crop mode). Runs on page load
      * (once per image group, via initFocalPickers()) and after every image
      * pick/remove/fit change.
      */
     function refreshFocalPicker($group) {
         var $idField = $group.find('[data-field="image_id"]').first();
         var $fitField = $group.find('[data-field="image_fit"]').first();
+        var $toggle = $group.find('[data-fit-toggle]').first();
         var id = parseInt($idField.val(), 10) || 0;
 
         if (id <= 0) {
-            $fitField.hide();
+            $toggle.hide();
+            $group.removeData('ptkFocalImageId');
             if (window.ptkDestroyFocalPicker) {
                 window.ptkDestroyFocalPicker($group);
             }
             return;
         }
 
-        $fitField.show();
+        var fit = 'crop' === $fitField.val() ? 'crop' : 'whole';
+        $toggle.show();
+        syncFitButtons($toggle, fit);
 
-        if ('crop' !== $fitField.val()) {
-            if (window.ptkDestroyFocalPicker) {
-                window.ptkDestroyFocalPicker($group);
+        // The same image is already mounted: just flip its mode in place
+        // rather than rebuilding (a rebuild would refetch the src and drop
+        // scroll/keyboard focus for no reason).
+        if ($group.data('ptkFocalPicker') && $group.data('ptkFocalImageId') === id) {
+            if (window.ptkSetFocalMode) {
+                window.ptkSetFocalMode($group, fit);
             }
             return;
         }
@@ -1517,7 +1557,8 @@
             var src = ( attachment.sizes && attachment.sizes.large && attachment.sizes.large.url )
                 || attachment.url;
             if (src && window.ptkInitFocalPicker) {
-                window.ptkInitFocalPicker($group, { aspect: '16:9', src: src });
+                window.ptkInitFocalPicker($group, { aspect: '16:9', src: src, mode: fit });
+                $group.data('ptkFocalImageId', id);
             }
         });
     }

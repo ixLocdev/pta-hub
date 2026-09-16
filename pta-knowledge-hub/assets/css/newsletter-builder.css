@@ -440,11 +440,35 @@
     object-fit: cover;
 }
 
-/* ── Fit-mode select ── */
-.ptk-nl-image-fit {
-    display: block;
+/* ── Fit-mode toggle (round 3.1): two full-bordered segmented buttons,
+   never a one-sided accent bar and never a <select>. ── */
+.ptk-nl-fit-toggle {
+    display: flex;
+    gap: 0;
     margin-top: 10px;
-    max-width: 260px;
+    width: fit-content;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    overflow: hidden;
+}
+.ptk-nl-fit-btn {
+    margin: 0;
+    padding: 8px 14px;
+    min-height: 44px;
+    border: none;
+    border-right: 1px solid #c3c4c7;
+    background: #fff;
+    color: #1f2937;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.ptk-nl-fit-btn:last-child { border-right: none; }
+.ptk-nl-fit-btn:hover { background: #f0f0f1; }
+.ptk-nl-fit-btn:focus-visible { outline: 2px solid #2271b1; outline-offset: -2px; }
+.ptk-nl-fit-btn.is-active {
+    background: #1a2f5c;
+    color: #fff;
 }
 
 /* ── Focal-point-and-zoom picker ──
@@ -474,6 +498,16 @@
     object-fit: cover;
     pointer-events: none;
     user-select: none;
+}
+/* Round 3.1: "Whole photo" mode shows the photo letterboxed (never
+   cropped) and has no dot to drag -- the newsletter renders it byte for
+   byte, so the preview shouldn't imply a crop that won't happen. */
+.ptk-focal-wrap[data-focal-mode="whole"] .ptk-focal-img {
+    object-fit: contain;
+    background: #f0eee7;
+}
+.ptk-focal-wrap[data-focal-mode="whole"] .ptk-focal-surface {
+    cursor: default;
 }
 .ptk-focal-dot {
     position: absolute;
