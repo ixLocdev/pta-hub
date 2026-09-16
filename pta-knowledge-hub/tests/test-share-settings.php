@@ -52,17 +52,17 @@ ptk_test_ok( '' === $arr['value'], 'non-string input never passes' );
 $saved = PTK_Share_Color::readable_pair( '#475569', '#1a2f5c' );
 ptk_test_ok( '#475569' !== $saved, 'slate fails on navy, so it is adjusted' );
 $msg = $t::color_message( '#475569', $saved );
-ptk_test_ok( false !== strpos( $msg, 'too dark' ) && false !== strpos( $msg, 'lightened' ) && false !== strpos( $msg, $saved ), 'adjusted colour: says too dark, lightened, and names the saved colour' );
+ptk_test_ok( false !== strpos( $msg, 'too dark' ) && false !== strpos( $msg, 'lightened' ) && false !== strpos( $msg, $saved ), 'adjusted color: says too dark, lightened, and names the saved color' );
 
 $msg = $t::color_message( '#ffd166', '#ffd166' );
-ptk_test_ok( 0 === strpos( $msg, 'Saved.' ) && false !== strpos( $msg, '#ffd166' ), 'passing colour: plain "Saved" message' );
+ptk_test_ok( 0 === strpos( $msg, 'Saved.' ) && false !== strpos( $msg, '#ffd166' ), 'passing color: plain "Saved" message' );
 
 $msg = $t::color_message( '#eeeeee', '#555555' );
-ptk_test_ok( false !== strpos( $msg, 'darkened' ), 'a darker saved colour is described as darkened' );
+ptk_test_ok( false !== strpos( $msg, 'darkened' ), 'a darker saved color is described as darkened' );
 
 ptk_test_ok( false !== strpos( $t::source_label( 'council' ), 'Council' ), 'source label: council' );
 ptk_test_ok( false !== strpos( $t::source_label( 'own' ), 'own pick' ), 'source label: own' );
-ptk_test_ok( false !== strpos( $t::source_label( 'nonsense' ), 'standard' ), 'source label: anything else is the standard colour' );
+ptk_test_ok( false !== strpos( $t::source_label( 'nonsense' ), 'standard' ), 'source label: anything else is the standard color' );
 
 // The admin CSS must never draw a one-sided accent bar.
 $css = file_get_contents( __DIR__ . '/../assets/css/share-settings.css' ) . file_get_contents( __DIR__ . '/../assets/css/share-page.css' );

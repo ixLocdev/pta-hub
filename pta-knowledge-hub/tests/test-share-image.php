@@ -171,7 +171,7 @@ for ( $x = 0; $x < 1080; $x += 9 ) {
         $seen[ imagecolorat( $im, $x, $y ) ] = true;
     }
 }
-ptk_test_ok( count( $seen ) > 12, 'the square has real content, not one flat colour (' . count( $seen ) . ' distinct sampled colours)' );
+ptk_test_ok( count( $seen ) > 12, 'the square has real content, not one flat color (' . count( $seen ) . ' distinct sampled colors)' );
 
 // The ground is navy where nothing is drawn (top-left corner inset).
 $corner = imagecolorat( $im, 6, 6 );
@@ -179,7 +179,7 @@ $rgb    = array( ( $corner >> 16 ) & 0xFF, ( $corner >> 8 ) & 0xFF, $corner & 0x
 ptk_test_ok( $rgb === array( 0x1a, 0x2f, 0x5c ), 'the ground is navy #1a2f5c' );
 
 // ---------------------------------------------------------------------
-// The colour it draws with has been through the contrast guard
+// The color it draws with has been through the contrast guard
 // ---------------------------------------------------------------------
 
 $accent = $t::accent_for( '#d97706' );
@@ -208,7 +208,7 @@ foreach ( $awkward as $label => $case ) {
 // With nothing to draw, a square would be the navy ground and two rules --
 // the blank image the contract forbids. It says so rather than shipping one.
 ptk_test_ok( $t::render_png( array(), array( 'gd' => true, 'freetype' => true ) ) === false, 'render_png returns false when there is nothing to draw' );
-ptk_test_ok( $t::render_png( array( 'issue' => '', 'date' => '', 'school_name' => '', 'color' => '#2563eb' ), array( 'gd' => true, 'freetype' => true ) ) === false, 'a colour alone is not content' );
+ptk_test_ok( $t::render_png( array( 'issue' => '', 'date' => '', 'school_name' => '', 'color' => '#2563eb' ), array( 'gd' => true, 'freetype' => true ) ) === false, 'a color alone is not content' );
 
 // ---------------------------------------------------------------------
 // fit_text() -- the shrink-to-fit the long names depend on

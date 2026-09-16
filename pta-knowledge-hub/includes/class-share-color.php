@@ -1,13 +1,13 @@
 <?php
 /**
- * The colour a school's share square is drawn in, and the contrast guard
+ * The color a school's share square is drawn in, and the contrast guard
  * that keeps it readable.
  *
  * This is deliberately SEPARATE from PTK_Site_Colors::color_for(). That one
- * reads the NETWORK option `ptk_site_colors` and feeds the coloured owner
+ * reads the NETWORK option `ptk_site_colors` and feeds the colored owner
  * dots on every site's article list, so one school must look the same no
  * matter which site you view it from. Layering a per-site override into it
- * would break that. Here a school may pick its own share colour without
+ * would break that. Here a school may pick its own share color without
  * touching anybody else's dots.
  *
  * Resolution order in share_color():
@@ -67,7 +67,7 @@ class PTK_Share_Color {
     }
 
     /**
-     * Split a colour into its three 0-255 channels.
+     * Split a color into its three 0-255 channels.
      *
      * @param mixed $value
      * @return array{0:int,1:int,2:int}
@@ -130,7 +130,7 @@ class PTK_Share_Color {
      * otherwise walk it away from $against until it does.
      *
      * Direction matters. The plan describes this as "darkens it in steps",
-     * which is right for a colour sitting on white -- but the square's
+     * which is right for a color sitting on white -- but the square's
      * ground is navy, and several palette defaults fail there (#475569 is
      * 1.73:1 on navy, #4338ca 1.66:1). Darkening those would walk them
      * toward black, which is only 1.61:1 against navy -- it can never
@@ -139,7 +139,7 @@ class PTK_Share_Color {
      * black on white 21:1, so one of the two directions always succeeds.
      *
      * MAX_STEPS caps the loop so it always terminates; if the target is
-     * somehow never reached (a colour asked to contrast with itself), the
+     * somehow never reached (a color asked to contrast with itself), the
      * best result seen is returned rather than the original.
      *
      * @param mixed $color
@@ -204,11 +204,11 @@ class PTK_Share_Color {
     // -------------------------------------------------------------
 
     /**
-     * The share colour for one site: its own choice, else the Council's
+     * The share color for one site: its own choice, else the Council's
      * value, else the deterministic palette default.
      *
      * NOT run through readable_pair() here -- callers decide what the
-     * colour has to be readable against (navy ground, white text).
+     * color has to be readable against (navy ground, white text).
      *
      * @param int|null $blog_id Defaults to the current site.
      * @return string Normalized '#rrggbb'.
@@ -229,7 +229,7 @@ class PTK_Share_Color {
     }
 
     /**
-     * True only for a string that really is a colour -- so an empty or
+     * True only for a string that really is a color -- so an empty or
      * junk option falls through to the Council's value instead of being
      * normalized into navy and mistaken for a deliberate choice.
      *
@@ -244,9 +244,9 @@ class PTK_Share_Color {
     }
 
     /**
-     * The share colour already guaranteed readable against $against
+     * The share color already guaranteed readable against $against
      * (the navy ground, by default). This is what the square should draw
-     * with -- the guard has to run on every RESOLVED colour, not only on
+     * with -- the guard has to run on every RESOLVED color, not only on
      * one somebody picked, because several palette defaults fail on their
      * own.
      *

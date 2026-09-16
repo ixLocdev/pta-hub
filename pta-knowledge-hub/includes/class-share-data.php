@@ -36,7 +36,7 @@ class PTK_Share_Data {
 
     /**
      * Hash of everything the share SQUARE is made from: issue, date,
-     * school name and colour -- never the newsletter's story content, so
+     * school name and color -- never the newsletter's story content, so
      * editing a story never marks a perfectly fine square as stale.
      *
      * $version is passed in rather than read from a PTK_VERSION constant

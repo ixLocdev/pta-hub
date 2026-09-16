@@ -3,7 +3,7 @@
  * Newsletters > Sharing settings: the two per-school settings the share
  * panel needs.
  *
- *   ptk_share_color         the colour on the Instagram square
+ *   ptk_share_color         the color on the Instagram square
  *   ptk_share_facebook_url  the PTA's Facebook group (https only, may be empty)
  *
  * Both are BLOG options: each school sets its own, on its own site, from the
@@ -17,8 +17,8 @@
  * option read. The validation and wording helpers below are pure PHP too, so
  * tests/test-share-settings.php covers them without WordPress.
  *
- * The contrast guard is visible: a colour that can't be read on the navy
- * square is adjusted, the ADJUSTED colour is what gets saved, and the page
+ * The contrast guard is visible: a color that can't be read on the navy
+ * square is adjusted, the ADJUSTED color is what gets saved, and the page
  * says so in plain words. Nothing is swapped silently.
  */
 
@@ -33,7 +33,7 @@ class PTK_Share_Settings {
     const FB_OPTION    = 'ptk_share_facebook_url';
     const NOTICE_KEY   = 'ptk_share_settings_notice_';
 
-    /** The ground the square's accent colour sits on. */
+    /** The ground the square's accent color sits on. */
     const GROUND = '#1a2f5c';
 
     /** @var string */
@@ -88,7 +88,7 @@ class PTK_Share_Settings {
     }
 
     /**
-     * What to tell someone after they pick a colour.
+     * What to tell someone after they pick a color.
      *
      * @param string $picked What they chose ('#rrggbb').
      * @param string $saved  What was stored after the contrast guard.
@@ -99,26 +99,26 @@ class PTK_Share_Settings {
         $saved  = PTK_Share_Color::normalize_hex( $saved );
 
         if ( $picked === $saved ) {
-            return sprintf( 'Saved. Your colour %s reads clearly on the navy square.', $saved );
+            return sprintf( 'Saved. Your color %s reads clearly on the navy square.', $saved );
         }
 
         if ( PTK_Share_Color::relative_luminance( $saved ) > PTK_Share_Color::relative_luminance( $picked ) ) {
             return sprintf(
-                'That colour (%1$s) was too dark to read on the navy square, so we lightened it to %2$s and saved that instead.',
+                'That color (%1$s) was too dark to read on the navy square, so we lightened it to %2$s and saved that instead.',
                 $picked,
                 $saved
             );
         }
 
         return sprintf(
-            'That colour (%1$s) was too hard to read on the navy square, so we darkened it to %2$s and saved that instead.',
+            'That color (%1$s) was too hard to read on the navy square, so we darkened it to %2$s and saved that instead.',
             $picked,
             $saved
         );
     }
 
     /**
-     * Which of the three places the colour came from, in plain words.
+     * Which of the three places the color came from, in plain words.
      *
      * @param string $source 'own' | 'council' | 'default'
      * @return string
@@ -128,9 +128,9 @@ class PTK_Share_Settings {
             case 'own':
                 return 'your school’s own pick';
             case 'council':
-                return 'the colour the Council chose for your school';
+                return 'the color the Council chose for your school';
             default:
-                return 'the standard colour for your school';
+                return 'the standard color for your school';
         }
     }
 
@@ -139,7 +139,7 @@ class PTK_Share_Settings {
      * ----------------------------------------------------------------*/
 
     /**
-     * Where the colour in use right now comes from.
+     * Where the color in use right now comes from.
      *
      * @return string 'own' | 'council' | 'default'
      */
@@ -156,7 +156,7 @@ class PTK_Share_Settings {
     }
 
     /**
-     * The colour this school falls back to when it has no pick of its own.
+     * The color this school falls back to when it has no pick of its own.
      * Read-only use of the Council's palette.
      *
      * @return string '#rrggbb'
@@ -209,19 +209,19 @@ class PTK_Share_Settings {
             'fb_typed' => '',
         );
 
-        // ---- Colour ----
+        // ---- Color ----
         $mode = isset( $_POST['ptk_share_color_mode'] ) ? sanitize_key( wp_unslash( $_POST['ptk_share_color_mode'] ) ) : '';
 
         if ( 'council' === $mode ) {
             $had_own = PTK_Share_Color::is_hex( get_option( PTK_Share_Color::OPTION, '' ) );
             delete_option( PTK_Share_Color::OPTION );
             if ( $had_own ) {
-                $notice['messages'][] = array( 'ok', 'Your own colour is cleared. The square now uses the Council’s colour for your school.' );
+                $notice['messages'][] = array( 'ok', 'Your own color is cleared. The square now uses the Council’s color for your school.' );
             }
         } elseif ( 'own' === $mode ) {
             $picked = isset( $_POST['ptk_share_color'] ) ? sanitize_hex_color( wp_unslash( $_POST['ptk_share_color'] ) ) : '';
             if ( ! $picked ) {
-                $notice['messages'][] = array( 'error', 'Please pick a colour, or choose “Use the Council’s colour”.' );
+                $notice['messages'][] = array( 'error', 'Please pick a color, or choose “Use the Council’s color”.' );
             } else {
                 $picked   = PTK_Share_Color::normalize_hex( $picked );
                 $saved    = PTK_Share_Color::readable_pair( $picked, self::GROUND );
@@ -316,7 +316,7 @@ class PTK_Share_Settings {
                 <input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION ); ?>">
                 <?php wp_nonce_field( self::ACTION ); ?>
 
-                <h2>Colour on the Instagram square</h2>
+                <h2>Color on the Instagram square</h2>
                 <p>
                     Right now the square uses
                     <span class="ptk-ss-chip" style="background:<?php echo esc_attr( $current ); ?>;" aria-hidden="true"></span>
@@ -329,19 +329,19 @@ class PTK_Share_Settings {
 
                 <div class="ptk-ss-color">
                     <fieldset class="ptk-ss-choices">
-                        <legend class="screen-reader-text">Which colour to use</legend>
+                        <legend class="screen-reader-text">Which color to use</legend>
                         <label class="ptk-ss-choice">
                             <input type="radio" name="ptk_share_color_mode" value="council" data-color="<?php echo esc_attr( $council ); ?>" <?php checked( ! $has_own ); ?>>
-                            Use the Council’s colour
+                            Use the Council’s color
                             <span class="ptk-ss-chip" style="background:<?php echo esc_attr( $council ); ?>;" aria-hidden="true"></span>
                             <code><?php echo esc_html( $council ); ?></code>
                         </label>
                         <label class="ptk-ss-choice">
                             <input type="radio" name="ptk_share_color_mode" value="own" <?php checked( $has_own ); ?>>
-                            Use our own colour
+                            Use our own color
                         </label>
                         <p class="ptk-ss-picker">
-                            <label for="ptk-share-color">Our colour</label>
+                            <label for="ptk-share-color">Our color</label>
                             <input type="color" id="ptk-share-color" name="ptk_share_color" value="<?php echo esc_attr( $picker ); ?>">
                         </p>
                     </fieldset>
@@ -353,7 +353,7 @@ class PTK_Share_Settings {
                             <span class="ptk-ss-preview-issue">№ 041</span>
                             <span class="ptk-ss-preview-date">Week of September 21</span>
                         </div>
-                        <p class="ptk-ss-preview-note" data-preview-note aria-live="polite">How the colour looks on the navy square.</p>
+                        <p class="ptk-ss-preview-note" data-preview-note aria-live="polite">How the color looks on the navy square.</p>
                     </div>
                 </div>
 

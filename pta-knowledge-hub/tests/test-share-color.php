@@ -111,7 +111,7 @@ ptk_test_ok( $t::readable_pair( '', '#ffffff' ) === '#1a2f5c', 'readable_pair: e
 ptk_test_ok( $t::readable_pair( null, '#ffffff' ) === '#1a2f5c', 'readable_pair: null falls back to navy' );
 ptk_test_ok( $t::contrast_ratio( $t::readable_pair( null, '#1a2f5c' ), '#1a2f5c' ) >= 4.5, 'readable_pair: navy asked to sit on navy is moved until it is readable' );
 
-// It always terminates, even for the pathological case of a colour on itself.
+// It always terminates, even for the pathological case of a color on itself.
 $self = $t::readable_pair( '#808080', '#808080' );
 ptk_test_ok( (bool) preg_match( '/^#[0-9a-f]{6}$/', $self ), 'readable_pair(#808080,#808080) terminates and returns a hex' );
 ptk_test_ok( $t::contrast_ratio( $self, '#808080' ) > 3.0, 'readable_pair pushes mid-grey as far from itself as it can' );
@@ -120,7 +120,7 @@ ptk_test_ok( $t::contrast_ratio( $self, '#808080' ) > 3.0, 'readable_pair pushes
 ptk_test_ok( $t::readable_pair( '#16a34a', '#ffffff' ) === $t::readable_pair( '#16a34a', '#ffffff' ), 'readable_pair is deterministic' );
 
 // ---------------------------------------------------------------------
-// is_hex() -- the gate that decides whether a site really chose a colour
+// is_hex() -- the gate that decides whether a site really chose a color
 // ---------------------------------------------------------------------
 
 ptk_test_ok( $t::is_hex( '#aabbcc' ) === true, 'is_hex accepts a 6-digit hex' );

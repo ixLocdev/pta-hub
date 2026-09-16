@@ -1,9 +1,9 @@
 /**
- * Newsletters > Sharing settings: live preview of the square's accent colour.
+ * Newsletters > Sharing settings: live preview of the square's accent color.
  *
  * readableOn() mirrors PTK_Share_Color::readable_pair() step for step
  * (WCAG contrast, 4.5 minimum, walk toward white on a dark ground, 40 steps
- * of 8% plus a 1-unit nudge), so the preview shows exactly the colour the
+ * of 8% plus a 1-unit nudge), so the preview shows exactly the color the
  * server will save. The server stays the authority; this is only a preview.
  * No jQuery.
  */
@@ -103,7 +103,7 @@
             } else if (useOwn) {
                 note.textContent = 'Too dark to read on navy. When you save, we’ll lighten it to ' + drawn + ' (shown here).';
             } else {
-                note.textContent = 'On the navy square this colour is lightened to ' + drawn + ' so it can be read (shown here).';
+                note.textContent = 'On the navy square this color is lightened to ' + drawn + ' so it can be read (shown here).';
             }
         }
 

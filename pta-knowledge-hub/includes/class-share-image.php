@@ -2,7 +2,7 @@
 /**
  * The 1080x1080 share square Instagram wants.
  *
- * Draws a navy ground, the school's share colour (already through the
+ * Draws a navy ground, the school's share color (already through the
  * contrast guard in PTK_Share_Color) as the accent, and three pieces of
  * type: the issue number, the week, and the school's name. Nothing else --
  * no logo, no story text, because the caption carries the words.
@@ -102,9 +102,9 @@ class PTK_Share_Image {
     }
 
     /**
-     * The colour actually drawn: the school's share colour pushed until it
+     * The color actually drawn: the school's share color pushed until it
      * is readable on the navy ground. The guard runs here, on the RESOLVED
-     * colour, because several palette defaults fail on their own.
+     * color, because several palette defaults fail on their own.
      *
      * @return string '#rrggbb'
      */
@@ -264,7 +264,7 @@ class PTK_Share_Image {
      * ----------------------------------------------------------------*/
 
     /**
-     * Allocate a hex colour on an image, via the same normalizer the rest
+     * Allocate a hex color on an image, via the same normalizer the rest
      * of the share code uses.
      *
      * @return int
@@ -592,9 +592,9 @@ class PTK_Share_Image {
         $school  = isset( $args['school_name'] ) ? (string) $args['school_name'] : '';
         $version = isset( $args['version'] ) ? (string) $args['version'] : ( defined( 'PTK_VERSION' ) ? PTK_VERSION : '0' );
 
-        // Hash the colour actually DRAWN, not the one requested -- two
+        // Hash the color actually DRAWN, not the one requested -- two
         // schools whose picks both get corrected to the same readable
-        // colour should not each think the other's square is stale.
+        // color should not each think the other's square is stale.
         $accent = self::accent_for( isset( $args['color'] ) ? $args['color'] : '' );
 
         $current_hash = PTK_Share_Data::square_inputs_hash( $issue, $date, $school, $accent, $version );
@@ -778,7 +778,7 @@ class PTK_Share_Image {
             return true;
         }
         if ( function_exists( 'get_upload_space_available' ) ) {
-            // A 1080x1080 PNG of flat colour and type runs 45-60 KB; leave
+            // A 1080x1080 PNG of flat color and type runs 45-60 KB; leave
             // room for the thumbnails WordPress generates alongside it.
             return get_upload_space_available() < ( 512 * 1024 );
         }
