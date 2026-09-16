@@ -40,7 +40,7 @@ Open **`http://127.0.0.1:9400`**, never `localhost:9400` — the site URL is `12
 
 | File | Change |
 |---|---|
-| `pta-knowledge-hub/includes/class-newsletter-data.php` | New type, new fields, `pill`→`when` migration, `school_year_label()`, `sanitize_http_url()`, `timeline_states()` |
+| `pta-knowledge-hub/includes/class-newsletter-data.php` | New type, new fields, `pill`→`when` migration, `school_year_label()`, `sanitize_link_url()`, `timeline_states()` |
 | `pta-knowledge-hub/tests/test-newsletter-data.php` | Tests for the above |
 | `pta-knowledge-hub/tests/test-newsletter-dates.php` | Tests for `school_year_label()` and `timeline_states()` |
 | `pta-knowledge-hub/includes/class-newsletter-renderer.php` | Fonts, palette, every block restyled, `render_quick_notes()`, `section_rule()` |
@@ -128,11 +128,13 @@ ptk_test_ok( $aa['button_url'] === '', 'a javascript: button link is blanked' );
 ptk_test_ok( count( $aa['timeline'] ) === 2 && $aa['timeline'][0]['time'] === '8:30 AM–12:30 PM', 'timeline rows are kept in order, non-arrays dropped' );
 ptk_test_ok( $aa['timeline'][1]['date'] === '' && $aa['timeline'][1]['time'] === '', 'bad date and array time become empty strings' );
 
-ptk_test_ok( $d::sanitize_http_url( ' https://x.test/a ' ) === 'https://x.test/a', 'http url: trimmed and kept' );
-ptk_test_ok( $d::sanitize_http_url( 'HTTP://x.test' ) !== '', 'http url: an upper-case scheme is still a web address' );
-ptk_test_ok( $d::sanitize_http_url( 'mailto:a@b.org' ) === '', 'http url: mailto is rejected' );
-ptk_test_ok( $d::sanitize_http_url( 'javascript:alert(1)' ) === '', 'http url: javascript is rejected' );
-ptk_test_ok( $d::sanitize_http_url( array( 'x' ) ) === '', 'http url: array becomes empty, no warning' );
+ptk_test_ok( $d::sanitize_link_url( ' https://x.test/a ' ) === 'https://x.test/a', 'http url: trimmed and kept' );
+ptk_test_ok( $d::sanitize_link_url( 'HTTP://x.test' ) !== '', 'http url: an upper-case scheme is still a web address' );
+ptk_test_ok( $d::sanitize_link_url( 'mailto:a@b.org' ) === 'mailto:a@b.org', 'link url: an email link is kept (#040 uses one)' );
+ptk_test_ok( $d::sanitize_link_url( 'leslie@example.org' ) === 'mailto:leslie@example.org', 'link url: a bare email address becomes an email link' );
+ptk_test_ok( $d::sanitize_link_url( 'data:text/html,x' ) === '', 'link url: data is rejected' );
+ptk_test_ok( $d::sanitize_link_url( 'javascript:alert(1)' ) === '', 'http url: javascript is rejected' );
+ptk_test_ok( $d::sanitize_link_url( array( 'x' ) ) === '', 'http url: array becomes empty, no warning' );
 // Not asserted: a bare "x.test/page". Real esc_url_raw() prepends "http://"
 // to a scheme-less address, so production KEEPS it; the test shim does not,
 // so an assertion either way would describe the wrong environment.
@@ -153,7 +155,7 @@ ptk_test_ok( $qd['items'][1]['heading'] === '' && $qd['items'][1]['link_url'] ==
 
 - [ ] **Step 2: Run it and watch it fail**
 
-`php tests/test-newsletter-data.php` → the first new assertion fails ("default layout includes quick notes"), then a fatal on `sanitize_http_url`. That is the expected shape of failure.
+`php tests/test-newsletter-data.php` → the first new assertion fails ("default layout includes quick notes"), then a fatal on `sanitize_link_url`. That is the expected shape of failure.
 
 - [ ] **Step 3: Implement**
 
@@ -165,21 +167,26 @@ In `class-newsletter-data.php`:
    - header: add `'summary' => sanitize_text_field( self::str_field( $data['summary'] ?? '' ) )`.
    - announcement: replace the two-key array with the six keys. The migration line is
      `$when = isset( $data['when'] ) ? $data['when'] : ( isset( $data['pill'] ) ? $data['pill'] : '' );`
-     — `isset`, not `empty`, so a posted-but-blank `when` still wins over an old `pill` (the test "when wins over pill" covers the non-blank case; the blank case is the one a volunteer hits when they clear the field). Timeline rows: loop like events, each `array( 'date' => self::sanitize_date(...), 'time' => sanitize_text_field(...), 'what' => sanitize_text_field(...) )`, skipping non-arrays. `button_url` through `self::sanitize_http_url()`.
+     — `isset`, not `empty`, so a posted-but-blank `when` still wins over an old `pill` (the test "when wins over pill" covers the non-blank case; the blank case is the one a volunteer hits when they clear the field). Timeline rows: loop like events, each `array( 'date' => self::sanitize_date(...), 'time' => sanitize_text_field(...), 'what' => sanitize_text_field(...) )`, skipping non-arrays. `button_url` through `self::sanitize_link_url()`.
    - featured: add `link_url` (`esc_url_raw`) and `link_text`.
    - story_cards: add `'eyebrow' => sanitize_text_field(...)` as the first key of each card.
-   - new `case self::TYPE_QUICK_NOTES:` → `label` + `items[]` with `heading` / `body` (`wp_kses_post`) / `link_url` (`sanitize_http_url`) / `link_text`.
+   - new `case self::TYPE_QUICK_NOTES:` → `label` + `items[]` with `heading` / `body` (`wp_kses_post`) / `link_url` (`sanitize_link_url`) / `link_text`.
 4. Add the helper, `public static` so the Builder and tests can call it:
 
 ```php
     /**
-     * A link a volunteer typed for a button or a quick note: kept only when it
-     * is a web address (http or https). Anything else -- mailto:, a bare
-     * domain, javascript: -- becomes '' rather than a link that surprises.
+     * A link a volunteer typed for a button or a quick note: a web address
+     * (http or https) or an email link. A bare email address becomes an email
+     * link, so nobody has to know the word "mailto". Anything else --
+     * javascript:, data:, junk -- becomes '' rather than a link that surprises.
      */
-    public static function sanitize_http_url( $url ) {
-        $url = esc_url_raw( trim( self::str_field( $url ) ) );
-        return preg_match( '#^https?://#i', $url ) ? $url : '';
+    public static function sanitize_link_url( $url ) {
+        $url = trim( self::str_field( $url ) );
+        if ( preg_match( '/^[^@\s:\/]+@[^@\s\/]+\.[^@\s\/]+$/', $url ) ) {
+            $url = 'mailto:' . $url;
+        }
+        $url = esc_url_raw( $url );
+        return preg_match( '#^(https?://|mailto:)#i', $url ) ? $url : '';
     }
 ```
 
@@ -537,7 +544,7 @@ One render of a realistic issue, used by a test and by the visual comparison in 
 - Create: `pta-knowledge-hub/tests/fixtures/newsletter-040-blocks.json`
 - Modify: `pta-knowledge-hub/tests/test-newsletter-renderer.php`
 
-- [ ] **Step 1: Write the fixture.** Transcribe #040 into blocks (plain text and `<p>`/`<strong>`/`<a>` only, `image_id` 0 everywhere): header (school name "Northeast Elementary PTA · Montclair, NJ", summary "ASE registration opens Monday", greeting = #040's intro paragraph in its Sunday version), announcement (When "Opens Monday, Sept 14 · 8:30 AM for PTA members", headline "ASE registration opens Monday, Sept 14. PTA members go first.", text, the four timeline rows from #040 lines 310-325, button "Go to ASE registration" → `https://app.givebacks.gives/c691c4`), events (the nine rows, lines 387-493), featured ("ASE volunteers" / "Can you help on Tuesdays? Your child gets a free class." / body / link "Email Leslie to volunteer on Tuesdays" — note #040's link is a `mailto:`, which `sanitize_http_url` would reject on a **button** but `featured.link_url` uses `esc_url_raw`, so it survives here), story_cards ("Date change" Film on the Field; "New on northeastpta.org" Getting to School; "Membership" Were you a member), quick_notes ("Good to know": Lunch menu, Subscribe to the calendar, Family Handbook, each with its link), footer (the sign-off and the two links).
+- [ ] **Step 1: Write the fixture.** Transcribe #040 into blocks (plain text and `<p>`/`<strong>`/`<a>` only, `image_id` 0 everywhere): header (school name "Northeast Elementary PTA · Montclair, NJ", summary "ASE registration opens Monday", greeting = #040's intro paragraph in its Sunday version), announcement (When "Opens Monday, Sept 14 · 8:30 AM for PTA members", headline "ASE registration opens Monday, Sept 14. PTA members go first.", text, the four timeline rows from #040 lines 310-325, button "Go to ASE registration" → `https://app.givebacks.gives/c691c4`), events (the nine rows, lines 387-493), featured ("ASE volunteers" / "Can you help on Tuesdays? Your child gets a free class." / body / link "Email Leslie to volunteer on Tuesdays" — note #040's link is a `mailto:`; email links are allowed on buttons and quick notes too, so it survives everywhere), story_cards ("Date change" Film on the Field; "New on northeastpta.org" Getting to School; "Membership" Were you a member), quick_notes ("Good to know": Lunch menu, Subscribe to the calendar, Family Handbook, each with its link), footer (the sign-off and the two links).
 
 - [ ] **Step 2: Add the test** (append)
 
@@ -877,4 +884,4 @@ cd "/Users/lucas/apps/PTA/PTA HUB/.claude/worktrees/newsletter-redesign" && rm -
 
 - [ ] **Step 5: Commit** — `"Release 4.2.0: the newsletter builder matches the site redesign"`, body summarising the volunteer-facing changes and the Decision-9 note about old issues.
 
-- [ ] **Step 6: STOP.** Do not upload. Deployment is Lucas's call (Network Admin → Plugins → Add Plugin → Upload → "Replace current with uploaded", which updates all eleven sites). Report: the commit SHA, the visual differences found in Task 12 Step 2, the live-site checks still to do after deploy (Task 12 Step 5), and the two follow-ups (mailto on buttons and quick-note links; Northeast's footer h1s).
+- [ ] **Step 6: STOP.** Do not upload. Deployment is Lucas's call (Network Admin → Plugins → Add Plugin → Upload → "Replace current with uploaded", which updates all eleven sites). Report: the commit SHA, the visual differences found in Task 12 Step 2, the live-site checks still to do after deploy (Task 12 Step 5), and the one follow-up (Northeast's footer h1s, a Beaver Themer change).
