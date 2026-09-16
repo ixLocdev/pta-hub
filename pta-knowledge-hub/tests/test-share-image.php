@@ -1,6 +1,8 @@
 <?php
 require __DIR__ . '/bootstrap.php';
 require __DIR__ . '/../includes/class-share-color.php';
+require __DIR__ . '/../includes/class-share-text.php';
+require __DIR__ . '/../includes/class-share-data.php';
 require __DIR__ . '/../includes/class-share-image.php';
 
 set_error_handler( function ( $errno, $errstr ) {
@@ -56,7 +58,91 @@ ptk_test_ok( $no_gd_yes_ft === false, 'render_png returns false when GD is missi
 
 if ( ! $caps['gd'] || ! $caps['freetype'] ) {
     echo "  ..  - SKIP: this PHP has no GD/FreeType, so the drawing tests cannot run\n";
-    ptk_test_done();
+    // ---------------------------------------------------------------------
+// should_regenerate() -- the decision ensure_square() makes, pulled out
+// so it can be tested without a WordPress runtime.
+// ---------------------------------------------------------------------
+
+ptk_test_ok(
+    $t::should_regenerate( 'abc', 'abc', true, false ) === false,
+    'should_regenerate: hash matches and the attachment is still there -> reuse it'
+);
+ptk_test_ok(
+    $t::should_regenerate( 'abc', 'def', true, false ) === true,
+    'should_regenerate: the inputs moved -> redraw'
+);
+ptk_test_ok(
+    $t::should_regenerate( 'abc', 'abc', false, false ) === true,
+    'should_regenerate: matching hash but the attachment is gone (a volunteer deleted it) -> redraw'
+);
+ptk_test_ok(
+    $t::should_regenerate( '', 'abc', false, false ) === true,
+    'should_regenerate: nothing stored yet -> draw the first one'
+);
+ptk_test_ok(
+    $t::should_regenerate( 'abc', 'def', true, true ) === false,
+    'should_regenerate: a school uploaded its own square -> never overwrite it, however stale our hash looks'
+);
+ptk_test_ok(
+    $t::should_regenerate( '', 'abc', false, true ) === false,
+    'should_regenerate: custom wins even when there is no generated square at all'
+);
+
+// ---------------------------------------------------------------------
+// should_clean_up() -- what before_delete_post is allowed to delete
+// ---------------------------------------------------------------------
+
+ptk_test_ok(
+    $t::should_clean_up( 'pta_newsletter', 77, true, false ) === true,
+    'should_clean_up: our generated square goes with the newsletter'
+);
+ptk_test_ok(
+    $t::should_clean_up( 'attachment', 77, true, false ) === false,
+    'should_clean_up: before_delete_post fires for the attachment itself -- do not recurse'
+);
+ptk_test_ok(
+    $t::should_clean_up( 'post', 77, true, false ) === false,
+    'should_clean_up: an ordinary post is not ours'
+);
+ptk_test_ok(
+    $t::should_clean_up( 'pta_knowledge', 77, true, false ) === false,
+    'should_clean_up: the plugin\'s other post type is not ours either'
+);
+ptk_test_ok(
+    $t::should_clean_up( 'pta_newsletter', 77, true, true ) === false,
+    'should_clean_up: never delete a square the school uploaded -- it may be in use elsewhere'
+);
+ptk_test_ok(
+    $t::should_clean_up( 'pta_newsletter', 77, false, false ) === false,
+    'should_clean_up: the attachment is already gone, so there is nothing to delete'
+);
+ptk_test_ok(
+    $t::should_clean_up( 'pta_newsletter', 0, false, false ) === false,
+    'should_clean_up: no stored attachment id at all'
+);
+ptk_test_ok(
+    $t::should_clean_up( false, 77, true, false ) === false,
+    'should_clean_up: get_post_type() returning false is not a match'
+);
+
+// ---------------------------------------------------------------------
+// attachment_filename() -- predictable, and safe for a filesystem
+// ---------------------------------------------------------------------
+
+ptk_test_ok(
+    $t::attachment_filename( 12, '042' ) === 'share-square-12-042.png',
+    'attachment_filename names the file after the post and issue'
+);
+ptk_test_ok(
+    $t::attachment_filename( 12, '' ) === 'share-square-12.png',
+    'attachment_filename copes with no issue number'
+);
+ptk_test_ok(
+    $t::attachment_filename( 12, '../../etc/passwd' ) === 'share-square-12-etcpasswd.png',
+    'attachment_filename strips anything that is not a letter, digit or dash'
+);
+
+ptk_test_done();
 }
 
 $png = $t::render_png( $args, array( 'gd' => true, 'freetype' => true ) );
@@ -134,5 +220,89 @@ $w = $t::text_width( 'Northeast Elementary School PTA', $font['school'], $big );
 ptk_test_ok( $w <= 880, "fit_text got the long name inside 880px (measured {$w}px at {$big}pt)" );
 $short = $t::fit_text( 'NE PTA', $font['school'], 64, 24, 880 );
 ptk_test_ok( 64 === $short, 'fit_text leaves a short name at full size' );
+
+// ---------------------------------------------------------------------
+// should_regenerate() -- the decision ensure_square() makes, pulled out
+// so it can be tested without a WordPress runtime.
+// ---------------------------------------------------------------------
+
+ptk_test_ok(
+    $t::should_regenerate( 'abc', 'abc', true, false ) === false,
+    'should_regenerate: hash matches and the attachment is still there -> reuse it'
+);
+ptk_test_ok(
+    $t::should_regenerate( 'abc', 'def', true, false ) === true,
+    'should_regenerate: the inputs moved -> redraw'
+);
+ptk_test_ok(
+    $t::should_regenerate( 'abc', 'abc', false, false ) === true,
+    'should_regenerate: matching hash but the attachment is gone (a volunteer deleted it) -> redraw'
+);
+ptk_test_ok(
+    $t::should_regenerate( '', 'abc', false, false ) === true,
+    'should_regenerate: nothing stored yet -> draw the first one'
+);
+ptk_test_ok(
+    $t::should_regenerate( 'abc', 'def', true, true ) === false,
+    'should_regenerate: a school uploaded its own square -> never overwrite it, however stale our hash looks'
+);
+ptk_test_ok(
+    $t::should_regenerate( '', 'abc', false, true ) === false,
+    'should_regenerate: custom wins even when there is no generated square at all'
+);
+
+// ---------------------------------------------------------------------
+// should_clean_up() -- what before_delete_post is allowed to delete
+// ---------------------------------------------------------------------
+
+ptk_test_ok(
+    $t::should_clean_up( 'pta_newsletter', 77, true, false ) === true,
+    'should_clean_up: our generated square goes with the newsletter'
+);
+ptk_test_ok(
+    $t::should_clean_up( 'attachment', 77, true, false ) === false,
+    'should_clean_up: before_delete_post fires for the attachment itself -- do not recurse'
+);
+ptk_test_ok(
+    $t::should_clean_up( 'post', 77, true, false ) === false,
+    'should_clean_up: an ordinary post is not ours'
+);
+ptk_test_ok(
+    $t::should_clean_up( 'pta_knowledge', 77, true, false ) === false,
+    'should_clean_up: the plugin\'s other post type is not ours either'
+);
+ptk_test_ok(
+    $t::should_clean_up( 'pta_newsletter', 77, true, true ) === false,
+    'should_clean_up: never delete a square the school uploaded -- it may be in use elsewhere'
+);
+ptk_test_ok(
+    $t::should_clean_up( 'pta_newsletter', 77, false, false ) === false,
+    'should_clean_up: the attachment is already gone, so there is nothing to delete'
+);
+ptk_test_ok(
+    $t::should_clean_up( 'pta_newsletter', 0, false, false ) === false,
+    'should_clean_up: no stored attachment id at all'
+);
+ptk_test_ok(
+    $t::should_clean_up( false, 77, true, false ) === false,
+    'should_clean_up: get_post_type() returning false is not a match'
+);
+
+// ---------------------------------------------------------------------
+// attachment_filename() -- predictable, and safe for a filesystem
+// ---------------------------------------------------------------------
+
+ptk_test_ok(
+    $t::attachment_filename( 12, '042' ) === 'share-square-12-042.png',
+    'attachment_filename names the file after the post and issue'
+);
+ptk_test_ok(
+    $t::attachment_filename( 12, '' ) === 'share-square-12.png',
+    'attachment_filename copes with no issue number'
+);
+ptk_test_ok(
+    $t::attachment_filename( 12, '../../etc/passwd' ) === 'share-square-12-etcpasswd.png',
+    'attachment_filename strips anything that is not a letter, digit or dash'
+);
 
 ptk_test_done();

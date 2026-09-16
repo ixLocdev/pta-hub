@@ -355,4 +355,329 @@ class PTK_Share_Image {
             }
         }
     }
+
+    /* ------------------------------------------------------------------
+     * The square's life in the media library.
+     *
+     * This is the plugin's FIRST writer to the media library -- everything
+     * else in it only reads -- so the guards here are deliberately loud.
+     * ----------------------------------------------------------------*/
+
+    /**
+     * Hook the cleanup. Called from the plugin bootstrap in a later batch;
+     * nothing is registered yet.
+     *
+     * before_delete_post ONLY, never trashed_post: the trash is restorable,
+     * and deleting the square on trash would force a fresh GD render the
+     * moment somebody restored the newsletter.
+     *
+     * @return void
+     */
+    public static function init() {
+        add_action( 'before_delete_post', array( __CLASS__, 'delete_square_with_newsletter' ) );
+    }
+
+    /**
+     * Whether the stored square needs redrawing. Pure, so the rule can be
+     * read and tested on its own.
+     *
+     * A school's own uploaded square always wins -- however stale our hash
+     * looks, we never draw over it.
+     *
+     * @param string $stored_hash
+     * @param string $current_hash
+     * @param bool   $attachment_exists
+     * @param bool   $custom
+     * @return bool
+     */
+    public static function should_regenerate( $stored_hash, $current_hash, $attachment_exists, $custom ) {
+        if ( $custom ) {
+            return false;
+        }
+        if ( ! $attachment_exists ) {
+            return true;
+        }
+        return PTK_Share_Data::is_stale( $stored_hash, $current_hash );
+    }
+
+    /**
+     * Whether before_delete_post should take the square with it. Pure.
+     *
+     * The post-type check is not a nicety: before_delete_post fires for
+     * EVERY post type, including the attachment we are about to delete,
+     * so without it the handler would re-enter on its own deletion.
+     *
+     * @param string|false $post_type         get_post_type() result.
+     * @param int          $attachment_id
+     * @param bool         $attachment_exists A volunteer may have deleted it by hand.
+     * @param bool         $custom            A square the school uploaded.
+     * @return bool
+     */
+    public static function should_clean_up( $post_type, $attachment_id, $attachment_exists, $custom ) {
+        if ( 'pta_newsletter' !== $post_type ) {
+            return false;
+        }
+        if ( ! absint( $attachment_id ) ) {
+            return false;
+        }
+        if ( $custom ) {
+            return false;
+        }
+        return (bool) $attachment_exists;
+    }
+
+    /**
+     * A predictable, filesystem-safe name for the generated file.
+     *
+     * @return string
+     */
+    public static function attachment_filename( $post_id, $issue ) {
+        $post_id = absint( $post_id );
+        $issue   = preg_replace( '/[^A-Za-z0-9\-]/', '', (string) $issue );
+
+        if ( '' === $issue ) {
+            return 'share-square-' . $post_id . '.png';
+        }
+        return 'share-square-' . $post_id . '-' . $issue . '.png';
+    }
+
+    /**
+     * The square for one newsletter: the stored one when it is still
+     * right, a freshly drawn and attached one when it is not.
+     *
+     * NEVER call this on a public page request. It runs GD and writes to
+     * the media library, so an unauthenticated GET that could reach it
+     * would be a way to burn a server's CPU and fill its uploads folder.
+     * The admin panel render is the only caller.
+     *
+     * @param int   $post_id Newsletter post.
+     * @param array $args    issue, date, school_name, color, and optionally
+     *                       version (defaults to PTK_VERSION).
+     * @return int|WP_Error Attachment ID, or a WP_Error the panel turns
+     *                      into "upload a square picture".
+     */
+    public static function ensure_square( $post_id, array $args ) {
+        $post_id = absint( $post_id );
+
+        if ( ! $post_id ) {
+            return new WP_Error( 'ptk_share_square_post', __( 'That newsletter could not be found.', 'pta-knowledge-hub' ) );
+        }
+
+        if ( ! self::may_write( $post_id ) ) {
+            return new WP_Error(
+                'ptk_share_square_context',
+                __( 'The share square is only built from the newsletter editor.', 'pta-knowledge-hub' )
+            );
+        }
+
+        $square = PTK_Share_Data::get_square( $post_id );
+
+        // A square the school uploaded is theirs. Hand it back untouched.
+        if ( $square['custom'] ) {
+            if ( $square['image_id'] && self::attachment_exists( $square['image_id'] ) ) {
+                return $square['image_id'];
+            }
+            return new WP_Error(
+                'ptk_share_square_custom_missing',
+                __( 'The square picture this newsletter used has been deleted. Upload a new one, or switch back to the generated square.', 'pta-knowledge-hub' )
+            );
+        }
+
+        $issue   = isset( $args['issue'] ) ? (string) $args['issue'] : '';
+        $date    = isset( $args['date'] ) ? (string) $args['date'] : '';
+        $school  = isset( $args['school_name'] ) ? (string) $args['school_name'] : '';
+        $version = isset( $args['version'] ) ? (string) $args['version'] : ( defined( 'PTK_VERSION' ) ? PTK_VERSION : '0' );
+
+        // Hash the colour actually DRAWN, not the one requested -- two
+        // schools whose picks both get corrected to the same readable
+        // colour should not each think the other's square is stale.
+        $accent = self::accent_for( isset( $args['color'] ) ? $args['color'] : '' );
+
+        $current_hash = PTK_Share_Data::square_inputs_hash( $issue, $date, $school, $accent, $version );
+        $exists       = $square['image_id'] && self::attachment_exists( $square['image_id'] );
+
+        if ( ! self::should_regenerate( $square['hash'], $current_hash, $exists, false ) ) {
+            return $square['image_id'];
+        }
+
+        if ( self::is_over_quota() ) {
+            return new WP_Error(
+                'ptk_share_square_quota',
+                __( 'This site is out of upload space, so the square could not be saved. Upload a square picture instead, or ask the Council to raise the limit.', 'pta-knowledge-hub' )
+            );
+        }
+
+        $png = self::render_png( array(
+            'issue'       => $issue,
+            'date'        => $date,
+            'school_name' => $school,
+            'color'       => $accent,
+        ) );
+
+        if ( ! is_string( $png ) || '' === $png ) {
+            return new WP_Error(
+                'ptk_share_square_unsupported',
+                __( 'This website cannot draw the square picture. Upload one instead -- everything else about sharing still works.', 'pta-knowledge-hub' )
+            );
+        }
+
+        $upload = wp_upload_bits( self::attachment_filename( $post_id, $issue ), null, $png );
+        if ( ! is_array( $upload ) || ! empty( $upload['error'] ) ) {
+            $message = ( is_array( $upload ) && ! empty( $upload['error'] ) )
+                ? $upload['error']
+                : __( 'The square picture could not be saved.', 'pta-knowledge-hub' );
+            return new WP_Error( 'ptk_share_square_upload', $message );
+        }
+
+        $attachment_id = wp_insert_attachment(
+            array(
+                'post_mime_type' => 'image/png',
+                'post_title'     => sprintf(
+                    /* translators: %s: newsletter issue number. */
+                    __( 'Share square for issue %s', 'pta-knowledge-hub' ),
+                    ( '' !== $issue ) ? $issue : (string) $post_id
+                ),
+                'post_content'   => '',
+                'post_status'    => 'inherit',
+                // So the media library's "Uploaded to" column points back
+                // at the newsletter. Note this does NOT make WordPress
+                // delete the file with the post: wp_delete_post()
+                // REPARENTS child attachments and wp_trash_post() ignores
+                // them. delete_square_with_newsletter() is the only thing
+                // that actually cleans up.
+                'post_parent'    => $post_id,
+            ),
+            $upload['file'],
+            $post_id
+        );
+
+        if ( is_wp_error( $attachment_id ) || ! $attachment_id ) {
+            return new WP_Error(
+                'ptk_share_square_attach',
+                __( 'The square picture could not be added to the media library.', 'pta-knowledge-hub' )
+            );
+        }
+
+        // Thumbnails. image.php is not loaded on every admin request, and
+        // wp_generate_attachment_metadata() is fatal without it.
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+        wp_update_attachment_metadata(
+            $attachment_id,
+            wp_generate_attachment_metadata( $attachment_id, $upload['file'] )
+        );
+
+        // Throw away the square this one replaces, so a newsletter edited
+        // ten times does not leave ten orphans in the media library.
+        if ( $square['image_id'] && (int) $square['image_id'] !== (int) $attachment_id && self::attachment_exists( $square['image_id'] ) ) {
+            wp_delete_attachment( $square['image_id'], true );
+        }
+
+        PTK_Share_Data::save_square( $post_id, $attachment_id, false, $current_hash );
+
+        return (int) $attachment_id;
+    }
+
+    /**
+     * Go back to the generated square after a school uploaded its own.
+     *
+     * Forgets the upload rather than deleting it -- that image may well be
+     * in use somewhere else on the site. Clearing the id (and the stale
+     * baseline hash with it) is what makes the next render draw again.
+     *
+     * @return void
+     */
+    public static function use_generated_square( $post_id ) {
+        $post_id = absint( $post_id );
+        if ( ! $post_id ) {
+            return;
+        }
+
+        delete_post_meta( $post_id, PTK_Share_Data::META_SQUARE_CUSTOM );
+        delete_post_meta( $post_id, PTK_Share_Data::META_SQUARE_ID );
+        delete_post_meta( $post_id, PTK_Share_Data::META_SQUARE_HASH );
+    }
+
+    /**
+     * before_delete_post handler. Permanent deletion only.
+     *
+     * @return void
+     */
+    public static function delete_square_with_newsletter( $post_id ) {
+        $post_id = absint( $post_id );
+        if ( ! $post_id ) {
+            return;
+        }
+
+        // Cheapest check first: this fires for every post type on the
+        // site, the attachment included.
+        if ( 'pta_newsletter' !== get_post_type( $post_id ) ) {
+            return;
+        }
+
+        $square = PTK_Share_Data::get_square( $post_id );
+
+        $should = self::should_clean_up(
+            'pta_newsletter',
+            $square['image_id'],
+            $square['image_id'] ? self::attachment_exists( $square['image_id'] ) : false,
+            $square['custom']
+        );
+
+        if ( ! $should ) {
+            return;
+        }
+
+        wp_delete_attachment( $square['image_id'], true );
+    }
+
+    /**
+     * Is this request allowed to draw and write? Admin screens only, by
+     * somebody who may edit this newsletter, and never during cron or a
+     * REST read.
+     *
+     * @return bool
+     */
+    protected static function may_write( $post_id ) {
+        if ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) {
+            return false;
+        }
+        if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+            return false;
+        }
+        if ( ! is_admin() ) {
+            return false;
+        }
+        return current_user_can( 'edit_post', $post_id );
+    }
+
+    /**
+     * Is the attachment still really there? A volunteer may have deleted
+     * it by hand from the media library.
+     *
+     * @return bool
+     */
+    protected static function attachment_exists( $attachment_id ) {
+        return 'attachment' === get_post_type( absint( $attachment_id ) );
+    }
+
+    /**
+     * Per-site upload quota on multisite. Over it, the panel degrades to
+     * "upload a square picture" rather than failing hard.
+     *
+     * @return bool
+     */
+    protected static function is_over_quota() {
+        if ( ! is_multisite() ) {
+            return false;
+        }
+        if ( function_exists( 'upload_is_user_over_quota' ) && upload_is_user_over_quota( false ) ) {
+            return true;
+        }
+        if ( function_exists( 'get_upload_space_available' ) ) {
+            // A 1080x1080 PNG of flat colour and type runs 45-60 KB; leave
+            // room for the thumbnails WordPress generates alongside it.
+            return get_upload_space_available() < ( 512 * 1024 );
+        }
+        return false;
+    }
 }
