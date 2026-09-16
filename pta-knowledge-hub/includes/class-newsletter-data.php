@@ -419,13 +419,21 @@ class PTK_Newsletter_Data {
     }
 
     /**
-     * "Start from last issue" (4.3.0): copy the footer wholesale and two
-     * section labels (the top story's eyebrow, the quick notes label) from
-     * the most recent newsletter's SANITIZED blocks into a fresh set of
-     * defaults. Everything else -- stories, events, the announcement, the
-     * greeting, the summary -- stays exactly as default_blocks() left it,
-     * because none of it is a "set it once" label; it's per-issue content
-     * that would otherwise show up stale.
+     * "Start from last issue" (4.3.0): copy the footer wholesale and one
+     * section label (the quick notes label) from the most recent
+     * newsletter's SANITIZED blocks into a fresh set of defaults. Everything
+     * else -- stories, events, the announcement, the greeting, the summary --
+     * stays exactly as default_blocks() left it, because none of it is a
+     * "set it once" label; it's per-issue content that would otherwise show
+     * up stale.
+     *
+     * Round 3.1 (spec item 1): the Top story's eyebrow ("§ label") is
+     * deliberately NOT copied any more. It is issue-specific text a
+     * volunteer wrote for last week's story (e.g. "ASE volunteers"), not a
+     * standing label like "Quick notes" -- copying it left a new,
+     * completely different top story wearing last issue's headline. A new
+     * newsletter always starts with the default "Top story" instead (see
+     * default_blocks()).
      *
      * Pure and WordPress-free on purpose (spec Decision 7) so the copy rule
      * itself is unit-tested without a post query -- the WordPress-coupled
@@ -458,8 +466,6 @@ class PTK_Newsletter_Data {
 
             if ( self::TYPE_FOOTER === $block['type'] && isset( $by_type[ self::TYPE_FOOTER ]['data'] ) ) {
                 $defaults[ $i ]['data'] = $by_type[ self::TYPE_FOOTER ]['data'];
-            } elseif ( self::TYPE_FEATURED === $block['type'] && isset( $by_type[ self::TYPE_FEATURED ]['data']['eyebrow'] ) ) {
-                $defaults[ $i ]['data']['eyebrow'] = $by_type[ self::TYPE_FEATURED ]['data']['eyebrow'];
             } elseif ( self::TYPE_QUICK_NOTES === $block['type'] && isset( $by_type[ self::TYPE_QUICK_NOTES ]['data']['label'] ) ) {
                 $defaults[ $i ]['data']['label'] = $by_type[ self::TYPE_QUICK_NOTES ]['data']['label'];
             }

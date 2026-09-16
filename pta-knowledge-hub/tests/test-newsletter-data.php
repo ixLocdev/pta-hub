@@ -167,8 +167,11 @@ $last = $d::sanitize_blocks( array(
 $merged = $d::merge_start_from_last( $defaults, $last );
 $mtype  = array_column( $merged, 'type' );
 
+// Round 3.1 (spec item 1): the Top story label ("eyebrow") is issue-specific
+// text, not a standing section label -- it must NOT carry over. The new
+// issue keeps default_blocks()'s own default ('').
 $mf = $merged[ array_search( 'featured', $mtype, true ) ]['data'];
-ptk_test_ok( $mf['eyebrow'] === 'Date change', 'top story label copies from last issue' );
+ptk_test_ok( $mf['eyebrow'] === '', 'top story label does NOT copy from last issue (round 3.1)' );
 ptk_test_ok( $mf['headline'] === '', 'top story headline does NOT copy' );
 
 $mq = $merged[ array_search( 'quick_notes', $mtype, true ) ]['data'];
