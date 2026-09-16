@@ -172,27 +172,111 @@ class PTK_Newsletter_Renderer {
     }
 
     /**
-     * Full-width navy announcement strip: pill badge + text.
+     * The announcement: the newsletter's one navy callout. A yellow italic
+     * "when" line, a white headline, the details, optional dates (past rows
+     * faded, the last row yellow as the deadline) and an optional white
+     * button. A 4.1.x announcement that only has text shows that text as the
+     * headline, so the callout never renders half-built.
      */
     private static function render_announcement( array $data, array $opts ) {
-        $pill = isset( $data['pill'] ) ? self::str( $data['pill'] ) : '';
-        $text = isset( $data['text'] ) ? self::str( $data['text'] ) : '';
+        $when     = isset( $data['when'] ) ? self::str( $data['when'] ) : '';
+        $headline = isset( $data['headline'] ) ? self::str( $data['headline'] ) : '';
+        $text     = isset( $data['text'] ) ? self::str( $data['text'] ) : '';
+        $btn_text = isset( $data['button_text'] ) ? self::str( $data['button_text'] ) : '';
+        $btn_url  = isset( $data['button_url'] ) ? self::str( $data['button_url'] ) : '';
+        $today    = isset( $opts['today'] ) ? self::str( $opts['today'] ) : '';
 
-        // Nothing to announce: emit nothing (no empty navy bar), unless
-        // preview mode wants an outlinable placeholder.
-        if ( '' === trim( $pill ) && '' === trim( $text ) ) {
-            return self::placeholder( 'announcement', 'Your key announcement will appear here.', $opts );
+        // Un-resaved 4.1.x data still says "pill".
+        if ( '' === trim( $when ) && isset( $data['pill'] ) ) {
+            $when = self::str( $data['pill'] );
         }
 
-        $pill_html = '';
-        if ( '' !== trim( $pill ) ) {
-            $pill_html = '<span style="font-size:10px;letter-spacing:0.18em;text-transform:uppercase;font-weight:700;background:rgba(255,255,255,0.18);padding:5px 10px;border-radius:4px;">' . esc_html( $pill ) . '</span>';
+        $rows     = array();
+        $timeline = isset( $data['timeline'] ) && is_array( $data['timeline'] ) ? $data['timeline'] : array();
+        foreach ( $timeline as $row ) {
+            if ( ! is_array( $row ) ) {
+                continue;
+            }
+            $r = array(
+                'date' => isset( $row['date'] ) ? self::str( $row['date'] ) : '',
+                'time' => isset( $row['time'] ) ? self::str( $row['time'] ) : '',
+                'what' => isset( $row['what'] ) ? self::str( $row['what'] ) : '',
+            );
+            if ( '' === trim( $r['date'] . $r['time'] . $r['what'] ) ) {
+                continue;
+            }
+            $rows[] = $r;
+        }
+        $has_button = '' !== trim( $btn_text ) && '' !== trim( esc_url( $btn_url ) );
+
+        if ( '' === trim( $when ) && '' === trim( $headline ) && '' === trim( $text ) && ! $has_button && empty( $rows ) ) {
+            return self::placeholder( 'announcement', 'Your announcement will appear here.', $opts );
         }
 
-        $html  = '<div data-ptk-block="' . esc_attr( 'announcement' ) . '" style="font-family:' . self::FONT_SANS . ';background:' . esc_attr( self::PALETTE['primary'] ) . ';color:#ffffff;padding:16px 20px;box-sizing:border-box;">';
-        $html .= '<div style="max-width:840px;margin:0 auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">';
-        $html .= $pill_html;
-        $html .= '<span style="font-size:15px;font-weight:500;line-height:1.5;flex:1 1 240px;min-width:200px;">' . wp_kses_post( $text ) . '</span>';
+        // A 4.1.x announcement is one sentence of text and no headline: that
+        // sentence IS the headline. Plain text, tags stripped, no paragraph.
+        if ( '' === trim( $headline ) && '' !== trim( $text ) ) {
+            $headline = trim( html_entity_decode( wp_strip_all_tags( $text ), ENT_QUOTES, 'UTF-8' ) );
+            $text     = '';
+        }
+
+        $has_text  = '' !== trim( $text );
+        $has_after = ! empty( $rows ) || $has_button;
+
+        $html  = '<div data-ptk-block="' . esc_attr( 'announcement' ) . '" style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['primary'] ) . ';padding:48px 20px;box-sizing:border-box;">';
+        $html .= '<div style="max-width:840px;margin:0 auto;">';
+
+        if ( '' !== trim( $when ) ) {
+            $html .= '<div style="font-family:' . self::FONT_SERIF . ';font-style:italic;font-weight:500;font-size:15px;color:' . esc_attr( self::PALETTE['accent'] ) . ';margin-bottom:14px;">' . esc_html( $when ) . '</div>';
+        }
+
+        if ( '' !== trim( $headline ) ) {
+            $h_margin = ( $has_text || $has_after ) ? '0 0 18px' : '0';
+            $html .= '<h2 style="font-family:' . self::FONT_SANS . ';font-weight:800;font-size:clamp(32px,6vw,52px);line-height:1.0;letter-spacing:-0.03em;margin:' . $h_margin . ';color:#ffffff;max-width:720px;">' . esc_html( $headline ) . '</h2>';
+        }
+
+        if ( $has_text ) {
+            $t_margin = $has_after ? '0 0 28px' : '0';
+            $html .= '<div style="font-size:16px;line-height:1.65;color:' . esc_attr( self::PALETTE['on_navy'] ) . ';margin:' . $t_margin . ';max-width:660px;">' . wp_kses_post( $text ) . '</div>';
+        }
+
+        if ( ! empty( $rows ) ) {
+            $states = PTK_Newsletter_Data::timeline_states( $rows, $today );
+            $html  .= '<div style="max-width:660px;border-top:1px solid rgba(255,255,255,0.25);">';
+            foreach ( $rows as $i => $r ) {
+                $deadline = ! empty( $states[ $i ]['deadline'] );
+                $past     = ! empty( $states[ $i ]['past'] );
+                $numeral  = $deadline ? self::PALETTE['accent'] : '#ffffff';
+
+                $style = 'display:flex;flex-wrap:wrap;gap:4px 20px;padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.18);' . ( $past ? 'opacity:0.45;' : '' );
+
+                $detail = '';
+                if ( '' !== trim( $r['time'] ) ) {
+                    $detail .= '<strong style="color:' . esc_attr( $numeral ) . ';">' . esc_html( $r['time'] ) . '</strong>';
+                }
+                if ( '' !== trim( $r['time'] ) && '' !== trim( $r['what'] ) ) {
+                    $detail .= ' · ';
+                }
+                if ( '' !== trim( $r['what'] ) ) {
+                    $detail .= esc_html( $r['what'] );
+                }
+
+                // Data attributes first, then the style: the relabel script
+                // reads data-timeline-date to fade the row for the reader's day.
+                $html .= '<div data-timeline-date="' . esc_attr( $r['date'] ) . '"' . ( $deadline ? ' data-timeline-deadline' : '' ) . ' style="' . $style . '">';
+                $html .= '<div style="flex:0 0 190px;font-family:' . self::FONT_SERIF . ';font-weight:500;font-size:20px;line-height:1.3;color:' . esc_attr( $numeral ) . ';' . self::NUMERALS . '">' . esc_html( self::format_timeline_date( $r['date'] ) ) . '</div>';
+                $html .= '<div style="flex:1 1 240px;font-size:15px;line-height:1.5;color:' . esc_attr( self::PALETTE['on_navy'] ) . ';">' . $detail . '</div>';
+                $html .= '</div>';
+            }
+            $html .= '</div>';
+        }
+
+        if ( $has_button ) {
+            $html .= '<div style="margin-top:28px;">';
+            $html .= '<a href="' . esc_url( $btn_url ) . '" style="display:inline-block;background:#ffffff;color:' . esc_attr( self::PALETTE['primary'] ) . ';font-size:14px;font-weight:700;letter-spacing:0.02em;padding:14px 24px;border-radius:8px;text-decoration:none;">' . esc_html( $btn_text ) . '</a>';
+            $html .= '</div>';
+        }
+
         $html .= '</div>';
         $html .= '</div>';
 
@@ -516,6 +600,25 @@ class PTK_Newsletter_Renderer {
             return $date;
         }
         return $dt->format( 'M j' );
+    }
+
+    /**
+     * An announcement date: "Mon, Sep 14" (the same abbreviations as the
+     * Coming up numerals). Blank stays blank; an unparseable value is shown
+     * as typed rather than dropped.
+     *
+     * @param string $date 'YYYY-MM-DD'.
+     * @return string
+     */
+    private static function format_timeline_date( $date ) {
+        if ( '' === trim( $date ) ) {
+            return '';
+        }
+        $dt = DateTime::createFromFormat( '!Y-m-d', $date );
+        if ( ! $dt ) {
+            return $date;
+        }
+        return $dt->format( 'D, M j' );
     }
 
     /**

@@ -199,4 +199,39 @@ ptk_test_ok( strpos( $ev, 'opacity:0.45' ) !== false, 'a past row is faded' );
 ptk_test_ok( strpos( $ev, 'border-top:1px solid #111' ) === false, 'no strong line on the first row; the § rule is the strong line' );
 ptk_test_ok( strpos( $ev, 'lining-nums tabular-nums' ) !== false, 'numerals use lining figures' );
 
+// --- 4.2.0 announcement: when line, headline, text, timeline, button. -------
+$an_opts = array( 'issue' => 40, 'date' => '2026-09-13', 'today' => '2026-09-15', 'theme' => 'harbor-navy', 'logo_url' => '', 'school_name' => 'NE' );
+$an = PTK_Newsletter_Renderer::render( array( array( 'type' => 'announcement', 'data' => array(
+    'when'        => 'Opens Monday, Sept 14',
+    'headline'    => 'ASE registration opens Monday.',
+    'text'        => 'Twelve classes for grades K–5.',
+    'button_text' => 'Go to ASE registration',
+    'button_url'  => 'https://app.givebacks.gives/c691c4',
+    'timeline'    => array(
+        array( 'date' => '2026-09-14', 'time' => '8:30 AM–12:30 PM', 'what' => 'PTA members only' ),
+        array( 'date' => '2026-09-17', 'time' => '12:00 noon', 'what' => 'Registration closes' ),
+    ),
+) ) ), $an_opts );
+ptk_test_ok( substr_count( $an, 'background:#1a2f5c' ) === 1, 'the announcement is one navy fill' );
+ptk_test_ok( strpos( $an, 'color:#ffd166' ) !== false && strpos( $an, 'Opens Monday, Sept 14' ) !== false, 'the when line is yellow' );
+ptk_test_ok( strpos( $an, '<h2' ) !== false && strpos( $an, 'color:#ffffff;max-width:720px;">ASE registration opens Monday.' ) !== false, 'the headline is a white h2' );
+ptk_test_ok( strpos( $an, 'color:#cfd8e3' ) !== false, 'the text is on-navy grey' );
+ptk_test_ok( substr_count( $an, 'data-timeline-date="' ) === 2, 'two timeline rows carry their date' );
+ptk_test_ok( substr_count( $an, 'data-timeline-deadline' ) === 1 && preg_match( '/data-timeline-date="2026-09-17" data-timeline-deadline/', $an ) === 1, 'the last row, and only it, is the deadline' );
+ptk_test_ok( strpos( $an, 'Mon, Sep 14' ) !== false, 'timeline date reads "Mon, Sep 14"' );
+ptk_test_ok( preg_match( '/data-timeline-date="2026-09-14"[^>]*opacity:0\.45/', $an ) === 1, 'a past timeline row is faded on the server' );
+ptk_test_ok( preg_match( '/data-timeline-date="2026-09-17"[^>]*opacity/', $an ) === 0, 'a future row is not faded' );
+ptk_test_ok( strpos( $an, 'background:#ffffff;color:#1a2f5c' ) !== false && strpos( $an, '>Go to ASE registration<' ) !== false, 'the button is white on navy' );
+ptk_test_ok( strpos( $an, 'rgba(255,255,255,0.18)' ) !== false, 'timeline hairlines are translucent white' );
+ptk_test_ok( strpos( $an, 'border-left' ) === false && strpos( $an, 'border-right' ) === false, 'no one-sided borders' );
+
+$an_min = PTK_Newsletter_Renderer::render( array( array( 'type' => 'announcement', 'data' => array( 'when' => '', 'headline' => 'Just a headline', 'text' => '', 'button_text' => 'Go', 'button_url' => '', 'timeline' => array() ) ) ), $an_opts );
+ptk_test_ok( strpos( $an_min, 'Just a headline' ) !== false && strpos( $an_min, '>Go<' ) === false && strpos( $an_min, 'border-top:1px solid rgba' ) === false, 'headline alone renders; no button without a link; no empty timeline' );
+// A migrated 4.1.x announcement: text only. The text takes the headline slot; no empty h2, no lone paragraph.
+$an_old = PTK_Newsletter_Renderer::render( array( array( 'type' => 'announcement', 'data' => array( 'when' => 'Thursday · Jun 25', 'headline' => '', 'text' => '<p>Last <strong>day</strong> of school.</p>', 'button_text' => '', 'button_url' => '', 'timeline' => array() ) ) ), $an_opts );
+ptk_test_ok( preg_match( '/<h2[^>]*>Last day of school\.<\/h2>/', $an_old ) === 1, 'old text-only announcement: the text becomes the headline, tags stripped' );
+ptk_test_ok( strpos( $an_old, 'color:#cfd8e3' ) === false, 'old text-only announcement: no separate paragraph' );
+$an_none = PTK_Newsletter_Renderer::render( array( array( 'type' => 'announcement', 'data' => array( 'when' => '', 'headline' => '', 'text' => '', 'button_text' => '', 'button_url' => '', 'timeline' => array( array( 'date' => '', 'time' => '', 'what' => '' ) ) ) ) ), $an_opts );
+ptk_test_ok( strpos( $an_none, 'data-ptk-block="announcement"' ) === false, 'all-blank announcement (blank timeline row included) renders nothing' );
+
 ptk_test_done();
