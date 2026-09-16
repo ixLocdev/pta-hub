@@ -89,6 +89,30 @@ class PTK_Share_Image {
      * @return string|false Binary PNG, or false when it cannot be drawn.
      *                      Never fatal, never a blank image.
      */
+    /**
+     * The issue date, written the way our mastheads write it.
+     *
+     * The stored value is an ISO date because that is what the Builder saves,
+     * but "2026-09-14" on a square reads like a filename. Newsletters are
+     * named for the week they cover, so that is what the square says. Anything
+     * that is not an ISO date is passed through untouched -- a PTA may well
+     * have typed something else.
+     */
+    public static function dateline( $date ) {
+        $date = trim( (string) $date );
+        if ( '' === $date ) {
+            return '';
+        }
+        if ( ! preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $date, $m ) ) {
+            return $date;
+        }
+        $stamp = mktime( 0, 0, 0, (int) $m[2], (int) $m[3], (int) $m[1] );
+        if ( false === $stamp ) {
+            return $date;
+        }
+        return 'Week of ' . date( 'F j', $stamp );
+    }
+
     public static function render_png( array $args, $caps = null ) {
         if ( null === $caps || ! is_array( $caps ) ) {
             $caps = self::capabilities();
@@ -151,9 +175,10 @@ class PTK_Share_Image {
         }
 
         // The week, in the serif, in the accent.
-        if ( '' !== $date ) {
-            $date_size = self::fit_text( $date, $fonts['date'], 56, 28, $width );
-            imagettftext( $im, $date_size, 0, $left, 736, $accent_col, $fonts['date'], $date );
+        $dateline = self::dateline( $date );
+        if ( '' !== $dateline ) {
+            $date_size = self::fit_text( $dateline, $fonts['date'], 56, 28, $width );
+            imagettftext( $im, $date_size, 0, $left, 736, $accent_col, $fonts['date'], $dateline );
         }
 
         // The school's name at the foot, above a second hairline, shrunk

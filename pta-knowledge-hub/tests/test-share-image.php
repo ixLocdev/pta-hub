@@ -305,4 +305,10 @@ ptk_test_ok(
     'attachment_filename strips anything that is not a letter, digit or dash'
 );
 
+// The square is a masthead, not a log line: "2026-09-14" reads like a filename.
+ptk_test_ok( PTK_Share_Image::dateline( '2026-09-14' ) === 'Week of September 14', 'an ISO date becomes a week' );
+ptk_test_ok( PTK_Share_Image::dateline( '2026-01-05' ) === 'Week of January 5', 'no leading zero on the day' );
+ptk_test_ok( PTK_Share_Image::dateline( 'Winter term' ) === 'Winter term', 'a non-ISO date is left alone' );
+ptk_test_ok( PTK_Share_Image::dateline( '' ) === '', 'an empty date stays empty' );
+
 ptk_test_done();
