@@ -121,6 +121,9 @@ class PTK_Share_Text {
 
     const WHATSAPP_MAX = 400;
 
+    /** "Also in this issue" lines, stories first then quick notes. #040's own post had six. */
+    const ALSO_LINES_MAX = 8;
+
     /**
      * Build the three ready-to-paste captions for a newsletter.
      *
@@ -150,6 +153,7 @@ class PTK_Share_Text {
         $announce   = isset( $by_type['announcement'] ) ? $by_type['announcement'] : array();
         $events     = isset( $by_type['events']['rows'] ) && is_array( $by_type['events']['rows'] ) ? $by_type['events']['rows'] : array();
         $cards      = isset( $by_type['story_cards']['cards'] ) && is_array( $by_type['story_cards']['cards'] ) ? $by_type['story_cards']['cards'] : array();
+        $notes      = isset( $by_type['quick_notes']['items'] ) && is_array( $by_type['quick_notes']['items'] ) ? $by_type['quick_notes']['items'] : array();
         $footer     = isset( $by_type['footer'] ) ? $by_type['footer'] : array();
 
         $opening = '' !== (string) $issue
@@ -161,13 +165,21 @@ class PTK_Share_Text {
         $featured_lines    = array_filter( array( $featured_headline, $featured_body ), 'strlen' );
         $featured_para     = implode( "\n", $featured_lines );
 
-        $announce_text = self::html_to_text( isset( $announce['text'] ) ? $announce['text'] : '' );
+        $announce_headline = self::html_to_text( isset( $announce['headline'] ) ? $announce['headline'] : '' );
+        $announce_text     = self::html_to_text( isset( $announce['text'] ) ? $announce['text'] : '' );
+        // Un-resaved 4.1.x meta still calls the when line "pill".
+        $announce_when     = self::html_to_text( isset( $announce['when'] ) ? $announce['when'] : ( isset( $announce['pill'] ) ? $announce['pill'] : '' ) );
+        // Headline, text, when. With no headline (an old announcement) the
+        // text leads and the when line still follows it.
+        $announce_para     = implode( "\n", array_filter( array( $announce_headline, $announce_text, $announce_when ), 'strlen' ) );
 
         $story_lines = array();
-        foreach ( $cards as $card ) {
-            $line = self::story_line( is_array( $card ) ? $card : array() );
+        foreach ( array_merge( $cards, $notes ) as $item ) {
+            // Quick notes carry heading + body too, so the story rule applies unchanged.
+            $line = self::story_line( is_array( $item ) ? $item : array() );
             if ( '' !== $line ) { $story_lines[] = $line; }
         }
+        $story_lines = array_slice( $story_lines, 0, self::ALSO_LINES_MAX );
         $cards_block = '';
         if ( ! empty( $story_lines ) ) {
             $cards_block = "Also in this issue:\n" . implode( "\n", $story_lines );
@@ -202,7 +214,7 @@ class PTK_Share_Text {
         }
 
         $fb_sections = array( $opening );
-        foreach ( array( $featured_para, $announce_text, $cards_block, $events_block, $url, $footer_block ) as $section ) {
+        foreach ( array( $featured_para, $announce_para, $cards_block, $events_block, $url, $footer_block ) as $section ) {
             if ( '' !== trim( (string) $section ) ) { $fb_sections[] = $section; }
         }
         $facebook = implode( "\n\n", $fb_sections );
@@ -211,8 +223,8 @@ class PTK_Share_Text {
 
         return array(
             'facebook'  => $facebook,
-            'instagram' => self::generate_instagram( $opening, $featured_headline, $announce_text, $story_lines ),
-            'whatsapp'  => self::generate_whatsapp( $opening, $featured_headline, $announce_text, $url ),
+            'instagram' => self::generate_instagram( $opening, $featured_headline, $announce_headline, $announce_text, $story_lines ),
+            'whatsapp'  => self::generate_whatsapp( $opening, $featured_headline, $announce_headline, $announce_text, $url ),
         );
     }
 
@@ -238,12 +250,12 @@ class PTK_Share_Text {
      * Shorter than Facebook, and never a bare link -- Instagram captions
      * aren't clickable, so end with a "link in bio" pointer instead.
      */
-    private static function generate_instagram( $opening, $featured_headline, $announce_text, array $story_lines ) {
+    private static function generate_instagram( $opening, $featured_headline, $announce_headline, $announce_text, array $story_lines ) {
         $parts = array( $opening );
 
         // One lead, not two. Instagram shows roughly the first 125 characters
         // before "more", so the timely announcement wins when both exist.
-        $lead = '' !== $announce_text ? $announce_text : $featured_headline;
+        $lead = '' !== $announce_headline ? $announce_headline : ( '' !== $announce_text ? $announce_text : $featured_headline );
         if ( '' !== $lead ) {
             $parts[] = $lead;
         }
@@ -257,8 +269,8 @@ class PTK_Share_Text {
     }
 
     /** Two or three lines plus the url, kept under WHATSAPP_MAX chars. */
-    private static function generate_whatsapp( $opening, $featured_headline, $announce_text, $url ) {
-        $middle = '' !== $featured_headline ? $featured_headline : $announce_text;
+    private static function generate_whatsapp( $opening, $featured_headline, $announce_headline, $announce_text, $url ) {
+        $middle = '' !== $featured_headline ? $featured_headline : ( '' !== $announce_headline ? $announce_headline : $announce_text );
 
         $lines = array( $opening );
         if ( '' !== $middle ) { $lines[] = $middle; }

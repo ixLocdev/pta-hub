@@ -183,4 +183,51 @@ $named = PTK_Share_Text::generate(
 ptk_test_ok( strpos( $named['facebook'], 'PTA Newsletter #Winter is out.' ) === 0, 'a non-numeric issue is left alone' );
 ptk_test_ok( mb_strlen( $ent['instagram'] ) < mb_strlen( $ent['facebook'] ), 'instagram is shorter than facebook' );
 
+// --- 4.2.0: announcement headline + when, quick notes as "also" lines. ------
+$v2 = PTK_Share_Text::generate( array(
+    array( 'type' => 'header', 'data' => array( 'school_name' => 'NE', 'headline' => '', 'summary' => '', 'greeting' => '' ) ),
+    array( 'type' => 'announcement', 'data' => array( 'when' => 'Closes Thursday at noon', 'headline' => 'ASE registration opens Monday.', 'text' => '<p>Members go first.</p>', 'button_text' => '', 'button_url' => '', 'timeline' => array() ) ),
+    array( 'type' => 'story_cards', 'data' => array( 'cards' => array(
+        array( 'eyebrow' => '', 'heading' => 'Film on the Field moves to Friday, October 16.', 'body' => '', 'image_id' => 0, 'link_url' => '', 'link_text' => '' ),
+    ) ) ),
+    array( 'type' => 'quick_notes', 'data' => array( 'label' => 'Good to know', 'items' => array(
+        array( 'heading' => 'Lunch menu', 'body' => '<p>This week\'s menus are on the site.</p>', 'link_url' => 'https://x.test/l', 'link_text' => 'See the menu' ),
+        array( 'heading' => '', 'body' => '', 'link_url' => '', 'link_text' => '' ),
+    ) ) ),
+    array( 'type' => 'footer', 'data' => array( 'signoff' => '', 'links' => array() ) ),
+), array( 'url' => 'https://x.test/n', 'issue' => 41, 'date' => '2026-09-20', 'school_name' => 'NE', 'today' => '2026-09-20' ) );
+$fb2 = $v2['facebook'];
+ptk_test_ok( strpos( $fb2, "ASE registration opens Monday.\nMembers go first.\nCloses Thursday at noon" ) !== false, 'facebook: announcement is headline, text, when' );
+ptk_test_ok( strpos( $fb2, 'Film on the Field moves to Friday, October 16.' ) !== false, 'facebook: story line still there' );
+ptk_test_ok( strpos( $fb2, 'Lunch menu' ) !== false && strpos( $fb2, "This week's menus are on the site." ) !== false, 'facebook: a quick note becomes an also-line via the heading rule' );
+ptk_test_ok( strpos( $fb2, 'Film on the Field' ) < strpos( $fb2, 'Lunch menu' ), 'facebook: stories come before quick notes' );
+ptk_test_ok( substr_count( $fb2, "\nLunch menu" ) === 1, 'facebook: the blank note adds nothing' );
+ptk_test_ok( strpos( $v2['instagram'], 'ASE registration opens Monday.' ) !== false, 'instagram: leads with the announcement headline' );
+ptk_test_ok( strpos( $v2['whatsapp'], 'ASE registration opens Monday.' ) !== false, 'whatsapp: with no top story the announcement headline is the middle line' );
+
+// A migrated announcement with no headline: the text leads, the When line follows.
+$nohead = PTK_Share_Text::generate( array(
+    array( 'type' => 'announcement', 'data' => array( 'when' => 'Thursday · Jun 25', 'headline' => '', 'text' => 'Last day of school.', 'button_text' => '', 'button_url' => '', 'timeline' => array() ) ),
+), array( 'url' => 'https://x.test/n', 'issue' => 1, 'date' => '2026-06-22', 'school_name' => 'NE', 'today' => '2026-06-22' ) );
+ptk_test_ok( strpos( $nohead['facebook'], "Last day of school.\nThursday · Jun 25" ) !== false, 'no headline: the text is the lead line and the When line follows it' );
+
+// Un-resaved 4.1.x meta still carries pill; captions must not lose it.
+$v1 = PTK_Share_Text::generate( array(
+    array( 'type' => 'announcement', 'data' => array( 'pill' => 'Thursday', 'text' => 'Last day.' ) ),
+), array( 'url' => 'https://x.test/n', 'issue' => 1, 'date' => '2026-06-22', 'school_name' => 'NE', 'today' => '2026-06-22' ) );
+ptk_test_ok( strpos( $v1['facebook'], "Last day.\nThursday" ) !== false, 'an old pill still reaches the caption as the when line' );
+
+// The cap: 5 cards + 5 notes -> 8 also-lines, cards first.
+$many_cards = array(); $many_notes = array();
+for ( $i = 1; $i <= 5; $i++ ) {
+    $many_cards[] = array( 'eyebrow' => '', 'heading' => "Card number $i is a whole sentence here.", 'body' => '', 'image_id' => 0, 'link_url' => '', 'link_text' => '' );
+    $many_notes[] = array( 'heading' => "Note number $i is a whole sentence here.", 'body' => '', 'link_url' => '', 'link_text' => '' );
+}
+$cap = PTK_Share_Text::generate( array(
+    array( 'type' => 'story_cards', 'data' => array( 'cards' => $many_cards ) ),
+    array( 'type' => 'quick_notes', 'data' => array( 'label' => '', 'items' => $many_notes ) ),
+), array( 'url' => 'https://x.test/n', 'issue' => 1, 'date' => '2026-06-22', 'school_name' => 'NE', 'today' => '2026-06-22' ) );
+ptk_test_ok( substr_count( $cap['facebook'], 'Card number' ) === 5 && substr_count( $cap['facebook'], 'Note number' ) === 3, 'also-lines cap at 8, cards first' );
+ptk_test_ok( strpos( $cap['facebook'], 'Note number 4' ) === false, 'the ninth line is dropped' );
+
 ptk_test_done();
