@@ -58,8 +58,22 @@ Appearance, Tools, dozens of plugin menus — and none of it is their job.
 **Defaults:** on for everyone except site administrators. A site setting sets the default per role;
 each person can still switch their own.
 
+**How it hides.** `remove_menu_page()` / `remove_submenu_page()` on `admin_menu` (late priority),
+checked per request against the current user — never CSS or JavaScript hiding, which leaves working
+URLs behind a blank space and breaks when a menu slug changes. A hidden screen's URL still works if
+somebody types it; it is hidden, not forbidden.
+
 **Permissions never change.** Simple mode only hides chrome. Anything a person could not do before,
-they still cannot do.
+they still cannot do, and the capability checks on every screen are untouched.
+
+**Multisite.** Simple mode is per person, per site: the same volunteer can have it on at Northeast and
+off at the Council. Network Admin (`wp-admin/network/`) is out of scope — it is never trimmed, and the
+"My Sites" switcher always stays in the admin bar so a Council admin can move between sites. The
+per-role default is a per-site setting, so one school turning it off does not change another.
+
+**People with nothing to do here.** A logged-in member below the Hub's minimum capability
+(`edit_posts`) is not sent into `wp-admin` at all: they land on the public Hub page. They would
+otherwise arrive at a home screen with none of its six choices available.
 
 ---
 
@@ -83,9 +97,25 @@ two quiet links — "Set up the basics (once)" and "Show all of WordPress".
 "where to next" row at the foot of a finished task ("Tell families about it · Add another · I'm done").
 No permanent menu to read while working.
 
+**What counts as a Hub screen.** Exactly the admin pages this plugin registers (its `page_` hook
+suffixes) plus its own post-type list and edit screens. Everything else, including core list tables
+the Hub links out to, is ordinary WordPress and is left alone. Every rule in §3 and §5 uses that
+definition.
+
 **Long screens fold.** A step shows one open section plus one-line summaries of the rest
 ("Coming up — 3 dates added"), so a step is never taller than one section plus a few rows. Opening a
 section closes the previous one. The state is remembered per newsletter.
+
+In the Newsletter Builder this folding happens **inside** a step, to the blocks a step contains
+(Announcement, Coming up, Quick notes). The five steps themselves stay exactly as they are, with their
+existing step navigation, per-step validation summary and dirty-state guard. The live preview column
+is never folded and never gains a step marker, matching the contract already noted in
+`class-newsletter-builder.php`.
+
+**On a phone.** Under 782px (WordPress's own admin breakpoint) the home screen's cards become one
+column, a task's step navigation becomes a single "Step 2 of 5" line with next/previous, the live
+preview moves below the form behind a "Preview" toggle rather than beside it, and tap targets stay at
+least 44px. Nothing is hidden on small screens that is available on large ones.
 
 ---
 
@@ -107,8 +137,11 @@ section closes the previous one. The state is remembered per newsletter.
 | `--ptk-line` | `#E2E6E4` | hairlines and card borders |
 
 **Type.** Literata (serif) asks the questions and sets page titles. Karla (sans) runs the interface:
-labels, help, buttons, tables. Both bundled with the plugin as the newsletter fonts already are —
-no Google Fonts requests from the admin. System fallbacks: Georgia, then serif; system-ui, then
+labels, help, buttons, tables. Both are SIL Open Font License faces, bundled with the plugin the way
+the newsletter's fonts already are, with their license files — no Google Fonts requests from the admin.
+They are deliberately **not** the public house style (Libre Franklin + Newsreader, see HOUSE-STYLE.md):
+the place where a volunteer works should not be mistaken for the newsletter families read, and the
+Hub's look has to belong to every school rather than to Northeast. System fallbacks: Georgia, then serif; system-ui, then
 sans-serif.
 
 **Scale.** Page title 28–30px Literata. Section question 20–21px Literata. Card title 15px Karla 700.
@@ -117,6 +150,26 @@ Body 14px. Help and meta 12.5px. Stamp 11.5px, `letter-spacing: .16em`, uppercas
 **Shape and space.** 12px radius on cards, 9px on fields and buttons, 4px on stamps. Spacing steps of
 4: 8 / 12 / 16 / 22 / 28. Cards carry a full 1px `--ptk-line` border. **Never a left or right accent
 bar** — full borders, fills, spacing or a stamp instead.
+
+**Contrast pairs that must pass.** These exact pairs are asserted in tests (WCAG AA, 4.5:1 for text,
+3:1 for a stamp's border):
+
+| Foreground | Background | Minimum |
+|---|---|---|
+| `--ptk-text` #243039 | `--ptk-bg` #F8F9F7 | 4.5:1 |
+| `--ptk-text` #243039 | `--ptk-surface` #FFFFFF | 4.5:1 |
+| `--ptk-text-dim` #68747C | `--ptk-bg` #F8F9F7 | 4.5:1 |
+| `--ptk-text-dim` #68747C | `--ptk-surface` #FFFFFF | 4.5:1 |
+| `--ptk-primary` #356F8A | `--ptk-bg` / `--ptk-surface` | 4.5:1 |
+| white | `--ptk-primary` #356F8A (button) | 4.5:1 |
+| `--ptk-primary` #356F8A | `--ptk-primary-soft` #E7F1F5 | 4.5:1 |
+| `--ptk-success` / `--ptk-warning` / `--ptk-error` | `--ptk-bg` and `--ptk-surface` | 4.5:1 text, 3:1 border |
+
+A pair that fails is darkened until it passes; the palette above is the starting point, not a reason to
+ship unreadable text.
+
+**WordPress admin color schemes.** A person's chosen admin color scheme still colors WordPress's own
+chrome. Inside Hub screens this palette wins, deliberately, so the Hub looks the same for everyone.
 
 **Stamps.** The Hub says what state something is in with one rotated, letterspaced outline mark
 (−3°, 2px border, inset hairline, `white-space: nowrap`):
@@ -145,6 +198,12 @@ You're all set. Families can read it here. · Nothing goes out until you say so.
 Template · Permalink · Slug · Featured Image · Excerpt · Visibility · Author · "Event successfully
 published".
 
+**Also hidden in Simple mode:** Draft · Trash · Revision · Custom Fields · Screen Options.
+
+**Translation and right-to-left are deferred.** Strings keep the plugin's text domain so nothing has to
+be rewritten later, but no RTL stylesheet ships in this milestone; if one does, the stamp's rotation
+mirrors (+3°) and the stamp vocabulary is translated, not transliterated.
+
 **Defaults are stated, not asked:** "We'll stop showing this after November 19. Change that".
 
 **Confirmation ends with a question:** what would you like to do next — with the two or three next
@@ -159,17 +218,24 @@ steps that actually make sense, plus "I'm done".
   stylesheets (`newsletter-builder.css`, `share-panel.css`, `share-settings.css`, `welcome.css`) keep
   only what is genuinely theirs and use the tokens for everything else.
 - **One PHP helper, `includes/class-hub-ui.php`,** rendering those parts so screens can't drift:
-  `page_open()`, `card()`, `section_fold()`, `field()`, `stamp()`, `primary_button()`, `empty_state()`.
+  `page_open()`, `card()`, `section_fold()`, `field()`, `stamp()`, `waiting_row()`, `primary_button()`,
+  `next_steps()`, `empty_state()`.
 - **Scoped to the Hub.** Everything is namespaced `ptk-` and applied under a `ptk-hub` body class, so
   no other plugin's screens change.
 - **Simple mode lives in `includes/class-simple-mode.php`** (menu filtering, admin-bar trimming,
   login redirect, the per-person switch).
+- **Other plugins' notices** are cleared on Hub screens only: on `in_admin_header`, remove every
+  callback hooked to `admin_notices`, `all_admin_notices` and `network_admin_notices` except the Hub's
+  own, then print the Hub's messages in one place under the page title. WordPress's own update and
+  error notices for the current screen are kept.
 - **Accessibility is part of the floor:** every field has a real label, focus is always visible in
   `--ptk-primary`, text meets 4.5:1 on its own background (the stamp colors are checked against
   `--ptk-bg` and white), stamps carry their meaning in text as well as color, and nothing relies on
   hover alone.
-- **Tests:** pure helpers (contrast pairs, stamp markup, menu-filter decisions, Simple-mode defaults)
-  get plain-PHP tests like the rest of the plugin.
+- **Tests:** plain-PHP tests like the rest of the plugin, covering the contrast table above (computed
+  ratios, not eyeballed), the stamp markup (one per screen, `nowrap`, meaning present as text),
+  the menu-filter decision (which slugs survive for which capabilities), Simple-mode defaults per role,
+  the "below minimum capability" redirect choice, and the "is this a Hub screen" predicate.
 
 ---
 
@@ -179,6 +245,8 @@ steps that actually make sense, plus "I'm done".
   visible, one click, and remembered.
 - **A plugin notice lands inside a Hub screen anyway.** Mitigation: Hub screens print notices in one
   place at the top; anything that escapes is a bug to fix, not a reason to widen the design.
+- **A half-migrated screen reaching every site.** One upload updates all 11 sites, so a screen is
+  migrated completely or not at all in a given release: no screen ships with some parts restyled.
 - **Two visual systems while we migrate.** Mitigation: build the shared CSS and helper first, then move
   screens one at a time; each moved screen is finished, not half-styled.
 - **The serif looks decorative in dense screens.** Mitigation: Literata is for questions and titles
@@ -189,9 +257,9 @@ steps that actually make sense, plus "I'm done".
 ## 9. Build order
 
 1. **Foundations** — `hub.css` tokens and parts, `class-hub-ui.php`, bundled fonts, tests.
-2. **Simple mode** — per-person setting, menu and admin-bar trimming, login landing, the switch.
-3. **Home screen** — the six intentions, the waiting stamp, the quiet links, "I'm not sure where to
-   start".
+2. **Home screen** — the six intentions, the waiting stamp, the quiet links, "I'm not sure where to
+   start". (Before Simple mode, because Simple mode's login landing needs somewhere good to land.)
+3. **Simple mode** — per-person setting, menu and admin-bar trimming, login landing, the switch.
 4. **Newsletter Builder** — the screen volunteers use weekly: foldable sections, question-style labels,
    human confirmations, the next-steps row.
 5. **Newsletter settings + the entry wizard** — same parts, same words.
