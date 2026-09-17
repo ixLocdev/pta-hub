@@ -546,6 +546,18 @@ class PTK_Share_Settings {
             );
         }
 
+        // ---- Who gets the simple view by default (only meaningful with the new look on, but harmless to save either way) ----
+        if ( class_exists( 'PTK_Simple_Mode' ) ) {
+            $roles_submitted = isset( $_POST['ptk_simple_mode_roles'] ) ? (array) wp_unslash( $_POST['ptk_simple_mode_roles'] ) : array();
+            $roles_all       = array_keys( wp_roles()->get_names() );
+            $roles_before    = PTK_Simple_Mode::default_roles_for_site();
+            $roles_after     = PTK_Simple_Mode::sanitize_roles( $roles_submitted, $roles_all );
+            update_option( PTK_Simple_Mode::ROLES_OPTION, $roles_after );
+            if ( $roles_before !== $roles_after ) {
+                $notice['messages'][] = array( 'ok', 'Updated who gets the simple view by default.' );
+            }
+        }
+
         if ( empty( $notice['messages'] ) ) {
             $notice['messages'][] = array( 'ok', 'Settings saved. Nothing needed changing.' );
         }
@@ -783,6 +795,24 @@ class PTK_Share_Settings {
                     </label>
                 </p>
                 <p class="description">A calmer, plainer set of screens, with plain-English questions instead of technical labels. Off by default while it is being tested &mdash; turning it on changes only what you and other volunteers see when you sign in, never what families see on the website.</p>
+
+                <?php if ( class_exists( 'PTK_Simple_Mode' ) ) :
+                    $simple_roles = PTK_Simple_Mode::default_roles_for_site();
+                    $all_roles    = wp_roles()->get_names();
+                    ?>
+                    <div class="ptk-ss-simple-roles<?php echo PTK_Hub_Look::on() ? '' : ' ptk-ss-hidden'; ?>" data-ptk-simple-roles>
+                        <h2>Who gets the simple view by default</h2>
+                        <?php foreach ( $all_roles as $role_slug => $role_name ) : ?>
+                            <p>
+                                <label for="ptk-simple-role-<?php echo esc_attr( $role_slug ); ?>">
+                                    <input type="checkbox" id="ptk-simple-role-<?php echo esc_attr( $role_slug ); ?>" name="ptk_simple_mode_roles[]" value="<?php echo esc_attr( $role_slug ); ?>"<?php checked( in_array( $role_slug, $simple_roles, true ) ); ?>>
+                                    <?php echo esc_html( translate_user_role( $role_name ) ); ?>
+                                </label>
+                            </p>
+                        <?php endforeach; ?>
+                        <p class="description">People can always switch for themselves.</p>
+                    </div>
+                <?php endif; ?>
 
                 <?php submit_button( 'Save settings' ); ?>
             </form>

@@ -133,11 +133,32 @@
         };
     }
 
+    /**
+     * "Who gets the simple view by default" only makes sense once "Use the
+     * new PTA Hub look" is ticked -- show/hide it live as that checkbox
+     * changes, instead of only at the next page load.
+     */
+    function wireSimpleRolesReveal(form) {
+        var lookCheckbox = document.getElementById('ptk-hub-new-look');
+        var rolesSection = form.querySelector('[data-ptk-simple-roles]');
+        if (!lookCheckbox || !rolesSection) {
+            return;
+        }
+        function sync() {
+            rolesSection.classList.toggle('ptk-ss-hidden', !lookCheckbox.checked);
+        }
+        lookCheckbox.addEventListener('change', sync);
+        sync();
+    }
+
     function boot() {
         var form = document.querySelector('[data-ptk-share-settings]');
         if (!form) {
             return;
         }
+
+        wireSimpleRolesReveal(form);
+
         var preview = form.querySelector('[data-preview]');
         var note = form.querySelector('[data-preview-note]');
         if (!preview || !note) {

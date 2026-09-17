@@ -184,3 +184,7 @@
     border-color: #a51d23;
     box-shadow: 0 0 0 1px #a51d23;
 }
+
+.ptk-ss-hidden {
+    display: none;
+}
