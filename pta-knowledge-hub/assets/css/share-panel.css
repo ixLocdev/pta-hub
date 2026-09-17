@@ -326,3 +326,107 @@
     font-size: 12px;
     color: #7a5b00;
 }
+
+/* ── Email (GiveBacks) channel — round 7 ──
+   Same full-hairline / no-side-bar rules as every other disclosure on this
+   panel (see the class docblock in class-share-panel.php). */
+
+.ptk-nl-share-channel-closed {
+    margin-top: 20px;
+    padding-top: 18px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.ptk-nl-share-channel-closed h4 {
+    margin: 0 0 6px;
+    font-size: 15px;
+}
+
+.ptk-nl-share-email-subject {
+    width: 100%;
+    max-width: 480px;
+    font-size: 14px;
+    padding: 8px 10px;
+    background: #f9fafb;
+}
+
+.ptk-nl-share-email-preview {
+    margin-top: 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.ptk-nl-share-email-preview[hidden] {
+    display: none;
+}
+
+.ptk-nl-share-email-preview iframe {
+    display: block;
+    width: 100%;
+    height: 720px;
+    border: 0;
+    background: #fff;
+}
+
+/* "How to send it in GiveBacks" — closed by default, plain numbered steps
+   with a screenshot under the ones that have one. */
+.ptk-nl-share-howto {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.ptk-nl-share-howto > summary {
+    cursor: pointer;
+    list-style: none;
+    font-size: 13px;
+    font-weight: 600;
+    color: #3c434a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 26px;
+}
+
+.ptk-nl-share-howto > summary::-webkit-details-marker {
+    display: none;
+}
+
+.ptk-nl-share-howto > summary::before {
+    content: "\25B8"; /* ▸ */
+    display: inline-block;
+    font-size: 11px;
+    color: #6b7280;
+    transition: transform 0.15s ease;
+}
+
+.ptk-nl-share-howto[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.ptk-nl-share-howto-steps {
+    margin: 12px 0 0;
+    padding: 0 0 0 20px;
+    counter-reset: none;
+}
+
+.ptk-nl-share-howto-steps li {
+    margin-bottom: 18px;
+    font-size: 13px;
+    line-height: 1.55;
+    color: #3c434a;
+}
+
+.ptk-nl-share-howto-steps li p {
+    margin: 0 0 8px;
+}
+
+.ptk-nl-share-howto-steps img {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    height: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+}

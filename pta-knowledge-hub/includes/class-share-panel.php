@@ -24,6 +24,8 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+require_once __DIR__ . '/class-newsletter-email.php';
+
 class PTK_Share_Panel {
 
     const NONCE_ACTION = 'ptk_nl_share';
@@ -420,11 +422,22 @@ class PTK_Share_Panel {
 
         $opts = array(
             // A draft gets no url at all: never hand out a link that 404s.
-            'url'         => self::is_published( $post_id ) ? (string) get_permalink( $post_id ) : '',
-            'issue'       => $issue ? $issue : '',
-            'date'        => $date,
-            'school_name' => self::school_name( $blocks ),
-            'today'       => current_time( 'Y-m-d' ),
+            'url'           => self::is_published( $post_id ) ? (string) get_permalink( $post_id ) : '',
+            'issue'         => $issue ? $issue : '',
+            'date'          => $date,
+            'school_name'   => self::school_name( $blocks ),
+            'today'         => current_time( 'Y-m-d' ),
+            // Round 7: the email generator needs a couple of fields the web
+            // render and captions never did -- the site's home url (masthead
+            // link + footer domain line) and the same "set it once" settings
+            // PTK_Newsletter_Builder::render_opts() already feeds the web
+            // renderer, read the same way (sanitized again at render time,
+            // never trusted from anywhere else).
+            'site_url'      => home_url( '/' ),
+            'join_url'      => PTK_Newsletter_Data::sanitize_link_url( get_option( 'ptk_join_url', '' ) ),
+            'calendar_url'  => PTK_Newsletter_Data::sanitize_link_url( get_option( 'ptk_calendar_url', '' ) ),
+            'news_url'      => PTK_Newsletter_Data::sanitize_link_url( get_option( 'ptk_news_url', '' ) ),
+            'contact_email' => sanitize_email( (string) get_option( 'ptk_contact_email', '' ) ),
         );
 
         return array(
@@ -580,7 +593,126 @@ class PTK_Share_Panel {
                     <?php endif; ?>
                 </details>
             <?php endforeach; ?>
+
+            <?php self::render_email_channel( $post_id, $ctx, $published ); ?>
         </div>
+        <?php
+    }
+
+    /**
+     * The email opts PTK_Newsletter_Email::generate()/subject() expect,
+     * built from context()'s $ctx — one place, so the AJAX handler and the
+     * initial render can never disagree on what an email looks like.
+     *
+     * @param array $ctx From context().
+     * @return array
+     */
+    protected static function email_opts( array $ctx ) {
+        $o = $ctx['opts'];
+        return array(
+            'issue'         => $o['issue'],
+            'date'          => $o['date'],
+            'today'         => $o['today'],
+            'school_name'   => $o['school_name'],
+            'permalink'     => $o['url'],
+            'site_url'      => $o['site_url'],
+            'join_url'      => $o['join_url'],
+            'calendar_url'  => $o['calendar_url'],
+            'news_url'      => $o['news_url'],
+            'contact_email' => $o['contact_email'],
+        );
+    }
+
+    /**
+     * Round 7: the "Email (GiveBacks)" channel — same collapsible
+     * <details data-share-channel> pattern as Facebook/Instagram/WhatsApp
+     * (bindChannelDisclosures() in share-panel.js already treats every
+     * [data-share-channel] generically, so this needs no JS changes there),
+     * but its own JS binding (bindEmailChannel(), guarded by [data-share-email]
+     * so boot()'s generic bindChannel() loop skips it) -- it has no free-text
+     * caption to auto-save, only a generated Subject + HTML to copy and a
+     * "How to send it" walkthrough.
+     *
+     * Only rendered once the newsletter is published: the email is nothing
+     * but links to the newsletter, and a draft's permalink 404s.
+     *
+     * @param int   $post_id
+     * @param array $ctx       From context().
+     * @param bool  $published
+     */
+    protected static function render_email_channel( $post_id, array $ctx, $published ) {
+        if ( ! $published ) {
+            ?>
+            <div class="ptk-nl-share-channel-closed">
+                <h4>Email (GiveBacks)</h4>
+                <p class="ptk-nl-share-note">Publish first — the email links to your newsletter.</p>
+            </div>
+            <?php
+            return;
+        }
+
+        $opts    = self::email_opts( $ctx );
+        $subject = PTK_Newsletter_Email::subject( $ctx['blocks'], $opts );
+        $html    = PTK_Newsletter_Email::generate( $ctx['blocks'], $opts );
+        ?>
+        <details class="ptk-nl-share-channel" data-share-channel="email" data-share-email>
+            <summary><h4>Email (GiveBacks)</h4></summary>
+            <p class="ptk-nl-share-tip">A teaser email for your weekly GiveBacks send — the announcement, a linked list of what&#8217;s inside, and one button to the full newsletter. No images: paste the code into GiveBacks&#8217; HTML block.</p>
+
+            <label class="screen-reader-text" for="ptk-nl-share-email-subject">Email subject line</label>
+            <input type="text" id="ptk-nl-share-email-subject" class="ptk-nl-share-email-subject" data-share-email-subject readonly value="<?php echo esc_attr( $subject ); ?>" />
+
+            <textarea data-share-email-html hidden readonly><?php echo esc_textarea( $html ); ?></textarea>
+
+            <div class="ptk-nl-share-actions">
+                <button type="button" class="button" data-share-email-copy-subject>Copy subject</button>
+                <button type="button" class="button button-primary" data-share-email-copy-html>Copy email code</button>
+                <button type="button" class="button-link" data-share-email-preview-toggle aria-expanded="false">Preview the email</button>
+                <span class="ptk-nl-share-status" data-share-status role="status" aria-live="polite"></span>
+            </div>
+
+            <div class="ptk-nl-share-email-preview" data-share-email-preview hidden>
+                <iframe data-share-email-frame title="Email preview" sandbox="allow-same-origin" loading="lazy"></iframe>
+            </div>
+
+            <?php self::render_email_instructions(); ?>
+        </details>
+        <?php
+    }
+
+    /**
+     * "How to send it in GiveBacks" — a closed-by-default walkthrough with
+     * the same 9 steps as the handoff doc, screenshots alongside the steps
+     * that have one. Plain text, no jargon a first-time volunteer wouldn't
+     * know (house rule).
+     */
+    protected static function render_email_instructions() {
+        $img_url = PTK_PLUGIN_URL . 'assets/images/givebacks/';
+        $steps   = array(
+            array( '1', 'In GiveBacks, go to Communications &rarr; Messages.', '01-messages-menu.jpg', 'The Messages list in GiveBacks Communications' ),
+            array( '2', 'Find last week&#8217;s newsletter, click the &#8942; menu at the end of its row, and choose Duplicate.', '', '' ),
+            array( '3', 'Change the Subject to the one above (paste it in).', '03-editor.jpg', 'The duplicated message with Subject and Save Draft' ),
+            array( '4', 'Click Edit Newsletter Design.', '04-design-editor.jpg', 'The newsletter design editor' ),
+            array( '5', 'Click the email in the middle of the page &mdash; the whole thing is one HTML block.', '05-html-block-selected.jpg', 'The HTML block selected, with its code panel open' ),
+            array( '6', 'In the right-hand HTML box, select everything and paste the new code.', '', '' ),
+            array( '7', 'Click Save Changes, then Close Editor.', '', '' ),
+            array( '8', 'Click Send Preview &mdash; it goes to your own GiveBacks email &mdash; and check it.', '06-send-menu.jpg', 'The Save Draft menu with Send Now and Schedule Send' ),
+            array( '9', 'Click Save Draft &rsaquo; Send Now, or Schedule Send.', '07-send-preview.jpg', 'The Send Preview confirmation dialog' ),
+        );
+        ?>
+        <details class="ptk-nl-share-howto">
+            <summary>How to send it in GiveBacks</summary>
+            <ol class="ptk-nl-share-howto-steps">
+                <?php foreach ( $steps as $step ) : ?>
+                    <li>
+                        <p><?php echo wp_kses( $step[1], array() ); ?></p>
+                        <?php if ( '' !== $step[2] ) : ?>
+                            <img src="<?php echo esc_url( $img_url . $step[2] ); ?>" alt="<?php echo esc_attr( $step[3] ); ?>" loading="lazy" />
+                        <?php endif; ?>
+                    </li>
+                <?php endforeach; ?>
+            </ol>
+        </details>
         <?php
     }
 

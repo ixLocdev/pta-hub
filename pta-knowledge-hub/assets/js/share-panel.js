@@ -58,6 +58,13 @@
         }
 
         $panel.find('[data-share-channel]').each(function () {
+            // The email channel (round 7) has no free-text caption to
+            // auto-save/reset -- [data-share-email] routes it to its own,
+            // much simpler binding instead of bindChannel()'s save loop.
+            if (this.hasAttribute('data-share-email')) {
+                bindEmailChannel($(this));
+                return;
+            }
             bindChannel($(this), postId);
         });
 
@@ -269,6 +276,78 @@
                         $button.prop('disabled', false);
                     });
             });
+        });
+    }
+
+    /* ──────────────────────────────────────────
+     * Email (GiveBacks) — round 7
+     * ────────────────────────────────────────── */
+
+    /**
+     * The email channel: two read-only fields (subject, the generated HTML,
+     * kept in a hidden textarea) with their own Copy buttons, and an inline
+     * sandboxed preview toggled open on demand -- never auto-saves, never
+     * has a stale/reset story, so it needs none of bindChannel()'s machinery.
+     *
+     * @param {jQuery} $section details[data-share-email]
+     */
+    function bindEmailChannel($section) {
+        var $status = $section.find('[data-share-status]');
+        var $subject = $section.find('[data-share-email-subject]');
+        var $html = $section.find('[data-share-email-html]');
+        var $previewToggle = $section.find('[data-share-email-preview-toggle]');
+        var $previewWrap = $section.find('[data-share-email-preview]');
+        var $frame = $section.find('[data-share-email-frame]');
+        var previewLoaded = false;
+        var statusTimer = null;
+
+        function setStatus(msg) {
+            clearTimeout(statusTimer);
+            $status.text(msg);
+            if (msg) {
+                statusTimer = setTimeout(function () {
+                    $status.text('');
+                }, STATUS_CLEAR);
+            }
+        }
+
+        $section.on('click', '[data-share-email-copy-subject]', function (e) {
+            e.preventDefault();
+            copyText($subject.val(), $subject).then(function () {
+                setStatus('Copied');
+            }, function () {
+                $subject.trigger('focus').trigger('select');
+                setStatus('Press Ctrl+C (or ⌘+C) to copy');
+            });
+        });
+
+        $section.on('click', '[data-share-email-copy-html]', function (e) {
+            e.preventDefault();
+            copyText($html.val(), $html).then(function () {
+                setStatus('Copied');
+            }, function () {
+                $html.prop('hidden', false);
+                $html.trigger('focus').trigger('select');
+                setStatus('Press Ctrl+C (or ⌘+C) to copy, then hide it again');
+            });
+        });
+
+        $previewToggle.on('click', function (e) {
+            e.preventDefault();
+            var opening = $previewWrap.prop('hidden');
+            $previewWrap.prop('hidden', !opening);
+            $previewToggle.attr('aria-expanded', opening ? 'true' : 'false');
+            $previewToggle.text(opening ? 'Hide the preview' : 'Preview the email');
+
+            if (opening && !previewLoaded) {
+                previewLoaded = true;
+                var doc = $frame.get(0).contentWindow && $frame.get(0).contentWindow.document;
+                if (doc) {
+                    doc.open();
+                    doc.write($html.val());
+                    doc.close();
+                }
+            }
         });
     }
 
