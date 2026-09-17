@@ -318,6 +318,47 @@ ptk_test_ok( $rgb3[0] > 200 && $rgb3[1] < 40, 'draw_square_photo_from_file: a ne
 if ( PHP_VERSION_ID < 80000 ) { imagedestroy( $canvas3 ); }
 @unlink( $photo_path2 );
 
+// ---------------------------------------------------------------------
+// Round 3.1 fix (item 1): the bar is a BAND, not the whole canvas -- the
+// photo must stay clearly visible above PTK_Share_Image::PHOTO_BAND_TOP,
+// with at most a light (<=25%) overall darkening, while a pixel BELOW
+// that line is still dominated by the bar color as tested above.
+// ---------------------------------------------------------------------
+$photo_path3 = sys_get_temp_dir() . '/ptk-test-square-photo-band-' . uniqid() . '.jpg';
+$photo_im3   = imagecreatetruecolor( 100, 100 );
+imagefilledrectangle( $photo_im3, 0, 0, 99, 99, imagecolorallocate( $photo_im3, 0, 255, 0 ) ); // solid green
+imagejpeg( $photo_im3, $photo_path3, 95 );
+if ( PHP_VERSION_ID < 80000 ) { imagedestroy( $photo_im3 ); }
+
+$canvas4 = imagecreatetruecolor( $t::SIZE, $t::SIZE );
+imagefilledrectangle( $canvas4, 0, 0, $t::SIZE - 1, $t::SIZE - 1, imagecolorallocate( $canvas4, 255, 255, 255 ) );
+$t::draw_square_photo_from_file( $canvas4, $photo_path3, 'image/jpeg', array(
+    'photo_focal_x' => 50,
+    'photo_focal_y' => 50,
+    'photo_zoom'    => 0,
+    'photo_bar'     => '#ff0000', // pure red
+) );
+
+// Above the band: still recognizably the solid green photo (green channel
+// clearly dominant, blue/red both low), never near-solid red.
+$above = imagecolorat( $canvas4, (int) ( $t::SIZE / 2 ), max( 0, $t::PHOTO_BAND_TOP - 20 ) );
+$argb  = array( ( $above >> 16 ) & 0xFF, ( $above >> 8 ) & 0xFF, $above & 0xFF );
+ptk_test_ok( $argb[1] > $argb[0] && $argb[1] > 150, "draw_square_photo_from_file: above the band the photo's own green stays dominant (sampled rgb " . implode( ',', $argb ) . ')' );
+
+// The darkening above the band is light -- at most 25% opacity black, so
+// every channel should still be at least 75% of the undarkened value
+// (green's undarkened channel is 255, so >= 191).
+ptk_test_ok( $argb[1] >= round( 255 * 0.75 ), 'draw_square_photo_from_file: the overall darkening above the band is at most ~25% (green channel ' . $argb[1] . ' >= ' . round( 255 * 0.75 ) . ')' );
+
+// Below the band: dominated by the bar color, same assertion shape as the
+// center-pixel test above, at a point clearly inside the band.
+$below = imagecolorat( $canvas4, (int) ( $t::SIZE / 2 ), $t::PHOTO_BAND_TOP + 20 );
+$brgb  = array( ( $below >> 16 ) & 0xFF, ( $below >> 8 ) & 0xFF, $below & 0xFF );
+ptk_test_ok( $brgb[0] > 200 && $brgb[1] < 40, 'draw_square_photo_from_file: just below PHOTO_BAND_TOP the red bar already dominates' );
+
+if ( PHP_VERSION_ID < 80000 ) { imagedestroy( $canvas4 ); }
+@unlink( $photo_path3 );
+
 // render_png() itself can only reach draw_square_photo() through
 // get_attached_file(), which needs WordPress (see the "unresolvable
 // photo_id" test above) -- so render_png()'s use of photo_text/photo_bar

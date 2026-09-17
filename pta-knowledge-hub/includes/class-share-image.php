@@ -40,6 +40,28 @@ class PTK_Share_Image {
     const PHOTO_BAR_ALPHA = 12;
 
     /**
+     * Round 3.1 fix (item 1): the bar is a BAND behind the text block, not
+     * the whole canvas -- covering the whole square at PHOTO_BAR_ALPHA's
+     * near-solid opacity made the photo essentially invisible when the bar
+     * color was dark (Lucas's report: "with bar color #000000 the photo is
+     * essentially invisible"). Everything from this y downward (the eyebrow,
+     * issue number, date, and school name all live in this range -- see the
+     * layout below) gets the near-opaque bar; everything above it is the
+     * photo with, at most, PHOTO_DARKEN_ALPHA's light overall darkening, so
+     * the top of the photo stays clearly visible.
+     */
+    const PHOTO_BAND_TOP = 130;
+
+    /**
+     * Round 3.1 fix (item 1): a light overall darkening applied to the WHOLE
+     * photo (both above and below PHOTO_BAND_TOP) so the eyebrow label that
+     * sits just above the band still has some separation from a bright
+     * photo. GD alpha, 0 opaque .. 127 transparent -- 102 is about 20%
+     * opacity black, comfortably under the spec's "at most 25%" cap.
+     */
+    const PHOTO_DARKEN_ALPHA = 102;
+
+    /**
      * Keep a name on one line when it fits at this share of the maximum size.
      *
      * Measured, not picked: names that would otherwise widow ("Watchung
@@ -345,8 +367,10 @@ class PTK_Share_Image {
     /**
      * The pure drawing core: load $path (already known to be $mime),
      * crop it per PTK_Focal_Point::square_crop_rect() (Part B's already-
-     * tested math), draw it over the full canvas, then a dark scrim so
-     * the text drawn afterward stays readable. WordPress-free -- callable
+     * tested math), draw it over the full canvas, then a light overall
+     * darkening plus a near-opaque bar BAND (from PHOTO_BAND_TOP down) so
+     * the text drawn afterward stays readable while the top of the photo
+     * stays clearly visible. WordPress-free -- callable
      * directly from a plain-php test with a fixture file, no attachment
      * id or WordPress runtime required.
      *
@@ -418,25 +442,34 @@ class PTK_Share_Image {
 
         self::free( $src );
 
-        // Round 3.1 (spec item 4): a near-opaque bar in the chosen bar
-        // color over the whole canvas, so the text drawn after this reads
-        // reliably against a KNOWN color rather than whatever the photo
-        // happens to show underneath -- a translucent scrim over an
-        // unpredictable photo is exactly what produced Lucas's "dark text
-        // on a dark photo, unreadable" report. PHOTO_BAR_ALPHA is GD's
-        // 0-127 range (127 fully transparent); 12 leaves the photo only
-        // faintly visible through the bar, close enough to solid that the
-        // resulting color is effectively the bar color itself, so the
-        // text/bar contrast ratio computed in PHP is what actually gets
-        // drawn.
+        // Round 3.1 fix (item 1): a light overall darkening over the WHOLE
+        // photo first (at most PHOTO_DARKEN_ALPHA's ~20% opacity black), so
+        // the photo stays clearly visible above the band while still giving
+        // the eyebrow label a touch of separation from a bright photo.
+        imagealphablending( $im, true );
+        $darken = imagecolorallocatealpha( $im, 0, 0, 0, self::PHOTO_DARKEN_ALPHA );
+        imagefilledrectangle( $im, 0, 0, self::SIZE - 1, self::SIZE - 1, $darken );
+
+        // Then a near-opaque bar in the chosen bar color, but ONLY as a band
+        // behind the text block (PHOTO_BAND_TOP downward), so the text
+        // drawn after this reads reliably against a KNOWN color rather than
+        // whatever the photo happens to show underneath -- a translucent
+        // scrim over an unpredictable photo is exactly what produced
+        // Lucas's "dark text on a dark photo, unreadable" report. Confining
+        // it to a band (rather than the whole canvas, as before) is what
+        // fixes the follow-up report that the bar made the photo essentially
+        // invisible. PHOTO_BAR_ALPHA is GD's 0-127 range (127 fully
+        // transparent); 12 leaves the photo only faintly visible through
+        // the bar, close enough to solid that the resulting color is
+        // effectively the bar color itself, so the text/bar contrast ratio
+        // computed in PHP is what actually gets drawn.
         $bar = isset( $args['photo_bar'] ) && is_string( $args['photo_bar'] ) && '' !== $args['photo_bar']
             ? $args['photo_bar']
             : PTK_Share_Color::PHOTO_BAR_FALLBACK;
         list( $br, $bg, $bb ) = PTK_Share_Color::to_rgb( $bar );
 
-        imagealphablending( $im, true );
         $scrim = imagecolorallocatealpha( $im, $br, $bg, $bb, self::PHOTO_BAR_ALPHA );
-        imagefilledrectangle( $im, 0, 0, self::SIZE - 1, self::SIZE - 1, $scrim );
+        imagefilledrectangle( $im, 0, self::PHOTO_BAND_TOP, self::SIZE - 1, self::SIZE - 1, $scrim );
         imagealphablending( $im, false );
 
         return true;
