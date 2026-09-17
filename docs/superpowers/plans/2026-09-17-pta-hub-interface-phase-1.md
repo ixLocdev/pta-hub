@@ -24,7 +24,7 @@ taken on, as its own piece of work.)
 | Create `includes/class-hub-look.php` | The gate: option read/write, "is this a Hub screen", enqueues, body class. Pure decision helpers are static and testable. |
 | Create `includes/class-hub-ui.php` | Renders shared parts. No business logic, no queries. |
 | Create `assets/css/hub.css` | Tokens + the parts' styles. Scoped under `body.ptk-hub-look`. |
-| Create `assets/fonts/Literata-*.woff2`, `Karla-*.woff2`, `OFL-Literata.txt`, `OFL-Karla.txt` | Bundled faces + licenses. |
+| Create `assets/fonts/Literata-Variable.woff2`, `Karla-Variable.woff2`, `OFL-Literata.txt`, `OFL-Karla.txt` | Bundled faces + licenses (one variable-weight Latin woff2 per family -- Google serves the same file for every weight, so four static files would only duplicate bytes). |
 | Modify `pta-knowledge-hub.php` | `require_once` the two new classes; init them. |
 | Modify `includes/class-share-settings.php` | The "Use the new PTA Hub look" checkbox + save handling. |
 | Modify `includes/class-welcome.php` | New-look rendering path for the home screen; old path untouched. |
@@ -132,7 +132,12 @@ class PTK_Hub_Look {
         $hook      = (string) $hook;
         $post_type = (string) $post_type;
 
-        if ( in_array( $post_type, self::POST_TYPES, true ) ) {
+        // As built: the post-type rule applies only to WordPress's own list
+        // and editor screens. Every submenu page under the PTA Hub menu also
+        // reports post_type = pta_knowledge, and the content wizard already
+        // uses .ptk-card / .ptk-field, so it would have been half-restyled.
+        $core = array( 'edit.php', 'post.php', 'post-new.php', 'edit', 'post', 'edit-' . $post_type, $post_type );
+        if ( in_array( $post_type, self::POST_TYPES, true ) && in_array( $hook, $core, true ) ) {
             return true;
         }
         foreach ( self::PAGES as $page ) {
@@ -287,10 +292,17 @@ git commit -m "Add the setting that turns the new Hub look on for a site"
 
 **Files:**
 - Create: `pta-knowledge-hub/assets/css/hub.css`
-- Create: `pta-knowledge-hub/assets/fonts/Literata-Regular.woff2`, `Literata-SemiBold.woff2`, `Karla-Regular.woff2`, `Karla-Bold.woff2`, `OFL-Literata.txt`, `OFL-Karla.txt`
+- Create: `pta-knowledge-hub/assets/fonts/Literata-Variable.woff2`, `Karla-Variable.woff2`, `OFL-Literata.txt`, `OFL-Karla.txt`
 - Test: `pta-knowledge-hub/tests/test-hub-look.php` (extend)
 
-- [ ] **Step 1: Write the failing contrast test** (append)
+- [x] **Step 1: Write the failing contrast test** (append)
+> **As built (2026-09-17):** three of the pairs below failed as written -- `#C58A39` is 2.97:1 on white
+> (below even the 3:1 border floor), `#4E8A68` is 4.07:1, `#B85C5C` is 4.45:1. Per Step 4 they were
+> darkened to the nearest passing value: `--ptk-success #477E5F` (4.75 / 4.50), `--ptk-error #B15858`
+> (4.77 / 4.51), `--ptk-warning #BD8437` for the stamp border (3.22 / 3.05) and a new
+> `--ptk-warning-ink #96692B` for the stamp text (4.83 / 4.57). The committed test asserts these values,
+> plus that `hub.css` declares exactly them. Fonts: one variable woff2 per family (see Step 5).
+
 
 ```php
 // Every pair the spec promises is readable, computed, not eyeballed.
@@ -364,9 +376,11 @@ Lucas's color still reads as the stamp's color. Report the value chosen.
 
 - [ ] **Step 5: Fetch and subset the fonts**
 
-Download Literata (Regular 400, SemiBold 600) and Karla (Regular 400, Bold 700) from Google Fonts'
-open-source repository as `.woff2` (latin subset), into `assets/fonts/`. Save each family's OFL text
-as `OFL-Literata.txt` / `OFL-Karla.txt`. Keep each file under ~40KB; report the actual sizes.
+Google Fonts serves each family as a single variable-weight Latin-subset `.woff2` (the 400 and 600/700
+URLs are the same file), so ship one file per family: `Literata-Variable.woff2` (39,260 B, wght 400-900)
+and `Karla-Variable.woff2` (24,264 B, wght 400-800), fetched from fonts.gstatic.com with a Chrome user
+agent, plus each family's OFL text as `OFL-Literata.txt` / `OFL-Karla.txt`. `@font-face` declares the
+weight range (`font-weight: 400 600` / `400 700`).
 
 - [ ] **Step 6: Write `assets/css/hub.css`**
 
@@ -392,7 +406,7 @@ Expected: no output — every color outside the token declarations comes from `v
 Also assert the fonts shipped, in `tests/test-hub-look.php`:
 
 ```php
-foreach ( array( 'Literata-Regular', 'Literata-SemiBold', 'Karla-Regular', 'Karla-Bold' ) as $face ) {
+foreach ( array( 'Literata-Variable', 'Karla-Variable' ) as $face ) {
     $path = __DIR__ . '/../assets/fonts/' . $face . '.woff2';
     ptk_test_ok( is_readable( $path ), "bundled font exists: $face.woff2" );
     ptk_test_ok( filesize( $path ) < 60000, "$face.woff2 is under 60KB (" . filesize( $path ) . ')' );

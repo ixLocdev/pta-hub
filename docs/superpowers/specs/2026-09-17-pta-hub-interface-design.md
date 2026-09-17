@@ -151,12 +151,16 @@ least 44px. Nothing is hidden on small screens that is available on large ones.
 | `--ptk-primary-soft` | `#E7F1F5` | the task the person most likely came for |
 | `--ptk-text` | `#243039` | body and headings |
 | `--ptk-text-dim` | `#68747C` | help text, meta, summaries |
-| `--ptk-success` | `#4E8A68` | done, saved, sent |
-| `--ptk-warning` | `#C58A39` | waiting for you, over a soft length |
-| `--ptk-error` | `#B85C5C` | something is actually wrong — rare |
+| `--ptk-success` | `#477E5F` | done, saved, sent (darkened from #4E8A68, which was 4.07:1 on white) |
+| `--ptk-warning` | `#BD8437` | the warning stamp's border; waiting for you, over a soft length (darkened from #C58A39, which was 2.97:1 on white) |
+| `--ptk-warning-ink` | `#96692B` | the warning stamp's text -- the border color alone cannot reach 4.5:1 |
+| `--ptk-error` | `#B15858` | something is actually wrong — rare (darkened from #B85C5C, which was 4.45:1 on white) |
 | `--ptk-line` | `#E2E6E4` | hairlines and card borders |
 
 **Type.** Literata (serif) asks the questions and sets page titles. Karla (sans) runs the interface:
+(Each family ships as one variable-weight, Latin-subset woff2 -- `Literata-Variable.woff2` 39,260 B and
+`Karla-Variable.woff2` 24,264 B -- which is how Google Fonts serves them; four static files would only
+duplicate bytes.)
 labels, help, buttons, tables. Both are SIL Open Font License faces, bundled with the plugin the way
 the newsletter's fonts already are, with their license files — no Google Fonts requests from the admin.
 They are deliberately **not** the public house style (Libre Franklin + Newsreader, see HOUSE-STYLE.md):
@@ -183,7 +187,9 @@ bar** — full borders, fills, spacing or a stamp instead.
 | `--ptk-primary` #356F8A | `--ptk-bg` / `--ptk-surface` | 4.5:1 |
 | white | `--ptk-primary` #356F8A (button) | 4.5:1 |
 | `--ptk-primary` #356F8A | `--ptk-primary-soft` #E7F1F5 | 4.5:1 |
-| `--ptk-success` / `--ptk-warning` / `--ptk-error` | `--ptk-bg` and `--ptk-surface` | 4.5:1 text, 3:1 border |
+| `--ptk-success` #477E5F / `--ptk-error` #B15858 | `--ptk-bg` and `--ptk-surface` | 4.5:1 |
+| `--ptk-warning` #BD8437 (border) | `--ptk-bg` and `--ptk-surface` | 3:1 |
+| `--ptk-warning-ink` #96692B (stamp text) | `--ptk-bg` and `--ptk-surface` | 4.5:1 |
 
 A pair that fails is darkened until it passes; the palette above is the starting point, not a reason to
 ship unreadable text.
