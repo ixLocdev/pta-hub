@@ -18,9 +18,9 @@ ptk_test_ok( false === strpos( $bad, 'ptk-stamp--nonsense' ), 'an unknown state 
 ptk_test_ok( false !== strpos( $bad, 'class="ptk-stamp"' ), 'an unknown state renders the plain stamp' );
 
 $card = $u::card( array( 'title' => 'Tell families what\'s happening', 'meta' => 'Last one went out Sep 14', 'url' => 'https://example.org/b' ) );
-ptk_test_ok( false !== strpos( $card, 'ptk-card' ) && false !== strpos( $card, 'Sep 14' ), 'card renders title and meta' );
+ptk_test_ok( false !== strpos( $card, 'ptk-card' ) && false !== strpos( $card, 'Sep&nbsp;14' ), 'card renders title and meta (last two words tied together)' );
 ptk_test_ok( false !== strpos( $card, 'href="https://example.org/b"' ), 'a card with a url is a link' );
-ptk_test_ok( false !== strpos( $card, 'Tell families what&#039;s happening' ), 'card title is escaped' );
+ptk_test_ok( false !== strpos( $card, 'Tell families what&#039;s&nbsp;happening' ), 'card title is escaped' );
 ptk_test_ok( false === strpos( $card, 'ptk-card--soft' ), 'a card is not soft unless asked' );
 $soft = $u::card( array( 'title' => 'T', 'url' => 'https://example.org', 'soft' => true ) );
 ptk_test_ok( false !== strpos( $soft, 'ptk-card--soft' ), 'a soft card carries the modifier' );
@@ -108,5 +108,14 @@ ptk_test_ok( '1 topic suggestion from members' === PTK_Welcome::waiting_text( 'T
 ptk_test_ok( '3 topic suggestions from members' === PTK_Welcome::waiting_text( 'Topic suggestions from members', 3 ), 'three suggestions read plural' );
 ptk_test_ok( '1 entry due for a review' === PTK_Welcome::waiting_text( 'Entries due for a review', 1 ), 'one entry reads singular' );
 ptk_test_ok( '2 something new' === PTK_Welcome::waiting_text( 'Something new', 2 ), 'an unknown label still gets its count in front' );
+
+// ---------------------------------------------------------------------
+// no_widow(): a line never ends with one word on its own.
+// ---------------------------------------------------------------------
+ptk_test_ok( 'Write it down once, and it lives here for&nbsp;everyone.' === $u::no_widow( 'Write it down once, and it lives here for everyone.' ), 'the last two words are tied together' );
+ptk_test_ok( 'Newsletter' === $u::no_widow( 'Newsletter' ), 'a single word is left alone' );
+ptk_test_ok( false === strpos( $u::no_widow( 'Find the extraordinarily complicated responsibilities' ), '&nbsp;' ), 'a long last word is not glued to the one before it' );
+ptk_test_ok( false === strpos( $u::no_widow( '<b>Sent</b> today' ), '<b>' ), 'no_widow escapes its input' );
+ptk_test_ok( false !== strpos( $u::card( array( 'title' => "Tell families what's happening", 'meta' => 'Write this week and next week too' ) ), '&nbsp;' ), 'cards render without widows' );
 
 ptk_test_done();

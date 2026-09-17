@@ -30,11 +30,36 @@ class PTK_Hub_UI {
     /** Open the page shell: `<div class="ptk-page">` + the h1 title + an optional lead paragraph. */
     public static function page_open( $title, $lead = '' ) {
         $out  = '<div class="ptk-page">';
-        $out .= '<h1 class="ptk-page-title">' . esc_html( $title ) . '</h1>';
+        $out .= '<h1 class="ptk-page-title">' . self::no_widow( $title ) . '</h1>';
         if ( '' !== (string) $lead ) {
-            $out .= '<p class="ptk-page-lead">' . esc_html( $lead ) . '</p>';
+            $out .= '<p class="ptk-page-lead">' . self::no_widow( $lead ) . '</p>';
         }
         return $out;
+    }
+
+
+    /**
+     * Escaped text with the last two words tied together, so a line never
+     * ends with one word alone. `text-wrap: pretty` is not carried by every
+     * browser a volunteer might use, and a widow is exactly the detail that
+     * makes a screen look unfinished.
+     *
+     * @param string $text Raw, unescaped text.
+     * @return string Escaped HTML, with a non-breaking space before the last word.
+     */
+    public static function no_widow( $text ) {
+        $text = esc_html( (string) $text );
+        $at   = strrpos( $text, ' ' );
+        if ( false === $at ) {
+            return $text;
+        }
+        // Don't glue a long last word to a long one before it: that just
+        // moves the problem, pushing both onto a line of their own.
+        $last = substr( $text, $at + 1 );
+        if ( strlen( $last ) > 14 ) {
+            return $text;
+        }
+        return substr( $text, 0, $at ) . '&nbsp;' . $last;
     }
 
     /** Close the page shell opened by page_open(). */
@@ -62,9 +87,9 @@ class PTK_Hub_UI {
         if ( '' !== $url ) {
             $class = 'ptk-card' . ( $soft ? ' ptk-card--soft' : '' );
             $out   = '<a class="' . esc_attr( $class ) . '" href="' . esc_attr( $url ) . '"' . $key_attr . '>';
-            $out  .= '<h2 class="ptk-card-title">' . esc_html( $title ) . '</h2>';
+            $out  .= '<h2 class="ptk-card-title">' . self::no_widow( $title ) . '</h2>';
             if ( '' !== $meta ) {
-                $out .= '<p class="ptk-card-meta">' . esc_html( $meta ) . '</p>';
+                $out .= '<p class="ptk-card-meta">' . self::no_widow( $meta ) . '</p>';
             }
             $out .= '</a>';
             return $out;
@@ -72,9 +97,9 @@ class PTK_Hub_UI {
 
         if ( '' !== $body ) {
             $out  = '<details class="ptk-card ptk-card--expand"' . $key_attr . '>';
-            $out .= '<summary><span class="ptk-card-title">' . esc_html( $title ) . '</span>';
+            $out .= '<summary><span class="ptk-card-title">' . self::no_widow( $title ) . '</span>';
             if ( '' !== $meta ) {
-                $out .= '<span class="ptk-card-meta">' . esc_html( $meta ) . '</span>';
+                $out .= '<span class="ptk-card-meta">' . self::no_widow( $meta ) . '</span>';
             }
             $out .= '</summary>';
             $out .= '<div class="ptk-card-body">' . $body . '</div>';
@@ -83,9 +108,9 @@ class PTK_Hub_UI {
         }
 
         $out  = '<div class="ptk-card"' . $key_attr . '>';
-        $out .= '<h2 class="ptk-card-title">' . esc_html( $title ) . '</h2>';
+        $out .= '<h2 class="ptk-card-title">' . self::no_widow( $title ) . '</h2>';
         if ( '' !== $meta ) {
-            $out .= '<p class="ptk-card-meta">' . esc_html( $meta ) . '</p>';
+            $out .= '<p class="ptk-card-meta">' . self::no_widow( $meta ) . '</p>';
         }
         $out .= '</div>';
         return $out;

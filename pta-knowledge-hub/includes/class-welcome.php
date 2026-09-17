@@ -248,7 +248,7 @@ class PTK_Welcome {
         $catalog = array(
             'newsletter' => array(
                 'title'  => "Tell families what's happening",
-                'meta'   => "Write this week's newsletter. Five short steps, with a preview as you go.",
+                'meta'   => "Write this week's newsletter — five short steps, with a preview.",
                 'needs'  => $edit_posts,
                 'soft'   => true,
             ),
@@ -260,7 +260,7 @@ class PTK_Welcome {
             ),
             'vendor'     => array(
                 'title'  => "Recommend someone we've used",
-                'meta'   => 'A DJ, a caterer, a photographer — add them to the shared directory.',
+                'meta'   => 'A DJ, a caterer, a photographer — add them for other PTAs.',
                 'needs'  => $edit_posts,
                 'soft'   => false,
             ),

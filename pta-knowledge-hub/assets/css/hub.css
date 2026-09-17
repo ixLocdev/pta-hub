@@ -80,9 +80,12 @@ body.ptk-hub-look .ptk-page-title {
     font: 600 28px/1.25 var(--ptk-font-serif);
     color: var(--ptk-text);
     margin: 0 0 var(--ptk-space-1);
+    /* Never leave one word alone on the last line. */
+    text-wrap: balance;
 }
 
 body.ptk-hub-look .ptk-page-lead {
+    text-wrap: pretty;
     font-size: 14px;
     color: var(--ptk-text-dim);
     margin: 0 0 var(--ptk-space-4);
@@ -126,12 +129,15 @@ body.ptk-hub-look .ptk-card-title {
     font: 700 15px/1.4 var(--ptk-font-sans);
     color: var(--ptk-text);
     margin: 0 0 4px;
+    text-wrap: balance;
 }
 
 body.ptk-hub-look .ptk-card-meta {
     font-size: 12.5px;
     color: var(--ptk-text-dim);
     margin: 0;
+    /* Keeps a lone word ("go.") off a line of its own. */
+    text-wrap: pretty;
 }
 
 /* Body copy and help text */
@@ -220,7 +226,10 @@ body.ptk-hub-look .ptk-quiet-links a {
 }
 
 body.ptk-hub-look .ptk-quiet-links a + a::before {
-    content: " \00B7 ";
+    /* A margin, not spaces inside content(): a trailing space in a
+       generated string collapses and the links run together. */
+    content: "\00B7";
+    margin: 0 7px;
     color: var(--ptk-text-dim);
 }
 
