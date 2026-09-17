@@ -302,6 +302,24 @@
     color: #6b7280;
 }
 
+/* Round 6 (spec item 1): soft length counters. Lives inside the help text's
+   own <p>, so it takes no layout space at all while hidden -- no reserved
+   line, no shift when it appears. Quiet by default; the over-limit state is
+   warm (amber), never red -- this is never an error, just a nudge. */
+.ptk-nl-field-counter {
+    font-weight: 600;
+    color: #9ca3af;
+    white-space: nowrap;
+}
+
+.ptk-nl-field-counter[hidden] {
+    display: none;
+}
+
+.ptk-nl-field-counter-over {
+    color: #92400e;
+}
+
 .ptk-nl-field-group input:focus,
 .ptk-nl-field-group textarea:focus {
     outline: 2px solid #2563eb;
@@ -642,10 +660,21 @@
     padding: 8px 12px;
 }
 
-.ptk-nl-arrange-row.ui-sortable-helper {
+/* Round 6 (spec item 2): the row being dragged, and the placeholder that
+   holds its old spot in the list while it follows the pointer. Replaces
+   jQuery UI sortable's .ui-sortable-helper -- see bindArrangeDrag(). */
+.ptk-nl-arrange-row--dragging {
     background: #fff;
     border-color: #c7d2e8;
     box-shadow: 0 6px 16px rgba(15, 23, 42, 0.18);
+    pointer-events: none;
+}
+
+.ptk-nl-arrange-placeholder {
+    background: #eef2ff;
+    border: 2px dashed #c7d2e8;
+    border-radius: 8px;
+    box-sizing: border-box;
 }
 
 .ptk-nl-arrange-empty {
@@ -658,14 +687,31 @@
     color: #6b7280;
 }
 
+/* Round 6: the handle is now a real <button> (focusable, keyboard-operable
+   with Arrow Up/Down -- see bindArrangeKeyboard()) as well as the pointer
+   drag target. touch-action:none lives ONLY here, not on the row or the
+   list, so the page still scrolls normally by touch everywhere else. */
 .ptk-nl-arrange-handle {
     flex: none;
     padding: 6px 4px;
     font-size: 16px;
     line-height: 1;
     color: #9ca3af;
+    background: transparent;
+    border: none;
     cursor: grab;
     user-select: none;
+    touch-action: none;
+}
+
+.ptk-nl-arrange-handle:hover {
+    color: #4b5563;
+}
+
+.ptk-nl-arrange-handle:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+    border-radius: 4px;
 }
 
 .ptk-nl-arrange-handle:active {

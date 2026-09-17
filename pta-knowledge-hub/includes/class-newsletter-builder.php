@@ -772,14 +772,37 @@ class PTK_Newsletter_Builder {
             true
         );
 
+        // Round 6 (spec item 1): pure soft-length-counter helper, loaded
+        // before newsletter-builder.js so its updateFieldCounter() can call
+        // ptkNlCounterMessage()/ptkNlCounterLimitFor().
+        wp_enqueue_script(
+            'ptk-newsletter-counter',
+            PTK_PLUGIN_URL . 'assets/js/newsletter-counter.js',
+            array(),
+            PTK_VERSION,
+            true
+        );
+
+        // Round 6 (spec item 2): small pointer-events drag-and-drop for the
+        // "Finish editing" order list, replacing jQuery UI sortable (no
+        // touch support). Pure reorder helper, same loading pattern as the
+        // other small modules above.
+        wp_enqueue_script(
+            'ptk-newsletter-reorder',
+            PTK_PLUGIN_URL . 'assets/js/newsletter-reorder.js',
+            array(),
+            PTK_VERSION,
+            true
+        );
+
         wp_enqueue_script(
             'ptk-newsletter-builder',
             PTK_PLUGIN_URL . 'assets/js/newsletter-builder.js',
-            // jquery-ui-sortable powers "Finish editing"'s drag-to-reorder
-            // (round 3.1: drag and drop only, no Move up/down buttons — see
-            // the arrange-panel markup). ptk-focal-point-picker must load
-            // first: the boot block calls into it (initFocalPickers()).
-            array( 'jquery', 'media-upload', 'jquery-ui-sortable', 'ptk-focal-point-picker', 'ptk-newsletter-validate' ),
+            // ptk-focal-point-picker must load first: the boot block calls
+            // into it (initFocalPickers()). jquery-ui-sortable is no longer
+            // needed (round 6: replaced by ptk-newsletter-reorder's
+            // pointer-events drag, which also adds touch + keyboard support).
+            array( 'jquery', 'media-upload', 'ptk-focal-point-picker', 'ptk-newsletter-validate', 'ptk-newsletter-counter', 'ptk-newsletter-reorder' ),
             PTK_VERSION,
             true
         );
@@ -1258,7 +1281,7 @@ class PTK_Newsletter_Builder {
                                     section without a mouse: it jumps straight to that section's own step
                                     and focuses its first field, which is a more useful keyboard path than
                                     reordering ever was. */ ?>
-                            <p class="description">Drag a row to change the order. Use Edit to open a section.</p>
+                            <p class="description">Drag a row (or press its handle and use the arrow keys) to change the order. Use Edit to open a section.</p>
 
                             <div class="ptk-nl-arrange-pinned"><span aria-hidden="true">&#128274;</span> Header — always first</div>
 

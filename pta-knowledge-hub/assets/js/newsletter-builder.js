@@ -9,9 +9,13 @@
  *   - Lets volunteers add/remove repeatable rows (events, story cards,
  *     footer links) and pick images via the WP media library.
  *   - Builds step 4's arrange list from the live sections, so volunteers can
- *     drag (or use Move up/down) to order the newsletter, take a section out
- *     without losing what they typed in it, and add it back — never touching
- *     the pinned header/footer.
+ *     drag (mouse, touch or pen — see bindArrangeDrag()) or use Arrow
+ *     Up/Down on a row's handle (bindArrangeKeyboard()) to order the
+ *     newsletter, take a section out without losing what they typed in it,
+ *     and add it back — never touching the pinned header/footer.
+ *   - Shows a quiet soft-length counter next to a field's help text once
+ *     it's close to (or past) the length that reads best — never a hard
+ *     limit (updateFieldCounter(), assets/js/newsletter-counter.js).
  *   - Keeps the hidden #ptk-nl-blocks-json field in sync with the DOM on
  *     every change, and once more on submit, so the PHP save handler
  *     always receives a current, well-formed blocks array. (PHP
@@ -91,7 +95,8 @@
         bindSerializeTriggers();
         bindStepNav();
         bindArrangeList();
-        bindArrangeSortable();
+        bindArrangeDrag();
+        bindArrangeKeyboard();
         bindPreviewTriggers();
 
         renderArrangeList();
@@ -1233,6 +1238,85 @@
         });
     }
 
+    /* ──────────────────────────────────────────
+     * Soft length counters (round 6, spec item 1)
+     *
+     * Never hard limits: nothing here blocks typing, saving or publishing,
+     * and no maxlength attribute is ever added. Piggybacks on the same
+     * per-field walk serialize() already does on every keystroke, row
+     * add/remove, prefill and calendar/post import, so this needs no
+     * separate wiring for dynamically added rows or prefilled values.
+     * ────────────────────────────────────────── */
+
+    /**
+     * Show, update, or hide a field's soft-length counter. A no-op for any
+     * field with no entry in PTK_NL_COUNTER_LIMITS (most fields), and safe
+     * to call every time serialize() walks a field — it only touches the
+     * DOM when the message actually changes.
+     *
+     * @param {jQuery} $field jQuery-wrapped input/textarea with [data-field].
+     * @param {string} sectionType The section's data-type, e.g. "events".
+     */
+    function updateFieldCounter($field, sectionType) {
+        if (typeof ptkNlCounterLimitFor !== 'function') {
+            return; // newsletter-counter.js didn't load; never break typing over it.
+        }
+
+        var field = $field.attr('data-field');
+        var limit = ptkNlCounterLimitFor(sectionType, field);
+        var $counter = fieldCounterEl($field, !!limit);
+
+        if (!limit || !$counter || !$counter.length) {
+            return;
+        }
+
+        var value = $field.val();
+        var message = ptkNlCounterMessage(typeof value === 'string' ? value.length : 0, limit);
+
+        if (!message) {
+            $counter.prop('hidden', true).text('').removeClass('ptk-nl-field-counter-over');
+            return;
+        }
+
+        var isOver = value.length > limit;
+        $counter.text(message).prop('hidden', false).toggleClass('ptk-nl-field-counter-over', isOver);
+    }
+
+    /**
+     * Find (or, when needed, create) the counter <span> for a field, living
+     * INSIDE its "<p class="description">" help text so it reads on the
+     * same line and reserves no extra space when hidden. Falls back to
+     * appending its own paragraph if a field has no help text to join.
+     *
+     * @param {jQuery} $field
+     * @param {boolean} create Create the element if it doesn't exist yet.
+     * @return {jQuery|null}
+     */
+    function fieldCounterEl($field, create) {
+        var $group = $field.closest('.ptk-nl-field-group');
+        if (!$group.length) {
+            return null;
+        }
+
+        var $counter = $group.find('[data-counter]').first();
+        if ($counter.length || !create) {
+            return $counter;
+        }
+
+        $counter = $('<span class="ptk-nl-field-counter" data-counter hidden></span>');
+
+        var $help = $group.find('.description').first();
+        if ($help.length) {
+            // A leading space keeps it from running into the help text's
+            // last word when both are visible.
+            $help.append(document.createTextNode(' ')).append($counter);
+        } else {
+            $group.append($('<p class="description ptk-nl-field-counter-line"></p>').append($counter));
+        }
+
+        return $counter;
+    }
+
     /**
      * Find a block by type in a blocks array (as localized from PHP).
      */
@@ -1480,7 +1564,14 @@
         var $row = $('<li class="ptk-nl-arrange-row"></li>')
             .attr('data-type', $section.attr('data-type'));
 
-        $row.append($('<span class="ptk-nl-arrange-handle" aria-hidden="true">&#9776;</span>'));
+        // Round 6 (spec item 2): a real, focusable button -- both the
+        // pointer drag handle (bindArrangeDrag()) AND the keyboard control
+        // (Arrow Up/Down, bindArrangeKeyboard()). Its aria-label is the
+        // section's actual name, e.g. "Move Stories", not a generic "Move".
+        $row.append(
+            $('<button type="button" class="ptk-nl-arrange-handle">&#9776;</button>')
+                .attr('aria-label', 'Move ' + label)
+        );
         $row.append($('<span class="ptk-nl-arrange-label"></span>').text(label));
 
         var $actions = $('<span class="ptk-nl-arrange-actions"></span>');
@@ -1608,34 +1699,297 @@
     }
 
     /**
-     * Drag-to-reorder for the arrange list. Additive only: the Move up/down
-     * buttons are the equal path for anyone not using a mouse, and they keep
-     * working whether or not jQuery UI loaded.
+     * Drag-to-reorder for the arrange list (round 6, spec item 2).
+     *
+     * A small, in-house Pointer Events implementation -- one event family
+     * covers mouse, touch and pen, so this replaces jQuery UI sortable
+     * (which never supported touch at all). Bound once on the <ul>, which
+     * survives every re-render (only its rows are replaced), via delegation
+     * on the handle so newly rendered rows are covered automatically.
+     *
+     * The keyboard path (Arrow Up/Down on the same handle button) is
+     * bindArrangeKeyboard(), just below.
      */
-    function bindArrangeSortable() {
+    function bindArrangeDrag() {
         var $list = $('[data-arrange]');
-        if (!$list.length || !$.fn.sortable) {
+        if (!$list.length) {
             return;
         }
 
-        // Bound to the <ul>, which survives every re-render (only its rows
-        // are replaced), so this never needs re-initialising.
-        $list.sortable({
-            items: '> .ptk-nl-arrange-row',
-            handle: '.ptk-nl-arrange-handle',
-            axis: 'y',
-            tolerance: 'pointer',
-            stop: function () {
-                applyRowOrderToSections();
-                renderArrangeList();
-                serializeAndPreview();
-                // renderArrangeList() clears the status line right above
-                // this -- a screen reader user dragging a row gets the same
-                // "something changed" confirmation a sighted volunteer sees
-                // (the row visibly moving), where before there was nothing.
-                $('[data-arrange-status]').text('Order updated.');
+        // Distance from the top/bottom of the viewport, in pixels, that
+        // starts auto-scrolling while dragging near the edge.
+        var EDGE = 56;
+        var SCROLL_SPEED = 14;
+
+        // Pointer has to move at least this many pixels before it counts as
+        // a drag. Below it, a pointerdown+pointerup is a plain click/tap on
+        // the button -- it must focus the handle like any button does and
+        // do NOTHING else (no reorder, no re-render, no "Order updated."),
+        // since a re-render would rebuild the button out from under the
+        // browser's own focus and break "click the handle, then use Arrow
+        // keys" as one motion.
+        var DRAG_THRESHOLD = 4;
+
+        var state = null; // Set from pointerdown to pointerup; null otherwise.
+
+        function onPointerDown(e) {
+            // Ignore a secondary mouse button; touch/pen report button 0 or
+            // -1 on down, both fine.
+            if (e.button > 0) {
+                return;
             }
+
+            var handleEl = e.currentTarget;
+            var $handle = $(handleEl);
+            var $row = $handle.closest('.ptk-nl-arrange-row');
+            if (!$row.length) {
+                return;
+            }
+
+            state = {
+                pointerId: e.pointerId,
+                handleEl: handleEl,
+                $row: $row,
+                $placeholder: null,
+                $list: $list,
+                startClientY: e.clientY,
+                startRect: $row[0].getBoundingClientRect(),
+                rowHeight: 0,
+                moved: false,
+                scrollRaf: null,
+                scrollDelta: 0
+            };
+
+            try {
+                handleEl.setPointerCapture(e.pointerId);
+            } catch (err) {
+                // Some browsers throw for a pointerId that's already gone;
+                // the drag still works without capture, just less robustly.
+            }
+
+            handleEl.addEventListener('pointermove', onPointerMove);
+            handleEl.addEventListener('pointerup', onPointerEnd);
+            handleEl.addEventListener('pointercancel', onPointerEnd);
+        }
+
+        /** Turn a pending pointerdown into an actual drag, once, on the first move past the threshold. */
+        function beginDrag() {
+            var rect = state.startRect;
+
+            var $placeholder = $('<li class="ptk-nl-arrange-placeholder" aria-hidden="true"></li>')
+                .css('height', rect.height + 'px');
+            state.$row.before($placeholder);
+
+            state.$row.addClass('ptk-nl-arrange-row--dragging').css({
+                position: 'fixed',
+                left: rect.left + 'px',
+                top: rect.top + 'px',
+                width: rect.width + 'px',
+                zIndex: 1000
+            });
+
+            state.$placeholder = $placeholder;
+            state.startTop = rect.top;
+            state.rowHeight = rect.height;
+            state.moved = true;
+        }
+
+        function onPointerMove(e) {
+            if (!state || e.pointerId !== state.pointerId) {
+                return;
+            }
+
+            var deltaY = e.clientY - state.startClientY;
+
+            if (!state.moved) {
+                if (Math.abs(deltaY) < DRAG_THRESHOLD) {
+                    return;
+                }
+                beginDrag();
+                // Only now, once this is a real drag: a plain click must
+                // never preventDefault a button (that can suppress its
+                // focus), but a drag must stop the page/text from doing
+                // anything else with this pointer.
+                e.preventDefault();
+                deltaY = e.clientY - state.startClientY;
+            }
+
+            var newTop = state.startTop + deltaY;
+            state.$row.css('top', newTop + 'px');
+
+            repositionPlaceholder(newTop + state.rowHeight / 2);
+            updateAutoScroll(e.clientY);
+        }
+
+        function repositionPlaceholder(centerY) {
+            var $siblings = state.$list.children('.ptk-nl-arrange-row').not(state.$row);
+            var $before = null;
+
+            $siblings.each(function () {
+                var sibRect = this.getBoundingClientRect();
+                var sibMiddle = sibRect.top + sibRect.height / 2;
+                if (centerY < sibMiddle) {
+                    $before = $(this);
+                    return false;
+                }
+            });
+
+            if ($before && $before.length) {
+                if ($before[0] !== state.$placeholder.next()[0]) {
+                    state.$placeholder.insertBefore($before);
+                }
+            } else if (state.$placeholder.next().length) {
+                state.$list.append(state.$placeholder);
+            }
+        }
+
+        function updateAutoScroll(clientY) {
+            var viewportHeight = window.innerHeight;
+            var delta = 0;
+
+            if (clientY < EDGE) {
+                delta = -SCROLL_SPEED;
+            } else if (clientY > viewportHeight - EDGE) {
+                delta = SCROLL_SPEED;
+            }
+
+            state.scrollDelta = delta;
+
+            if (delta && !state.scrollRaf) {
+                var step = function () {
+                    if (!state || !state.scrollDelta) {
+                        state.scrollRaf = null;
+                        return;
+                    }
+                    window.scrollBy(0, state.scrollDelta);
+                    // Dragging is position:fixed (viewport-relative), so it
+                    // needs no adjustment as the page scrolls under it.
+                    state.scrollRaf = window.requestAnimationFrame(step);
+                };
+                state.scrollRaf = window.requestAnimationFrame(step);
+            }
+        }
+
+        function onPointerEnd(e) {
+            if (!state || e.pointerId !== state.pointerId) {
+                return;
+            }
+
+            var handleEl = state.handleEl;
+            handleEl.removeEventListener('pointermove', onPointerMove);
+            handleEl.removeEventListener('pointerup', onPointerEnd);
+            handleEl.removeEventListener('pointercancel', onPointerEnd);
+            try {
+                handleEl.releasePointerCapture(state.pointerId);
+            } catch (err) {
+                // Already released/gone -- nothing to clean up.
+            }
+
+            if (state.scrollRaf) {
+                window.cancelAnimationFrame(state.scrollRaf);
+            }
+
+            if (!state.moved) {
+                // Never became a drag -- a plain click/tap on the handle.
+                // Leave the row and the DOM exactly alone so the browser's
+                // own focus (and any nothing-changed state) stands: no
+                // reorder, no re-render, no dirty flag, no announcement.
+                state = null;
+                return;
+            }
+
+            state.$row.removeClass('ptk-nl-arrange-row--dragging').css({
+                position: '',
+                left: '',
+                top: '',
+                width: '',
+                zIndex: ''
+            });
+            state.$placeholder.replaceWith(state.$row);
+
+            state = null;
+
+            applyRowOrderToSections();
+            renderArrangeList();
+            serializeAndPreview();
+            // The unsaved-changes guard listens for this on [data-arrange]
+            // (bindUnsavedGuard()); keeping the event name means that
+            // listener needed no change when jQuery UI sortable left.
+            $list.trigger('sortstop');
+            // renderArrangeList() clears the status line right above this
+            // -- a screen reader user dragging a row gets the same
+            // "something changed" confirmation a sighted volunteer sees
+            // (the row visibly moving), where before there was nothing.
+            $('[data-arrange-status]').text('Order updated.');
+        }
+
+        // Delegated on the <ul>: rows are rebuilt on every change, but the
+        // handle's class never changes, so this needs no re-binding.
+        $list.on('pointerdown', '.ptk-nl-arrange-handle', onPointerDown);
+    }
+
+    /**
+     * Keyboard alternative to dragging (round 6, spec item 2): Arrow
+     * Up/Down on a row's (focusable) handle button moves that row one place
+     * and keeps focus on it, announcing the new position via the same
+     * aria-live region a drag uses.
+     */
+    function bindArrangeKeyboard() {
+        $(document).on('keydown', '.ptk-nl-arrange-handle', function (e) {
+            if ('ArrowUp' !== e.key && 'ArrowDown' !== e.key) {
+                return;
+            }
+            e.preventDefault();
+            moveArrangeRowByKeyboard($(this), 'ArrowUp' === e.key ? 'up' : 'down');
         });
+    }
+
+    /**
+     * @param {jQuery} $handle The pressed row's handle button.
+     * @param {string} direction 'up' or 'down'.
+     */
+    function moveArrangeRowByKeyboard($handle, direction) {
+        var $row = $handle.closest('.ptk-nl-arrange-row');
+        var $list = $row.closest('[data-arrange]');
+        var type = $row.attr('data-type');
+        var label = $row.find('.ptk-nl-arrange-label').text();
+
+        var $rows = $list.children('.ptk-nl-arrange-row');
+        var types = $rows.map(function () { return $(this).attr('data-type'); }).get();
+        var currentIndex = types.indexOf(type);
+        if (-1 === currentIndex) {
+            return;
+        }
+
+        var newIndex = 'up' === direction
+            ? ptkNlMoveUpIndex(currentIndex)
+            : ptkNlMoveDownIndex(currentIndex, types.length);
+
+        if (newIndex === currentIndex) {
+            return; // Already first/last -- nothing moves, nothing to announce.
+        }
+
+        // Move the actual <li> in the DOM so applyRowOrderToSections()
+        // (which reads DOM order) sees the new order -- exactly what a
+        // finished drag leaves behind.
+        var $target = $rows.eq(newIndex);
+        if (newIndex < currentIndex) {
+            $row.insertBefore($target);
+        } else {
+            $row.insertAfter($target);
+        }
+
+        applyRowOrderToSections();
+        renderArrangeList();
+        serializeAndPreview();
+        $list.trigger('sortstop');
+
+        $('[data-arrange-status]').text(ptkNlReorderAnnouncement(label, newIndex, types.length));
+
+        // renderArrangeList() rebuilds every row from scratch -- refocus the
+        // moved section's handle by type so the volunteer's keyboard focus
+        // stays on the row they just moved, ready for another Arrow press.
+        arrangeRowByType(type).find('.ptk-nl-arrange-handle').trigger('focus');
     }
 
     /**
@@ -1995,6 +2349,7 @@
                     $(this).find('[data-field]').each(function () {
                         var $field = $(this);
                         rowData[$field.attr('data-field')] = getFieldValue($field);
+                        updateFieldCounter($field, $section.attr('data-type'));
                     });
                     rows.push(rowData);
                 });
@@ -2010,6 +2365,7 @@
                     return;
                 }
                 data[$field.attr('data-field')] = getFieldValue($field);
+                updateFieldCounter($field, $section.attr('data-type'));
             });
 
             blocks.push({
