@@ -1209,6 +1209,24 @@
     color: #7f8590;
 }
 
+.ptk-nl-cal-remove-existing {
+    font-weight: 400;
+    margin-left: 6px;
+}
+
+/* Round 3.1 (fix 2): "Added N dates/items. Undo" -- shown right in the
+   panel where the add happened, full-width so it reads as its own line,
+   never a one-sided accent bar. */
+.ptk-nl-cal-added-msg,
+.ptk-nl-post-added-msg {
+    margin: 0 0 10px;
+    padding: 8px 10px;
+    background: #eaf6ec;
+    border: 1px solid #b6dfbd;
+    border-radius: 8px;
+    color: #1a2f5c;
+}
+
 /* Round 3.1 (fix 1): "N dates were added to Coming up (step 2)" -- shown in
    the posts panel when an imported item went to Coming up, full-width so
    it reads as its own line, never a one-sided accent bar. */
@@ -1249,6 +1267,43 @@
 .ptk-nl-events-actions .ptk-nl-post-import,
 .ptk-nl-stories-actions .ptk-nl-post-import {
     margin: 0;
+}
+
+/* Round 3.1 (fix 2): "Remove all dates" sits in the same action bar as
+   "+ Add event", right-aligned so it reads as a secondary, occasional
+   action rather than competing with the primary "add" buttons. */
+.ptk-nl-events-actions {
+    justify-content: space-between;
+}
+
+.ptk-nl-remove-all-link {
+    margin-left: auto;
+    font-size: 13px;
+}
+
+/* Full border on all four sides -- never a left/right accent bar. */
+.ptk-nl-remove-all-confirm {
+    flex-basis: 100%;
+    margin: 4px 0 12px;
+    padding: 12px;
+    background: #fdf3e7;
+    border: 1px solid #e8c990;
+    border-radius: 8px;
+}
+
+.ptk-nl-remove-all-confirm p {
+    margin: 0 0 8px;
+    font-weight: 600;
+}
+
+.ptk-nl-removed-msg {
+    flex-basis: 100%;
+    margin: 4px 0 12px;
+    padding: 8px 10px;
+    background: #eaf6ec;
+    border: 1px solid #b6dfbd;
+    border-radius: 8px;
+    color: #1a2f5c;
 }
 
 /* The toggle buttons sit side by side in the action bar, but once a panel

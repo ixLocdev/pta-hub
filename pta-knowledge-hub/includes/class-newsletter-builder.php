@@ -1780,7 +1780,21 @@ class PTK_Newsletter_Builder {
                 <div class="ptk-nl-events-actions" data-events-actions>
                     <?php self::render_calendar_import(); ?>
                     <button type="button" class="button ptk-nl-add" data-add-event-btn>+ Add event</button>
+                    <?php /* Round 3.1 (fix 2): "Remove all dates" -- only worth
+                            offering once there's a real list to clear.
+                            updateEventsActionState() shows/hides it (2+ rows)
+                            and fills in the count; hidden by default so it
+                            never flashes empty on load. */ ?>
+                    <a href="#" class="ptk-nl-remove-all-link" data-remove-all-events hidden>Remove all dates</a>
                 </div>
+                <?php /* Round 3.1 (fix 2): inline confirm for "Remove all dates" --
+                        never window.confirm(). Filled in and shown by JS. */ ?>
+                <div class="ptk-nl-remove-all-confirm" data-remove-all-confirm hidden>
+                    <p data-remove-all-confirm-text></p>
+                    <button type="button" class="button button-primary" data-remove-all-confirm-yes>Remove all</button>
+                    <button type="button" class="button" data-remove-all-confirm-cancel>Cancel</button>
+                </div>
+                <p class="ptk-nl-removed-msg" data-events-removed-msg hidden></p>
                 <div class="ptk-nl-rows" data-rows data-rows-for="rows"></div>
                 <template data-row-template>
                     <!-- Row fields intentionally have no static ids: the later JS task assigns a unique id per cloned row and points each label's for at it. -->

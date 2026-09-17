@@ -133,6 +133,8 @@
         // step 2/3 jump hints, and the action-bar primary/secondary state.
         safeBoot(bindPostImport);
         safeBoot(bindJumpHints);
+        // Round 3.1 (fix 2): "Remove all dates" + its confirm/Undo.
+        safeBoot(bindRemoveAllEvents);
         safeBoot(updateEventsActionState);
         safeBoot(updateStoriesActionState);
         // Round 5 (live-testing fix): auto-growing textareas -- bind input,
@@ -661,7 +663,10 @@
         $form.on('input change', function () {
             dirty = true;
         });
-        $(document).on('click', '.ptk-nl-add, .ptk-nl-remove-row, .ptk-nl-add-image, .ptk-nl-remove-image, .ptk-nl-arr-up, .ptk-nl-arr-down, .ptk-nl-arr-remove, .ptk-nl-arr-addback', function () {
+        $(document).on('click', '.ptk-nl-add, .ptk-nl-remove-row, .ptk-nl-add-image, .ptk-nl-remove-image, .ptk-nl-arr-up, .ptk-nl-arr-down, .ptk-nl-arr-remove, .ptk-nl-arr-addback, ' +
+            '[data-calendar-add], [data-calendar-add-all], [data-calendar-undo-add], [data-calendar-remove-existing], ' +
+            '[data-post-add], [data-post-undo-add], ' +
+            '[data-remove-all-confirm-yes], [data-events-undo-remove-all]', function () {
             dirty = true;
         });
         $(document).on('sortstop', '[data-arrange]', function () {
@@ -2046,7 +2051,13 @@
         { key: 'next_3_months', label: 'Next 3 months' }
     ];
 
-    var calState = { range: 'this_week', events: [], loading: false, error: '' };
+    // lastAdded (Round 3.1, fix 2): { count, rows: [jQuery row, ...] } for
+    // the most recent "Add selected"/"Add all", so the inline "Added N
+    // dates. Undo" banner can remove exactly those rows -- real DOM node
+    // references, not a date/title match, so Undo is exact even if two
+    // rows happen to share a key. Cleared on the next add or when the
+    // panel is closed (see bindCalendarImport()).
+    var calState = { range: 'this_week', events: [], loading: false, error: '', lastAdded: null };
 
     /** Strip emoji/pictographic characters a pasted calendar title often carries. */
     function stripEmoji(str) {
@@ -2080,6 +2091,24 @@
             }
         });
         return keys;
+    }
+
+    /**
+     * Round 3.1 (fix 2): remove every row in the events repeater whose
+     * date+title matches the given key (same identity calEventKey() uses
+     * for "already added") -- backs the calendar panel's per-row "Remove"
+     * link on an already-added event.
+     */
+    function removeEventsRowsByKey(date, title) {
+        var key = calEventKey(date, title);
+        $('#ptk-nl-blocks > .ptk-nl-block[data-type="events"] [data-rows-for="rows"] [data-row]').each(function () {
+            var $row = $(this);
+            var rDate = $row.find('[data-field="date"]').val() || '';
+            var rTitle = $row.find('[data-field="title"]').val() || '';
+            if (calEventKey(rDate, rTitle) === key) {
+                $row.remove();
+            }
+        });
     }
 
     function parseYmd(dateStr) {
@@ -2177,6 +2206,14 @@
         });
         html += '</div>';
 
+        // Round 3.1 (fix 2): "Added N dates. Undo" -- shown right where the
+        // add happened, and kept up until the next add or the panel closes
+        // (see bindCalendarImport()), never a fleeting toast.
+        if (calState.lastAdded && calState.lastAdded.count > 0) {
+            var calAddedWord = 1 === calState.lastAdded.count ? 'date' : 'dates';
+            html += '<p class="ptk-nl-cal-added-msg" data-calendar-added-msg>Added ' + calState.lastAdded.count + ' ' + calAddedWord + '. <a href="#" data-calendar-undo-add>Undo</a></p>';
+        }
+
         if (calState.loading) {
             html += '<p class="ptk-nl-cal-status">Loading your calendar…</p>';
         } else if (calState.error) {
@@ -2222,7 +2259,9 @@
                         '<span class="ptk-nl-cal-event-title">' + calEscapeHtml(strippedTitle) + '</span>' +
                         '<span class="ptk-nl-cal-event-meta">' + calEscapeHtml(calEventDetail(ev)) +
                         (ev.tag ? ' <span class="ptk-nl-cal-tag">' + calEscapeHtml(ev.tag) + '</span>' : '') +
-                        (already ? ' <span class="ptk-nl-cal-already">Already added</span>' : '') +
+                        (already ? ' <span class="ptk-nl-cal-already">Already added ' +
+                            '<a href="#" class="ptk-nl-cal-remove-existing" data-calendar-remove-existing ' +
+                            'data-date="' + calEscapeHtml(ev.start) + '" data-title="' + calEscapeHtml(strippedTitle) + '">Remove</a></span>' : '') +
                         '</span></span></label>';
                 });
                 html += '</div>';
@@ -2264,7 +2303,7 @@
             return;
         }
 
-        var $firstNewRow = null;
+        var addedRows = [];
         $checked.each(function () {
             var ev;
             try {
@@ -2277,21 +2316,23 @@
                 title: stripEmoji(ev.title),
                 desc: calEventDetail(ev)
             });
-            if ($row && !$firstNewRow) {
-                $firstNewRow = $row;
+            if ($row) {
+                addedRows.push($row);
             }
         });
 
-        $panel.attr('hidden', 'hidden');
+        if (!addedRows.length) {
+            return;
+        }
+
+        // Round 3.1 (fix 2): the panel stays open with an "Added N dates.
+        // Undo" banner instead of closing -- Undo needs somewhere to live,
+        // and re-rendering also refreshes "Already added" for the rows just
+        // added.
+        calState.lastAdded = { count: addedRows.length, rows: addedRows };
         serializeAndPreview();
         updateEventsActionState();
-
-        if ($firstNewRow) {
-            var $focusable = $firstNewRow.find('[data-field]').first();
-            if ($focusable.length) {
-                scrollAndFocus($focusable);
-            }
-        }
+        renderCalendarPanel($panel);
     }
 
     function bindCalendarImport() {
@@ -2304,6 +2345,9 @@
                 fetchCalendarEvents(calState.range, false);
             } else {
                 $panel.attr('hidden', 'hidden');
+                // Round 3.1 (fix 2): "Undo" only stays live while the panel
+                // is open -- closing it is the other way the banner goes away.
+                calState.lastAdded = null;
             }
         });
 
@@ -2347,6 +2391,32 @@
             var $panel = $(this).closest('[data-calendar-panel]');
             addCalendarEventChecks($panel.find('[data-calendar-check]:not(:disabled)'), $panel);
         });
+
+        // Round 3.1 (fix 2): "Added N dates. Undo" -- removes exactly the
+        // rows that add just created (tracked by DOM reference).
+        $(document).on('click', '[data-calendar-undo-add]', function (e) {
+            e.preventDefault();
+            if (!calState.lastAdded) {
+                return;
+            }
+            calState.lastAdded.rows.forEach(function ($row) {
+                $row.remove();
+            });
+            calState.lastAdded = null;
+            serializeAndPreview();
+            updateEventsActionState();
+            renderCalendarPanel($(this).closest('[data-calendar-panel]'));
+        });
+
+        // Round 3.1 (fix 2): the calendar panel's per-row "Remove" link on an
+        // already-added event -- pulls that one row back out of Coming up.
+        $(document).on('click', '[data-calendar-remove-existing]', function (e) {
+            e.preventDefault();
+            removeEventsRowsByKey($(this).attr('data-date'), $(this).attr('data-title'));
+            serializeAndPreview();
+            updateEventsActionState();
+            renderCalendarPanel($(this).closest('[data-calendar-panel]'));
+        });
     }
 
     /* --------------------------------------------------------------
@@ -2372,8 +2442,10 @@
     // comingUpNotice: { eventCount } set by the [data-post-add] handler
     // when any imported item went to Coming up as a Date, so the panel can
     // say so with a jump link -- see the note on POST_TYPE_LABELS.event.
+    // lastAdded (fix 2) mirrors calState.lastAdded: the rows the most
+    // recent add just created, for the "Added N. Undo" banner.
     var postState = {
-        stories: { range: 'two_weeks', search: '', posts: [], loading: false, error: '', comingUpNotice: null }
+        stories: { range: 'two_weeks', search: '', posts: [], loading: false, error: '', comingUpNotice: null, lastAdded: null }
     };
 
     /** Every source_post id already in ANY of the three repeaters (events rows, story cards, quick notes). */
@@ -2450,6 +2522,14 @@
 
         html += '<input type="search" class="ptk-nl-post-search" data-post-search data-post-context="' + context +
             '" placeholder="Search your posts" value="' + calEscapeHtml(state.search) + '">';
+
+        // Round 3.1 (fix 2): "Added N. Undo", same pattern as the calendar
+        // panel.
+        if (state.lastAdded && state.lastAdded.count > 0) {
+            var postAddedWord = 1 === state.lastAdded.count ? 'item' : 'items';
+            html += '<p class="ptk-nl-post-added-msg" data-post-added-msg>Added ' + state.lastAdded.count + ' ' + postAddedWord + '. ' +
+                '<a href="#" data-post-undo-add data-post-context="' + context + '">Undo</a></p>';
+        }
 
         // Round 3.1 (fix 1): an imported Date still lands in Coming up (step
         // 2) even though this panel is on step 3 -- say so, with a link that
@@ -2608,10 +2688,12 @@
                 fetchImportablePosts(context, false);
             } else {
                 $panel.attr('hidden', 'hidden');
-                // Round 3.1 (fix 1): the "went to Coming up" notice only
-                // stays live while the panel is open.
+                // Round 3.1: the "went to Coming up" notice (fix 1) and the
+                // "Added N. Undo" banner (fix 2) only stay live while the
+                // panel is open.
                 if (postState[context]) {
                     postState[context].comingUpNotice = null;
+                    postState[context].lastAdded = null;
                 }
             }
         });
@@ -2674,7 +2756,7 @@
                 return;
             }
 
-            var $firstNewRow = null;
+            var addedRows = [];
             var eventCount = 0;
             $checked.each(function () {
                 var post;
@@ -2698,9 +2780,7 @@
                 itemsToAdd.forEach(function (item) {
                     var $newRow = addPostSuggestionToBuilder(item);
                     if ($newRow) {
-                        if (!$firstNewRow) {
-                            $firstNewRow = $newRow;
-                        }
+                        addedRows.push($newRow);
                         // Round 3.1 (fix 1): an Event still lands in Coming up
                         // (step 2), even though this panel is on step 3 --
                         // count those so the confirmation can say so.
@@ -2711,29 +2791,41 @@
                 });
             });
 
-            if (!$firstNewRow) {
+            if (!addedRows.length) {
                 return;
             }
 
+            // Round 3.1 (fix 2): stay open with "Added N. Undo" (and, per
+            // fix 1, a note about anything that went to Coming up) instead
+            // of closing -- same pattern as the calendar panel.
+            postState[context].lastAdded = { count: addedRows.length, rows: addedRows };
+            if (eventCount > 0) {
+                postState[context].comingUpNotice = { eventCount: eventCount };
+            }
             serializeAndPreview();
             updateEventsActionState();
             updateStoriesActionState();
+            renderPostImportPanel(context, $panel);
+        });
 
-            // Round 3.1 (fix 1): only stay open (instead of the usual
-            // close-after-add) when there's something to say -- an Event
-            // went to Coming up and the volunteer should know where to find
-            // it. A plain Story/Quick note add closes and focuses the new
-            // row, same as before.
-            if (eventCount > 0) {
-                postState[context].comingUpNotice = { eventCount: eventCount };
-                renderPostImportPanel(context, $panel);
-            } else {
-                $panel.attr('hidden', 'hidden');
-                var $focusable = $firstNewRow.find('[data-field]').first();
-                if ($focusable.length) {
-                    scrollAndFocus($focusable);
-                }
+        // Round 3.1 (fix 2): "Added N. Undo" -- removes exactly the rows that
+        // add just created (tracked by DOM reference).
+        $(document).on('click', '[data-post-undo-add]', function (e) {
+            e.preventDefault();
+            var context = $(this).attr('data-post-context');
+            var state = postState[context];
+            if (!state || !state.lastAdded) {
+                return;
             }
+            state.lastAdded.rows.forEach(function ($row) {
+                $row.remove();
+            });
+            state.lastAdded = null;
+            state.comingUpNotice = null;
+            serializeAndPreview();
+            updateEventsActionState();
+            updateStoriesActionState();
+            renderPostImportPanel(context, $(this).closest('[data-post-import-panel]'));
         });
     }
 
@@ -2751,8 +2843,14 @@
         if (!$section.length) {
             return;
         }
-        var hasRows = $section.find('[data-rows-for="rows"] [data-row]').length > 0;
+        var rowCount = $section.find('[data-rows-for="rows"] [data-row]').length;
+        var hasRows = rowCount > 0;
         $section.find('[data-events-actions] [data-calendar-toggle]').toggleClass('button-primary', !hasRows);
+
+        // Round 3.1 (fix 2): "Remove all dates" only makes sense once
+        // there's a real list -- one row is just as fast to remove with its
+        // own Remove button.
+        $section.find('[data-remove-all-events]').attr('hidden', rowCount >= 2 ? null : 'hidden');
     }
 
     function updateStoriesActionState() {
@@ -2762,6 +2860,79 @@
         }
         var hasRows = $section.find('[data-rows-for="cards"] [data-row]').length > 0;
         $section.find('[data-stories-actions] [data-post-import-toggle]').toggleClass('button-primary', !hasRows);
+    }
+
+    /* --------------------------------------------------------------
+     * Round 3.1 (fix 2): "Remove all dates" in Coming up -- an inline
+     * confirm (never window.confirm()), then a "Removed N dates. Undo"
+     * message. Rows are detach()ed rather than remove()d so Undo can put
+     * the SAME elements (values, image pickers, everything) back exactly
+     * where they were, in the same order -- re-adding via addRow() from
+     * scratch would lose anything the row's own JS state carried.
+     * ------------------------------------------------------------ */
+
+    var eventsRemoveAllState = { removed: null };
+
+    function bindRemoveAllEvents() {
+        $(document).on('click', '[data-remove-all-events]', function (e) {
+            e.preventDefault();
+            var $section = $(this).closest('.ptk-nl-block[data-type="events"]');
+            var rowCount = $section.find('[data-rows-for="rows"] [data-row]').length;
+            if (rowCount < 2) {
+                return;
+            }
+            var word = 1 === rowCount ? 'date' : 'dates';
+            var $confirm = $section.find('[data-remove-all-confirm]');
+            $confirm.find('[data-remove-all-confirm-text]').text('Remove all ' + rowCount + ' ' + word + '?');
+            $confirm.removeAttr('hidden');
+        });
+
+        $(document).on('click', '[data-remove-all-confirm-cancel]', function (e) {
+            e.preventDefault();
+            $(this).closest('[data-remove-all-confirm]').attr('hidden', 'hidden');
+        });
+
+        $(document).on('click', '[data-remove-all-confirm-yes]', function (e) {
+            e.preventDefault();
+            var $section = $(this).closest('.ptk-nl-block[data-type="events"]');
+            var $rows = $section.find('[data-rows-for="rows"] [data-row]');
+            var count = $rows.length;
+            if (!count) {
+                return;
+            }
+
+            var removedRows = [];
+            $rows.each(function () {
+                removedRows.push($(this).detach());
+            });
+            eventsRemoveAllState.removed = removedRows;
+
+            $section.find('[data-remove-all-confirm]').attr('hidden', 'hidden');
+            var word = 1 === count ? 'date' : 'dates';
+            $section.find('[data-events-removed-msg]')
+                .html('Removed ' + count + ' ' + word + '. <a href="#" data-events-undo-remove-all>Undo</a>')
+                .removeAttr('hidden');
+
+            serializeAndPreview();
+            updateEventsActionState();
+        });
+
+        $(document).on('click', '[data-events-undo-remove-all]', function (e) {
+            e.preventDefault();
+            if (!eventsRemoveAllState.removed) {
+                return;
+            }
+            var $section = $(this).closest('.ptk-nl-block[data-type="events"]');
+            var $rowsContainer = $section.find('[data-rows-for="rows"]').first();
+            eventsRemoveAllState.removed.forEach(function ($row) {
+                $rowsContainer.append($row);
+            });
+            eventsRemoveAllState.removed = null;
+
+            $section.find('[data-events-removed-msg]').attr('hidden', 'hidden').empty();
+            serializeAndPreview();
+            updateEventsActionState();
+        });
     }
 
     /* --------------------------------------------------------------
