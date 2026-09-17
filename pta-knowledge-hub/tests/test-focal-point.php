@@ -33,6 +33,14 @@ $zs = $F::css_zoom_style( 30, 25, 175 );
 ptk_test_ok( false !== strpos( $zs, 'scale(1.75)' ), 'css_zoom_style: scale from zoom/100' );
 ptk_test_ok( false !== strpos( $zs, 'transform-origin:30% 25%' ), 'css_zoom_style: origin follows the focal point' );
 
+// rect_crop() -- 16:9 window (4.5.2 photo square strip).
+list( $x, $y, $w, $h ) = $F::rect_crop( 1000, 1000, 16 / 9, 50, 50, 0 );
+ptk_test_ok( 1000.0 === round( $w, 2 ) && 562.5 === round( $h, 2 ) && 218.75 === round( $y, 2 ) && 0.0 === round( $x, 2 ), 'rect_crop: square source, 16:9 window centered' );
+list( $x, $y, $w, $h ) = $F::rect_crop( 1000, 1000, 16 / 9, 50, 0, 0 );
+ptk_test_ok( 0.0 === round( $y, 2 ), 'rect_crop: focal at top -> crop at y=0' );
+list( $x, $y, $w, $h ) = $F::rect_crop( 4000, 1000, 16 / 9, 100, 50, 200 );
+ptk_test_ok( 888.89 === round( $w, 2 ) && 500.0 === round( $h, 2 ) && 3111.11 === round( $x, 2 ), 'rect_crop: wide source, far right, 200% zoom' );
+
 // square_crop_rect() -- the exact four cases verified in the spec's php -r transcript.
 list( $x, $y, $s ) = $F::square_crop_rect( 2000, 1000, 50, 50, 0 );
 ptk_test_ok( 500.0 === round( $x, 2 ) && 0.0 === round( $y, 2 ) && 1000.0 === round( $s, 2 ), 'square_crop_rect: centered, unzoomed' );

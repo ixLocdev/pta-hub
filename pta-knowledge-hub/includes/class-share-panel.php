@@ -661,7 +661,7 @@ class PTK_Share_Panel {
         ob_start();
         ?>
         <div class="ptk-nl-share-photo" data-share-photo data-has-photo="<?php echo $photo['photo_id'] ? '1' : '0'; ?>" data-pii-confirmed="<?php echo $pii_confirmed ? '1' : '0'; ?>" data-featured-image-id="<?php echo (int) $featured_image_id; ?>">
-            <p class="ptk-nl-share-photo-label">Use a photo behind the words</p>
+            <p class="ptk-nl-share-photo-label">Add a photo above the words</p>
 
             <?php self::render_photo_color_fields(); ?>
 
@@ -726,9 +726,9 @@ class PTK_Share_Panel {
                 <input type="text" id="ptk-nl-photo-text-color-hex" class="ptk-nl-photo-hex" value="<?php echo esc_attr( $text_value ); ?>" maxlength="7" spellcheck="false" autocomplete="off" autocapitalize="off" data-photo-color-hex="text">
             </div>
             <div class="ptk-nl-photo-colorfield">
-                <label for="ptk-nl-photo-bar-color">Bar color</label>
+                <label for="ptk-nl-photo-bar-color">Band color</label>
                 <input type="color" id="ptk-nl-photo-bar-color" value="<?php echo esc_attr( $bar_value ); ?>" data-photo-color-picker="bar">
-                <label for="ptk-nl-photo-bar-color-hex" class="screen-reader-text">Bar color code</label>
+                <label for="ptk-nl-photo-bar-color-hex" class="screen-reader-text">Band color code</label>
                 <input type="text" id="ptk-nl-photo-bar-color-hex" class="ptk-nl-photo-hex" value="<?php echo esc_attr( $bar_value ); ?>" maxlength="7" spellcheck="false" autocomplete="off" autocapitalize="off" data-photo-color-hex="bar">
             </div>
             <p class="ptk-nl-photo-colors-warning" data-photo-colors-warning<?php echo $low ? '' : ' hidden'; ?>>These colors are hard to read together.</p>

@@ -32,34 +32,15 @@ class PTK_Share_Image {
     const PAD    = 96;
 
     /**
-     * Round 3.1 (spec item 4): how opaque the bar drawn behind a photo
-     * square's text is (GD alpha, 0 opaque .. 127 transparent). Low on
-     * purpose -- close enough to solid that the color actually seen is, for
-     * contrast purposes, the chosen bar color itself.
+     * 4.5.2: a photo square is two zones, never text over the photo.
+     * The top PHOTO_BAND_TOP pixels show the photo clear and undarkened, as
+     * a 16:9 strip (1080 x 608) -- the same 16:9 frame as the adjuster the
+     * volunteer drags the dot on, so what they frame is what they get. Below
+     * it, a solid band in the chosen bar color holds all the words, so the
+     * text/bar contrast check is exactly what gets drawn. (4.5.0 covered the
+     * whole square in a near-opaque bar; 4.5.1 left only a thin strip.)
      */
-    const PHOTO_BAR_ALPHA = 12;
-
-    /**
-     * Round 3.1 fix (item 1): the bar is a BAND behind the text block, not
-     * the whole canvas -- covering the whole square at PHOTO_BAR_ALPHA's
-     * near-solid opacity made the photo essentially invisible when the bar
-     * color was dark (Lucas's report: "with bar color #000000 the photo is
-     * essentially invisible"). Everything from this y downward (the eyebrow,
-     * issue number, date, and school name all live in this range -- see the
-     * layout below) gets the near-opaque bar; everything above it is the
-     * photo with, at most, PHOTO_DARKEN_ALPHA's light overall darkening, so
-     * the top of the photo stays clearly visible.
-     */
-    const PHOTO_BAND_TOP = 130;
-
-    /**
-     * Round 3.1 fix (item 1): a light overall darkening applied to the WHOLE
-     * photo (both above and below PHOTO_BAND_TOP) so the eyebrow label that
-     * sits just above the band still has some separation from a bright
-     * photo. GD alpha, 0 opaque .. 127 transparent -- 102 is about 20%
-     * opacity black, comfortably under the spec's "at most 25%" cap.
-     */
-    const PHOTO_DARKEN_ALPHA = 102;
+    const PHOTO_BAND_TOP = 608;
 
     /**
      * Keep a name on one line when it fits at this share of the maximum size.
@@ -272,57 +253,61 @@ class PTK_Share_Image {
         $right = self::SIZE - self::PAD;
         $width = $right - $left;
 
-        // "Smaller, over a dark scrim": the numerals still dominate the
-        // frame but leave more of the photo visible. Pinned ratio, not a
-        // user-facing setting -- see the class docblock's "cosmetic, not
-        // configurable" precedent (hairline_for()).
-        $scale = $has_photo ? 0.72 : 1.0;
+        if ( $has_photo ) {
+            self::draw_photo_words( $im, $fonts, $issue, $date, $school, $text_col, $hairline );
+        } else {
+            // "Smaller, over a dark scrim": the numerals still dominate the
+            // frame but leave more of the photo visible. Pinned ratio, not a
+            // user-facing setting -- see the class docblock's "cosmetic, not
+            // configurable" precedent (hairline_for()).
+            $scale = 1.0;
 
-        // Eyebrow, letterspaced, in the accent. Full-width hairline under
-        // it -- a masthead rule, never a side bar.
-        self::draw_tracked( $im, 'NEWSLETTER', $fonts['eyebrow'], 30 * $scale, $left, 168, $text_col, 11 );
-        imagefilledrectangle( $im, $left, 210, $right, 213, $hairline );
+            // Eyebrow, letterspaced, in the accent. Full-width hairline under
+            // it -- a masthead rule, never a side bar.
+            self::draw_tracked( $im, 'NEWSLETTER', $fonts['eyebrow'], 30 * $scale, $left, 168, $text_col, 11 );
+            imagefilledrectangle( $im, $left, 210, $right, 213, $hairline );
 
-        // The issue number, as big as it can be without touching the
-        // edges. The label sits clear ABOVE the digits -- at 300pt the
-        // numerals stand about 300px tall, so a label baseline anywhere
-        // near the digits' baseline lands inside them.
-        if ( '' !== $issue ) {
-            // "042", not "42" -- the same padding as the masthead and share
-            // page. The № sign is left off here: the ISSUE label above already
-            // says what the number is, and the bundled font may not carry №.
-            $issue = PTK_Share_Text::issue_label( $issue );
-            self::draw_tracked( $im, 'ISSUE', $fonts['eyebrow'], 34 * $scale, $left, 296, $text_col, 12 );
+            // The issue number, as big as it can be without touching the
+            // edges. The label sits clear ABOVE the digits -- at 300pt the
+            // numerals stand about 300px tall, so a label baseline anywhere
+            // near the digits' baseline lands inside them.
+            if ( '' !== $issue ) {
+                // "042", not "42" -- the same padding as the masthead and share
+                // page. The № sign is left off here: the ISSUE label above already
+                // says what the number is, and the bundled font may not carry №.
+                $issue = PTK_Share_Text::issue_label( $issue );
+                self::draw_tracked( $im, 'ISSUE', $fonts['eyebrow'], 34 * $scale, $left, 296, $text_col, 12 );
 
-            $issue_size = self::fit_text( $issue, $fonts['issue'], 300 * $scale, 96 * $scale, $width );
-            imagettftext( $im, $issue_size, 0, $left, 640, $text_col, $fonts['issue'], $issue );
-        }
+                $issue_size = self::fit_text( $issue, $fonts['issue'], 300 * $scale, 96 * $scale, $width );
+                imagettftext( $im, $issue_size, 0, $left, 640, $text_col, $fonts['issue'], $issue );
+            }
 
-        // The week, in the serif, in the accent.
-        $dateline = self::dateline( $date );
-        if ( '' !== $dateline ) {
-            $date_size = self::fit_text( $dateline, $fonts['date'], 56 * $scale, 28, $width );
-            imagettftext( $im, $date_size, 0, $left, 736, $text_col, $fonts['date'], $dateline );
-        }
+            // The week, in the serif, in the accent.
+            $dateline = self::dateline( $date );
+            if ( '' !== $dateline ) {
+                $date_size = self::fit_text( $dateline, $fonts['date'], 56 * $scale, 28, $width );
+                imagettftext( $im, $date_size, 0, $left, 736, $text_col, $fonts['date'], $dateline );
+            }
 
-        // The school's name at the foot, above a second hairline, shrunk
-        // to fit rather than clipped -- names run from "NE PTA" to
-        // "The Parent Teacher Association of Northeast Elementary School,
-        // Montclair". Both lines take ONE size (the smaller of the two)
-        // so a wrapped name does not step down mid-word, and the block is
-        // bottom-aligned so a one-line name sits where a two-line one ends.
-        imagefilledrectangle( $im, $left, self::SIZE - 250, $right, self::SIZE - 247, $hairline );
+            // The school's name at the foot, above a second hairline, shrunk
+            // to fit rather than clipped -- names run from "NE PTA" to
+            // "The Parent Teacher Association of Northeast Elementary School,
+            // Montclair". Both lines take ONE size (the smaller of the two)
+            // so a wrapped name does not step down mid-word, and the block is
+            // bottom-aligned so a one-line name sits where a two-line one ends.
+            imagefilledrectangle( $im, $left, self::SIZE - 250, $right, self::SIZE - 247, $hairline );
 
-        if ( '' !== $school ) {
-            list( $lines, $size ) = self::fit_block( $school, $fonts['school'], 54 * $scale, 22 * $scale, $width, 2 );
+            if ( '' !== $school ) {
+                list( $lines, $size ) = self::fit_block( $school, $fonts['school'], 54 * $scale, 22 * $scale, $width, 2 );
 
-            $line_height   = (int) round( $size * 1.24 );
-            $last_baseline = self::SIZE - 110;
-            $baseline      = $last_baseline - ( ( count( $lines ) - 1 ) * $line_height );
+                $line_height   = (int) round( $size * 1.24 );
+                $last_baseline = self::SIZE - 110;
+                $baseline      = $last_baseline - ( ( count( $lines ) - 1 ) * $line_height );
 
-            foreach ( $lines as $line ) {
-                imagettftext( $im, $size, 0, $left, $baseline, $text_col, $fonts['school'], $line );
-                $baseline += $line_height;
+                foreach ( $lines as $line ) {
+                    imagettftext( $im, $size, 0, $left, $baseline, $text_col, $fonts['school'], $line );
+                    $baseline += $line_height;
+                }
             }
         }
 
@@ -336,6 +321,44 @@ class PTK_Share_Image {
         }
 
         return $png;
+    }
+
+    /**
+     * 4.5.2: the words of a photo square, all inside the solid band below
+     * the photo (PHOTO_BAND_TOP down). One compact block: the eyebrow, the
+     * issue number with the week beside it, a hairline, the school name.
+     */
+    private static function draw_photo_words( $im, array $fonts, $issue, $date, $school, $text_col, $hairline ) {
+        $left  = self::PAD;
+        $right = self::SIZE - self::PAD;
+        $width = $right - $left;
+        $top   = self::PHOTO_BAND_TOP;
+
+        self::draw_tracked( $im, 'NEWSLETTER', $fonts['eyebrow'], 22, $left, $top + 82, $text_col, 9 );
+
+        $issue_baseline = $top + 268;
+        $number_right   = $left;
+        if ( '' !== $issue ) {
+            $issue      = PTK_Share_Text::issue_label( $issue );
+            $issue_size = self::fit_text( $issue, $fonts['issue'], 150, 70, (int) ( $width * 0.55 ) );
+            imagettftext( $im, $issue_size, 0, $left, $issue_baseline, $text_col, $fonts['issue'], $issue );
+            $number_right = $left + self::text_width( $issue, $fonts['issue'], $issue_size ) + 44;
+        }
+
+        // The week sits beside the number, on its baseline, in the serif.
+        $dateline = self::dateline( $date );
+        if ( '' !== $dateline ) {
+            $room      = $right - $number_right;
+            $date_size = self::fit_text( $dateline, $fonts['date'], 44, 22, $room );
+            imagettftext( $im, $date_size, 0, $number_right, $issue_baseline - 4, $text_col, $fonts['date'], $dateline );
+        }
+
+        imagefilledrectangle( $im, $left, $top + 318, $right, $top + 320, $hairline );
+
+        if ( '' !== $school ) {
+            $size = self::fit_text( $school, $fonts['school'], 40, 16, $width );
+            imagettftext( $im, $size, 0, $left, $top + 390, $text_col, $fonts['school'], $school );
+        }
     }
 
     /**
@@ -412,6 +435,21 @@ class PTK_Share_Image {
             return false;
         }
 
+        // Phone photos are often stored sideways with an orientation flag;
+        // GD ignores the flag, so apply it here.
+        if ( 'image/jpeg' === $mime && function_exists( 'exif_read_data' ) ) {
+            $exif        = @exif_read_data( $path );
+            $orientation = is_array( $exif ) && isset( $exif['Orientation'] ) ? (int) $exif['Orientation'] : 1;
+            $angle       = array( 3 => 180, 6 => -90, 8 => 90 );
+            if ( isset( $angle[ $orientation ] ) ) {
+                $rotated = imagerotate( $src, $angle[ $orientation ], 0 );
+                if ( $rotated ) {
+                    self::free( $src );
+                    $src = $rotated;
+                }
+            }
+        }
+
         $src_w = imagesx( $src );
         $src_h = imagesy( $src );
         if ( $src_w < 1 || $src_h < 1 ) {
@@ -419,9 +457,10 @@ class PTK_Share_Image {
             return false;
         }
 
-        list( $cx, $cy, $cs ) = PTK_Focal_Point::square_crop_rect(
+        list( $cx, $cy, $cw, $ch ) = PTK_Focal_Point::rect_crop(
             $src_w,
             $src_h,
+            self::SIZE / self::PHOTO_BAND_TOP,
             isset( $args['photo_focal_x'] ) ? $args['photo_focal_x'] : 50,
             isset( $args['photo_focal_y'] ) ? $args['photo_focal_y'] : 50,
             isset( $args['photo_zoom'] ) ? $args['photo_zoom'] : 0
@@ -435,42 +474,18 @@ class PTK_Share_Image {
             (int) round( $cx ),
             (int) round( $cy ),
             self::SIZE,
-            self::SIZE,
-            (int) round( $cs ),
-            (int) round( $cs )
+            self::PHOTO_BAND_TOP,
+            (int) round( $cw ),
+            (int) round( $ch )
         );
 
         self::free( $src );
 
-        // Round 3.1 fix (item 1): a light overall darkening over the WHOLE
-        // photo first (at most PHOTO_DARKEN_ALPHA's ~20% opacity black), so
-        // the photo stays clearly visible above the band while still giving
-        // the eyebrow label a touch of separation from a bright photo.
-        imagealphablending( $im, true );
-        $darken = imagecolorallocatealpha( $im, 0, 0, 0, self::PHOTO_DARKEN_ALPHA );
-        imagefilledrectangle( $im, 0, 0, self::SIZE - 1, self::SIZE - 1, $darken );
-
-        // Then a near-opaque bar in the chosen bar color, but ONLY as a band
-        // behind the text block (PHOTO_BAND_TOP downward), so the text
-        // drawn after this reads reliably against a KNOWN color rather than
-        // whatever the photo happens to show underneath -- a translucent
-        // scrim over an unpredictable photo is exactly what produced
-        // Lucas's "dark text on a dark photo, unreadable" report. Confining
-        // it to a band (rather than the whole canvas, as before) is what
-        // fixes the follow-up report that the bar made the photo essentially
-        // invisible. PHOTO_BAR_ALPHA is GD's 0-127 range (127 fully
-        // transparent); 12 leaves the photo only faintly visible through
-        // the bar, close enough to solid that the resulting color is
-        // effectively the bar color itself, so the text/bar contrast ratio
-        // computed in PHP is what actually gets drawn.
+        // The solid band that holds the words.
         $bar = isset( $args['photo_bar'] ) && is_string( $args['photo_bar'] ) && '' !== $args['photo_bar']
             ? $args['photo_bar']
             : PTK_Share_Color::PHOTO_BAR_FALLBACK;
-        list( $br, $bg, $bb ) = PTK_Share_Color::to_rgb( $bar );
-
-        $scrim = imagecolorallocatealpha( $im, $br, $bg, $bb, self::PHOTO_BAR_ALPHA );
-        imagefilledrectangle( $im, 0, self::PHOTO_BAND_TOP, self::SIZE - 1, self::SIZE - 1, $scrim );
-        imagealphablending( $im, false );
+        imagefilledrectangle( $im, 0, self::PHOTO_BAND_TOP, self::SIZE - 1, self::SIZE - 1, self::allocate( $im, $bar ) );
 
         return true;
     }

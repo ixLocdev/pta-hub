@@ -71,6 +71,39 @@ class PTK_Focal_Point {
     }
 
     /**
+     * Like square_crop_rect(), but for a window of any width:height ratio
+     * (4.5.2: the photo square shows the photo as a 16:9 strip above the
+     * text band, matching the 16:9 adjuster the volunteer drags the dot on).
+     *
+     * @return array{0:float,1:float,2:float,3:float} x, y, width, height.
+     */
+    public static function rect_crop( $src_w, $src_h, $ratio, $focal_x, $focal_y, $stored_zoom ) {
+        $src_w = max( 1.0, (float) $src_w );
+        $src_h = max( 1.0, (float) $src_h );
+        $ratio = max( 0.01, (float) $ratio );
+        $zoom  = self::effective_zoom( $stored_zoom ) / 100;
+        if ( $src_w / $src_h > $ratio ) {
+            $crop_h = $src_h;
+            $crop_w = $src_h * $ratio;
+        } else {
+            $crop_w = $src_w;
+            $crop_h = $src_w / $ratio;
+        }
+        $crop_w /= $zoom;
+        $crop_h /= $zoom;
+        $avail_x = $src_w - $crop_w;
+        $avail_y = $src_h - $crop_h;
+        $fx      = self::clamp_percent( $focal_x ) / 100;
+        $fy      = self::clamp_percent( $focal_y ) / 100;
+        return array(
+            max( 0.0, min( $avail_x, $avail_x * $fx ) ),
+            max( 0.0, min( $avail_y, $avail_y * $fy ) ),
+            $crop_w,
+            $crop_h,
+        );
+    }
+
+    /**
      * Square-crop rectangle in SOURCE pixels for a $dest x $dest square
      * (the Instagram square), covering $src_w x $src_h at $focal_x/$focal_y
      * (0-100) and $stored_zoom (0 or 100-250), object-fit:cover semantics.

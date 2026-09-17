@@ -561,7 +561,7 @@
 
             if (!photoFrame) {
                 photoFrame = wp.media({
-                    title: 'Choose a photo for behind the words',
+                    title: 'Choose a photo for the picture',
                     button: { text: 'Use this photo' },
                     library: { type: 'image' },
                     multiple: false
@@ -698,7 +698,7 @@
             var attachment = wp.media.attachment(photoId).toJSON();
             var src = (attachment.sizes && attachment.sizes.large && attachment.sizes.large.url) || attachment.url;
             if (src) {
-                window.ptkInitFocalPicker($mount, { aspect: '1:1', src: src });
+                window.ptkInitFocalPicker($mount, { aspect: '16:9', src: src });
             }
         });
     }

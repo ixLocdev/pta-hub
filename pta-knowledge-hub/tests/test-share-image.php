@@ -312,9 +312,9 @@ $t::draw_square_photo_from_file( $canvas3, $photo_path2, 'image/jpeg', array(
     'photo_zoom'    => 0,
     'photo_bar'     => '#ff0000', // pure red
 ) );
-$sample3 = imagecolorat( $canvas3, (int) ( $t::SIZE / 2 ), (int) ( $t::SIZE / 2 ) );
+$sample3 = imagecolorat( $canvas3, (int) ( $t::SIZE / 2 ), $t::SIZE - 100 ); // inside the text band
 $rgb3    = array( ( $sample3 >> 16 ) & 0xFF, ( $sample3 >> 8 ) & 0xFF, $sample3 & 0xFF );
-ptk_test_ok( $rgb3[0] > 200 && $rgb3[1] < 40, 'draw_square_photo_from_file: a near-opaque RED photo_bar dominates over the solid green photo underneath' );
+ptk_test_ok( $rgb3[0] > 200 && $rgb3[1] < 40, 'draw_square_photo_from_file: the solid RED band holds the words below the photo' );
 if ( PHP_VERSION_ID < 80000 ) { imagedestroy( $canvas3 ); }
 @unlink( $photo_path2 );
 
@@ -355,6 +355,12 @@ ptk_test_ok( $argb[1] >= round( 255 * 0.75 ), 'draw_square_photo_from_file: the 
 $below = imagecolorat( $canvas4, (int) ( $t::SIZE / 2 ), $t::PHOTO_BAND_TOP + 20 );
 $brgb  = array( ( $below >> 16 ) & 0xFF, ( $below >> 8 ) & 0xFF, $below & 0xFF );
 ptk_test_ok( $brgb[0] > 200 && $brgb[1] < 40, 'draw_square_photo_from_file: just below PHOTO_BAND_TOP the red bar already dominates' );
+
+// 4.5.2: the band is solid -- exactly the bar color, so the text/bar
+// contrast check is what gets drawn -- and the photo above is undarkened.
+ptk_test_ok( 255 === $brgb[0] && 0 === $brgb[1] && 0 === $brgb[2], 'draw_square_photo_from_file: the band is exactly the bar color (solid)' );
+ptk_test_ok( $argb[1] > 245, 'draw_square_photo_from_file: the photo above the band is not darkened' );
+ptk_test_ok( $t::PHOTO_BAND_TOP === (int) round( $t::SIZE * 9 / 16 ), 'PHOTO_BAND_TOP makes the photo strip 16:9, matching the adjuster' );
 
 if ( PHP_VERSION_ID < 80000 ) { imagedestroy( $canvas4 ); }
 @unlink( $photo_path3 );
