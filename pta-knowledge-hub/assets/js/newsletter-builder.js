@@ -387,36 +387,92 @@
         }
     }
 
+    // Round 3.1 fix (item 2): the set of story-image ids serialize() last
+    // saw, so updatePhotoCheck() can tell "a photo was just added/changed"
+    // (reset consent) apart from "nothing about the photos changed" (leave
+    // the checkbox alone). Seeded on the very first call (page load) rather
+    // than starting empty, so loading an already-published newsletter with
+    // photos doesn't look like every one of them just got added. null means
+    // "not seeded yet".
+    var lastKnownImageIds = null;
+
     /**
-     * Show the photo check only while the newsletter has a photo in it --
-     * the same rule the server uses (PTK_Newsletter_Data::blocks_have_images).
-     * Uses the `hidden` attribute, not jQuery .toggle(), and the gate carries
-     * no data-step, so showStep() and this never fight.
+     * Every image_id > 0 in these blocks, sorted -- mirrors
+     * PTK_Newsletter_Data::blocks_image_ids() closely enough for an
+     * equality check (order-independent, deduped is not required since
+     * duplicates cancel out on both sides of the comparison).
+     *
+     * @param {Array} blocks
+     * @return {number[]}
      */
-    function updatePhotoCheck(blocks) {
-        var gate = document.querySelector('[data-pii-gate]');
-        if (!gate) {
-            return;
-        }
-        var has = false;
-        for (var i = 0; i < blocks.length && !has; i++) {
+    function collectImageIds(blocks) {
+        var ids = [];
+        for (var i = 0; i < blocks.length; i++) {
             var data = blocks[i].data || {};
             for (var key in data) {
                 if (!Object.prototype.hasOwnProperty.call(data, key)) {
                     continue;
                 }
                 if (key === 'image_id' && parseInt(data[key], 10) > 0) {
-                    has = true;
+                    ids.push(parseInt(data[key], 10));
                 } else if (Array.isArray(data[key])) {
                     for (var j = 0; j < data[key].length; j++) {
                         if (data[key][j] && parseInt(data[key][j].image_id, 10) > 0) {
-                            has = true;
+                            ids.push(parseInt(data[key][j].image_id, 10));
                         }
                     }
                 }
             }
         }
-        gate.hidden = !has;
+        return ids.sort(function (a, b) { return a - b; });
+    }
+
+    /** Do these two already-sorted id lists hold the exact same ids? */
+    function sameIds(a, b) {
+        if (a.length !== b.length) {
+            return false;
+        }
+        for (var i = 0; i < a.length; i++) {
+            if (a[i] !== b[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Show the photo check only while the newsletter has a photo in it --
+     * the same rule the server uses (PTK_Newsletter_Data::blocks_have_images).
+     * Uses the `hidden` attribute, not jQuery .toggle(), and the gate carries
+     * no data-step, so showStep() and this never fight.
+     *
+     * Round 3.1 fix (item 2): also resets the consent checkbox (unticked,
+     * "Confirmed on..." note hidden) the moment a story image is added,
+     * removed, or swapped for a different one -- a checkbox left ticked
+     * from BEFORE that change must never keep reading as consent for
+     * photos it never actually covered. The Instagram square's own photo
+     * is handled the same way, separately, in share-panel.js (it lives
+     * outside this form's blocks entirely).
+     */
+    function updatePhotoCheck(blocks) {
+        var ids = collectImageIds(blocks);
+        var has = ids.length > 0;
+
+        var gate = document.querySelector('[data-pii-gate]');
+        if (gate) {
+            gate.hidden = !has;
+        }
+
+        if (lastKnownImageIds === null) {
+            lastKnownImageIds = ids; // First call (page load) -- nothing changed yet.
+        } else if (!sameIds(lastKnownImageIds, ids)) {
+            var $box = $('#ptk-nl-pii-ok');
+            if ($box.length && $box.prop('checked')) {
+                $box.prop('checked', false);
+            }
+            $('[data-pii-note]').remove();
+            lastKnownImageIds = ids;
+        }
     }
 
     /** Run one optional boot step; log a failure instead of throwing it. */

@@ -395,8 +395,23 @@ class PTK_Newsletter_Data {
      * @return bool
      */
     public static function blocks_have_images( $blocks ) {
+        return ! empty( self::blocks_image_ids( $blocks ) );
+    }
+
+    /**
+     * Round 3.1 fix (item 2): every image_id > 0 actually present in these
+     * blocks -- story cards included -- as a sorted, deduped list of ints.
+     * Used to compare "what photos are here now" against "what photos were
+     * confirmed", so photo consent can never silently carry over onto a
+     * newsletter whose photos have changed since it was last confirmed.
+     *
+     * @param mixed $blocks Blocks array (sanitized or raw).
+     * @return int[]
+     */
+    public static function blocks_image_ids( $blocks ) {
+        $ids = array();
         if ( ! is_array( $blocks ) ) {
-            return false;
+            return $ids;
         }
         foreach ( $blocks as $block ) {
             if ( ! is_array( $block ) || ! isset( $block['data'] ) || ! is_array( $block['data'] ) ) {
@@ -404,18 +419,20 @@ class PTK_Newsletter_Data {
             }
             foreach ( $block['data'] as $key => $value ) {
                 if ( 'image_id' === $key && is_scalar( $value ) && intval( $value ) > 0 ) {
-                    return true;
+                    $ids[] = (int) $value;
                 }
                 if ( is_array( $value ) ) {
                     foreach ( $value as $row ) {
                         if ( is_array( $row ) && isset( $row['image_id'] ) && is_scalar( $row['image_id'] ) && intval( $row['image_id'] ) > 0 ) {
-                            return true;
+                            $ids[] = (int) $row['image_id'];
                         }
                     }
                 }
             }
         }
-        return false;
+        $ids = array_values( array_unique( $ids ) );
+        sort( $ids );
+        return $ids;
     }
 
     /**

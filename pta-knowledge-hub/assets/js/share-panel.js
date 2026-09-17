@@ -485,15 +485,50 @@
             $root.find('[data-share-photo-featured], [data-share-photo-choose]').prop('disabled', !checked);
         });
 
+        /**
+         * Round 3.1 fix (item 2): the consent checkbox can start out
+         * CHECKED -- it's pre-ticked whenever the server says consent is on
+         * file for the photo already behind the words. That's fine as long
+         * as nothing changes, but "Use the top story's photo" / "Choose a
+         * different photo" are exactly the actions that change WHICH photo
+         * this is, so a leftover checked box must not silently wave the new
+         * pick through. The first click on either button, while the box is
+         * still checked from before, unticks it and disables both buttons
+         * again (same as if the volunteer had unticked it themselves) and
+         * asks for a fresh tick instead of proceeding -- never a silent
+         * downgrade. A checkbox that starts unchecked (nothing confirmed
+         * yet) is unaffected: the buttons are already disabled server-side.
+         *
+         * @return {boolean} True to proceed with the action right now.
+         */
+        function requireFreshPhotoConsent($root) {
+            var $checkbox = $root.find('[data-share-photo-pii-ok]');
+            if (!$checkbox.length || !$checkbox.prop('checked')) {
+                return true;
+            }
+            $checkbox.prop('checked', false).trigger('change');
+            var $consent = $root.find('[data-share-photo-consent]');
+            if ($consent.length && !$consent.find('.ptk-nl-share-photo-refused').length) {
+                $consent.append('<p class="ptk-nl-share-photo-refused" role="alert">Please tick the box again to confirm this photo, then try again.</p>');
+            }
+            return false;
+        }
+
         $area.on('click', '[data-share-photo-featured]', function (e) {
             e.preventDefault();
             var $root = $(this).closest('[data-share-photo]');
+            if (!requireFreshPhotoConsent($root)) {
+                return;
+            }
             sendPhoto($root, { mode: 'photo_from_featured' }, 'Using the top story’s photo…');
         });
 
         $area.on('click', '[data-share-photo-choose]', function (e) {
             e.preventDefault();
             var $root = $(this).closest('[data-share-photo]');
+            if (!requireFreshPhotoConsent($root)) {
+                return;
+            }
 
             if (typeof wp === 'undefined' || !wp.media) {
                 $status.text('The media library is not available on this page. Reload and try again.');

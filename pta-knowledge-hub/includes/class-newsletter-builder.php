@@ -47,6 +47,16 @@ class PTK_Newsletter_Builder {
     const META_PII_CONFIRMED = 'ptk_nl_pii_confirmed';
 
     /**
+     * Round 3.1 fix (item 2): post meta holding a JSON array of the
+     * attachment IDs that were actually on the newsletter (story images +
+     * the Instagram square's background photo) at the moment consent was
+     * given. Compared against current_photo_ids() on every render and every
+     * submission, so a checkbox ticked for one set of photos never silently
+     * reads as "confirmed" for a different set -- see photo_ids_confirmed().
+     */
+    const META_PII_CONFIRMED_PHOTOS = 'ptk_nl_pii_confirmed_photos';
+
+    /**
      * The main gate's checkbox copy, pulled out so PTK_Share_Panel's own
      * consent prompt (round 3 -- the square's background photo is
      * reachable outside this form, see class-share-panel.php) can reuse
@@ -161,6 +171,63 @@ class PTK_Newsletter_Builder {
     }
 
     /**
+     * Round 3.1 fix (item 2): every photo this newsletter has RIGHT NOW --
+     * story images from $blocks plus (when $post_id is a real, already-saved
+     * post) the Instagram square's own background photo, which lives in
+     * PTK_Share_Data's post meta and never appears in $blocks at all. A
+     * sorted, deduped list of ints, so two calls with the same photos in a
+     * different order still compare equal.
+     *
+     * @param array $blocks  Sanitized (or raw) blocks.
+     * @param int   $post_id Existing post id, or 0 for a not-yet-saved one.
+     * @return int[]
+     */
+    public static function current_photo_ids( array $blocks, $post_id ) {
+        $ids = PTK_Newsletter_Data::blocks_image_ids( $blocks );
+
+        $post_id = absint( $post_id );
+        if ( $post_id && class_exists( 'PTK_Share_Data' ) ) {
+            $square = PTK_Share_Data::get_square_photo( $post_id );
+            if ( ! empty( $square['photo_id'] ) ) {
+                $ids[] = absint( $square['photo_id'] );
+            }
+        }
+
+        $ids = array_values( array_unique( array_map( 'absint', $ids ) ) );
+        sort( $ids );
+        return $ids;
+    }
+
+    /**
+     * Round 3.1 fix (item 2): is the photo consent on file for $post_id
+     * still good for $current_ids? True only when a confirmation exists AT
+     * ALL and the exact set of photo IDs confirmed back then matches what
+     * is on the newsletter now -- so adding, removing, or swapping even one
+     * photo (story image or the Instagram square's background photo) makes
+     * this false again, and the checkbox/note must not claim "confirmed."
+     *
+     * @param int   $post_id
+     * @param int[] $current_ids Already normalized (sorted, deduped ints) --
+     *                           see current_photo_ids().
+     * @return bool
+     */
+    public static function photo_ids_confirmed( $post_id, array $current_ids ) {
+        $post_id = absint( $post_id );
+        if ( ! $post_id || ! get_post_meta( $post_id, self::META_PII_CONFIRMED, true ) ) {
+            return false;
+        }
+
+        $confirmed = json_decode( (string) get_post_meta( $post_id, self::META_PII_CONFIRMED_PHOTOS, true ), true );
+        if ( ! is_array( $confirmed ) ) {
+            $confirmed = array();
+        }
+        $confirmed = array_values( array_unique( array_map( 'absint', $confirmed ) ) );
+        sort( $confirmed );
+
+        return $confirmed === $current_ids;
+    }
+
+    /**
      * Handle the builder form submission: sanitize + render the blocks,
      * gate Publish behind the photo/PII confirmation, and create/update the
      * pta_newsletter post (draft, preview-as-draft, or published).
@@ -235,12 +302,13 @@ class PTK_Newsletter_Builder {
         // so step 4 can explain why nothing went live, next to the checkbox.
         $pii_ok       = ! empty( $_POST['ptk_nl_pii_ok'] );
         // The Instagram square's own background photo (round 3) never
-        // appears in $blocks -- it lives in PTK_Share_Data's post meta,
-        // set via a separate AJAX endpoint the main gate can't see on its
-        // own. OR it in here so a newsletter whose ONLY photo is the
-        // square's background photo still requires confirmation to publish.
-        $has_images   = PTK_Newsletter_Data::blocks_have_images( $blocks )
-            || PTK_Share_Data::square_has_custom_photo( $edit_id );
+        // appears in $blocks -- it lives in PTK_Share_Data's post meta, set
+        // via a separate AJAX endpoint the main gate can't see on its own.
+        // current_photo_ids() folds it in, so a newsletter whose ONLY photo
+        // is the square's background photo still requires confirmation to
+        // publish.
+        $current_photo_ids = self::current_photo_ids( $blocks, $edit_id );
+        $has_images         = ! empty( $current_photo_ids );
         $forced_draft = false;
         if ( 'publish' === $status_req && $has_images && ! $pii_ok ) {
             $status_req   = 'draft';
@@ -267,9 +335,21 @@ class PTK_Newsletter_Builder {
 
         // Remember the photo confirmation, with the day it was given, so the
         // box shows ticked when this newsletter is opened again instead of
-        // looking like it was never done. The first confirmation is kept.
-        if ( 'publish' === $post_status && $has_images && $pii_ok && ! get_post_meta( $post_id, self::META_PII_CONFIRMED, true ) ) {
-            update_post_meta( $post_id, self::META_PII_CONFIRMED, current_time( 'Y-m-d' ) );
+        // looking like it was never done -- but ONLY for the exact set of
+        // photos just confirmed (round 3.1 fix, item 2). The date is kept
+        // as-is when the photos are unchanged from the last confirmation
+        // (so re-saving a published issue doesn't keep bumping "Confirmed
+        // on..."), but bumped whenever the photo set has changed, since
+        // that IS a fresh consent for different content. The confirmed
+        // photo set itself is always brought up to date, so the very next
+        // load compares against what was actually just confirmed, not a
+        // stale list.
+        if ( 'publish' === $post_status && $has_images && $pii_ok ) {
+            if ( ! get_post_meta( $post_id, self::META_PII_CONFIRMED, true )
+                || ! self::photo_ids_confirmed( $post_id, $current_photo_ids ) ) {
+                update_post_meta( $post_id, self::META_PII_CONFIRMED, current_time( 'Y-m-d' ) );
+            }
+            update_post_meta( $post_id, self::META_PII_CONFIRMED_PHOTOS, wp_json_encode( $current_photo_ids ) );
         }
 
         // Preview is only offered for drafts. A published newsletter has no
@@ -1063,13 +1143,19 @@ class PTK_Newsletter_Builder {
         $is_published = $edit_id && 'publish' === get_post_status( $edit_id );
         // Round 3.1 (spec item 9): never offer Publish on the example.
         $is_example   = $edit_id && class_exists( 'PTK_Example_Newsletter' ) && PTK_Example_Newsletter::is_example( $edit_id );
-        // See handle_submission()'s matching OR: the square's own
+        // See handle_submission()'s matching call: the square's own
         // background photo (round 3) doesn't live in $blocks.
-        $has_images   = PTK_Newsletter_Data::blocks_have_images( $blocks )
-            || PTK_Share_Data::square_has_custom_photo( $edit_id );
-        $pii_date     = $edit_id ? (string) get_post_meta( $edit_id, self::META_PII_CONFIRMED, true ) : '';
-        $pii_date     = preg_match( '/^\d{4}-\d{2}-\d{2}$/', $pii_date ) ? $pii_date : '';
-        $pii_failed   = isset( $_GET['ptk_nl_msg'] ) && 'pii' === sanitize_key( wp_unslash( $_GET['ptk_nl_msg'] ) );
+        $current_photo_ids = self::current_photo_ids( $blocks, $edit_id );
+        $has_images        = ! empty( $current_photo_ids );
+        $pii_date          = $edit_id ? (string) get_post_meta( $edit_id, self::META_PII_CONFIRMED, true ) : '';
+        $pii_date          = preg_match( '/^\d{4}-\d{2}-\d{2}$/', $pii_date ) ? $pii_date : '';
+        // Round 3.1 fix (item 2): the checkbox may only show as ticked/
+        // confirmed when consent is on file for THIS EXACT set of photos --
+        // a newsletter that had a different photo confirmed (or none) must
+        // show unchecked, with no "Confirmed on..." note, even though
+        // $pii_date is still set from the earlier confirmation.
+        $photos_confirmed  = '' !== $pii_date && self::photo_ids_confirmed( $edit_id, $current_photo_ids );
+        $pii_failed        = isset( $_GET['ptk_nl_msg'] ) && 'pii' === sanitize_key( wp_unslash( $_GET['ptk_nl_msg'] ) );
 
         $steps     = self::steps();
         $step_last = count( $steps );
@@ -1206,11 +1292,11 @@ class PTK_Newsletter_Builder {
                                     <p class="ptk-nl-pii-error" id="ptk-nl-pii-error" role="alert">Your newsletter was saved as a draft, not published. Please tick this box to confirm the photos are OK, then press Publish again.</p>
                                 <?php endif; ?>
                                 <label>
-                                    <input type="checkbox" id="ptk-nl-pii-ok" name="ptk_nl_pii_ok" value="1"<?php checked( '' !== $pii_date ); ?><?php echo $pii_failed ? ' aria-describedby="ptk-nl-pii-error"' : ''; ?>>
+                                    <input type="checkbox" id="ptk-nl-pii-ok" name="ptk_nl_pii_ok" value="1"<?php checked( $photos_confirmed ); ?><?php echo $pii_failed ? ' aria-describedby="ptk-nl-pii-error"' : ''; ?>>
                                     <?php echo esc_html( self::PII_CHECKBOX_LABEL ); ?>
                                 </label>
-                                <?php if ( '' !== $pii_date ) : ?>
-                                    <p class="ptk-nl-pii-note">Confirmed when this issue was published on <?php echo esc_html( date_i18n( 'F j, Y', strtotime( $pii_date ) ) ); ?>.</p>
+                                <?php if ( $photos_confirmed ) : ?>
+                                    <p class="ptk-nl-pii-note" data-pii-note>Confirmed when this issue was published on <?php echo esc_html( date_i18n( 'F j, Y', strtotime( $pii_date ) ) ); ?>.</p>
                                 <?php endif; ?>
                             </div>
 

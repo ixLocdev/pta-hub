@@ -60,6 +60,20 @@ ptk_test_ok( true === PTK_Newsletter_Data::blocks_have_images( $feat ), 'feature
 $card = $no_img; $card[2]['data']['cards'][] = array( 'heading' => 'B', 'image_id' => '7' );
 ptk_test_ok( true === PTK_Newsletter_Data::blocks_have_images( $card ), 'a story card image counts (string id too)' );
 
+// --- Round 3.1 fix (item 2): blocks_image_ids() -- the actual set of ids, ---
+// not just whether any exist, so photo consent can be compared against the
+// exact set that was confirmed.
+ptk_test_ok( array() === PTK_Newsletter_Data::blocks_image_ids( $no_img ), 'blocks_image_ids: no photos -> empty array' );
+ptk_test_ok( array() === PTK_Newsletter_Data::blocks_image_ids( array() ), 'blocks_image_ids: empty blocks -> empty array' );
+ptk_test_ok( array() === PTK_Newsletter_Data::blocks_image_ids( 'junk' ), 'blocks_image_ids: non-array -> empty array' );
+ptk_test_ok( array( 12 ) === PTK_Newsletter_Data::blocks_image_ids( $feat ), 'blocks_image_ids: one featured image -> [12]' );
+ptk_test_ok( array( 7 ) === PTK_Newsletter_Data::blocks_image_ids( $card ), 'blocks_image_ids: one story-card image (string id) -> [7]' );
+$multi = $no_img;
+$multi[1]['data']['image_id']   = 12;
+$multi[2]['data']['cards'][]    = array( 'heading' => 'B', 'image_id' => '7' );
+$multi[2]['data']['cards'][]    = array( 'heading' => 'C', 'image_id' => 12 ); // Same photo used twice.
+ptk_test_ok( array( 7, 12 ) === PTK_Newsletter_Data::blocks_image_ids( $multi ), 'blocks_image_ids: sorted and deduped across multiple blocks/rows' );
+
 // --- 4.2.0 shape: new fields, quick notes, and the pill -> when migration. ---
 $d = 'PTK_Newsletter_Data';
 

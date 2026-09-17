@@ -243,6 +243,11 @@ class PTK_Share_Panel {
         } elseif ( 'generated' === $mode ) {
             PTK_Share_Image::use_generated_square( $post_id );
         } elseif ( 'photo' === $mode || 'photo_from_featured' === $mode ) {
+            // Round 3.1 fix (item 2): adding or switching the square's
+            // background photo always requires a FRESH tick of this
+            // request's consent checkbox -- a past confirmation, even one
+            // still on file, covered a photo set that this action is about
+            // to change, so it can never be enough on its own.
             self::require_photo_consent( $post_id );
 
             if ( 'photo_from_featured' === $mode ) {
@@ -272,6 +277,13 @@ class PTK_Share_Panel {
                 $zoom    = isset( $_POST['zoom'] ) ? $_POST['zoom'] : 0;
                 PTK_Share_Data::save_square_photo( $post_id, $attachment_id, $focal_x, $focal_y, $zoom );
             }
+
+            // The consent just given above covers exactly the photos on the
+            // newsletter now -- record that set (and bump the date: this
+            // IS a fresh confirmation), so the next comparison is accurate.
+            $confirmed_now = PTK_Newsletter_Builder::current_photo_ids( self::context( $post_id )['blocks'], $post_id );
+            update_post_meta( $post_id, PTK_Newsletter_Builder::META_PII_CONFIRMED, current_time( 'Y-m-d' ) );
+            update_post_meta( $post_id, PTK_Newsletter_Builder::META_PII_CONFIRMED_PHOTOS, wp_json_encode( $confirmed_now ) );
         } elseif ( 'photo_reframe' === $mode ) {
             // Adjust ONLY the focal point/zoom of the photo already chosen
             // (the picker fires this on every drag/wheel/keyboard change) --
@@ -286,6 +298,15 @@ class PTK_Share_Panel {
             PTK_Share_Data::save_square_photo( $post_id, $current['photo_id'], $focal_x, $focal_y, $zoom );
         } elseif ( 'no_photo' === $mode ) {
             PTK_Share_Data::clear_square_photo( $post_id );
+
+            // Removing a photo needs no fresh consent, but the confirmed
+            // set on file must drop it too -- otherwise re-adding the SAME
+            // attachment later would wrongly read back as "already
+            // confirmed" via a stale set that happens to still list it.
+            if ( get_post_meta( $post_id, PTK_Newsletter_Builder::META_PII_CONFIRMED, true ) ) {
+                $remaining = PTK_Newsletter_Builder::current_photo_ids( self::context( $post_id )['blocks'], $post_id );
+                update_post_meta( $post_id, PTK_Newsletter_Builder::META_PII_CONFIRMED_PHOTOS, wp_json_encode( $remaining ) );
+            }
         } else {
             wp_send_json_error( array( 'message' => 'Unknown picture choice.' ), 400 );
         }
@@ -297,21 +318,26 @@ class PTK_Share_Panel {
 
     /**
      * The photo-privacy gate, extended to the square's background photo
-     * (round 3): setting one is reachable via this AJAX endpoint entirely
-     * outside the main form's Publish-time gate (a newsletter with no
-     * OTHER photos never trips it), so this checks the SAME confirmation
-     * independently, and reuses the SAME meta key -- see class docblock's
-     * "no second consent mechanism" decision.
+     * (round 3): setting/changing one is reachable via this AJAX endpoint
+     * entirely outside the main form's Publish-time gate (a newsletter with
+     * no OTHER photos never trips it), so this checks consent independently,
+     * reusing the SAME meta key -- see class docblock's "no second consent
+     * mechanism" decision.
+     *
+     * Round 3.1 fix (item 2): this ALWAYS requires this request's own
+     * `pii_ok` -- it never treats an existing META_PII_CONFIRMED as
+     * sufficient on its own, because the whole point of calling this is
+     * that the photo is about to change, which is exactly the case the old
+     * "already confirmed, skip" shortcut let slip through (a stale
+     * confirmation carrying over onto a photo it never covered). The
+     * caller records the fresh confirmation (date + exact photo set) once
+     * the new photo is actually saved.
      *
      * Sends a 409 and stops the request if confirmation is missing.
      *
      * @param int $post_id
      */
     protected static function require_photo_consent( $post_id ) {
-        if ( get_post_meta( $post_id, PTK_Newsletter_Builder::META_PII_CONFIRMED, true ) ) {
-            return;
-        }
-
         if ( empty( $_POST['pii_ok'] ) ) {
             wp_send_json_error(
                 array(
@@ -322,8 +348,6 @@ class PTK_Share_Panel {
                 409
             );
         }
-
-        update_post_meta( $post_id, PTK_Newsletter_Builder::META_PII_CONFIRMED, current_time( 'Y-m-d' ) );
     }
 
     /**
@@ -623,7 +647,16 @@ class PTK_Share_Panel {
             }
         }
 
-        $pii_confirmed = (bool) get_post_meta( $post_id, PTK_Newsletter_Builder::META_PII_CONFIRMED, true );
+        // Round 3.1 fix (item 2): "confirmed" here means confirmed for the
+        // EXACT set of photos this newsletter has right now -- not just
+        // "confirmed at some point in the past" (PTK_Newsletter_Builder::
+        // photo_ids_confirmed()'s whole point). A different photo added
+        // since the last confirmation must re-show the consent checkbox,
+        // exactly like step 5's own gate.
+        $pii_confirmed = PTK_Newsletter_Builder::photo_ids_confirmed(
+            $post_id,
+            PTK_Newsletter_Builder::current_photo_ids( $ctx['blocks'], $post_id )
+        );
 
         ob_start();
         ?>
@@ -632,15 +665,19 @@ class PTK_Share_Panel {
 
             <?php self::render_photo_color_fields(); ?>
 
-            <?php if ( ! $pii_confirmed ) : ?>
-                <div class="ptk-nl-share-photo-consent" data-share-photo-consent>
-                    <p class="description">Please confirm the photos are OK before using one here — the same checkbox as Publish.</p>
-                    <label>
-                        <input type="checkbox" data-share-photo-pii-ok>
-                        <?php echo esc_html( PTK_Newsletter_Builder::PII_CHECKBOX_LABEL ); ?>
-                    </label>
-                </div>
-            <?php endif; ?>
+            <?php /* Round 3.1 fix (item 2): always in the DOM (never
+                    conditional on $pii_confirmed) so the JS that unchecks
+                    this the moment a DIFFERENT photo is picked always has a
+                    real checkbox to act on -- see share-panel.js's
+                    requireFreshPhotoConsent(). Pre-checked only when
+                    consent is on file for the CURRENT photo. */ ?>
+            <div class="ptk-nl-share-photo-consent" data-share-photo-consent>
+                <p class="description">Please confirm the photos are OK before adding or changing one here — the same checkbox as Publish.</p>
+                <label>
+                    <input type="checkbox" data-share-photo-pii-ok<?php checked( $pii_confirmed ); ?>>
+                    <?php echo esc_html( PTK_Newsletter_Builder::PII_CHECKBOX_LABEL ); ?>
+                </label>
+            </div>
 
             <?php if ( ! $photo['photo_id'] ) : ?>
                 <div class="ptk-nl-share-actions" data-share-photo-choices>
