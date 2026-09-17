@@ -40,7 +40,26 @@ voice applies now to what the Hub already does; new abilities are later rounds.
 
 ---
 
-## 3. Simple mode
+## 3. Nothing changes until a site turns it on
+
+**While Lucas is testing, this redesign must not appear on any school's site by itself.** Both halves
+of it — the new look and Simple mode — sit behind one per-site setting, **"Use the new PTA Hub look"**,
+which ships **off**. With it off, every screen renders exactly as it does today: the old stylesheets,
+the full WordPress menu, no stamps, no folding.
+
+- **Off (the default on every site, including Northeast until Lucas flips it):** no visible change at
+  all. The new CSS and fonts are not even enqueued.
+- **On, for one site:** that site gets the new look, and Simple mode becomes available per person with
+  the defaults in §3.1.
+- **Later**, once Lucas is happy, a release changes the default to on and this paragraph goes away.
+  Sites that explicitly turned it off stay off.
+
+An upload therefore only ever *adds* the option. A volunteer at Bradford sees nothing new until
+somebody at Bradford (or the Council) chooses it.
+
+---
+
+## 3.1 Simple mode
 
 **The problem:** a volunteer logging into WordPress meets the whole admin — Posts, Media, Plugins,
 Appearance, Tools, dozens of plugin menus — and none of it is their job.
@@ -55,8 +74,9 @@ Appearance, Tools, dozens of plugin menus — and none of it is their job.
 - A quiet "Show all of WordPress" link, always present, turns it off for that person; "Back to the
   simple view" turns it on again. The choice sticks.
 
-**Defaults:** on for everyone except site administrators. A site setting sets the default per role;
-each person can still switch their own.
+**Defaults:** while "Use the new PTA Hub look" is off, Simple mode does not exist for anyone. Once a
+site turns the look on, Simple mode defaults to on for everyone except site administrators, and a
+per-site setting can change that per role. Each person can still switch their own at any time.
 
 **How it hides.** `remove_menu_page()` / `remove_submenu_page()` on `admin_menu` (late priority),
 checked per request against the current user — never CSS or JavaScript hiding, which leaves working
@@ -99,7 +119,7 @@ No permanent menu to read while working.
 
 **What counts as a Hub screen.** Exactly the admin pages this plugin registers (its `page_` hook
 suffixes) plus its own post-type list and edit screens. Everything else, including core list tables
-the Hub links out to, is ordinary WordPress and is left alone. Every rule in §3 and §5 uses that
+the Hub links out to, is ordinary WordPress and is left alone. Every rule in §3.1 and §5 uses that
 definition.
 
 **Long screens fold.** A step shows one open section plus one-line summaries of the rest
@@ -256,7 +276,8 @@ steps that actually make sense, plus "I'm done".
 
 ## 9. Build order
 
-1. **Foundations** — `hub.css` tokens and parts, `class-hub-ui.php`, bundled fonts, tests.
+1. **Foundations** — the "Use the new PTA Hub look" setting (off), `hub.css` tokens and parts,
+   `class-hub-ui.php`, bundled fonts, tests. Nothing loads while the setting is off.
 2. **Home screen** — the six intentions, the waiting stamp, the quiet links, "I'm not sure where to
    start". (Before Simple mode, because Simple mode's login landing needs somewhere good to land.)
 3. **Simple mode** — per-person setting, menu and admin-bar trimming, login landing, the switch.
