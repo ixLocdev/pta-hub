@@ -48,4 +48,31 @@ ptk_test_ok( true === $t::active( true, '1', array(), array() ), 'the new look o
 ptk_test_ok( true === $t::active( true, '', array( 'subscriber' ), $t::default_roles() ), 'the new look on plus a default-on role is on' );
 ptk_test_ok( false === $t::active( true, '', array( 'administrator' ), $t::default_roles() ), 'the new look on but an admin with no meta is off' );
 
+// keep_menu_slug(): a plain allow-list check, testable without WordPress.
+ptk_test_ok( true === $t::keep_menu_slug( 'profile.php', array( 'edit.php?post_type=pta_knowledge', 'profile.php' ) ), 'profile.php survives when it is in the keep list' );
+ptk_test_ok( false === $t::keep_menu_slug( 'plugins.php', array( 'edit.php?post_type=pta_knowledge', 'profile.php' ) ), 'plugins.php does not survive when it is not in the keep list' );
+ptk_test_ok( false === $t::keep_menu_slug( 'anything', array() ), 'nothing survives an empty keep list' );
+ptk_test_ok( false === $t::keep_menu_slug( 'anything', null ), 'a non-array keep list is treated as empty' );
+
+// The top-level keep list: the Hub's own menu, plus Profile, nothing else.
+ptk_test_ok( array( 'edit.php?post_type=pta_knowledge', 'profile.php' ) === $t::top_level_keep_slugs(), 'top level keeps only the Hub menu and Profile' );
+
+// The Hub-task submenu keep list: task screens, not once-in-a-while admin screens.
+$hub_tasks = $t::hub_task_submenu_slugs();
+foreach ( array( 'ptk-welcome', 'ptk-newsletter-builder', 'ptk-content-wizard', 'edit.php?post_type=pta_knowledge', 'edit.php?post_type=pta_newsletter' ) as $task_slug ) {
+    ptk_test_ok( in_array( $task_slug, $hub_tasks, true ), "hub_task_submenu_slugs() keeps $task_slug" );
+}
+foreach ( array( 'ptk-settings', 'ptk-search-analytics', 'ptk-content-importer', 'ptk-network-sync', 'ptk-school-colors', 'ptk-vendor-approvals', 'ptk-share-settings' ) as $admin_slug ) {
+    ptk_test_ok( ! in_array( $admin_slug, $hub_tasks, true ), "hub_task_submenu_slugs() drops the once-in-a-while admin screen $admin_slug" );
+}
+
+// The admin-bar keep list.
+$bar_keep = $t::admin_bar_keep_ids();
+foreach ( array( 'site-name', 'my-sites', 'my-account', 'ptk-simple-mode' ) as $bar_id ) {
+    ptk_test_ok( in_array( $bar_id, $bar_keep, true ), "admin_bar_keep_ids() keeps $bar_id" );
+}
+foreach ( array( 'new-content', 'comments', 'updates', 'wp-logo' ) as $bar_id ) {
+    ptk_test_ok( ! in_array( $bar_id, $bar_keep, true ), "admin_bar_keep_ids() drops $bar_id" );
+}
+
 ptk_test_done();
