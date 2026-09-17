@@ -129,8 +129,8 @@
         safeBoot(initFocalPickers);
         // Round 4: "Add from your calendar" on step 2.
         safeBoot(bindCalendarImport);
-        // Round 5: "Bring in your recent posts" on steps 2 and 3, the
-        // step 2 jump hint, and the action-bar primary/secondary state.
+        // Round 5: "Bring in your recent posts" on step 3 (Stories), the
+        // step 2/3 jump hints, and the action-bar primary/secondary state.
         safeBoot(bindPostImport);
         safeBoot(bindJumpHints);
         safeBoot(updateEventsActionState);
@@ -2207,7 +2207,11 @@
             order.forEach(function (day) {
                 html += '<div class="ptk-nl-cal-day"><h4>' + calEscapeHtml(formatDayHeading(day)) + '</h4>';
                 byDay[day].forEach(function (ev) {
-                    var already = !!existing[calEventKey(ev.start, ev.title)];
+                    var strippedTitle = stripEmoji(ev.title);
+                    // Match on the SAME (stripped) title a row actually stores
+                    // (addCalendarEventChecks() saves stripEmoji(ev.title)) so
+                    // an emoji-bearing calendar title still detects as added.
+                    var already = !!existing[calEventKey(ev.start, strippedTitle)];
                     uidCounter++;
                     var id = 'ptk-nl-cal-ev-' + uidCounter;
                     var payload = calEscapeHtml(JSON.stringify(ev));
@@ -2215,7 +2219,7 @@
                         '<input type="checkbox" id="' + id + '" data-calendar-check value="' + payload + '"' +
                         (already ? ' disabled' : '') + '>' +
                         '<span class="ptk-nl-cal-event-body">' +
-                        '<span class="ptk-nl-cal-event-title">' + calEscapeHtml(stripEmoji(ev.title)) + '</span>' +
+                        '<span class="ptk-nl-cal-event-title">' + calEscapeHtml(strippedTitle) + '</span>' +
                         '<span class="ptk-nl-cal-event-meta">' + calEscapeHtml(calEventDetail(ev)) +
                         (ev.tag ? ' <span class="ptk-nl-cal-tag">' + calEscapeHtml(ev.tag) + '</span>' : '') +
                         (already ? ' <span class="ptk-nl-cal-already">Already added</span>' : '') +
@@ -2346,15 +2350,16 @@
     }
 
     /* --------------------------------------------------------------
-     * Round 5: "Bring in your recent posts" -- steps 2 and 3.
+     * Round 5: "Bring in your recent posts" -- step 3 (Stories) only.
      *
-     * Two independent mount points share this code ($context 'events' on
-     * step 2, near Coming up; 'stories' on step 3, near Stories) -- each
-     * keeps its own fetched list/range/search state in postState[context],
-     * the same way calState does for the single calendar panel. A ticked
-     * post can still be added as any of Story / Event / Quick note
-     * regardless of which panel it was opened from; the context only
-     * decides where the "Bring in your recent posts" button sits.
+     * Round 3.1 (fix 1): used to also mount on step 2 (Coming up), which
+     * made Coming up read as two different tools merged together -- the
+     * calendar is for dates, recent posts are for stories. Coming up is
+     * calendar-only now; a ticked post here can still be added as an Event,
+     * which still lands in Coming up (see POST_TYPE_LABELS' "goes to Coming
+     * up" wording and the eventCount note in the [data-post-add] handler),
+     * it's just chosen from this one panel. $context is kept generic
+     * (postState[context]) in case a second mount point returns later.
      * ------------------------------------------------------------ */
 
     var POST_RANGES = [
@@ -2362,9 +2367,13 @@
         { key: 'month', label: 'Last month' }
     ];
 
+    // Round 3.1 (fix 1): "Bring in your recent posts" now mounts only on
+    // step 3 (context 'stories') -- Coming up (step 2) is calendar-only.
+    // comingUpNotice: { eventCount } set by the [data-post-add] handler
+    // when any imported item went to Coming up as a Date, so the panel can
+    // say so with a jump link -- see the note on POST_TYPE_LABELS.event.
     var postState = {
-        events: { range: 'two_weeks', search: '', posts: [], loading: false, error: '' },
-        stories: { range: 'two_weeks', search: '', posts: [], loading: false, error: '' }
+        stories: { range: 'two_weeks', search: '', posts: [], loading: false, error: '', comingUpNotice: null }
     };
 
     /** Every source_post id already in ANY of the three repeaters (events rows, story cards, quick notes). */
@@ -2417,8 +2426,14 @@
         });
     }
 
-    /** "Story" / "Event" / "Quick note" wording for a suggestion's type value. */
-    var POST_TYPE_LABELS = { story: 'Story', event: 'Event', quick_note: 'Quick note' };
+    /**
+     * "Story" / "Date (goes to Coming up)" / "Quick note" wording for a
+     * suggestion's type value. Round 3.1 (fix 1): the Event choice is
+     * relabelled so it's no surprise that ticking it sends the item to
+     * Coming up (step 2) rather than Stories (step 3), where this panel
+     * now lives.
+     */
+    var POST_TYPE_LABELS = { story: 'Story', event: 'Date (goes to Coming up)', quick_note: 'Quick note' };
 
     function renderPostImportPanel(context, $panel) {
         if (!$panel || !$panel.length) {
@@ -2435,6 +2450,16 @@
 
         html += '<input type="search" class="ptk-nl-post-search" data-post-search data-post-context="' + context +
             '" placeholder="Search your posts" value="' + calEscapeHtml(state.search) + '">';
+
+        // Round 3.1 (fix 1): an imported Date still lands in Coming up (step
+        // 2) even though this panel is on step 3 -- say so, with a link that
+        // jumps straight there, so it's never a surprise where it went.
+        if (state.comingUpNotice && state.comingUpNotice.eventCount > 0) {
+            var comingUpWord = 1 === state.comingUpNotice.eventCount ? 'date was' : 'dates were';
+            html += '<p class="ptk-nl-post-added-msg ptk-nl-post-added-events" data-post-added-events-msg>' +
+                state.comingUpNotice.eventCount + ' ' + comingUpWord + ' added to Coming up (step 2). ' +
+                '<a href="#" data-goto-step="2">Jump there</a></p>';
+        }
 
         if (state.loading) {
             html += '<p class="ptk-nl-post-status">Loading your posts…</p>';
@@ -2583,6 +2608,11 @@
                 fetchImportablePosts(context, false);
             } else {
                 $panel.attr('hidden', 'hidden');
+                // Round 3.1 (fix 1): the "went to Coming up" notice only
+                // stays live while the panel is open.
+                if (postState[context]) {
+                    postState[context].comingUpNotice = null;
+                }
             }
         });
 
@@ -2645,6 +2675,7 @@
             }
 
             var $firstNewRow = null;
+            var eventCount = 0;
             $checked.each(function () {
                 var post;
                 try {
@@ -2666,18 +2697,38 @@
 
                 itemsToAdd.forEach(function (item) {
                     var $newRow = addPostSuggestionToBuilder(item);
-                    if ($newRow && !$firstNewRow) {
-                        $firstNewRow = $newRow;
+                    if ($newRow) {
+                        if (!$firstNewRow) {
+                            $firstNewRow = $newRow;
+                        }
+                        // Round 3.1 (fix 1): an Event still lands in Coming up
+                        // (step 2), even though this panel is on step 3 --
+                        // count those so the confirmation can say so.
+                        if ('event' === item.type) {
+                            eventCount++;
+                        }
                     }
                 });
             });
 
-            $panel.attr('hidden', 'hidden');
+            if (!$firstNewRow) {
+                return;
+            }
+
             serializeAndPreview();
             updateEventsActionState();
             updateStoriesActionState();
 
-            if ($firstNewRow) {
+            // Round 3.1 (fix 1): only stay open (instead of the usual
+            // close-after-add) when there's something to say -- an Event
+            // went to Coming up and the volunteer should know where to find
+            // it. A plain Story/Quick note add closes and focuses the new
+            // row, same as before.
+            if (eventCount > 0) {
+                postState[context].comingUpNotice = { eventCount: eventCount };
+                renderPostImportPanel(context, $panel);
+            } else {
+                $panel.attr('hidden', 'hidden');
                 var $focusable = $firstNewRow.find('[data-field]').first();
                 if ($focusable.length) {
                     scrollAndFocus($focusable);
@@ -2701,8 +2752,7 @@
             return;
         }
         var hasRows = $section.find('[data-rows-for="rows"] [data-row]').length > 0;
-        $section.find('[data-events-actions] [data-calendar-toggle], [data-events-actions] [data-post-import-toggle]')
-            .toggleClass('button-primary', !hasRows);
+        $section.find('[data-events-actions] [data-calendar-toggle]').toggleClass('button-primary', !hasRows);
     }
 
     function updateStoriesActionState() {
@@ -2729,9 +2779,11 @@
             if ('calendar-events' === target) {
                 $toggle = $('[data-calendar-import] [data-calendar-toggle]').first();
                 $panel = $('[data-calendar-import] [data-calendar-panel]').first();
+            } else if ('posts-stories' === target) {
+                $toggle = $('[data-post-import="stories"] [data-post-import-toggle]').first();
+                $panel = $('[data-post-import="stories"] [data-post-import-panel]').first();
             } else {
-                $toggle = $('[data-post-import="events"] [data-post-import-toggle]').first();
-                $panel = $('[data-post-import="events"] [data-post-import-panel]').first();
+                return;
             }
             if (!$toggle.length) {
                 return;

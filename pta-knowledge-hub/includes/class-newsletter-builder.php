@@ -1234,6 +1234,8 @@ class PTK_Newsletter_Builder {
                                 <p class="ptk-nl-step-blurb"><?php echo esc_html( $step['blurb'] ); ?></p>
                                 <?php if ( 2 === $step_number ) : ?>
                                     <?php self::render_step2_jump_hint(); ?>
+                                <?php elseif ( 3 === $step_number ) : ?>
+                                    <?php self::render_step3_jump_hint(); ?>
                                 <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
@@ -1638,26 +1640,36 @@ class PTK_Newsletter_Builder {
 
     /**
      * Round 5 (live-testing fix): a short line just under step 2's blurb
-     * pointing at the calendar-import and post-import panels, which
-     * otherwise sit far down the page under a long Announcement card where
-     * nobody scrolls to find them. Only the parts that apply are shown --
-     * a school with no calendar configured (and not able to set one up)
-     * only sees the posts link.
+     * pointing at the calendar-import panel, which otherwise sits far down
+     * the page under a long Announcement card where nobody scrolls to find
+     * it. Only shown when a calendar is actually configured -- nothing to
+     * jump to otherwise.
+     *
+     * Round 3.1 (fix 1): "Bring in recent posts" no longer lives here --
+     * step 2's Coming up is calendar-only now (posts moved to step 3's
+     * Stories, which imports as Story/Event/Quick note). See
+     * render_step3_jump_hint() for its step-3 equivalent.
      */
     protected static function render_step2_jump_hint() {
         $configured = '' !== (string) get_option( PTK_Share_Settings::GCAL_OPTION, '' );
-
-        $links = array();
-        if ( $configured ) {
-            $links[] = '<a href="#" class="ptk-nl-jump-link" data-jump-hint data-jump-target="calendar-events">Add dates from your calendar &darr;</a>';
-        }
-        $links[] = '<a href="#" class="ptk-nl-jump-link" data-jump-hint data-jump-target="posts-events">Bring in recent posts</a>';
-
-        if ( empty( $links ) ) {
+        if ( ! $configured ) {
             return;
         }
         ?>
-        <p class="ptk-nl-jump-hint"><?php echo wp_kses( implode( ' &middot; ', $links ), array( 'a' => array( 'href' => true, 'class' => true, 'data-jump-hint' => true, 'data-jump-target' => true ) ) ); ?></p>
+        <p class="ptk-nl-jump-hint"><a href="#" class="ptk-nl-jump-link" data-jump-hint data-jump-target="calendar-events">Add dates from your calendar &darr;</a></p>
+        <?php
+    }
+
+    /**
+     * Round 3.1 (fix 1): step 3's equivalent of render_step2_jump_hint() --
+     * points at the "Bring in your recent posts" panel near Stories.
+     * Always shown (unlike the calendar hint, importing posts needs no
+     * setup), since a volunteer with zero recent posts still benefits from
+     * knowing the option exists.
+     */
+    protected static function render_step3_jump_hint() {
+        ?>
+        <p class="ptk-nl-jump-hint"><a href="#" class="ptk-nl-jump-link" data-jump-hint data-jump-target="posts-stories">Bring in your recent posts &darr;</a></p>
         <?php
     }
 
@@ -1758,14 +1770,15 @@ class PTK_Newsletter_Builder {
             case 'events':
                 ?>
                 <?php /* Round 5 (live-testing fix): one action bar so "Add from
-                        your calendar" / "Bring in your recent posts" / "+ Add
-                        event" sit together -- updateEventsActionState() in
-                        newsletter-builder.js makes the first two primary
-                        (filled) when the list is empty, and all three equal
-                        outline buttons once rows exist. */ ?>
+                        your calendar" / "+ Add event" sit together --
+                        updateEventsActionState() in newsletter-builder.js makes
+                        the calendar toggle primary (filled) when the list is
+                        empty, and both equal outline buttons once rows exist.
+                        Round 3.1 (fix 1): "Bring in your recent posts" moved to
+                        Stories (step 3) -- Coming up is calendar-only, so it
+                        doesn't read like two different tools merged together. */ ?>
                 <div class="ptk-nl-events-actions" data-events-actions>
                     <?php self::render_calendar_import(); ?>
-                    <?php self::render_post_import( 'events' ); ?>
                     <button type="button" class="button ptk-nl-add" data-add-event-btn>+ Add event</button>
                 </div>
                 <div class="ptk-nl-rows" data-rows data-rows-for="rows"></div>

@@ -1209,6 +1209,18 @@
     color: #7f8590;
 }
 
+/* Round 3.1 (fix 1): "N dates were added to Coming up (step 2)" -- shown in
+   the posts panel when an imported item went to Coming up, full-width so
+   it reads as its own line, never a one-sided accent bar. */
+.ptk-nl-post-added-events {
+    margin: 0 0 10px;
+    padding: 8px 10px;
+    background: #eef1fa;
+    border: 1px solid #c7d2e8;
+    border-radius: 8px;
+    color: #1a2f5c;
+}
+
 .ptk-nl-cal-actions {
     display: flex;
     align-items: center;
