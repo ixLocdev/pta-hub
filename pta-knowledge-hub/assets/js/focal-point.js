@@ -80,6 +80,43 @@ function ptkFocalCssZoomStyle( x, y, storedZoom ) {
     return 'transform:scale(' + scale + ');transform-origin:' + origin + ';';
 }
 
+/**
+ * The crop-frame rectangle, in IMAGE pixels, for a $ratio window over an
+ * $imgW x $imgH photo at focal $fx/$fy (0-100) and $storedZoom -- the JS
+ * twin of PTK_Focal_Point::rect_crop(), number-for-number (see
+ * tests/test-focal-point-js.mjs and tests/test-focal-point.php). Used by
+ * the round-3.1 picker to draw a crop frame directly over the WHOLE photo
+ * instead of relying on object-fit:cover to hide the rest.
+ *
+ * @return {{x:number,y:number,w:number,h:number}}
+ */
+function ptkFocalCropRect( imgW, imgH, ratio, fx, fy, storedZoom ) {
+    var srcW = Math.max( 1, parseFloat( imgW ) || 1 );
+    var srcH = Math.max( 1, parseFloat( imgH ) || 1 );
+    var r = Math.max( 0.01, parseFloat( ratio ) || 1 );
+    var zoom = ptkFocalEffectiveZoom( storedZoom ) / 100;
+    var cropW, cropH;
+    if ( srcW / srcH > r ) {
+        cropH = srcH;
+        cropW = srcH * r;
+    } else {
+        cropW = srcW;
+        cropH = srcW / r;
+    }
+    cropW /= zoom;
+    cropH /= zoom;
+    var availX = srcW - cropW;
+    var availY = srcH - cropH;
+    var pctX = ptkFocalClampPercent( fx ) / 100;
+    var pctY = ptkFocalClampPercent( fy ) / 100;
+    return {
+        x: Math.max( 0, Math.min( availX, availX * pctX ) ),
+        y: Math.max( 0, Math.min( availY, availY * pctY ) ),
+        w: cropW,
+        h: cropH
+    };
+}
+
 if ( typeof module !== 'undefined' && module.exports ) {
     module.exports = {
         ptkFocalClampPercent: ptkFocalClampPercent,
@@ -87,6 +124,7 @@ if ( typeof module !== 'undefined' && module.exports ) {
         ptkFocalEffectiveZoom: ptkFocalEffectiveZoom,
         ptkFocalPointerToFocal: ptkFocalPointerToFocal,
         ptkFocalObjectPosition: ptkFocalObjectPosition,
-        ptkFocalCssZoomStyle: ptkFocalCssZoomStyle
+        ptkFocalCssZoomStyle: ptkFocalCssZoomStyle,
+        ptkFocalCropRect: ptkFocalCropRect
     };
 }

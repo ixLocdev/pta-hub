@@ -20,7 +20,8 @@ const {
     ptkFocalSanitizeZoom,
     ptkFocalEffectiveZoom,
     ptkFocalPointerToFocal,
-    ptkFocalCssZoomStyle
+    ptkFocalCssZoomStyle,
+    ptkFocalCropRect
 } = require( path.join( __dirname, '..', 'assets', 'js', 'focal-point.js' ) );
 
 let failed = false;
@@ -73,6 +74,20 @@ ok( zeroRect.x === 50 && zeroRect.y === 50, 'pointerToFocal: a zero-size (unlaid
 // agree with sanitize_zoom's clamp behavior at the edges.
 ok( ptkFocalSanitizeZoom( 100 + 5 ) === 105, 'keyboard +5 from the floor is in range' );
 ok( ptkFocalSanitizeZoom( 100 + 25 ) === 125, 'keyboard Shift+ +25 from the floor is in range' );
+
+// ptkFocalCropRect: same three cases as PTK_Focal_Point::rect_crop() in
+// tests/test-focal-point.php, so the picker's on-screen crop frame agrees
+// with the server crop number-for-number.
+var r1 = ptkFocalCropRect( 1000, 1000, 16 / 9, 50, 50, 0 );
+ok( round2( r1.w ) === 1000.0 && round2( r1.h ) === 562.5 && round2( r1.y ) === 218.75 && round2( r1.x ) === 0.0, 'cropRect: square source, 16:9 window centered' );
+var r2 = ptkFocalCropRect( 1000, 1000, 16 / 9, 50, 0, 0 );
+ok( round2( r2.y ) === 0.0, 'cropRect: focal at top -> crop at y=0' );
+var r3 = ptkFocalCropRect( 4000, 1000, 16 / 9, 100, 50, 200 );
+ok( round2( r3.w ) === 888.89 && round2( r3.h ) === 500.0 && round2( r3.x ) === 3111.11, 'cropRect: wide source, far right, 200% zoom' );
+
+function round2( n ) {
+    return Math.round( n * 100 ) / 100;
+}
 
 if ( failed ) {
     console.log( 'FAILED' );

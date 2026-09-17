@@ -480,7 +480,14 @@
 /* ── Focal-point-and-zoom picker ──
    No slider: the photo itself is the control (drag, pinch, wheel, arrow
    keys). The dot's border is all four sides on purpose -- never a
-   one-sided accent bar. */
+   one-sided accent bar.
+
+   Round 3.1: the surface shows the WHOLE photo (aspect-ratio is set from
+   JS once the image loads, from its own natural width/height) so nothing
+   is ever hidden by a cover-crop the volunteer can't see past. A crop-
+   frame overlay (.ptk-focal-frame) shows exactly what will be kept, with
+   everything outside it dimmed -- the frame's border is all four sides,
+   never a one-sided accent bar. */
 .ptk-focal-wrap {
     margin-top: 10px;
     max-width: 420px;
@@ -488,6 +495,7 @@
 .ptk-focal-surface {
     position: relative;
     width: 100%;
+    max-height: 320px;
     overflow: hidden;
     border-radius: 4px;
     background: #f0eee7;
@@ -501,19 +509,21 @@
     display: block;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     pointer-events: none;
     user-select: none;
 }
-/* Round 3.1: "Whole photo" mode shows the photo letterboxed (never
-   cropped) and has no dot to drag -- the newsletter renders it byte for
-   byte, so the preview shouldn't imply a crop that won't happen. */
-.ptk-focal-wrap[data-focal-mode="whole"] .ptk-focal-img {
-    object-fit: contain;
-    background: #f0eee7;
-}
 .ptk-focal-wrap[data-focal-mode="whole"] .ptk-focal-surface {
     cursor: default;
+}
+/* The frame is the crop: bright inside, everything outside dimmed via a
+   giant spread box-shadow (cheaper and simpler than a 4-piece mask, and it
+   never needs a one-sided border to read as "this part is cut off"). */
+.ptk-focal-frame {
+    position: absolute;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+    pointer-events: none;
 }
 .ptk-focal-dot {
     position: absolute;

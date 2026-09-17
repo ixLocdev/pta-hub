@@ -14,8 +14,18 @@
  *
  * One function, ptkInitFocalPicker($group, options), instantiates the
  * control inside any image field-group; options.aspect ('16:9' or '1:1')
- * only changes the CSS box the photo sits in -- the math is frame-shape
- * agnostic. ptkDestroyFocalPicker($group) tears it down.
+ * only changes the shape of the crop FRAME drawn over the photo -- the
+ * math is frame-shape agnostic. ptkDestroyFocalPicker($group) tears it down.
+ *
+ * Round 3.1 (what-you-see-is-what-you-get rewrite): the surface shows the
+ * WHOLE photo at its own natural aspect ratio (set from naturalWidth/
+ * naturalHeight once it loads) -- no object-fit:cover, no CSS transform on
+ * the image. A crop-frame overlay, sized/positioned by ptkFocalCropRect()
+ * (assets/js/focal-point.js, mirroring PTK_Focal_Point::rect_crop() in
+ * includes/class-focal-point.php), shows exactly the part that will be
+ * kept, dimmed outside it. Dragging still moves the dot (now simply at
+ * (fx%, fy%) of the surface, since the surface IS the whole image); pinch/
+ * wheel/+/- still zoom, which shrinks the frame.
  */
 (function ($) {
     'use strict';
@@ -75,6 +85,14 @@
         writeFocal($group, focal.x, focal.y, sanitized);
     }
 
+    /**
+     * Round 3.1: the surface now shows the WHOLE photo at its own natural
+     * aspect ratio (no cropping, no CSS transform on the image) and a crop
+     * FRAME overlay shows exactly what the server will keep, positioned by
+     * the same math as PTK_Focal_Point::rect_crop() (ptkFocalCropRect(),
+     * assets/js/focal-point.js). What-you-see is what-you-get: the frame
+     * is the crop, not a stand-in for one.
+     */
     function updateSurface($group, state) {
         var focal = readFocal($group);
         var effective = ptkFocalEffectiveZoom(focal.zoom);
@@ -87,19 +105,25 @@
             '. Drag it, or nudge it with the arrow keys. Plus and minus zoom.'
         );
 
-        if (effective > PTK_FOCAL_ZOOM_MIN) {
-            state.$img.css({
-                transform: 'scale(' + ( effective / 100 ) + ')',
-                transformOrigin: focal.x + '% ' + focal.y + '%'
-            });
-        } else {
-            state.$img.css({ transform: '', transformOrigin: '' });
-        }
-
         // Always present, never conditional -- rendering it only while
         // zoomed reflows the row (the reset button visibly shoves around)
         // the moment the wheel is touched.
         state.$readout.text(effective > PTK_FOCAL_ZOOM_MIN ? Math.round(effective) + '%' : '');
+
+        if ('whole' === state.mode || !state.naturalW || !state.naturalH) {
+            state.$frame.hide();
+            return;
+        }
+
+        var ratio = ( '1:1' === state.aspect ) ? 1 : ( 16 / 9 );
+        var rect = ptkFocalCropRect(state.naturalW, state.naturalH, ratio, focal.x, focal.y, focal.zoom);
+
+        state.$frame.css({
+            left: ( ( rect.x / state.naturalW ) * 100 ) + '%',
+            top: ( ( rect.y / state.naturalH ) * 100 ) + '%',
+            width: ( ( rect.w / state.naturalW ) * 100 ) + '%',
+            height: ( ( rect.h / state.naturalH ) * 100 ) + '%'
+        }).show();
     }
 
     function pinchDistance(pointers) {
@@ -129,16 +153,15 @@
 
         window.ptkDestroyFocalPicker($group);
 
-        var boxRatio = ( '1:1' === aspect ) ? '1/1' : '16/9';
-
         var $wrap = $(
             '<div class="ptk-focal-wrap" data-focal-wrap>' +
-                '<div class="ptk-focal-surface" data-focal-surface style="aspect-ratio:' + boxRatio + ';touch-action:none;">' +
+                '<div class="ptk-focal-surface" data-focal-surface style="touch-action:none;">' +
                     '<img class="ptk-focal-img" src="' + src + '" alt="" draggable="false">' +
+                    '<div class="ptk-focal-frame" data-focal-frame></div>' +
                     '<button type="button" class="ptk-focal-dot" data-focal-dot tabindex="0"></button>' +
                 '</div>' +
                 '<div class="ptk-focal-meta">' +
-                    '<p class="ptk-focal-hint" data-focal-hint>Drag the dot onto what has to stay in view. Pinch or scroll to zoom. Arrow keys nudge it; hold Shift to move further, plus and minus to zoom.</p>' +
+                    '<p class="ptk-focal-hint" data-focal-hint>Drag the dot onto what matters most. Pinch or scroll on the photo to zoom in. The bright box is what will show.</p>' +
                     '<span class="ptk-focal-readout" data-focal-readout></span>' +
                     '<button type="button" class="ptk-focal-reset" data-focal-reset>Reset to center</button>' +
                 '</div>' +
@@ -151,6 +174,7 @@
             $wrap: $wrap,
             $surface: $wrap.find('[data-focal-surface]'),
             $img: $wrap.find('.ptk-focal-img'),
+            $frame: $wrap.find('[data-focal-frame]'),
             $dot: $wrap.find('[data-focal-dot]'),
             $hint: $wrap.find('[data-focal-hint]'),
             $readout: $wrap.find('[data-focal-readout]'),
@@ -158,15 +182,52 @@
             pointers: new Map(),
             pinchStart: null,
             dragging: false,
-            mode: mode
+            mode: mode,
+            aspect: aspect,
+            naturalW: 0,
+            naturalH: 0
         };
 
         var surfaceEl = state.$surface[0];
+        var imgEl = state.$img[0];
+
+        // The surface shows the WHOLE photo at its own natural aspect ratio
+        // (capped height so a tall portrait doesn't take over the page) --
+        // no object-fit:cover, no cropping in the preview itself. Sized in
+        // actual pixels (not just CSS aspect-ratio) so the surface always
+        // fills EXACTLY with the photo -- no letterboxing that would throw
+        // off the dot/frame's percent-of-surface math on a tall portrait.
+        // The crop FRAME overlay (updateSurface()) is what shows the part
+        // that will actually be kept.
+        function sizeToNaturalAspect() {
+            var w = imgEl.naturalWidth || 0;
+            var h = imgEl.naturalHeight || 0;
+            if (!w || !h) {
+                return;
+            }
+            state.naturalW = w;
+            state.naturalH = h;
+            var maxW = state.$wrap.width() || 420;
+            var maxH = 320;
+            var dispW = maxW;
+            var dispH = maxW * ( h / w );
+            if (dispH > maxH) {
+                dispH = maxH;
+                dispW = maxH * ( w / h );
+            }
+            state.$surface.css({ width: Math.round(dispW) + 'px', height: Math.round(dispH) + 'px' });
+            updateSurface($group, state);
+        }
+        if (imgEl.complete && imgEl.naturalWidth) {
+            sizeToNaturalAspect();
+        } else {
+            state.$img.on('load', sizeToNaturalAspect);
+        }
 
         var WHOLE_HINT = 'Showing the whole photo.';
-        var CROP_HINT = 'Drag the dot onto what has to stay in view. Pinch or scroll to zoom. Arrow keys nudge it; hold Shift to move further, plus and minus to zoom.';
+        var CROP_HINT = 'Drag the dot onto what matters most. Pinch or scroll on the photo to zoom in. The bright box is what will show.';
 
-        /** Apply the current state.mode to the DOM: dot/readout/reset visibility and the hint text. */
+        /** Apply the current state.mode to the DOM: dot/frame/readout/reset visibility and the hint text. */
         function applyMode() {
             var whole = 'whole' === state.mode;
             $wrap.attr('data-focal-mode', state.mode);
@@ -174,6 +235,9 @@
             state.$readout.toggle(!whole);
             state.$reset.toggle(!whole);
             state.$hint.text(whole ? WHOLE_HINT : CROP_HINT);
+            if (whole) {
+                state.$frame.hide();
+            }
         }
 
         function report(clientX, clientY) {
@@ -325,6 +389,11 @@
             surfaceEl.removeEventListener('wheel', onWheel);
             state.$dot.off('keydown', onKeyDown);
             state.$reset.off('click', onReset);
+            state.$img.off('load', sizeToNaturalAspect);
+        };
+
+        state.refresh = function () {
+            updateSurface($group, state);
         };
 
         $group.data('ptkFocalPicker', state);
@@ -350,8 +419,20 @@
         state.$reset.toggle(!whole);
         state.$hint.text(whole
             ? 'Showing the whole photo.'
-            : 'Drag the dot onto what has to stay in view. Pinch or scroll to zoom. Arrow keys nudge it; hold Shift to move further, plus and minus to zoom.');
+            : 'Drag the dot onto what matters most. Pinch or scroll on the photo to zoom in. The bright box is what will show.');
+        updateSurfaceIfPossible(state);
     };
+
+    /**
+     * updateSurface() lives inside ptkInitFocalPicker's closure (it needs
+     * $group), so ptkSetFocalMode -- called from outside that closure --
+     * asks the mounted state to refresh itself via a reference it stashed.
+     */
+    function updateSurfaceIfPossible(state) {
+        if (state && state.refresh) {
+            state.refresh();
+        }
+    }
 
     window.ptkDestroyFocalPicker = function ($group) {
         var state = $group.data('ptkFocalPicker');
