@@ -219,6 +219,11 @@ body.ptk-hub-look .ptk-quiet-links a {
     color: var(--ptk-primary);
 }
 
+body.ptk-hub-look .ptk-quiet-links a + a::before {
+    content: " \00B7 ";
+    color: var(--ptk-text-dim);
+}
+
 /* Empty state */
 
 body.ptk-hub-look .ptk-empty {
