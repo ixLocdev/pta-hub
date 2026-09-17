@@ -125,6 +125,16 @@ ptk_test_ok( '' === $e['value'] && '' === $e['error'], 'empty email is allowed (
 $e = $t::validate_contact_email( 'not an email' );
 ptk_test_ok( '' === $e['value'] && '' !== $e['error'], 'a non-email is refused with a plain message' );
 
+// ---------------------------------------------------------------------
+// 4.7.0: calendar_test_message() -- Round 4 "Google Calendar" test-fetch
+// ---------------------------------------------------------------------
+ptk_test_ok( 'Found 42 upcoming events.' === $t::calendar_test_message( '', 42 ), 'a plain count message, plural' );
+ptk_test_ok( 'Found 1 upcoming event.' === $t::calendar_test_message( '', 1 ), 'singular event is not "1 events"' );
+ptk_test_ok( false !== strpos( $t::calendar_test_message( '', 0 ), 'no upcoming events' ), 'zero events is still a plain, non-alarming message' );
+ptk_test_ok( false !== strpos( $t::calendar_test_message( 'not_public' ), 'isn’t public' ), 'not_public: says the calendar is not public' );
+ptk_test_ok( false !== strpos( $t::calendar_test_message( 'unreachable' ), 'Couldn’t reach' ), 'unreachable: plain fix-it message' );
+ptk_test_ok( false !== strpos( $t::calendar_test_message( 'not_calendar' ), 'didn’t return a calendar' ), 'not_calendar: plain fix-it message' );
+
 // The admin CSS must never draw a one-sided accent bar.
 $css = file_get_contents( __DIR__ . '/../assets/css/share-settings.css' ) . file_get_contents( __DIR__ . '/../assets/css/share-page.css' );
 ptk_test_ok( ! preg_match( '/border-(left|right|inline-start|inline-end)\s*:/i', $css ), 'no one-sided borders in the share page / settings CSS' );

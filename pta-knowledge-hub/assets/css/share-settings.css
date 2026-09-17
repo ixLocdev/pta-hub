@@ -173,6 +173,13 @@
     max-width: 62ch;
 }
 
+.ptk-ss-field-result {
+    margin: -6px 0 8px;
+    color: #1a2f5c;
+    font-weight: 600;
+    max-width: 62ch;
+}
+
 #ptk-share-facebook-url[aria-invalid="true"] {
     border-color: #a51d23;
     box-shadow: 0 0 0 1px #a51d23;

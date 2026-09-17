@@ -38,6 +38,9 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+require_once __DIR__ . '/class-calendar-source.php';
+require_once __DIR__ . '/class-ics-reader.php';
+
 class PTK_Share_Settings {
 
     const PAGE_SLUG    = 'ptk-share-settings';
@@ -48,6 +51,16 @@ class PTK_Share_Settings {
     const CAL_OPTION   = 'ptk_calendar_url';
     const EMAIL_OPTION = 'ptk_contact_email';
     const NOTICE_KEY   = 'ptk_share_settings_notice_';
+
+    /**
+     * Round 4: the school's Google Calendar, normalized to its public
+     * .ics address -- separate from CAL_OPTION above, which is the
+     * calendar PAGE on the school's own website. See
+     * PTK_Calendar_Source::normalize() for accepted input shapes and
+     * includes/class-ics-events-ajax.php for the "Add from your
+     * calendar" panel that reads this.
+     */
+    const GCAL_OPTION = 'ptk_gcal_ics_url';
 
     /** @var string */
     private static $hook = '';
@@ -229,6 +242,32 @@ class PTK_Share_Settings {
     }
 
     /**
+     * Plain-English result of a test-fetch, from the number of upcoming
+     * events found (or a specific failure reason). Pure so it's
+     * unit-tested without a network call.
+     *
+     * @param string $reason  '' on success, else one of
+     *                        'unreachable' | 'not_public' | 'not_calendar'.
+     * @param int    $count   Upcoming event count, when $reason is ''.
+     * @return string
+     */
+    public static function calendar_test_message( $reason, $count = 0 ) {
+        switch ( $reason ) {
+            case 'unreachable':
+                return 'Couldn’t reach that calendar. Please check the address and try again.';
+            case 'not_public':
+                return 'That calendar isn’t public yet. In Google Calendar, open the calendar’s Settings, turn on “Make available to public,” then save this again.';
+            case 'not_calendar':
+                return 'That address didn’t return a calendar. Please copy the “Public address in iCal format” again from Google Calendar’s Settings → Integrate calendar.';
+            default:
+                if ( 0 === $count ) {
+                    return 'Found your calendar, but no upcoming events yet.';
+                }
+                return sprintf( 'Found %d upcoming event%s.', $count, 1 === $count ? '' : 's' );
+        }
+    }
+
+    /**
      * Which of the three places a color came from, in plain words. Kept for
      * the general "why is this the color you see" wording; the square
      * itself no longer has a Council-fallback source (4.3.0 amendment) --
@@ -310,6 +349,9 @@ class PTK_Share_Settings {
             'cal_typed'     => '',
             'email_error'   => '',
             'email_typed'   => '',
+            'gcal_error'    => '',
+            'gcal_typed'    => '',
+            'gcal_result'   => '',
         );
 
         // ---- Background color ----
@@ -434,6 +476,36 @@ class PTK_Share_Settings {
             }
         }
 
+        // ---- Google Calendar (for adding events) ----
+        $typed  = isset( $_POST['ptk_gcal_ics_url'] ) ? (string) wp_unslash( $_POST['ptk_gcal_ics_url'] ) : '';
+        $typed  = wp_check_invalid_utf8( $typed, true );
+        $result = PTK_Calendar_Source::normalize( $typed );
+        $before = (string) get_option( self::GCAL_OPTION, '' );
+
+        if ( '' !== $result['error'] ) {
+            $notice['gcal_error'] = $result['error'];
+            $notice['gcal_typed'] = substr( $typed, 0, 2000 );
+            $notice['messages'][] = array( 'error', 'The calendar address was not saved. ' . $result['error'] );
+        } elseif ( '' === $result['url'] ) {
+            delete_option( self::GCAL_OPTION );
+            if ( '' !== $before ) {
+                $notice['messages'][] = array( 'ok', 'Google Calendar removed. "Add from your calendar" is now hidden on step 2.' );
+            }
+        } else {
+            $clean = esc_url_raw( $result['url'], array( 'https' ) );
+            if ( '' === $clean ) {
+                $notice['gcal_error'] = 'That address could not be saved. Please copy it again from Google Calendar.';
+                $notice['messages'][] = array( 'error', $notice['gcal_error'] );
+            } else {
+                update_option( self::GCAL_OPTION, $clean );
+                delete_transient( PTK_Ics_Events_Ajax::cache_key( $clean ) );
+
+                $test = self::test_fetch_calendar( $clean );
+                $notice['gcal_result'] = $test['message'];
+                $notice['messages'][]  = array( '' === $test['reason'] ? 'ok' : 'warn', $test['message'] );
+            }
+        }
+
         if ( empty( $notice['messages'] ) ) {
             $notice['messages'][] = array( 'ok', 'Settings saved. Nothing needed changing.' );
         }
@@ -442,6 +514,41 @@ class PTK_Share_Settings {
 
         wp_safe_redirect( self::page_url( array( 'saved' => 1 ) ) );
         exit;
+    }
+
+    /**
+     * Fetch a calendar's .ics URL once, right after saving it, and report
+     * a plain-English result. Short timeout -- this runs inline in the
+     * save request, so it must not make the admin feel stuck.
+     *
+     * @param string $url The public .ics URL (already normalized).
+     * @return array{message:string,reason:string} reason '' means success.
+     */
+    private static function test_fetch_calendar( $url ) {
+        $response = wp_remote_get( $url, array( 'timeout' => 8, 'redirection' => 3 ) );
+
+        if ( is_wp_error( $response ) ) {
+            return array( 'message' => self::calendar_test_message( 'unreachable' ), 'reason' => 'unreachable' );
+        }
+
+        $code = (int) wp_remote_retrieve_response_code( $response );
+        $body = wp_remote_retrieve_body( $response );
+
+        if ( 404 === $code || 410 === $code ) {
+            return array( 'message' => self::calendar_test_message( 'not_public' ), 'reason' => 'not_public' );
+        }
+        if ( $code < 200 || $code >= 300 ) {
+            return array( 'message' => self::calendar_test_message( 'unreachable' ), 'reason' => 'unreachable' );
+        }
+        if ( false === strpos( $body, 'BEGIN:VCALENDAR' ) ) {
+            return array( 'message' => self::calendar_test_message( 'not_calendar' ), 'reason' => 'not_calendar' );
+        }
+
+        $today = current_time( 'Y-m-d' );
+        $until = gmdate( 'Y-m-d', strtotime( $today . ' +180 days' ) );
+        $events = PTK_Ics_Reader::events_in_range( $body, $today, $until, wp_timezone_string() );
+
+        return array( 'message' => self::calendar_test_message( '', count( $events ) ), 'reason' => '' );
     }
 
     public static function render_page() {
@@ -464,6 +571,7 @@ class PTK_Share_Settings {
             'news_error' => '', 'news_typed' => '',
             'cal_error' => '', 'cal_typed' => '',
             'email_error' => '', 'email_typed' => '',
+            'gcal_error' => '', 'gcal_typed' => '', 'gcal_result' => '',
             'messages' => array(),
         ), $notice );
 
@@ -483,6 +591,7 @@ class PTK_Share_Settings {
         $news_value  = '' !== $notice['news_error'] ? (string) $notice['news_typed'] : (string) get_option( self::NEWS_OPTION, '' );
         $cal_value   = '' !== $notice['cal_error'] ? (string) $notice['cal_typed'] : (string) get_option( self::CAL_OPTION, '' );
         $email_value = '' !== $notice['email_error'] ? (string) $notice['email_typed'] : (string) get_option( self::EMAIL_OPTION, '' );
+        $gcal_value  = '' !== $notice['gcal_error'] ? (string) $notice['gcal_typed'] : (string) get_option( self::GCAL_OPTION, '' );
         ?>
         <div class="wrap ptk-share-settings">
             <h1>Newsletter settings</h1>
@@ -582,6 +691,19 @@ class PTK_Share_Settings {
                     <p class="ptk-ss-field-error" id="ptk-calendar-error"><?php echo esc_html( $notice['cal_error'] ); ?></p>
                 <?php endif; ?>
                 <p class="description">The calendar page on your own website, like https://northeastpta.org/calendar -- not your Google Calendar address. Adds a "See full calendar →" link next to "What's coming up", shown once there's at least one date listed. Leave it empty to leave the link out.</p>
+
+                <h2>Google Calendar (for adding events)</h2>
+                <p>
+                    <label for="ptk-gcal-url">Your PTA’s Google Calendar</label><br>
+                    <input type="text" inputmode="url" class="regular-text" id="ptk-gcal-url" name="ptk_gcal_ics_url" value="<?php echo esc_attr( $gcal_value ); ?>" placeholder="https://calendar.google.com/calendar/ical/…/public/basic.ics" autocomplete="off"<?php echo '' !== $notice['gcal_error'] ? ' aria-invalid="true" aria-describedby="ptk-gcal-error"' : ''; ?>>
+                </p>
+                <?php if ( '' !== $notice['gcal_error'] ) : ?>
+                    <p class="ptk-ss-field-error" id="ptk-gcal-error"><?php echo esc_html( $notice['gcal_error'] ); ?></p>
+                <?php endif; ?>
+                <?php if ( '' === $notice['gcal_error'] && '' !== $notice['gcal_result'] ) : ?>
+                    <p class="ptk-ss-field-result"><?php echo esc_html( $notice['gcal_result'] ); ?></p>
+                <?php endif; ?>
+                <p class="description">In Google Calendar: open your calendar’s <strong>Settings</strong>, then <strong>“Integrate calendar,”</strong> and paste the <strong>“Public address in iCal format.”</strong> The calendar must be set to public. This is different from the calendar page above -- it&#8217;s what lets step 2 of the newsletter builder offer &#8220;Add from your calendar.&#8221; Leave it empty to hide that button.</p>
 
                 <h2>Contact email</h2>
                 <p>
