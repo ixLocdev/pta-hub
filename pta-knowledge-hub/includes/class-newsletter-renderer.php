@@ -62,6 +62,24 @@ class PTK_Newsletter_Renderer {
     const NUMERALS    = 'font-variant-numeric:lining-nums tabular-nums;';
 
     /**
+     * Anchor ids already handed out during the current render() call, keyed
+     * by slug, so two sections with the same heading don't collide. Reset
+     * at the top of every render() (Round 7).
+     */
+    private static $anchors_used = array();
+
+    /**
+     * Section rows collected during the current render() call — one entry
+     * per anchored section (top story, each story card, quick notes, the
+     * dates group, the "Got news?" closing) — for
+     * PTK_Newsletter_Email::generate() to build "Inside this issue" without
+     * re-implementing the same content rules. Never used by the HTML
+     * itself. Reset at the top of every render(); read back with
+     * last_sections() right after a render() call.
+     */
+    private static $sections = array();
+
+    /**
      * Render an ordered array of { type, data } blocks into newsletter HTML.
      *
      * @param array $blocks Ordered block list (see class docblock in
@@ -72,6 +90,9 @@ class PTK_Newsletter_Renderer {
      * @return string
      */
     public static function render( array $blocks, array $opts ) {
+        self::$anchors_used = array();
+        self::$sections     = array();
+
         $out = '<div style="background:' . esc_attr( self::PALETTE['bg'] ) . ';">';
 
         foreach ( $blocks as $block ) {
@@ -343,7 +364,22 @@ class PTK_Newsletter_Renderer {
 
         $calendar_url = isset( $opts['calendar_url'] ) ? self::str( $opts['calendar_url'] ) : '';
 
-        $html  = '<div data-ptk-block="' . esc_attr( 'events' ) . '" style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:40px 20px 40px;box-sizing:border-box;">';
+        $anchor_id = self::anchor_id( '', 'coming-up' );
+        // Teaser: the next couple of dates' titles, so the email row says
+        // something more useful than "see the calendar."
+        $titles = array();
+        foreach ( $rows as $row ) {
+            $t = isset( $row['title'] ) ? self::str( $row['title'] ) : '';
+            if ( '' !== trim( $t ) ) {
+                $titles[] = trim( $t );
+            }
+            if ( count( $titles ) >= 3 ) {
+                break;
+            }
+        }
+        self::record_section( $anchor_id, "What's coming up", implode( ', ', $titles ) );
+
+        $html  = '<div id="' . esc_attr( $anchor_id ) . '" data-ptk-block="' . esc_attr( 'events' ) . '" style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:40px 20px 40px;box-sizing:border-box;">';
         $html .= '<div style="max-width:840px;margin:0 auto;">';
         $html .= self::section_rule( 'Coming up', '28px' );
 
@@ -433,8 +469,10 @@ class PTK_Newsletter_Renderer {
             return self::placeholder( 'featured', 'Your top story will appear here.', $opts );
         }
 
-        $mark  = '' !== trim( $eyebrow ) ? $eyebrow : 'Top story';
-        $html  = '<div data-ptk-block="' . esc_attr( 'featured' ) . '" style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:40px 20px 8px;box-sizing:border-box;">';
+        $mark      = '' !== trim( $eyebrow ) ? $eyebrow : 'Top story';
+        $anchor_id = self::anchor_id( $headline, 'top-story' );
+        self::record_section( $anchor_id, '' !== trim( $headline ) ? $headline : $mark, $body );
+        $html  = '<div id="' . esc_attr( $anchor_id ) . '" data-ptk-block="' . esc_attr( 'featured' ) . '" style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:40px 20px 8px;box-sizing:border-box;">';
         $html .= self::story_section( self::section_rule( $mark ), $headline, $body, $image_html, $link_url, $link_text );
         $html .= '</div>';
 
@@ -495,8 +533,11 @@ class PTK_Newsletter_Renderer {
             }
             $previous_unlabeled = ! $labeled;
 
+            $anchor_id = self::anchor_id( $heading, '' !== trim( $eyebrow ) ? $eyebrow : 'story' );
+            self::record_section( $anchor_id, '' !== trim( $heading ) ? $heading : ( '' !== trim( $eyebrow ) ? $eyebrow : 'More news' ), $body );
+
             $padding = ( 0 === $i ) ? '40px 20px 8px' : '24px 20px 8px';
-            $html   .= '<div style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:' . $padding . ';box-sizing:border-box;">';
+            $html   .= '<div id="' . esc_attr( $anchor_id ) . '" style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:' . $padding . ';box-sizing:border-box;">';
             $html   .= self::story_section( $rule, $heading, $body, self::maybe_image( $image_id, $card, $opts, $heading ), $link_url, $link_text );
             $html   .= '</div>';
         }
@@ -536,7 +577,17 @@ class PTK_Newsletter_Renderer {
             return self::placeholder( 'quick_notes', 'Your quick notes will appear here.', $opts );
         }
 
-        $html  = '<div data-ptk-block="' . esc_attr( 'quick_notes' ) . '" style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:40px 20px 24px;box-sizing:border-box;">';
+        $qn_label  = '' !== trim( $label ) ? $label : 'Quick notes';
+        $anchor_id = self::anchor_id( $qn_label, 'quick-notes' );
+        $qn_teaser = array();
+        foreach ( $valid as $n ) {
+            if ( '' !== trim( $n['heading'] ) ) {
+                $qn_teaser[] = trim( $n['heading'] );
+            }
+        }
+        self::record_section( $anchor_id, $qn_label, implode( ', ', $qn_teaser ) );
+
+        $html  = '<div id="' . esc_attr( $anchor_id ) . '" data-ptk-block="' . esc_attr( 'quick_notes' ) . '" style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:40px 20px 24px;box-sizing:border-box;">';
         $html .= '<div style="max-width:840px;margin:0 auto;">';
         $html .= self::section_rule( '' !== trim( $label ) ? $label : 'Quick notes' );
         // House style: the § rule above a list is its only strong line, and
@@ -593,7 +644,10 @@ class PTK_Newsletter_Renderer {
             $news_email = strtok( substr( $news_url, 7 ), '?' );
         }
 
-        $html  = '<div style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:40px 20px 8px;box-sizing:border-box;">';
+        $anchor_id = self::anchor_id( '', 'news' );
+        self::record_section( $anchor_id, 'Got news? Put it in the newsletter', 'Send it our way and we\'ll get it in the next issue.' );
+
+        $html  = '<div id="' . esc_attr( $anchor_id ) . '" style="font-family:' . self::FONT_SANS . ';color:' . esc_attr( self::PALETTE['text'] ) . ';background:' . esc_attr( self::PALETTE['surface'] ) . ';padding:40px 20px 8px;box-sizing:border-box;">';
         $html .= '<div style="max-width:840px;margin:0 auto;">';
         $html .= self::section_rule( 'Your news' );
         $html .= '<h2 style="font-family:' . self::FONT_SANS . ';font-weight:800;font-size:clamp(24px,5vw,30px);line-height:1.05;letter-spacing:-0.02em;margin:0 0 12px;color:' . esc_attr( self::PALETTE['text'] ) . ';">Got news? Put it in the newsletter.</h2>';
@@ -709,6 +763,79 @@ class PTK_Newsletter_Renderer {
      * The "§ Coming up" mark and its ink line, which opens every white
      * section. Deliberately not named render_*: see the dispatch in render().
      */
+    /**
+     * The sections recorded by the render() call just made — one entry per
+     * anchored, linkable section: { id, headline, teaser }. Used only by
+     * PTK_Newsletter_Email::generate() to build "Inside this issue" without
+     * a second, drifting copy of these same content rules. Call
+     * immediately after render(); a later render() call resets it.
+     *
+     * @return array
+     */
+    public static function last_sections() {
+        return self::$sections;
+    }
+
+    /**
+     * A URL-safe slug for an anchor id, deduped against every slug already
+     * handed out in this render() call. No WordPress dependency (the
+     * renderer is WordPress-free by design — see the class docblock), so
+     * this does its own simple ASCII fold instead of calling sanitize_title().
+     *
+     * @param string $text     Preferred source text (a heading, a label).
+     * @param string $fallback Used when $text is blank or folds to nothing.
+     * @return string e.g. "block-film-on-the-field"
+     */
+    private static function anchor_id( $text, $fallback ) {
+        $source = '' !== trim( self::str( $text ) ) ? $text : $fallback;
+        $slug   = strtolower( trim( self::str( $source ) ) );
+        $slug   = html_entity_decode( wp_strip_all_tags( $slug ), ENT_QUOTES, 'UTF-8' );
+        $slug   = preg_replace( '/[^a-z0-9]+/', '-', $slug );
+        $slug   = trim( $slug, '-' );
+        // Keep anchors from growing unreasonably long for a full sentence heading.
+        $slug   = substr( $slug, 0, 40 );
+        $slug   = trim( $slug, '-' );
+        if ( '' === $slug ) {
+            $slug = 'section';
+        }
+
+        $base  = $slug;
+        $i     = 2;
+        while ( isset( self::$anchors_used[ $slug ] ) ) {
+            $slug = $base . '-' . $i;
+            $i++;
+        }
+        self::$anchors_used[ $slug ] = true;
+
+        return 'block-' . $slug;
+    }
+
+    /**
+     * Record one "Inside this issue" row for the section just rendered.
+     * $teaser is plain text (tags stripped, truncated) — see last_sections().
+     *
+     * @param string $id
+     * @param string $headline
+     * @param string $teaser_source Rich or plain text to summarize.
+     */
+    private static function record_section( $id, $headline, $teaser_source ) {
+        if ( '' === trim( self::str( $headline ) ) ) {
+            return;
+        }
+        $plain = trim( html_entity_decode( wp_strip_all_tags( self::str( $teaser_source ) ), ENT_QUOTES, 'UTF-8' ) );
+        $plain = preg_replace( '/\s+/', ' ', $plain );
+        if ( function_exists( 'mb_strlen' ) && mb_strlen( $plain ) > 110 ) {
+            $plain = rtrim( mb_substr( $plain, 0, 109 ) ) . '…';
+        } elseif ( strlen( $plain ) > 110 ) {
+            $plain = rtrim( substr( $plain, 0, 109 ) ) . '…';
+        }
+        self::$sections[] = array(
+            'id'       => $id,
+            'headline' => trim( self::str( $headline ) ),
+            'teaser'   => $plain,
+        );
+    }
+
     private static function section_rule( $mark, $margin_bottom = '16px' ) {
         return '<div style="display:flex;align-items:center;gap:18px;margin-bottom:' . esc_attr( $margin_bottom ) . ';">'
             . '<div style="font-family:' . self::FONT_SERIF . ';font-style:italic;font-weight:500;font-size:15px;color:' . esc_attr( self::PALETTE['primary'] ) . ';white-space:nowrap;">§ ' . esc_html( $mark ) . '</div>'
