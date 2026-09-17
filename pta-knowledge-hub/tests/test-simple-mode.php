@@ -59,10 +59,13 @@ ptk_test_ok( array( 'edit.php?post_type=pta_knowledge', 'profile.php' ) === $t::
 
 // The Hub-task submenu keep list: task screens, not once-in-a-while admin screens.
 $hub_tasks = $t::hub_task_submenu_slugs();
-foreach ( array( 'ptk-welcome', 'ptk-newsletter-builder', 'ptk-content-wizard', 'edit.php?post_type=pta_knowledge', 'edit.php?post_type=pta_newsletter' ) as $task_slug ) {
+foreach ( array( 'ptk-welcome', 'ptk-newsletter-builder', 'ptk-share-settings', 'ptk-content-wizard', 'edit.php?post_type=pta_knowledge', 'edit.php?post_type=pta_newsletter' ) as $task_slug ) {
     ptk_test_ok( in_array( $task_slug, $hub_tasks, true ), "hub_task_submenu_slugs() keeps $task_slug" );
 }
-foreach ( array( 'ptk-settings', 'ptk-search-analytics', 'ptk-content-importer', 'ptk-network-sync', 'ptk-school-colors', 'ptk-vendor-approvals', 'ptk-share-settings' ) as $admin_slug ) {
+// Newsletter settings holds the switch that turns the whole new look off,
+// so it stays reachable even though it's otherwise a once-in-a-while screen.
+ptk_test_ok( in_array( 'ptk-share-settings', $hub_tasks, true ), 'hub_task_submenu_slugs() keeps Newsletter settings -- it holds the new-look switch' );
+foreach ( array( 'ptk-settings', 'ptk-search-analytics', 'ptk-content-importer', 'ptk-network-sync', 'ptk-school-colors', 'ptk-vendor-approvals' ) as $admin_slug ) {
     ptk_test_ok( ! in_array( $admin_slug, $hub_tasks, true ), "hub_task_submenu_slugs() drops the once-in-a-while admin screen $admin_slug" );
 }
 
@@ -74,5 +77,27 @@ foreach ( array( 'site-name', 'my-sites', 'my-account', 'ptk-simple-mode' ) as $
 foreach ( array( 'new-content', 'comments', 'updates', 'wp-logo' ) as $bar_id ) {
     ptk_test_ok( ! in_array( $bar_id, $bar_keep, true ), "admin_bar_keep_ids() drops $bar_id" );
 }
+
+// redirect_target(): only a same-site target survives; anything else falls back.
+ptk_test_ok( '/wp-admin/edit.php' === $t::redirect_target( '/wp-admin/edit.php', 'https://example.org', '/fallback' ), 'a bare same-site path survives' );
+ptk_test_ok( 'https://example.org/wp-admin/' === $t::redirect_target( 'https://example.org/wp-admin/', 'https://example.org', '/fallback' ), 'a full url on the same host survives' );
+ptk_test_ok( '/fallback' === $t::redirect_target( 'https://evil.example/steal', 'https://example.org', '/fallback' ), 'a different host falls back' );
+ptk_test_ok( '/fallback' === $t::redirect_target( '//evil.example/steal', 'https://example.org', '/fallback' ), 'a scheme-relative //host trick falls back' );
+ptk_test_ok( '/fallback' === $t::redirect_target( '\\\\evil.example/steal', 'https://example.org', '/fallback' ), 'a backslash trick falls back' );
+ptk_test_ok( '/fallback' === $t::redirect_target( '', 'https://example.org', '/fallback' ), 'empty input falls back' );
+ptk_test_ok( '/fallback' === $t::redirect_target( null, 'https://example.org', '/fallback' ), 'non-string input falls back' );
+
+// login_redirect_target(): Simple mode off leaves the default alone; on, edit_posts goes home, anyone smaller goes public.
+ptk_test_ok( 'wp-admin/' === $t::login_redirect_target( 'wp-admin/', false, true, 'HUB_HOME', 'PUBLIC_HUB' ), 'Simple mode off leaves the default redirect alone' );
+ptk_test_ok( 'HUB_HOME' === $t::login_redirect_target( 'wp-admin/', true, false, 'HUB_HOME', 'PUBLIC_HUB' ), 'Simple mode on, edit_posts, goes to the Hub home' );
+ptk_test_ok( 'PUBLIC_HUB' === $t::login_redirect_target( 'wp-admin/', true, true, 'HUB_HOME', 'PUBLIC_HUB' ), 'Simple mode on, too small for the Hub, goes to the PUBLIC Hub page' );
+
+// should_leave_dashboard(): only index.php, only Simple mode on, never ajax/cron/network-admin.
+ptk_test_ok( true === $t::should_leave_dashboard( 'index.php', true, false, false, false ), 'the plain dashboard, Simple mode on, leaves' );
+ptk_test_ok( false === $t::should_leave_dashboard( 'index.php', false, false, false, false ), 'Simple mode off never leaves' );
+ptk_test_ok( false === $t::should_leave_dashboard( 'edit.php', true, false, false, false ), 'any other screen never leaves' );
+ptk_test_ok( false === $t::should_leave_dashboard( 'index.php', true, true, false, false ), 'an AJAX request never leaves' );
+ptk_test_ok( false === $t::should_leave_dashboard( 'index.php', true, false, true, false ), 'a cron request never leaves' );
+ptk_test_ok( false === $t::should_leave_dashboard( 'index.php', true, false, false, true ), 'a network-admin request never leaves' );
 
 ptk_test_done();

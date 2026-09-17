@@ -435,8 +435,8 @@ class PTK_Welcome {
             );
         }
         $quiet[] = array(
-            'label' => 'Show all of WordPress',
-            'url'   => admin_url(),
+            'label' => class_exists( 'PTK_Simple_Mode' ) ? PTK_Simple_Mode::toggle_link_label() : 'Show all of WordPress',
+            'url'   => class_exists( 'PTK_Simple_Mode' ) ? PTK_Simple_Mode::toggle_url() : admin_url(),
         );
         if ( ! empty( $quiet ) ) {
             echo PTK_Hub_UI::quiet_links( $quiet );

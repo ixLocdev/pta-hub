@@ -25,6 +25,14 @@ class PTK_Simple_Mode {
     /** The Hub's own top-level menu slug -- the one top-level item Simple mode keeps. */
     const HUB_TOP_SLUG = 'edit.php?post_type=pta_knowledge';
 
+    /**
+     * The admin_post_{ACTION} hook the toggle listens on, and the nonce
+     * action/name it checks. Deliberately the same string as USER_META --
+     * both spell out "this is the Simple mode switch" -- but they are two
+     * separate constants for two separate purposes.
+     */
+    const TOGGLE_ACTION = 'ptk_simple_mode';
+
     public static function init() {
         // Late priority: run after every other plugin (and WordPress itself)
         // has added its own menu items and admin-bar nodes, so there is
@@ -38,7 +46,10 @@ class PTK_Simple_Mode {
         add_filter( 'screen_options_show_screen', array( __CLASS__, 'hide_screen_options' ) );
         add_filter( 'contextual_help', array( __CLASS__, 'hide_contextual_help' ), 10, 3 );
 
-        // Redirects and the toggle itself are task 3; notice-clearing is task 4.
+        // Task 3: the way out (the toggle) and the landing rules.
+        add_action( 'admin_post_' . self::TOGGLE_ACTION, array( __CLASS__, 'handle_toggle' ) );
+        add_filter( 'login_redirect', array( __CLASS__, 'filter_login_redirect' ), 10, 3 );
+        add_action( 'admin_init', array( __CLASS__, 'maybe_leave_dashboard' ) );
     }
 
     /**
@@ -179,6 +190,10 @@ class PTK_Simple_Mode {
         return array(
             'ptk-welcome',
             'ptk-newsletter-builder',
+            // Newsletter settings holds the switch that turns the whole new
+            // look off again -- it must never be more than one click away,
+            // even though it's otherwise a once-in-a-while admin screen.
+            'ptk-share-settings',
             'ptk-content-wizard',
             self::HUB_TOP_SLUG,
             'edit.php?post_type=pta_newsletter',
@@ -251,9 +266,8 @@ class PTK_Simple_Mode {
     /**
      * admin_bar_menu (priority 999): strip the admin bar down to the site
      * name, the person's account (and, on multisite, the site switcher),
-     * then add "Show all of WordPress". The toggle behind that link is
-     * wired up in task 3; for now it opens the ordinary wp-admin home,
-     * which still works for anyone who lands there.
+     * then add "Show all of WordPress" -- a real link to the toggle, wired
+     * to bring the person back to the page they clicked it from.
      */
     public static function trim_admin_bar( $wp_admin_bar ) {
         if ( is_network_admin() || is_user_admin() ) {
@@ -279,8 +293,8 @@ class PTK_Simple_Mode {
 
         $wp_admin_bar->add_node( array(
             'id'    => 'ptk-simple-mode',
-            'title' => 'Show all of WordPress',
-            'href'  => admin_url(),
+            'title' => self::toggle_link_label(),
+            'href'  => self::toggle_url(),
         ) );
     }
 
@@ -300,5 +314,186 @@ class PTK_Simple_Mode {
     /** contextual_help: hide the help tab on Hub screens in Simple mode. */
     public static function hide_contextual_help( $old_help, $screen_id, $screen ) {
         return self::on_hub_screen_for_user() ? '' : $old_help;
+    }
+
+    /* ------------------------------------------------------------------
+     * Task 3: landing and the way out.
+     * ----------------------------------------------------------------*/
+
+    /** The Hub's own home screen -- where someone in Simple mode with edit_posts lands. */
+    public static function hub_home_url() {
+        return admin_url( self::HUB_TOP_SLUG . '&page=ptk-welcome' );
+    }
+
+    /**
+     * Pure: is a redirect target safe to send someone to, given the site's
+     * own home url? A bare same-site path, or a full url on the same host,
+     * survives; anything else (another host, a scheme-relative "//host/..."
+     * trick, empty input) falls back. Guards the toggle's "come back here"
+     * link -- and the login landing, which starts from whatever WordPress
+     * itself proposed -- against being turned into an open redirect.
+     *
+     * @param string $requested The candidate redirect target.
+     * @param string $home_url  This site's own home url.
+     * @param string $fallback  What to use when $requested isn't safe.
+     */
+    public static function redirect_target( $requested, $home_url, $fallback ) {
+        $requested = is_string( $requested ) ? trim( $requested ) : '';
+        $fallback  = is_string( $fallback ) ? $fallback : '';
+        if ( '' === $requested ) {
+            return $fallback;
+        }
+
+        // Browsers treat a leading backslash like a leading slash, so
+        // normalize before judging "bare path" vs. "off-site".
+        $normalized = str_replace( '\\', '/', $requested );
+
+        // A bare path (not "//host/..." -- that's scheme-relative, i.e. off-site).
+        if ( 0 === strpos( $normalized, '/' ) && 0 !== strpos( $normalized, '//' ) ) {
+            return $requested;
+        }
+
+        $req_host  = parse_url( $normalized, PHP_URL_HOST );
+        $home_host = parse_url( (string) $home_url, PHP_URL_HOST );
+        if ( $req_host && $home_host && strtolower( $req_host ) === strtolower( $home_host ) ) {
+            return $requested;
+        }
+
+        return $fallback;
+    }
+
+    /**
+     * Pure: where login_redirect should send someone. Simple mode off
+     * leaves WordPress's own default alone; on, edit_posts goes to the Hub
+     * home, anyone smaller goes to the PUBLIC Hub page -- never wp-admin.
+     *
+     * @param string $default_redirect What WordPress (or another plugin) proposed.
+     * @param bool   $simple_on        Simple mode active for this person.
+     * @param bool   $too_small        too_small_for_hub() for this person.
+     * @param string $hub_home_url     hub_home_url().
+     * @param string $public_hub_url   The public-facing Hub page.
+     */
+    public static function login_redirect_target( $default_redirect, $simple_on, $too_small, $hub_home_url, $public_hub_url ) {
+        if ( ! $simple_on ) {
+            return $default_redirect;
+        }
+        return $too_small ? $public_hub_url : $hub_home_url;
+    }
+
+    /**
+     * Pure: should an admin_init request visiting index.php (the dashboard)
+     * be sent to the Hub home instead? Never for an AJAX, cron, or
+     * network-admin request -- typed URLs everywhere else still work; only
+     * the plain dashboard landing is moved.
+     *
+     * @param string $pagenow   The global $pagenow value.
+     * @param bool   $simple_on Simple mode active for this person.
+     * @param bool   $is_ajax   wp_doing_ajax() (or DOING_AJAX).
+     * @param bool   $is_cron   wp_doing_cron() (or DOING_CRON).
+     * @param bool   $is_network_admin is_network_admin().
+     */
+    public static function should_leave_dashboard( $pagenow, $simple_on, $is_ajax, $is_cron, $is_network_admin ) {
+        if ( ! $simple_on || $is_ajax || $is_cron || $is_network_admin ) {
+            return false;
+        }
+        return 'index.php' === (string) $pagenow;
+    }
+
+    /** login_redirect filter: WordPress-coupled thin wrapper around login_redirect_target(). */
+    public static function filter_login_redirect( $redirect_to, $requested_redirect_to, $user ) {
+        if ( ! is_object( $user ) || ! isset( $user->ID ) || ! method_exists( $user, 'exists' ) || ! $user->exists() ) {
+            return $redirect_to;
+        }
+        if ( ! self::active_for_user( $user->ID ) ) {
+            return $redirect_to;
+        }
+        $caps      = isset( $user->allcaps ) && is_array( $user->allcaps ) ? $user->allcaps : array();
+        $too_small = self::too_small_for_hub( $caps );
+        $public    = function_exists( 'ptk_hub_url' ) ? ptk_hub_url() : home_url( '/' );
+
+        return self::login_redirect_target( $redirect_to, true, $too_small, self::hub_home_url(), $public );
+    }
+
+    /**
+     * admin_init: move someone in Simple mode off the plain dashboard onto
+     * the Hub home. Never for AJAX, REST, cron, or network-admin requests --
+     * REST requests never reach admin_init at all, but the check stays
+     * explicit rather than relying on that.
+     */
+    public static function maybe_leave_dashboard() {
+        if ( ! self::active_for_user() ) {
+            return;
+        }
+        if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+            return;
+        }
+        $is_ajax          = function_exists( 'wp_doing_ajax' ) ? wp_doing_ajax() : defined( 'DOING_AJAX' ) && DOING_AJAX;
+        $is_cron          = function_exists( 'wp_doing_cron' ) ? wp_doing_cron() : defined( 'DOING_CRON' ) && DOING_CRON;
+        $is_network_admin = function_exists( 'is_network_admin' ) && is_network_admin();
+
+        global $pagenow;
+        if ( ! self::should_leave_dashboard( (string) $pagenow, true, $is_ajax, $is_cron, $is_network_admin ) ) {
+            return;
+        }
+
+        wp_safe_redirect( self::hub_home_url() );
+        exit;
+    }
+
+    /** The current request's full url -- used as the toggle's "come back here" target. */
+    private static function current_request_url() {
+        $uri = isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+        return home_url( $uri );
+    }
+
+    /**
+     * The toggle's href, wherever it's placed -- the admin-bar node, or the
+     * home screen's quiet link. Nothing runs when the new look is off: the
+     * link falls back to the plain wp-admin home, same as it always was.
+     *
+     * @param string $redirect_to Where to send the person back to; defaults to the current page.
+     */
+    public static function toggle_url( $redirect_to = '' ) {
+        if ( ! class_exists( 'PTK_Hub_Look' ) || ! PTK_Hub_Look::on() ) {
+            return admin_url();
+        }
+        $redirect_to = '' !== $redirect_to ? $redirect_to : self::current_request_url();
+        $url = add_query_arg(
+            array(
+                'action'      => self::TOGGLE_ACTION,
+                'redirect_to' => rawurlencode( $redirect_to ),
+            ),
+            admin_url( 'admin-post.php' )
+        );
+        return wp_nonce_url( $url, self::TOGGLE_ACTION );
+    }
+
+    /** The toggle link's label -- what clicking it will do next, not the current state. */
+    public static function toggle_link_label() {
+        return self::active_for_user() ? 'Show all of WordPress' : 'Back to the simple view';
+    }
+
+    /**
+     * admin_post_ptk_simple_mode: flip the current user's own Simple mode
+     * meta, then send them back where they came from. Anyone signed in can
+     * flip it for themselves -- this is a personal display preference, not
+     * a permission, so the only capability check is "are you a real,
+     * signed-in user at all."
+     */
+    public static function handle_toggle() {
+        if ( ! current_user_can( 'read' ) ) {
+            wp_die( 'You must be signed in to do that.', 'Not allowed', array( 'response' => 403 ) );
+        }
+        check_admin_referer( self::TOGGLE_ACTION );
+
+        $user_id = get_current_user_id();
+        $turn_on = ! self::active_for_user( $user_id );
+        update_user_meta( $user_id, self::USER_META, $turn_on ? '1' : '0' );
+
+        $requested = isset( $_REQUEST['redirect_to'] ) ? (string) wp_unslash( $_REQUEST['redirect_to'] ) : (string) wp_get_referer();
+        $target    = self::redirect_target( $requested, home_url(), self::hub_home_url() );
+
+        wp_safe_redirect( $target );
+        exit;
     }
 }
