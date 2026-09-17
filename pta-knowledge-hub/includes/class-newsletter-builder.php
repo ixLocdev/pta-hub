@@ -39,6 +39,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 require_once PTK_PLUGIN_DIR . 'includes/class-newsletter-data.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-newsletter-renderer.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-share-settings.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-builder-copy.php';
 
 class PTK_Newsletter_Builder {
 
@@ -976,6 +977,25 @@ class PTK_Newsletter_Builder {
     }
 
     /**
+     * A field's label, straight from PTK_Builder_Copy: the new-look question
+     * when the new look is on, else today's literal label — see
+     * class-builder-copy.php. Every render_block_fields() <label> goes
+     * through this instead of a hardcoded string, so toggling the look is
+     * the ONLY thing that can change what a label prints.
+     *
+     * @param string $type    Block type slug.
+     * @param string $field   Field key.
+     * @param string $default Today's literal label, also the value returned
+     *                        when the new look is off — kept here rather
+     *                        than only in the map so a call site reads like
+     *                        the label it replaces.
+     * @return string
+     */
+    protected static function fl( $type, $field, $default ) {
+        return PTK_Builder_Copy::label( PTK_Hub_Look::on(), $type, $field, $default );
+    }
+
+    /**
      * Plain-English heading for a block type.
      *
      * @param string $type Block type slug.
@@ -1071,11 +1091,11 @@ class PTK_Newsletter_Builder {
                 'blurb' => 'The top story, shorter stories and quick notes. All optional.',
             ),
             4 => array(
-                'title' => 'Finish editing',
+                'title' => PTK_Builder_Copy::step_title( PTK_Hub_Look::on(), 4, 'Finish editing' ),
                 'blurb' => 'Put the sections in the order you want, and finish your sign-off.',
             ),
             5 => array(
-                'title' => 'Publish & share',
+                'title' => PTK_Builder_Copy::step_title( PTK_Hub_Look::on(), 5, 'Publish & share' ),
                 'blurb' => 'Check the photos, send it out, then share it.',
             ),
         );
@@ -1713,17 +1733,17 @@ class PTK_Newsletter_Builder {
                     <p class="description" id="ptk-nl-header-school_name-hint">Shown at the top of every newsletter.</p>
                 </div>
                 <div class="ptk-nl-field-group">
-                    <label for="ptk-nl-header-headline">Headline</label>
+                    <label for="ptk-nl-header-headline"><?php echo self::fl( 'header', 'headline', 'Headline' ); ?></label>
                     <input type="text" id="ptk-nl-header-headline" data-field="headline" value="<?php echo esc_attr( isset( $data['headline'] ) ? $data['headline'] : '' ); ?>" aria-describedby="ptk-nl-header-headline-hint">
                     <p class="description" id="ptk-nl-header-headline-hint">The big title at the top — for example "Week of September 14." Leave blank and we'll use the week of your issue date.</p>
                 </div>
                 <div class="ptk-nl-field-group">
-                    <label for="ptk-nl-header-summary">One-line summary</label>
+                    <label for="ptk-nl-header-summary"><?php echo self::fl( 'header', 'summary', 'One-line summary' ); ?></label>
                     <input type="text" id="ptk-nl-header-summary" data-field="summary" value="<?php echo esc_attr( isset( $data['summary'] ) ? $data['summary'] : '' ); ?>" aria-describedby="ptk-nl-header-summary-hint">
                     <p class="description" id="ptk-nl-header-summary-hint">Optional. One short line under the date saying what the issue is about. For example: ASE registration is open this week. About 60 characters fits on one line.</p>
                 </div>
                 <div class="ptk-nl-field-group">
-                    <label for="ptk-nl-header-greeting">Greeting</label>
+                    <label for="ptk-nl-header-greeting"><?php echo self::fl( 'header', 'greeting', 'Greeting' ); ?></label>
                     <textarea id="ptk-nl-header-greeting" data-field="greeting" rows="2" aria-describedby="ptk-nl-header-greeting-hint"><?php echo esc_textarea( isset( $data['greeting'] ) ? $data['greeting'] : '' ); ?></textarea>
                     <p class="description" id="ptk-nl-header-greeting-hint">A friendly hello and what&#8217;s coming up. For example: Hi Northeast families &#8212; it&#8217;s the last week of school!</p>
                 </div>
@@ -1733,27 +1753,27 @@ class PTK_Newsletter_Builder {
             case 'announcement':
                 ?>
                 <div class="ptk-nl-field-group">
-                    <label for="ptk-nl-announcement-when">When</label>
+                    <label for="ptk-nl-announcement-when"><?php echo self::fl( 'announcement', 'when', 'When' ); ?></label>
                     <input type="text" id="ptk-nl-announcement-when" data-field="when" value="<?php echo esc_attr( isset( $data['when'] ) ? $data['when'] : '' ); ?>" aria-describedby="ptk-nl-announcement-when-hint">
                     <p class="description" id="ptk-nl-announcement-when-hint">Optional. When it happens or closes, in a few words. For example: Closes Thursday, Sept 17 at noon. About 60 characters fits on one line.</p>
                 </div>
                 <div class="ptk-nl-field-group">
-                    <label for="ptk-nl-announcement-headline">Headline</label>
+                    <label for="ptk-nl-announcement-headline"><?php echo self::fl( 'announcement', 'headline', 'Headline' ); ?></label>
                     <input type="text" id="ptk-nl-announcement-headline" data-field="headline" value="<?php echo esc_attr( isset( $data['headline'] ) ? $data['headline'] : '' ); ?>" aria-describedby="ptk-nl-announcement-headline-hint">
                     <p class="description" id="ptk-nl-announcement-headline-hint">One sentence that says the news. For example: ASE registration opens Monday. PTA members go first. About 30 characters reads best at this size; longer still works.</p>
                 </div>
                 <div class="ptk-nl-field-group">
-                    <label for="ptk-nl-announcement-text">Text</label>
+                    <label for="ptk-nl-announcement-text"><?php echo self::fl( 'announcement', 'text', 'Text' ); ?></label>
                     <textarea id="ptk-nl-announcement-text" data-field="text" rows="3" aria-describedby="ptk-nl-announcement-text-hint"><?php echo esc_textarea( isset( $data['text'] ) ? $data['text'] : '' ); ?></textarea>
                     <p class="description" id="ptk-nl-announcement-text-hint">A sentence or two with the details. For example: Twelve classes for grades K&#8211;5, Tuesdays and Wednesdays, 3 to 4 PM. About 90 characters keeps it to two lines.</p>
                 </div>
                 <div class="ptk-nl-field-group">
-                    <label for="ptk-nl-announcement-button_text">Button words</label>
+                    <label for="ptk-nl-announcement-button_text"><?php echo self::fl( 'announcement', 'button_text', 'Button words' ); ?></label>
                     <input type="text" id="ptk-nl-announcement-button_text" data-field="button_text" value="<?php echo esc_attr( isset( $data['button_text'] ) ? $data['button_text'] : '' ); ?>" aria-describedby="ptk-nl-announcement-button_text-hint">
                     <p class="description" id="ptk-nl-announcement-button_text-hint">Optional. What the button says. For example: Go to ASE registration</p>
                 </div>
                 <div class="ptk-nl-field-group">
-                    <label for="ptk-nl-announcement-button_url">Button link</label>
+                    <label for="ptk-nl-announcement-button_url"><?php echo self::fl( 'announcement', 'button_url', 'Button link' ); ?></label>
                     <?php /* type="text", not "url": the browser would reject a bare email
                             address (leslie@example.org) and block the save before
                             sanitize_link_url() could turn it into an email link. */ ?>
@@ -1825,17 +1845,17 @@ class PTK_Newsletter_Builder {
                         <!-- Round 5: which post (if any) this row was imported from -- see the note on TYPE_EVENTS in class-newsletter-data.php. -->
                         <input type="hidden" data-field="source_post" value="0">
                         <div class="ptk-nl-field-group">
-                            <label>Date</label>
+                            <label><?php echo self::fl( 'events', 'date', 'Date' ); ?></label>
                             <input type="date" data-field="date">
                             <p class="description">When it happens.</p>
                         </div>
                         <div class="ptk-nl-field-group">
-                            <label>Title</label>
+                            <label><?php echo self::fl( 'events', 'title', 'Title' ); ?></label>
                             <input type="text" data-field="title">
                             <p class="description">What it&#8217;s called. For example: Last Day of School</p>
                         </div>
                         <div class="ptk-nl-field-group">
-                            <label>Description</label>
+                            <label><?php echo self::fl( 'events', 'desc', 'Description' ); ?></label>
                             <textarea data-field="desc" rows="2"></textarea>
                             <p class="description">One short line. For example: Early dismissal for students.</p>
                         </div>
@@ -1848,22 +1868,22 @@ class PTK_Newsletter_Builder {
             case 'featured':
                 ?>
                 <div class="ptk-nl-field-group">
-                    <label for="ptk-nl-featured-eyebrow">Short label</label>
+                    <label for="ptk-nl-featured-eyebrow"><?php echo self::fl( 'featured', 'eyebrow', 'Short label' ); ?></label>
                     <input type="text" id="ptk-nl-featured-eyebrow" data-field="eyebrow" value="<?php echo esc_attr( isset( $data['eyebrow'] ) ? $data['eyebrow'] : '' ); ?>" aria-describedby="ptk-nl-featured-eyebrow-hint">
                     <p class="description" id="ptk-nl-featured-eyebrow-hint">Optional. Two or three words naming the section, shown as &#8220;&#167; &#8230;&#8221; above the headline. For example: Date change. If you leave it blank we use &#8220;Top story&#8221;.</p>
                 </div>
                 <div class="ptk-nl-field-group">
-                    <label for="ptk-nl-featured-headline">Headline</label>
+                    <label for="ptk-nl-featured-headline"><?php echo self::fl( 'featured', 'headline', 'Headline' ); ?></label>
                     <input type="text" id="ptk-nl-featured-headline" data-field="headline" value="<?php echo esc_attr( isset( $data['headline'] ) ? $data['headline'] : '' ); ?>" aria-describedby="ptk-nl-featured-headline-hint">
                     <p class="description" id="ptk-nl-featured-headline-hint">A whole sentence that carries the news. For example: Film on the Field moves to Friday, October 16. About 40 characters fits on one line.</p>
                 </div>
                 <div class="ptk-nl-field-group">
-                    <label for="ptk-nl-featured-body">Story</label>
+                    <label for="ptk-nl-featured-body"><?php echo self::fl( 'featured', 'body', 'Story' ); ?></label>
                     <textarea id="ptk-nl-featured-body" data-field="body" rows="4" aria-describedby="ptk-nl-featured-body-hint"><?php echo esc_textarea( isset( $data['body'] ) ? $data['body'] : '' ); ?></textarea>
                     <p class="description" id="ptk-nl-featured-body-hint">A paragraph or two in your own words.</p>
                 </div>
                 <div class="ptk-nl-field-group ptk-nl-image-group" data-image-group>
-                    <label>Image</label>
+                    <label><?php echo self::fl( 'featured', 'image', 'Image' ); ?></label>
                     <input type="hidden" data-field="image_id" value="<?php echo esc_attr( isset( $data['image_id'] ) ? $data['image_id'] : 0 ); ?>">
                     <input type="hidden" data-field="image_focal_x" value="<?php echo esc_attr( isset( $data['image_focal_x'] ) ? $data['image_focal_x'] : 50 ); ?>">
                     <input type="hidden" data-field="image_focal_y" value="<?php echo esc_attr( isset( $data['image_focal_y'] ) ? $data['image_focal_y'] : 50 ); ?>">
@@ -1889,12 +1909,12 @@ class PTK_Newsletter_Builder {
                     </div>
                 </div>
                 <div class="ptk-nl-field-group">
-                    <label for="ptk-nl-featured-link_url">Link address</label>
+                    <label for="ptk-nl-featured-link_url"><?php echo self::fl( 'featured', 'link_url', 'Link address' ); ?></label>
                     <input type="url" id="ptk-nl-featured-link_url" data-field="link_url" data-validate="link" value="<?php echo esc_attr( isset( $data['link_url'] ) ? $data['link_url'] : '' ); ?>" aria-describedby="ptk-nl-featured-link_url-hint">
                     <p class="description" id="ptk-nl-featured-link_url-hint">Optional. Where the link goes. For example: https://northeastpta.org/volunteer/</p>
                 </div>
                 <div class="ptk-nl-field-group">
-                    <label for="ptk-nl-featured-link_text">Link wording</label>
+                    <label for="ptk-nl-featured-link_text"><?php echo self::fl( 'featured', 'link_text', 'Link wording' ); ?></label>
                     <input type="text" id="ptk-nl-featured-link_text" data-field="link_text" value="<?php echo esc_attr( isset( $data['link_text'] ) ? $data['link_text'] : '' ); ?>" aria-describedby="ptk-nl-featured-link_text-hint">
                     <p class="description" id="ptk-nl-featured-link_text-hint">What the link says. For example: Sign up for a shift</p>
                 </div>
@@ -1914,22 +1934,22 @@ class PTK_Newsletter_Builder {
                         <!-- Round 5: which post (if any) this card was imported from -- see the note on TYPE_STORY_CARDS in class-newsletter-data.php. -->
                         <input type="hidden" data-field="source_post" value="0">
                         <div class="ptk-nl-field-group">
-                            <label>Short label</label>
+                            <label><?php echo self::fl( 'story_cards', 'eyebrow', 'Short label' ); ?></label>
                             <input type="text" data-field="eyebrow">
                             <p class="description">Optional. Two or three words naming the section, shown as &#8220;&#167; &#8230;&#8221; above the headline. For example: Date change. If you leave it blank we use &#8220;More news&#8221;.</p>
                         </div>
                         <div class="ptk-nl-field-group">
-                            <label>Heading</label>
+                            <label><?php echo self::fl( 'story_cards', 'heading', 'Heading' ); ?></label>
                             <input type="text" data-field="heading">
                             <p class="description">A whole sentence that carries the news. For example: Film on the Field moves to Friday, October 16. About 40 characters fits on one line.</p>
                         </div>
                         <div class="ptk-nl-field-group">
-                            <label>Story</label>
+                            <label><?php echo self::fl( 'story_cards', 'body', 'Story' ); ?></label>
                             <textarea data-field="body" rows="3"></textarea>
                             <p class="description">A paragraph or two in your own words.</p>
                         </div>
                         <div class="ptk-nl-field-group ptk-nl-image-group" data-image-group>
-                            <label>Image</label>
+                            <label><?php echo self::fl( 'story_cards', 'image', 'Image' ); ?></label>
                             <input type="hidden" data-field="image_id" value="0">
                             <input type="hidden" data-field="image_focal_x" value="50">
                             <input type="hidden" data-field="image_focal_y" value="50">
@@ -1945,12 +1965,12 @@ class PTK_Newsletter_Builder {
                             </div>
                         </div>
                         <div class="ptk-nl-field-group">
-                            <label>Link address</label>
+                            <label><?php echo self::fl( 'story_cards', 'link_url', 'Link address' ); ?></label>
                             <input type="url" data-field="link_url" data-validate="link">
                             <p class="description">Where the link goes. For example: https://northeastpta.org/volunteer/</p>
                         </div>
                         <div class="ptk-nl-field-group">
-                            <label>Link wording</label>
+                            <label><?php echo self::fl( 'story_cards', 'link_text', 'Link wording' ); ?></label>
                             <input type="text" data-field="link_text">
                             <p class="description">What the link says. For example: Sign up for a shift</p>
                         </div>
@@ -1980,18 +2000,18 @@ class PTK_Newsletter_Builder {
                             <p class="description">A few words. For example: Lunch menu. About 40 characters fits on one line.</p>
                         </div>
                         <div class="ptk-nl-field-group">
-                            <label>Text</label>
+                            <label><?php echo self::fl( 'quick_notes', 'body', 'Text' ); ?></label>
                             <textarea data-field="body" rows="2"></textarea>
                             <p class="description">A sentence or two. For example: This week&#8217;s menus are always on the site.</p>
                         </div>
                         <div class="ptk-nl-field-group">
-                            <label>Link address</label>
+                            <label><?php echo self::fl( 'quick_notes', 'link_url', 'Link address' ); ?></label>
                             <?php /* type="text", not "url": an email address must be accepted (see the button link). */ ?>
                             <input type="text" inputmode="url" data-field="link_url" data-validate="link-or-email">
                             <p class="description">Optional. A web address (https://&#8230;) or an email address.</p>
                         </div>
                         <div class="ptk-nl-field-group">
-                            <label>Link wording</label>
+                            <label><?php echo self::fl( 'quick_notes', 'link_text', 'Link wording' ); ?></label>
                             <input type="text" data-field="link_text">
                             <p class="description">What the link says. For example: See the menu</p>
                         </div>
@@ -2004,7 +2024,7 @@ class PTK_Newsletter_Builder {
             case 'footer':
                 ?>
                 <div class="ptk-nl-field-group">
-                    <label for="ptk-nl-footer-signoff">Sign-off</label>
+                    <label for="ptk-nl-footer-signoff"><?php echo self::fl( 'footer', 'signoff', 'Sign-off' ); ?></label>
                     <textarea id="ptk-nl-footer-signoff" data-field="signoff" rows="2" aria-describedby="ptk-nl-footer-signoff-hint"><?php echo esc_textarea( isset( $data['signoff'] ) ? $data['signoff'] : '' ); ?></textarea>
                     <p class="description" id="ptk-nl-footer-signoff-hint">How you sign off. For example: With gratitude, Your PTA Board</p>
                 </div>
@@ -2016,12 +2036,12 @@ class PTK_Newsletter_Builder {
                         <!-- Row fields intentionally have no static ids: the later JS task assigns a unique id per cloned row and points each label's for at it. -->
                         <div class="ptk-nl-row" data-row>
                             <div class="ptk-nl-field-group">
-                                <label>Link wording</label>
+                                <label><?php echo self::fl( 'footer', 'link_label', 'Link wording' ); ?></label>
                                 <input type="text" data-field="label">
                                 <p class="description">What it says. For example: Full calendar</p>
                             </div>
                             <div class="ptk-nl-field-group">
-                                <label>Link address</label>
+                                <label><?php echo self::fl( 'footer', 'link_url', 'Link address' ); ?></label>
                                 <input type="url" data-field="url" data-validate="link">
                                 <p class="description">Where it goes.</p>
                             </div>
