@@ -129,6 +129,16 @@
         safeBoot(initFocalPickers);
         // Round 4: "Add from your calendar" on step 2.
         safeBoot(bindCalendarImport);
+        // Round 5: "Bring in your recent posts" on steps 2 and 3, the
+        // step 2 jump hint, and the action-bar primary/secondary state.
+        safeBoot(bindPostImport);
+        safeBoot(bindJumpHints);
+        safeBoot(updateEventsActionState);
+        safeBoot(updateStoriesActionState);
+        // Round 5 (live-testing fix): auto-growing textareas -- bind input,
+        // then measure everything once now that prefill has run.
+        safeBoot(bindTextareaAutoGrow);
+        safeBoot(function () { autoGrowTextareasIn(); });
     });
 
     /**
@@ -752,6 +762,13 @@
         if (moveFocus) {
             $wizard.find('.ptk-nl-step-head[data-step="' + n + '"] h2').first().focus();
         }
+
+        // Round 5 (live-testing fix): a step that was display:none measures
+        // scrollHeight 0, so a textarea revealed by switching steps needs
+        // re-measuring now that it's actually visible.
+        if (typeof autoGrowTextareasIn === 'function') {
+            autoGrowTextareasIn($wizard.find('[data-step="' + n + '"]'));
+        }
     }
 
     /**
@@ -1237,6 +1254,8 @@
             }
             addRow($rowsContainer, null);
             serializeAndPreview();
+            updateEventsActionState();
+            updateStoriesActionState();
         });
     }
 
@@ -1247,6 +1266,8 @@
             e.preventDefault();
             $(this).closest('[data-row]').remove();
             serializeAndPreview();
+            updateEventsActionState();
+            updateStoriesActionState();
         });
     }
 
@@ -1289,6 +1310,11 @@
         // Image-add/remove buttons and the Remove-row button inside the
         // clone are handled by the delegated handlers bound in
         // bindRemoveRow()/bindImagePicker() — no per-clone wiring needed.
+
+        // Round 5 (live-testing fix): a prefilled textarea (imported story
+        // body, a saved note) must not start clipped behind a scrollbar.
+        autoGrowTextareasIn($row);
+
         return $row;
     }
 
@@ -2016,7 +2042,8 @@
         { key: 'this_week', label: 'This week' },
         { key: 'next_week', label: 'Next week' },
         { key: 'next_2_weeks', label: 'Next 2 weeks' },
-        { key: 'this_month', label: 'This month' }
+        { key: 'this_month', label: 'This month' },
+        { key: 'next_3_months', label: 'Next 3 months' }
     ];
 
     var calState = { range: 'this_week', events: [], loading: false, error: '' };
@@ -2157,6 +2184,14 @@
         } else if (!calState.events.length) {
             html += '<p class="ptk-nl-cal-status">No events found in this range.</p>';
         } else {
+            // Round 5 (live-testing fix): "Select all" / "Clear" above the
+            // list -- a longer range (Next 3 months) can be dozens of
+            // events, and ticking each one by hand doesn't scale.
+            html += '<div class="ptk-nl-cal-select-all">' +
+                '<a href="#" class="ptk-nl-select-all-link" data-calendar-select-all>Select all</a>' +
+                '<a href="#" class="ptk-nl-select-all-link" data-calendar-clear>Clear</a>' +
+                '</div>';
+
             var existing = existingEventKeys();
             var byDay = {};
             var order = [];
@@ -2193,8 +2228,10 @@
 
         html += '<div class="ptk-nl-cal-actions">' +
             '<a href="#" class="ptk-nl-cal-refresh" data-calendar-refresh>Refresh</a>' +
+            '<span class="ptk-nl-post-actions-buttons">' +
+            '<button type="button" class="button" data-calendar-add-all>Add all (0)</button>' +
             '<button type="button" class="button button-primary" data-calendar-add disabled>Add selected (0)</button>' +
-            '</div>';
+            '</span></div>';
 
         $panel.html(html);
         updateAddSelectedCount($panel);
@@ -2202,7 +2239,55 @@
 
     function updateAddSelectedCount($panel) {
         var n = $panel.find('[data-calendar-check]:checked').length;
+        var total = $panel.find('[data-calendar-check]:not(:disabled)').length;
         $panel.find('[data-calendar-add]').prop('disabled', n === 0).text('Add selected (' + n + ')');
+        $panel.find('[data-calendar-add-all]').prop('disabled', total === 0).text('Add all (' + total + ')');
+    }
+
+    /**
+     * Add the given calendar-event checkboxes (jQuery collection of
+     * [data-calendar-check]) to the events repeater and clean up the panel
+     * afterward. Shared by "Add selected" and "Add all".
+     */
+    function addCalendarEventChecks($checked, $panel) {
+        if (!$checked.length) {
+            return;
+        }
+
+        var $section = $('#ptk-nl-blocks > .ptk-nl-block[data-type="events"]');
+        var $rowsContainer = $section.find('[data-rows-for="rows"]').first();
+        if (!$rowsContainer.length) {
+            return;
+        }
+
+        var $firstNewRow = null;
+        $checked.each(function () {
+            var ev;
+            try {
+                ev = JSON.parse($(this).val());
+            } catch (err) {
+                return;
+            }
+            var $row = addRow($rowsContainer, {
+                date: ev.start,
+                title: stripEmoji(ev.title),
+                desc: calEventDetail(ev)
+            });
+            if ($row && !$firstNewRow) {
+                $firstNewRow = $row;
+            }
+        });
+
+        $panel.attr('hidden', 'hidden');
+        serializeAndPreview();
+        updateEventsActionState();
+
+        if ($firstNewRow) {
+            var $focusable = $firstNewRow.find('[data-field]').first();
+            if ($focusable.length) {
+                scrollAndFocus($focusable);
+            }
+        }
     }
 
     function bindCalendarImport() {
@@ -2233,40 +2318,364 @@
             updateAddSelectedCount($(this).closest('[data-calendar-panel]'));
         });
 
+        $(document).on('click', '[data-calendar-select-all]', function (e) {
+            e.preventDefault();
+            var $panel = $(this).closest('[data-calendar-panel]');
+            $panel.find('[data-calendar-check]:not(:disabled)').prop('checked', true);
+            updateAddSelectedCount($panel);
+        });
+
+        $(document).on('click', '[data-calendar-clear]', function (e) {
+            e.preventDefault();
+            var $panel = $(this).closest('[data-calendar-panel]');
+            $panel.find('[data-calendar-check]').prop('checked', false);
+            updateAddSelectedCount($panel);
+        });
+
         $(document).on('click', '[data-calendar-add]', function (e) {
             e.preventDefault();
             var $panel = $(this).closest('[data-calendar-panel]');
-            var $checked = $panel.find('[data-calendar-check]:checked');
-            if (!$checked.length) {
-                return;
-            }
+            addCalendarEventChecks($panel.find('[data-calendar-check]:checked'), $panel);
+        });
 
-            var $section = $('#ptk-nl-blocks > .ptk-nl-block[data-type="events"]');
-            var $rowsContainer = $section.find('[data-rows-for="rows"]').first();
-            if (!$rowsContainer.length) {
+        $(document).on('click', '[data-calendar-add-all]', function (e) {
+            e.preventDefault();
+            var $panel = $(this).closest('[data-calendar-panel]');
+            addCalendarEventChecks($panel.find('[data-calendar-check]:not(:disabled)'), $panel);
+        });
+    }
+
+    /* --------------------------------------------------------------
+     * Round 5: "Bring in your recent posts" -- steps 2 and 3.
+     *
+     * Two independent mount points share this code ($context 'events' on
+     * step 2, near Coming up; 'stories' on step 3, near Stories) -- each
+     * keeps its own fetched list/range/search state in postState[context],
+     * the same way calState does for the single calendar panel. A ticked
+     * post can still be added as any of Story / Event / Quick note
+     * regardless of which panel it was opened from; the context only
+     * decides where the "Bring in your recent posts" button sits.
+     * ------------------------------------------------------------ */
+
+    var POST_RANGES = [
+        { key: 'two_weeks', label: 'Last 2 weeks' },
+        { key: 'month', label: 'Last month' }
+    ];
+
+    var postState = {
+        events: { range: 'two_weeks', search: '', posts: [], loading: false, error: '' },
+        stories: { range: 'two_weeks', search: '', posts: [], loading: false, error: '' }
+    };
+
+    /** Every source_post id already in ANY of the three repeaters (events rows, story cards, quick notes). */
+    function existingSourcePostIds() {
+        var ids = {};
+        $('#ptk-nl-blocks [data-field="source_post"]').each(function () {
+            var id = parseInt($(this).val(), 10);
+            if (id > 0) {
+                ids[id] = true;
+            }
+        });
+        return ids;
+    }
+
+    function postNonceReady() {
+        return typeof ptkNlData !== 'undefined' && ptkNlData && ptkNlData.ajaxUrl && ptkNlData.postsNonce;
+    }
+
+    function fetchImportablePosts(context, refresh) {
+        if (!postNonceReady()) {
+            return;
+        }
+        var state = postState[context];
+        var $panel = $('[data-post-import="' + context + '"] [data-post-import-panel]');
+        state.loading = true;
+        renderPostImportPanel(context, $panel);
+
+        $.post(ptkNlData.ajaxUrl, {
+            action: 'ptk_import_posts',
+            nonce: ptkNlData.postsNonce,
+            range: state.range,
+            search: state.search,
+            issue_date: $('[name="ptk_nl_date"]').val() || '',
+            refresh: refresh ? 1 : 0
+        }).done(function (response) {
+            state.loading = false;
+            if (response && response.success) {
+                state.posts = (response.data && response.data.posts) || [];
+                state.error = '';
+            } else {
+                state.posts = [];
+                state.error = (response && response.data && response.data.message) || 'Couldn’t load your posts. Try again in a minute.';
+            }
+            renderPostImportPanel(context, $panel);
+        }).fail(function () {
+            state.loading = false;
+            state.posts = [];
+            state.error = 'Couldn’t load your posts. Try again in a minute.';
+            renderPostImportPanel(context, $panel);
+        });
+    }
+
+    /** "Story" / "Event" / "Quick note" wording for a suggestion's type value. */
+    var POST_TYPE_LABELS = { story: 'Story', event: 'Event', quick_note: 'Quick note' };
+
+    function renderPostImportPanel(context, $panel) {
+        if (!$panel || !$panel.length) {
+            return;
+        }
+        var state = postState[context];
+
+        var html = '<div class="ptk-nl-post-chips" role="group" aria-label="Date range">';
+        POST_RANGES.forEach(function (r) {
+            html += '<button type="button" class="button ptk-nl-post-chip' + (r.key === state.range ? ' is-active' : '') +
+                '" data-post-range="' + r.key + '" data-post-context="' + context + '" aria-pressed="' + (r.key === state.range ? 'true' : 'false') + '">' + r.label + '</button>';
+        });
+        html += '</div>';
+
+        html += '<input type="search" class="ptk-nl-post-search" data-post-search data-post-context="' + context +
+            '" placeholder="Search your posts" value="' + calEscapeHtml(state.search) + '">';
+
+        if (state.loading) {
+            html += '<p class="ptk-nl-post-status">Loading your posts…</p>';
+        } else if (state.error) {
+            html += '<p class="ptk-nl-post-status ptk-nl-post-error">' + calEscapeHtml(state.error) + '</p>';
+        } else if (!state.posts.length) {
+            html += '<p class="ptk-nl-post-status">No posts found. Try a longer range or a different search.</p>';
+        } else {
+            var existing = existingSourcePostIds();
+
+            html += '<div class="ptk-nl-post-select-all">' +
+                '<a href="#" class="ptk-nl-select-all-link" data-post-select-all data-post-context="' + context + '">Select all</a>' +
+                '<a href="#" class="ptk-nl-select-all-link" data-post-clear data-post-context="' + context + '">Clear</a>' +
+                '</div>';
+
+            html += '<div class="ptk-nl-post-list">';
+            state.posts.forEach(function (post) {
+                var already = !!existing[post.source_post];
+                uidCounter++;
+                var id = 'ptk-nl-post-imp-' + uidCounter;
+                var payload = calEscapeHtml(JSON.stringify(post));
+
+                html += '<div class="ptk-nl-post-row' + (already ? ' is-added' : '') + '">';
+                html += '<input type="checkbox" id="' + id + '" data-post-check value="' + payload + '"' + (already ? ' disabled' : '') + '>';
+                if (post.thumb_url) {
+                    html += '<span class="ptk-nl-post-thumb"><img src="' + calEscapeHtml(post.thumb_url) + '" alt=""></span>';
+                } else {
+                    html += '<span class="ptk-nl-post-thumb" aria-hidden="true"></span>';
+                }
+                html += '<label class="ptk-nl-post-row-body" for="' + id + '">' +
+                    '<span class="ptk-nl-post-row-title">' + calEscapeHtml(stripEmoji(post.post_title)) +
+                    (already ? ' <span class="ptk-nl-post-already">Already added</span>' : '') + '</span>' +
+                    '<span class="ptk-nl-post-row-meta">' + calEscapeHtml(formatShortDate(post.post_date)) + '</span>' +
+                    (post.excerpt ? '<span class="ptk-nl-post-row-excerpt">' + calEscapeHtml(post.excerpt) + '</span>' : '') +
+                    '</label>';
+
+                if (!already) {
+                    html += '<span class="ptk-nl-post-type-choice" role="group" aria-label="Add as">';
+                    ['story', 'event', 'quick_note'].forEach(function (typeKey) {
+                        var radioId = id + '-' + typeKey;
+                        html += '<label for="' + radioId + '"><input type="radio" id="' + radioId + '" name="' + id + '-type" data-post-type-choice value="' + typeKey + '"' +
+                            (typeKey === post.type ? ' checked' : '') + '> ' + POST_TYPE_LABELS[typeKey] + '</label>';
+                    });
+                    html += '</span>';
+
+                    if (post.can_split) {
+                        html += '<label class="ptk-nl-post-split"><input type="checkbox" data-post-split> Split into separate items</label>';
+                    }
+
+                    var note = '';
+                    if (post.flyer) {
+                        note = 'Add a sentence or two';
+                    } else if (post.shortened) {
+                        note = 'Shortened from your post — edit as you like';
+                    }
+                    if (note) {
+                        html += '<span class="ptk-nl-post-note">' + calEscapeHtml(note) + '</span>';
+                    }
+                }
+                html += '</div>';
+            });
+            html += '</div>';
+        }
+
+        html += '<div class="ptk-nl-post-actions">' +
+            '<a href="#" class="ptk-nl-post-refresh" data-post-refresh data-post-context="' + context + '">Refresh</a>' +
+            '<button type="button" class="button button-primary" data-post-add data-post-context="' + context + '" disabled>Add selected (0)</button>' +
+            '</div>';
+
+        $panel.html(html);
+        updatePostAddSelectedCount(context, $panel);
+    }
+
+    function updatePostAddSelectedCount(context, $panel) {
+        var n = $panel.find('[data-post-check]:checked').length;
+        $panel.find('[data-post-add]').prop('disabled', n === 0).text('Add selected (' + n + ')');
+    }
+
+    /**
+     * Insert one already-classified suggestion (a whole post, or one
+     * pre-built split section -- see build_section_suggestion() server
+     * side) into the right repeater for its `type`.
+     *
+     * @return {jQuery|null} the new row, or null if nothing was added.
+     */
+    function addPostSuggestionToBuilder(suggestion) {
+        var type = suggestion.type;
+        var title = stripEmoji(suggestion.title || '');
+
+        if ('event' === type) {
+            var $eventsSection = $('#ptk-nl-blocks > .ptk-nl-block[data-type="events"]');
+            var $eventsRows = $eventsSection.find('[data-rows-for="rows"]').first();
+            if (!$eventsRows.length) {
+                return null;
+            }
+            return addRow($eventsRows, {
+                date: suggestion.date || '',
+                title: title,
+                desc: suggestion.detail || '',
+                source_post: suggestion.source_post || 0
+            });
+        }
+
+        if ('story' === type) {
+            var $storiesSection = $('#ptk-nl-blocks > .ptk-nl-block[data-type="story_cards"]');
+            var $storiesRows = $storiesSection.find('[data-rows-for="cards"]').first();
+            if (!$storiesRows.length) {
+                return null;
+            }
+            var $row = addRow($storiesRows, {
+                eyebrow: '',
+                heading: title,
+                body: suggestion.body || '',
+                image_id: suggestion.image_id || 0,
+                link_url: suggestion.link_url || '',
+                link_text: suggestion.link_text || 'Read more',
+                source_post: suggestion.source_post || 0
+            });
+            if ($row) {
+                var $imageGroup = $row.find('[data-image-group]').first();
+                if ($imageGroup.length) {
+                    refreshFocalPicker($imageGroup);
+                }
+            }
+            return $row;
+        }
+
+        // 'quick_note'
+        var $notesSection = $('#ptk-nl-blocks > .ptk-nl-block[data-type="quick_notes"]');
+        var $notesRows = $notesSection.find('[data-rows-for="items"]').first();
+        if (!$notesRows.length) {
+            return null;
+        }
+        return addRow($notesRows, {
+            heading: title,
+            body: suggestion.body || '',
+            link_url: suggestion.link_url || '',
+            link_text: suggestion.link_text || 'Read more',
+            source_post: suggestion.source_post || 0
+        });
+    }
+
+    function bindPostImport() {
+        $(document).on('click', '[data-post-import-toggle]', function (e) {
+            e.preventDefault();
+            var $wrap = $(this).closest('[data-post-import]');
+            var context = $wrap.attr('data-post-import');
+            var $panel = $wrap.find('[data-post-import-panel]');
+            if ($panel.attr('hidden') !== undefined) {
+                $panel.removeAttr('hidden');
+                fetchImportablePosts(context, false);
+            } else {
+                $panel.attr('hidden', 'hidden');
+            }
+        });
+
+        $(document).on('click', '[data-post-range]', function (e) {
+            e.preventDefault();
+            var context = $(this).attr('data-post-context');
+            postState[context].range = $(this).attr('data-post-range');
+            fetchImportablePosts(context, false);
+        });
+
+        var searchTimer = null;
+        $(document).on('input', '[data-post-search]', function () {
+            var $field = $(this);
+            var context = $field.attr('data-post-context');
+            postState[context].search = $field.val();
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(function () {
+                fetchImportablePosts(context, false);
+            }, 400);
+        });
+
+        $(document).on('click', '[data-post-refresh]', function (e) {
+            e.preventDefault();
+            fetchImportablePosts($(this).attr('data-post-context'), true);
+        });
+
+        $(document).on('change', '[data-post-check]', function () {
+            var $panel = $(this).closest('[data-post-import-panel]');
+            updatePostAddSelectedCount($panel.closest('[data-post-import]').attr('data-post-import'), $panel);
+        });
+
+        $(document).on('click', '[data-post-select-all]', function (e) {
+            e.preventDefault();
+            var context = $(this).attr('data-post-context');
+            var $panel = $(this).closest('[data-post-import-panel]');
+            $panel.find('[data-post-check]:not(:disabled)').prop('checked', true);
+            updatePostAddSelectedCount(context, $panel);
+        });
+
+        $(document).on('click', '[data-post-clear]', function (e) {
+            e.preventDefault();
+            var context = $(this).attr('data-post-context');
+            var $panel = $(this).closest('[data-post-import-panel]');
+            $panel.find('[data-post-check]').prop('checked', false);
+            updatePostAddSelectedCount(context, $panel);
+        });
+
+        $(document).on('click', '[data-post-add]', function (e) {
+            e.preventDefault();
+            var context = $(this).attr('data-post-context');
+            var $panel = $(this).closest('[data-post-import-panel]');
+            var $checked = $panel.find('[data-post-check]:checked');
+            if (!$checked.length) {
                 return;
             }
 
             var $firstNewRow = null;
             $checked.each(function () {
-                var ev;
+                var post;
                 try {
-                    ev = JSON.parse($(this).val());
+                    post = JSON.parse($(this).val());
                 } catch (err) {
                     return;
                 }
-                var $row = addRow($rowsContainer, {
-                    date: ev.start,
-                    title: stripEmoji(ev.title),
-                    desc: calEventDetail(ev)
-                });
-                if ($row && !$firstNewRow) {
-                    $firstNewRow = $row;
+                var $row = $(this).closest('.ptk-nl-post-row');
+                var chosenType = $row.find('[data-post-type-choice]:checked').val() || post.type;
+                var split = $row.find('[data-post-split]').is(':checked');
+
+                var itemsToAdd;
+                if (split && post.can_split && post.split_items && post.split_items.length) {
+                    itemsToAdd = post.split_items;
+                } else {
+                    post.type = chosenType;
+                    itemsToAdd = [post];
                 }
+
+                itemsToAdd.forEach(function (item) {
+                    var $newRow = addPostSuggestionToBuilder(item);
+                    if ($newRow && !$firstNewRow) {
+                        $firstNewRow = $newRow;
+                    }
+                });
             });
 
             $panel.attr('hidden', 'hidden');
             serializeAndPreview();
+            updateEventsActionState();
+            updateStoriesActionState();
 
             if ($firstNewRow) {
                 var $focusable = $firstNewRow.find('[data-field]').first();
@@ -2274,6 +2683,111 @@
                     scrollAndFocus($focusable);
                 }
             }
+        });
+    }
+
+    /* --------------------------------------------------------------
+     * Round 5 (live-testing fix): Coming up / Stories action bars --
+     * "Add from your calendar" and "Bring in your recent posts" are the
+     * PRIMARY (filled) buttons while their list is empty (they're the
+     * fastest way to fill a mostly-empty section); once rows exist they
+     * become equal-weight outline buttons alongside "+ Add event"/"+ Add
+     * story", which never itself becomes primary.
+     * ------------------------------------------------------------ */
+
+    function updateEventsActionState() {
+        var $section = $('#ptk-nl-blocks > .ptk-nl-block[data-type="events"]');
+        if (!$section.length) {
+            return;
+        }
+        var hasRows = $section.find('[data-rows-for="rows"] [data-row]').length > 0;
+        $section.find('[data-events-actions] [data-calendar-toggle], [data-events-actions] [data-post-import-toggle]')
+            .toggleClass('button-primary', !hasRows);
+    }
+
+    function updateStoriesActionState() {
+        var $section = $('#ptk-nl-blocks > .ptk-nl-block[data-type="story_cards"]');
+        if (!$section.length) {
+            return;
+        }
+        var hasRows = $section.find('[data-rows-for="cards"] [data-row]').length > 0;
+        $section.find('[data-stories-actions] [data-post-import-toggle]').toggleClass('button-primary', !hasRows);
+    }
+
+    /* --------------------------------------------------------------
+     * Round 5 (live-testing fix): step 2's "Add dates from your calendar /
+     * Bring in recent posts" jump line. Scrolls to Coming up, opens the
+     * matching panel if it's closed, and focuses its first control.
+     * ------------------------------------------------------------ */
+
+    function bindJumpHints() {
+        $(document).on('click', '[data-jump-hint]', function (e) {
+            e.preventDefault();
+            var target = $(this).attr('data-jump-target');
+            var $toggle, $panel;
+
+            if ('calendar-events' === target) {
+                $toggle = $('[data-calendar-import] [data-calendar-toggle]').first();
+                $panel = $('[data-calendar-import] [data-calendar-panel]').first();
+            } else {
+                $toggle = $('[data-post-import="events"] [data-post-import-toggle]').first();
+                $panel = $('[data-post-import="events"] [data-post-import-panel]').first();
+            }
+            if (!$toggle.length) {
+                return;
+            }
+
+            var $target = $toggle.closest('[data-calendar-import], [data-post-import]');
+            if ($target.length && $target[0].scrollIntoView) {
+                $target[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            if ($panel.attr('hidden') !== undefined) {
+                $toggle.trigger('click');
+            }
+            setTimeout(function () {
+                var $focusable = $panel.find('input, button, [tabindex]').first();
+                if ($focusable.length) {
+                    $focusable.trigger('focus');
+                } else {
+                    $toggle.trigger('focus');
+                }
+            }, 150);
+        });
+    }
+
+    /* --------------------------------------------------------------
+     * Round 5 (live-testing fix): textareas grow to fit their content
+     * instead of clipping text behind a scrollbar (e.g. step 5's sign-off
+     * showing only its first line). Runs on load, after prefill/import,
+     * on input, and whenever a hidden step becomes visible (a
+     * display:none textarea measures scrollHeight 0, so re-measuring only
+     * on load/input would leave a step that starts hidden looking wrong
+     * the first time you open it).
+     * ------------------------------------------------------------ */
+
+    var TEXTAREA_MIN_HEIGHT = 60;  // ~3 rows
+    var TEXTAREA_MAX_HEIGHT = 320; // ~12 rows, matches the CSS cap
+
+    function autoGrowTextarea(el) {
+        if (!el || !el.style) {
+            return;
+        }
+        el.style.height = 'auto';
+        var next = Math.max(TEXTAREA_MIN_HEIGHT, Math.min(el.scrollHeight, TEXTAREA_MAX_HEIGHT));
+        el.style.height = next + 'px';
+        el.style.overflowY = (el.scrollHeight > TEXTAREA_MAX_HEIGHT) ? 'auto' : 'hidden';
+    }
+
+    function autoGrowTextareasIn($scope) {
+        ($scope && $scope.length ? $scope : $(document)).find('textarea').each(function () {
+            autoGrowTextarea(this);
+        });
+    }
+
+    function bindTextareaAutoGrow() {
+        $(document).on('input', '#ptk-nl-form textarea', function () {
+            autoGrowTextarea(this);
         });
     }
 
