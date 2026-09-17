@@ -530,7 +530,7 @@ class PTK_Share_Image {
      * @param string $background Normalized '#rrggbb'.
      * @return string
      */
-    private static function hairline_for( $background ) {
+    public static function hairline_for( $background ) {
         list( $r, $g, $b ) = PTK_Share_Color::to_rgb( $background );
         $delta = ( PTK_Share_Color::relative_luminance( $background ) < 0.5 ) ? 32 : -32;
         return PTK_Share_Color::from_rgb( $r + $delta, $g + $delta, $b + $delta );

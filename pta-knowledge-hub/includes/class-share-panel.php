@@ -81,13 +81,26 @@ class PTK_Share_Panel {
             true
         );
 
+        // Round 3.1 (spec Problem B): the client-side canvas mirror of the
+        // photo square, so a focal/zoom/color change previews instantly
+        // instead of waiting on a fresh server render every time. Its own
+        // file for the same reason share-panel.js is its own file -- a
+        // throw here must not take the rest of the panel down with it.
+        wp_enqueue_script(
+            'ptk-share-square-canvas',
+            PTK_PLUGIN_URL . 'assets/js/share-square-canvas.js',
+            array( 'ptk-focal-point' ),
+            PTK_VERSION,
+            true
+        );
+
         // Its OWN file, deliberately not part of newsletter-builder.js: a throw
         // in the Builder's boot block leaves the whole wizard inert, and the
         // share panel is optional where the Builder is not.
         wp_enqueue_script(
             'ptk-share-panel',
             PTK_PLUGIN_URL . 'assets/js/share-panel.js',
-            array( 'jquery', 'ptk-focal-point-picker' ),
+            array( 'jquery', 'ptk-focal-point-picker', 'ptk-share-square-canvas' ),
             PTK_VERSION,
             true
         );
@@ -95,6 +108,16 @@ class PTK_Share_Panel {
         wp_localize_script( 'ptk-share-panel', 'ptkNlShare', array(
             'ajaxUrl' => admin_url( 'admin-ajax.php' ),
             'nonce'   => wp_create_nonce( self::NONCE_ACTION ),
+        ) );
+
+        // Bundled font files the canvas loads via the FontFace API, so its
+        // type matches PTK_Share_Image::font_files() (the same three faces
+        // draw_photo_words() uses) as closely as a browser rasterizer can.
+        $font_dir = PTK_PLUGIN_URL . 'assets/fonts/';
+        wp_localize_script( 'ptk-share-square-canvas', 'ptkShareSquareFonts', array(
+            'bold'      => $font_dir . 'LibreFranklin-Bold.ttf',
+            'extrabold' => $font_dir . 'LibreFranklin-ExtraBold.ttf',
+            'serif'     => $font_dir . 'Newsreader-Regular.ttf',
         ) );
     }
 
@@ -596,11 +619,52 @@ class PTK_Share_Panel {
             $message = 'Upload a square picture for Instagram.';
         }
 
+        // Round 3.1 (spec Problem B): a photo square can be mirrored client
+        // side in a <canvas> for an instant preview while the volunteer
+        // drags/zooms/recolors, instead of waiting on a fresh GD render
+        // every time. Only wired up for the PHOTO layout (draw_photo_words())
+        // -- a flat (no-photo) square keeps today's server-only behavior,
+        // which is already instant enough for a plain color change.
+        $canvas_enabled = ! $square['custom'] && $photo['photo_id'] > 0;
+        $canvas_data    = array();
+        if ( $canvas_enabled ) {
+            $photo_src = (string) wp_get_attachment_image_url( $photo['photo_id'], 'large' );
+            if ( '' === $photo_src ) {
+                $photo_src = (string) wp_get_attachment_url( $photo['photo_id'] );
+            }
+            $bar_color = PTK_Share_Color::square_photo_bar_color();
+            if ( '' !== $photo_src ) {
+                $canvas_data = array(
+                    'data-canvas-photo-src'  => $photo_src,
+                    'data-canvas-focal-x'    => $photo['focal_x'],
+                    'data-canvas-focal-y'    => $photo['focal_y'],
+                    'data-canvas-zoom'       => $photo['zoom'],
+                    'data-canvas-issue'      => '' !== $ctx['opts']['issue'] ? PTK_Share_Text::issue_label( $ctx['opts']['issue'] ) : '',
+                    'data-canvas-dateline'   => PTK_Share_Image::dateline( $ctx['opts']['date'] ),
+                    'data-canvas-school'     => $ctx['opts']['school_name'],
+                    'data-canvas-text-color' => PTK_Share_Color::square_photo_text_color(),
+                    'data-canvas-bar-color'  => $bar_color,
+                    'data-canvas-hairline'   => PTK_Share_Image::hairline_for( $bar_color ),
+                );
+            } else {
+                $canvas_enabled = false;
+            }
+        }
+
         ob_start();
         ?>
         <?php if ( '' !== $image_url ) : ?>
-            <figure class="ptk-nl-share-figure">
-                <img src="<?php echo esc_url( $image_url ); ?>" alt="<?php echo esc_attr( $square['custom'] ? 'Your square picture for Instagram' : 'Square picture for Instagram with this issue number and date' ); ?>" width="270" height="270">
+            <figure class="ptk-nl-share-figure"<?php echo $canvas_enabled ? ' data-share-canvas-figure' : ''; ?>>
+                <div class="ptk-nl-share-figure-stack">
+                    <img class="ptk-nl-share-img" src="<?php echo esc_url( $image_url ); ?>" alt="<?php echo esc_attr( $square['custom'] ? 'Your square picture for Instagram' : 'Square picture for Instagram with this issue number and date' ); ?>" width="270" height="270">
+                    <?php if ( $canvas_enabled ) : ?>
+                        <canvas class="ptk-nl-share-canvas" data-share-canvas width="1080" height="1080" hidden
+                            <?php foreach ( $canvas_data as $attr => $value ) : ?>
+                                <?php echo esc_attr( $attr ); ?>="<?php echo esc_attr( $value ); ?>"
+                            <?php endforeach; ?>
+                        ></canvas>
+                    <?php endif; ?>
+                </div>
                 <figcaption><?php echo $square['custom'] ? 'Your own picture.' : 'Made for you from this issue.'; ?></figcaption>
             </figure>
         <?php else : ?>
@@ -609,7 +673,7 @@ class PTK_Share_Panel {
 
         <div class="ptk-nl-share-actions">
             <?php if ( '' !== $full_url ) : ?>
-                <a class="button" href="<?php echo esc_url( $full_url ); ?>" download>Save the picture</a>
+                <a class="button" href="<?php echo esc_url( $full_url ); ?>" download data-share-save-picture>Save the picture</a>
             <?php endif; ?>
             <?php if ( $can_upload ) : ?>
                 <button type="button" class="button" data-share-upload><?php echo '' !== $image_url ? 'Upload your own instead' : 'Upload a square picture'; ?></button>

@@ -127,13 +127,34 @@
     margin: 0;
 }
 
-.ptk-nl-share-figure img {
+.ptk-nl-share-figure-stack {
+    position: relative;
+    width: 100%;
+    max-width: 270px;
+}
+
+.ptk-nl-share-figure img,
+.ptk-nl-share-canvas {
     display: block;
     width: 100%;
     max-width: 270px;
+    aspect-ratio: 1 / 1;
     height: auto;
     border-radius: 6px;
     border: 1px solid #e5e7eb;
+}
+
+/* Round 3.1 (Problem B): the instant client-side preview sits directly over
+   the server-rendered <img> at the same position/size, shown only while a
+   fresh server picture is pending -- see assets/js/share-square-canvas.js
+   and share-panel.js's canvas wiring. */
+.ptk-nl-share-canvas {
+    position: absolute;
+    inset: 0;
+    box-sizing: border-box;
+}
+.ptk-nl-share-canvas[hidden] {
+    display: none;
 }
 
 .ptk-nl-share-figure figcaption {

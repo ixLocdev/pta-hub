@@ -308,6 +308,13 @@
      * Instagram square
      * ────────────────────────────────────────── */
 
+    // Round 3.1 (Problem B): raised from the old 500ms once the canvas
+    // preview took over showing the change instantly -- the server render
+    // is no longer the only thing a volunteer is looking at while it runs,
+    // so it can afford to wait a bit longer and coalesce more changes into
+    // one GD render.
+    var SQUARE_RENDER_DEBOUNCE = 800;
+
     function bindSquare($panel, postId) {
         var $area = $panel.find('[data-share-square]');
         if (!$area.length) {
@@ -316,6 +323,32 @@
 
         var $status = $area.closest('[data-share-channel]').find('[data-share-status]');
         var frame = null;
+
+        // Round 3.1 (Problem B): true while a focal/zoom/color change has
+        // been drawn on the canvas but the matching server picture has not
+        // come back yet -- "Save the picture" must never hand out a stale
+        // download while this is true (see saveButtonPending() below).
+        var squarePending = false;
+
+        function saveButtonPending(pending) {
+            squarePending = pending;
+            var $save = $area.find('[data-share-save-picture]');
+            if (!$save.length) {
+                return;
+            }
+            if (pending) {
+                $save.attr('aria-disabled', 'true').addClass('is-pending').text('Updating the picture…');
+            } else {
+                $save.removeAttr('aria-disabled').removeClass('is-pending').text('Save the picture');
+            }
+        }
+
+        $area.on('click', '[data-share-save-picture]', function (e) {
+            if (squarePending) {
+                e.preventDefault();
+                $status.text('Still updating the picture — try again in a moment.');
+            }
+        });
 
         function send(data, busyText) {
             data.action = 'ptk_nl_share_square';
@@ -332,6 +365,8 @@
                         // the page load renders.
                         $area.html(res.data.html);
                         initPhotoPicker($area);
+                        initSquareCanvas($area);
+                        saveButtonPending(false);
                         $status.text('Picture updated');
                     } else {
                         $status.text(errorText(res, 'The picture could not be changed.'));
@@ -451,12 +486,21 @@
                             // the rendered square picture itself (round 3.1, spec item 3)
                             // still needs to catch up -- swap just the <img src>, never
                             // the whole area (that would tear down the picker mid-drag
-                            // and steal keyboard focus off the dot).
-                            updateSquareImage($area, res.data.html);
+                            // and steal keyboard focus off the dot). Round 3.1 Problem B:
+                            // the canvas preview (already showing the same framing
+                            // instantly) stays up until the real picture has actually
+                            // finished loading, then swaps back to the <img> -- never a
+                            // flash of the OLD server picture underneath.
+                            updateSquareImage($area, res.data.html, function () {
+                                hideSquareCanvas($area);
+                                saveButtonPending(false);
+                            });
                             return;
                         }
                         $area.html(res.data.html);
                         initPhotoPicker($area);
+                        initSquareCanvas($area);
+                        saveButtonPending(false);
                         $status.text('Picture updated');
                         return;
                     }
@@ -594,18 +638,25 @@
         $area.on('change', '[data-share-photo-picker-mount] [data-field]', function () {
             var $mount = $(this).closest('[data-share-photo-picker-mount]');
             var $root = $mount.closest('[data-share-photo]');
+            var focalX = $mount.find('[data-field="image_focal_x"]').val();
+            var focalY = $mount.find('[data-field="image_focal_y"]').val();
+            var zoom = $mount.find('[data-field="image_zoom"]').val();
+
+            // Round 3.1 Problem B: redraw the canvas preview THIS frame, with
+            // the framing the volunteer is dragging right now -- instant,
+            // never waiting on the debounced server render below.
+            saveButtonPending(true);
+            redrawSquareCanvas($area, { focalX: focalX, focalY: focalY, zoom: zoom });
+
             window.clearTimeout(reframeTimer);
-            // ~500ms after the LAST change (spec item 3) -- long enough that a
-            // drag or a burst of scroll-wheel zoom ticks collapses into one
-            // request instead of flooding the server with GD renders.
             reframeTimer = window.setTimeout(function () {
                 sendPhoto($root, {
                     mode: 'photo_reframe',
-                    focal_x: $mount.find('[data-field="image_focal_x"]').val(),
-                    focal_y: $mount.find('[data-field="image_focal_y"]').val(),
-                    zoom: $mount.find('[data-field="image_zoom"]').val()
+                    focal_x: focalX,
+                    focal_y: focalY,
+                    zoom: zoom
                 }, 'Saving the framing…', true);
-            }, 500);
+            }, SQUARE_RENDER_DEBOUNCE);
         });
 
         /* ──────────────────────────────────────────
@@ -627,8 +678,20 @@
 
             // A typed hex box and its matching native picker stay mirrored,
             // whichever one changed -- same pattern as Newsletter settings.
+            var normalized = null;
             if (/^#?[0-9a-fA-F]{6}$/.test(value)) {
-                syncPhotoHex($colors, kind, value.charAt(0) === '#' ? value : '#' + value);
+                normalized = value.charAt(0) === '#' ? value : '#' + value;
+                syncPhotoHex($colors, kind, normalized);
+            }
+
+            // Round 3.1 Problem B: redraw the canvas preview instantly with
+            // whatever is currently a valid 6-digit hex for each field --
+            // never waits on the debounced server round trip below.
+            if (normalized) {
+                var overrides = {};
+                overrides['text' === kind ? 'textColor' : 'barColor'] = normalized;
+                saveButtonPending(true);
+                redrawSquareCanvas($area, overrides);
             }
 
             window.clearTimeout(colorTimer);
@@ -646,13 +709,16 @@
                         if (typeof res.data.html === 'string') {
                             $area.html(res.data.html);
                             initPhotoPicker($area);
+                            initSquareCanvas($area);
+                            saveButtonPending(false);
                         }
                     }
                 });
-            }, 500);
+            }, SQUARE_RENDER_DEBOUNCE);
         });
 
         initPhotoPicker($area);
+        initSquareCanvas($area);
     }
 
     /**
@@ -669,13 +735,77 @@
      * @param {jQuery} $area The [data-share-square] area.
      * @param {string} html  The server-rendered square markup.
      */
-    function updateSquareImage($area, html) {
+    function updateSquareImage($area, html, onLoaded) {
         var src = $('<div>').html(html).find('.ptk-nl-share-figure img').attr('src');
         if (!src) {
+            if (onLoaded) {
+                onLoaded();
+            }
             return;
         }
         var busted = src + (src.indexOf('?') === -1 ? '?' : '&') + 'v=' + Date.now();
-        $area.find('.ptk-nl-share-figure img').attr('src', busted);
+        var $img = $area.find('.ptk-nl-share-figure img');
+        if (onLoaded) {
+            // Wait for the fresh picture to actually finish loading before
+            // the caller swaps the canvas preview back off -- otherwise the
+            // volunteer would see a flash of the OLD picture underneath.
+            $img.one('load error', onLoaded);
+        }
+        $img.attr('src', busted);
+    }
+
+    /* ──────────────────────────────────────────
+     * Canvas preview (round 3.1 Problem B) -- see
+     * assets/js/share-square-canvas.js for the actual drawing.
+     * ────────────────────────────────────────── */
+
+    /**
+     * Mount (or re-mount, after a re-render) the canvas controller onto
+     * [data-share-canvas], if this square render has one (photo layout
+     * only -- see class-share-panel.php's $canvas_enabled). No-op, quietly,
+     * if the script failed to load or the browser lacks canvas/FontFace.
+     */
+    function initSquareCanvas($area) {
+        var $canvas = $area.find('[data-share-canvas]');
+        if (!$canvas.length || typeof window.ptkShareSquareCanvas === 'undefined') {
+            return;
+        }
+        try {
+            var ctl = window.ptkShareSquareCanvas.mount($canvas.get(0));
+            $canvas.data('ptkSquareCanvasCtl', ctl);
+        } catch (err) {
+            /* No canvas preview this render; the server <img> is still shown. */
+        }
+    }
+
+    /**
+     * Redraw the canvas preview right now with the given field overrides
+     * (whatever the volunteer just changed, before it's been saved), and
+     * show it in place of the <img> on success. Silently does nothing if
+     * there is no mounted canvas or the draw fails -- the <img> just stays
+     * showing what it already showed, today's behavior.
+     *
+     * @param {jQuery} $area
+     * @param {object} overrides focalX/focalY/zoom or textColor/barColor.
+     */
+    function redrawSquareCanvas($area, overrides) {
+        var $canvas = $area.find('[data-share-canvas]');
+        var ctl = $canvas.data('ptkSquareCanvasCtl');
+        if (!ctl) {
+            return;
+        }
+        window.requestAnimationFrame(function () {
+            ctl.refresh(overrides).then(function (drawn) {
+                if (drawn) {
+                    $canvas.removeAttr('hidden');
+                }
+            });
+        });
+    }
+
+    /** Swap the canvas preview back off, showing the real <img> underneath. */
+    function hideSquareCanvas($area) {
+        $area.find('[data-share-canvas]').attr('hidden', 'hidden');
     }
 
     /**
