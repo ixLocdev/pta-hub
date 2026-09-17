@@ -303,6 +303,32 @@
         return problems;
     }
 
+    /**
+     * Round 3.1 fix (item 4): scroll a field to the vertical CENTER of the
+     * viewport, then focus it without scrolling again. A validation jump
+     * that only calls .focus() lets the browser pick where to scroll to --
+     * usually just far enough to bring the field's own top edge into view,
+     * which can leave the inline error message BELOW it (and, on this admin
+     * screen, under the fixed WP admin bar) off-screen. Centering first
+     * means both the field and its message underneath are visible; the
+     * focus call afterward uses preventScroll so it can't undo that by
+     * jumping the browser back to its own idea of "into view".
+     *
+     * @param {jQuery|HTMLElement} target
+     */
+    function scrollAndFocus(target) {
+        var el = target && target.jquery ? target[0] : target;
+        if (!el) {
+            return;
+        }
+        if (typeof el.scrollIntoView === 'function') {
+            el.scrollIntoView({ block: 'center' });
+        }
+        if (typeof el.focus === 'function') {
+            el.focus({ preventScroll: true });
+        }
+    }
+
     /** Build/update/clear the "N things need fixing" summary atop "Publish & share". */
     function renderValidationSummary(problems) {
         var $box = $('#ptk-nl-validation-summary');
@@ -324,7 +350,7 @@
                 .on('click', function (e) {
                     e.preventDefault();
                     showStep(problem.step, false);
-                    $('#' + id).trigger('focus');
+                    scrollAndFocus(document.getElementById(id));
                 });
             $li.append($link);
             $list.append($li);
@@ -360,7 +386,7 @@
 
             e.preventDefault();
             showStep(problems[0].step, false);
-            problems[0].$field.trigger('focus');
+            scrollAndFocus(problems[0].$field);
         });
 
         // Errors clear themselves the moment the field is fixed -- no need
@@ -383,7 +409,7 @@
         }
         var box = document.getElementById('ptk-nl-pii-ok');
         if (box && !box.closest('[hidden]')) {
-            box.focus();
+            scrollAndFocus(box);
         }
     }
 
@@ -1487,10 +1513,7 @@
         if (!$target.length) {
             $target = $section.find('h3').first();
         }
-        $target.trigger('focus');
-        if ($target[0] && typeof $target[0].scrollIntoView === 'function') {
-            $target[0].scrollIntoView({ block: 'center' });
-        }
+        scrollAndFocus($target);
     }
 
     /**
