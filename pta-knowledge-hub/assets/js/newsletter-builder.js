@@ -146,7 +146,69 @@
         // then measure everything once now that prefill has run.
         safeBoot(bindTextareaAutoGrow);
         safeBoot(function () { autoGrowTextareasIn(); });
+        // Task 2: one open section at a time. A no-op when the new look is
+        // off -- there are no .ptk-fold elements in the DOM to bind to.
+        safeBoot(bindFoldAccordion);
     });
+
+    /**
+     * Task 2: open (and, if it wasn't already, mark as the remembered
+     * section) the fold around a field. Used when a validation error lands
+     * inside a closed section, so the error is never hidden. A no-op when
+     * $field isn't inside a fold at all -- the new look is off, or the
+     * field's block type doesn't fold (only the header doesn't).
+     *
+     * @param {jQuery} $field
+     */
+    function openFoldFor($field) {
+        var $fold = $field.closest('.ptk-fold');
+        if ($fold.length && !$fold.prop('open')) {
+            $fold.prop('open', true);
+            $fold.trigger('ptk:foldopened');
+        }
+    }
+
+    /**
+     * Task 2: one section open at a time, inside a step. Each fold is
+     * PTK_Hub_UI::section_fold()'s <details class="ptk-fold">, a direct
+     * child of a .ptk-nl-block (which carries the step it belongs to).
+     * Opening one closes every other fold in the SAME step; the open
+     * one's block type is kept in the hidden #ptk-nl-open-section field
+     * so PTK_Newsletter_Builder::handle_submission() can remember it
+     * (user meta, per newsletter) for next time.
+     *
+     * Listens for both the native 'toggle' event (a person clicking the
+     * summary row) and the synthetic 'ptk:foldopened' openFoldFor() fires
+     * (opened by script, e.g. a validation error) -- 'toggle' doesn't fire
+     * when .open is set programmatically.
+     */
+    function bindFoldAccordion() {
+        var $folds = $('.ptk-nl-block > .ptk-fold');
+        if (!$folds.length) {
+            return;
+        }
+
+        function onFoldChanged(e) {
+            var el = e.currentTarget;
+            var $fold = $(el);
+            var $section = $fold.closest('.ptk-nl-block');
+            var step = $section.attr('data-step');
+            var $openField = $('#ptk-nl-open-section');
+
+            if (el.open) {
+                $('.ptk-nl-block[data-step="' + step + '"] > .ptk-fold').not(el).each(function () {
+                    this.open = false;
+                });
+                $openField.val($section.attr('data-type') || '');
+            } else if ($openField.val() === $section.attr('data-type')) {
+                // The one just closed was the remembered one -- don't keep
+                // claiming it's open on the next save.
+                $openField.val('');
+            }
+        }
+
+        $folds.on('toggle ptk:foldopened', onFoldChanged);
+    }
 
     /**
      * A closed "Add dates" disclosure hiding rows that were saved would look
@@ -254,6 +316,14 @@
     function markFieldInvalid($field) {
         var id = ensureId($field);
         var msgId = id + '-error';
+
+        // Task 2: a validation error is one of the two things that force a
+        // closed section open (the other being "empty and first in its
+        // step", decided server-side) -- an error hidden inside a closed
+        // fold would be exactly the invisible-validation problem this
+        // whole mechanism exists to fix. No-op when the new look is off:
+        // openFoldFor() finds no .ptk-fold and returns immediately.
+        openFoldFor($field);
 
         $field.addClass('ptk-nl-field-invalid').attr('aria-invalid', 'true');
         addDescribedBy($field, msgId);

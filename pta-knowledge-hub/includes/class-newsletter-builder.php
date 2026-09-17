@@ -59,6 +59,14 @@ class PTK_Newsletter_Builder {
     const META_PII_CONFIRMED_PHOTOS = 'ptk_nl_pii_confirmed_photos';
 
     /**
+     * Task 2: user meta key PREFIX (the post id is appended) holding the
+     * block type this user last left open on this newsletter, so reopening
+     * it "lands where you left off". Per user, not per newsletter alone --
+     * two volunteers editing the same issue each keep their own place.
+     */
+    const META_OPEN_SECTION = 'ptk_nl_open_section_';
+
+    /**
      * The main gate's checkbox copy, pulled out so PTK_Share_Panel's own
      * consent prompt (round 3 -- the square's background photo is
      * reachable outside this form, see class-share-panel.php) can reuse
@@ -334,6 +342,18 @@ class PTK_Newsletter_Builder {
 
         // Build the post, write it, and persist the structured meta.
         $post_id = self::persist_newsletter( $blocks, $issue, $date, $post_status, $edit_id );
+
+        // Task 2: remember which section this user last had open, so
+        // reopening this newsletter lands there instead of back at the top.
+        // Only ever set by the new look's accordion JS -- an empty/missing
+        // value (the new look off, or nothing was ever opened) clears it
+        // rather than leaving a stale section from a previous session open.
+        $open_section = isset( $_POST['ptk_nl_open_section'] ) ? sanitize_key( wp_unslash( $_POST['ptk_nl_open_section'] ) ) : '';
+        if ( '' !== $open_section && in_array( $open_section, PTK_Builder_Copy::foldable_types(), true ) ) {
+            update_user_meta( get_current_user_id(), self::META_OPEN_SECTION . $post_id, $open_section );
+        } else {
+            delete_user_meta( get_current_user_id(), self::META_OPEN_SECTION . $post_id );
+        }
 
         // Remember the photo confirmation, with the day it was given, so the
         // box shows ticked when this newsletter is opened again instead of
@@ -1164,6 +1184,63 @@ class PTK_Newsletter_Builder {
     }
 
     /**
+     * Task 2: which foldable block type should be open in each step,
+     * keyed by step number. Two rules, in order:
+     *
+     *  1. Remembered: this user's last-open section for THIS newsletter
+     *     (user meta, see META_OPEN_SECTION) -- "coming back lands where
+     *     you left off". Only honored for the step it actually belongs to;
+     *     other steps fall through to rule 2.
+     *  2. Default: a step's first foldable block opens when it's empty --
+     *     nothing to hide yet, so there's no reason to make a first-timer
+     *     click to see it. A step whose first block already has content
+     *     starts fully closed (every section reads as "done, out of the
+     *     way").
+     *
+     * @param array[] $sections Same shape sections_to_render() returns.
+     * @param int     $edit_id  Existing post id, or 0 for a not-yet-saved one.
+     * @return array Step number => open block type.
+     */
+    protected static function open_sections( array $sections, $edit_id ) {
+        $foldable = PTK_Builder_Copy::foldable_types();
+        $open     = array();
+
+        $remembered = '';
+        if ( $edit_id ) {
+            $remembered = (string) get_user_meta( get_current_user_id(), self::META_OPEN_SECTION . $edit_id, true );
+        }
+
+        // Rule 2 first, so rule 1 can overwrite it for the step it applies to.
+        $first_seen = array();
+        foreach ( $sections as $section ) {
+            $type = isset( $section['block']['type'] ) ? $section['block']['type'] : '';
+            if ( ! in_array( $type, $foldable, true ) ) {
+                continue;
+            }
+            $step = self::step_for_type( $type );
+            if ( isset( $first_seen[ $step ] ) ) {
+                continue;
+            }
+            $first_seen[ $step ] = true;
+            $data                = isset( $section['block']['data'] ) && is_array( $section['block']['data'] ) ? $section['block']['data'] : array();
+            if ( PTK_Builder_Copy::section_is_empty( $type, $data ) ) {
+                $open[ $step ] = $type;
+            }
+        }
+
+        if ( '' !== $remembered && in_array( $remembered, $foldable, true ) ) {
+            foreach ( $sections as $section ) {
+                if ( isset( $section['block']['type'] ) && $remembered === $section['block']['type'] ) {
+                    $open[ self::step_for_type( $remembered ) ] = $remembered;
+                    break;
+                }
+            }
+        }
+
+        return $open;
+    }
+
+    /**
      * Render the Newsletter Builder page.
      */
     public static function render_page() {
@@ -1214,6 +1291,11 @@ class PTK_Newsletter_Builder {
         $steps     = self::steps();
         $step_last = count( $steps );
         $sections  = self::sections_to_render( $blocks );
+
+        // Task 2 (one section open at a time): which foldable block type is
+        // open in each step, keyed by step number. Only matters when the
+        // new look is on -- render_block_section() ignores it otherwise.
+        $open_type_per_step = self::open_sections( $sections, $edit_id );
         ?>
         <div class="wrap ptk-nl-builder">
             <h1><?php echo $is_example ? 'Example Newsletter' : ( $edit_id ? 'Edit Newsletter' : 'New Newsletter' ); ?></h1>
@@ -1266,6 +1348,15 @@ class PTK_Newsletter_Builder {
                     <form method="post" id="ptk-nl-form" novalidate>
                         <?php wp_nonce_field( 'ptk_nl_save', 'ptk_nl_nonce' ); ?>
                         <input type="hidden" name="ptk_nl_edit_id" value="<?php echo esc_attr( $edit_id ); ?>">
+<?php /* Task 2: which fold was open, last touched -- kept up to date by the accordion JS and
+        read back by open_sections() on the next load, so "coming back lands where you left
+        off". Rendered only when the new look is on, so the look-off markup never changes --
+        including the whitespace: this whole block starts flush left with no leading spaces
+        before the `if`, because indentation before `<?php if` prints unconditionally in PHP's
+        alternate-syntax templates, look on or off. See the byte-for-byte baseline test. */ ?>
+<?php if ( PTK_Hub_Look::on() ) : ?>
+                        <input type="hidden" name="ptk_nl_open_section" id="ptk-nl-open-section" value="">
+<?php endif; ?>
 
                         <?php foreach ( $steps as $step_number => $step ) : ?>
                             <?php /* One step head is visible at a time, so it always reads as the heading for the fields below it. */ ?>
@@ -1335,7 +1426,11 @@ class PTK_Newsletter_Builder {
                                 by that attribute. Never wrap these in per-step parents. */ ?>
                         <div id="ptk-nl-blocks">
                             <?php foreach ( $sections as $section ) : ?>
-                                <?php self::render_block_section( $section['block'], $section['excluded'], $issue_number, $date_value ); ?>
+                                <?php
+                                $section_step = self::step_for_type( $section['block']['type'] );
+                                $section_open = isset( $open_type_per_step[ $section_step ] ) && $open_type_per_step[ $section_step ] === $section['block']['type'];
+                                self::render_block_section( $section['block'], $section['excluded'], $issue_number, $date_value, $section_open );
+                                ?>
                             <?php endforeach; ?>
                         </div>
 
@@ -1536,11 +1631,15 @@ class PTK_Newsletter_Builder {
      *                             (rendered anyway so it can be added back).
      * @param int|string $issue    Issue number to prefill (header section only).
      * @param string     $date     Issue date, Y-m-d (header section only).
+     * @param bool       $open     Task 2: whether this section's fold starts open. Only
+     *                             consulted when the new look is on and the type folds
+     *                             (see PTK_Builder_Copy::foldable_types()).
      */
-    protected static function render_block_section( $block, $excluded = false, $issue = '', $date = '' ) {
+    protected static function render_block_section( $block, $excluded = false, $issue = '', $date = '', $open = false ) {
         $type   = isset( $block['type'] ) ? $block['type'] : '';
         $pinned = in_array( $type, array( 'header', 'footer' ), true );
         $label  = self::label_for_type( $type );
+        $folds  = PTK_Hub_Look::on() && in_array( $type, PTK_Builder_Copy::foldable_types(), true );
         ?>
         <section class="ptk-nl-block" data-type="<?php echo esc_attr( $type ); ?>" data-step="<?php echo (int) self::step_for_type( $type ); ?>"<?php echo $pinned ? ' data-pinned="1"' : ''; ?><?php echo $excluded ? ' data-excluded="1"' : ''; ?>>
             <div class="ptk-nl-block-header">
@@ -1558,14 +1657,64 @@ class PTK_Newsletter_Builder {
                 <p class="description ptk-nl-block-intro"><?php echo esc_html( $intro ); ?></p>
             <?php endif; ?>
 
-            <div class="ptk-nl-block-body">
+            <?php
+            // Task 2: fold the fields, not the heading above -- the h3 stays visible
+            // (and untouched) whether the section is open or closed, so the arrange
+            // list and the validation heading-flag keep working unmodified. The
+            // fold's own summary carries only the one-line status text; its title is
+            // left blank on purpose (no second "Announcement" repeated right under
+            // the first).
+            //
+            // Each branch is a plain method call, not inline HTML inside this
+            // if/else: mixing alternate-syntax `if`/`else`/`endif` with literal
+            // HTML here previously leaked stray whitespace into the look-off,
+            // non-folding branch (indentation before `<?php if` and right before
+            // `<?php endif` both print outside the conditional they look like
+            // they're inside) -- exactly the kind of thing the byte-for-byte
+            // baseline test exists to catch. A method call has none of that: its
+            // own template's whitespace is entirely internal to the call.
+            if ( $folds ) {
+                ob_start();
+                self::render_block_fields( $type, array() );
+                $body = (string) ob_get_clean();
+                echo PTK_Hub_UI::section_fold( array(
+                    'title'   => '',
+                    'summary' => PTK_Builder_Copy::section_summary( $type, isset( $block['data'] ) && is_array( $block['data'] ) ? $block['data'] : array() ),
+                    'body'    => $body,
+                    'open'    => $open,
+                ) ); // phpcs:ignore WordPress.Security.EscapeOutput -- section_fold() escapes its own text args; $body is already-escaped trusted markup, same convention as every other block here.
+            } else {
+                self::render_block_body_default( $type, $issue, $date );
+            }
+            ?>
+        </section>
+        <?php
+    }
+
+    /**
+     * The non-folding block body: exactly what render_block_section() has
+     * always rendered for a section's fields (plus the header's issue
+     * details). Pulled into its own method so render_block_section()'s
+     * fold/no-fold branch can be two plain method calls instead of mixed
+     * inline HTML -- a method call's own template whitespace is entirely
+     * internal to it, so it can't leak into the byte-for-byte look-off
+     * baseline the way inline `if`/`else`/`endif` blocks did (see the
+     * comment where this is called). Every byte here, including the
+     * indentation, is a verbatim copy of the markup that existed before
+     * task 2.
+     *
+     * @param string     $type  Block type slug.
+     * @param int|string $issue Issue number (header only).
+     * @param string     $date  Issue date (header only).
+     */
+    protected static function render_block_body_default( $type, $issue, $date ) {
+        ?><div class="ptk-nl-block-body">
                 <?php self::render_block_fields( $type, array() ); ?>
                 <?php if ( 'header' === $type ) : ?>
                     <?php self::render_issue_details( $issue, $date ); ?>
                 <?php endif; ?>
             </div>
-        </section>
-        <?php
+<?php
     }
 
     /**

@@ -162,4 +162,113 @@ class PTK_Builder_Copy {
         }
         return $on ? $map[ $step_number ]['on'] : $map[ $step_number ]['off'];
     }
+
+    /**
+     * Block types that fold on the new look (task 2). Header stays out of
+     * this list on purpose -- it's the only thing on step 1, so a fold
+     * around it would just be a wrapper. Everything else the spec names
+     * (Announcement, Coming up, Top story, Stories, Quick notes, Footer)
+     * folds inside its step.
+     *
+     * @return string[]
+     */
+    public static function foldable_types() {
+        return array( 'announcement', 'events', 'featured', 'story_cards', 'quick_notes', 'footer' );
+    }
+
+    /**
+     * Trim to $len chars on a word boundary, with a trailing "…" when cut.
+     *
+     * @param string $text
+     * @param int    $len
+     * @return string
+     */
+    private static function shorten( $text, $len ) {
+        $text = trim( (string) $text );
+        if ( '' === $text || mb_strlen( $text ) <= $len ) {
+            return $text;
+        }
+        $cut = mb_substr( $text, 0, $len );
+        $at  = mb_strrpos( $cut, ' ' );
+        if ( false !== $at && $at > 0 ) {
+            $cut = mb_substr( $cut, 0, $at );
+        }
+        return rtrim( $cut ) . '…';
+    }
+
+    /**
+     * The one-line summary a closed section shows -- "3 dates added",
+     * "Ready — ASE registration opens Monday", "Nothing yet". Pure: takes
+     * exactly the block's sanitized 'data' array, no WordPress calls, no
+     * escaping (the caller escapes, same convention as the rest of this
+     * file's plain-text helpers).
+     *
+     * @param string $type Block type slug (see foldable_types()).
+     * @param array  $data Sanitized block data.
+     * @return string
+     */
+    public static function section_summary( $type, array $data ) {
+        switch ( $type ) {
+
+            case 'announcement':
+                $headline = isset( $data['headline'] ) ? trim( (string) $data['headline'] ) : '';
+                $when     = isset( $data['when'] ) ? trim( (string) $data['when'] ) : '';
+                $text     = isset( $data['text'] ) ? trim( (string) $data['text'] ) : '';
+                $gist     = '' !== $headline ? $headline : ( '' !== $when ? $when : $text );
+                return '' !== $gist ? 'Ready — ' . self::shorten( $gist, 60 ) : 'Nothing yet';
+
+            case 'events':
+                $rows = isset( $data['rows'] ) && is_array( $data['rows'] ) ? count( $data['rows'] ) : 0;
+                if ( 0 === $rows ) {
+                    return 'Nothing yet';
+                }
+                return 1 === $rows ? '1 date added' : $rows . ' dates added';
+
+            case 'featured':
+                $headline = isset( $data['headline'] ) ? trim( (string) $data['headline'] ) : '';
+                $body     = isset( $data['body'] ) ? trim( (string) $data['body'] ) : '';
+                $gist     = '' !== $headline ? $headline : $body;
+                return '' !== $gist ? 'Ready — ' . self::shorten( $gist, 60 ) : 'Nothing yet';
+
+            case 'story_cards':
+                $cards = isset( $data['cards'] ) && is_array( $data['cards'] ) ? count( $data['cards'] ) : 0;
+                if ( 0 === $cards ) {
+                    return 'Nothing yet';
+                }
+                return 1 === $cards ? '1 story added' : $cards . ' stories added';
+
+            case 'quick_notes':
+                $items = isset( $data['items'] ) && is_array( $data['items'] ) ? count( $data['items'] ) : 0;
+                if ( 0 === $items ) {
+                    return 'Nothing yet';
+                }
+                return 1 === $items ? '1 note added' : $items . ' notes added';
+
+            case 'footer':
+                $signoff = isset( $data['signoff'] ) ? trim( (string) $data['signoff'] ) : '';
+                if ( '' !== $signoff ) {
+                    return 'Signed off';
+                }
+                $links = isset( $data['links'] ) && is_array( $data['links'] ) ? count( $data['links'] ) : 0;
+                if ( $links > 0 ) {
+                    return 1 === $links ? '1 link added' : $links . ' links added';
+                }
+                return 'Nothing yet';
+        }
+
+        return '';
+    }
+
+    /**
+     * Is this block's content empty, per the same rule section_summary()
+     * uses to say "Nothing yet"? Used to decide whether a step's first
+     * foldable section should default open.
+     *
+     * @param string $type Block type slug.
+     * @param array  $data Sanitized block data.
+     * @return bool
+     */
+    public static function section_is_empty( $type, array $data ) {
+        return 'Nothing yet' === self::section_summary( $type, $data );
+    }
 }

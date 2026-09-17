@@ -89,4 +89,34 @@ foreach ( PTK_Builder_Copy::BANNED_WORDS as $word ) {
     }
 }
 
+// section_summary(): task 2's closed-row text.
+ptk_test_ok( 'Nothing yet' === $c::section_summary( 'events', array( 'rows' => array() ) ), 'events with no rows says "Nothing yet"' );
+ptk_test_ok( '1 date added' === $c::section_summary( 'events', array( 'rows' => array( array( 'date' => '2026-09-20' ) ) ) ), 'events with one row says "1 date added"' );
+ptk_test_ok( '3 dates added' === $c::section_summary( 'events', array( 'rows' => array( 1, 2, 3 ) ) ), 'events with three rows says "3 dates added"' );
+
+ptk_test_ok( 'Nothing yet' === $c::section_summary( 'announcement', array( 'headline' => '', 'when' => '', 'text' => '' ) ), 'an empty announcement says "Nothing yet"' );
+ptk_test_ok( 'Ready — ASE registration opens Monday' === $c::section_summary( 'announcement', array( 'headline' => 'ASE registration opens Monday', 'when' => '', 'text' => '' ) ), 'a filled announcement summarizes its headline' );
+ptk_test_ok( 0 === strpos( $c::section_summary( 'announcement', array( 'headline' => '', 'when' => '', 'text' => str_repeat( 'a', 90 ) ) ), 'Ready — ' ), 'an announcement with only body text still reads "Ready —"' );
+
+ptk_test_ok( 'Nothing yet' === $c::section_summary( 'featured', array( 'headline' => '', 'body' => '' ) ), 'an empty top story says "Nothing yet"' );
+ptk_test_ok( 'Ready — Film night moves to Friday' === $c::section_summary( 'featured', array( 'headline' => 'Film night moves to Friday', 'body' => '' ) ), 'a filled top story summarizes its headline' );
+
+ptk_test_ok( 'Nothing yet' === $c::section_summary( 'story_cards', array( 'cards' => array() ) ), 'no stories says "Nothing yet"' );
+ptk_test_ok( '1 story added' === $c::section_summary( 'story_cards', array( 'cards' => array( 1 ) ) ), 'one story says "1 story added"' );
+ptk_test_ok( '2 stories added' === $c::section_summary( 'story_cards', array( 'cards' => array( 1, 2 ) ) ), 'two stories says "2 stories added"' );
+
+ptk_test_ok( 'Nothing yet' === $c::section_summary( 'quick_notes', array( 'items' => array() ) ), 'no notes says "Nothing yet"' );
+ptk_test_ok( '1 note added' === $c::section_summary( 'quick_notes', array( 'items' => array( 1 ) ) ), 'one note says "1 note added"' );
+
+ptk_test_ok( 'Nothing yet' === $c::section_summary( 'footer', array( 'signoff' => '', 'links' => array() ) ), 'an empty footer says "Nothing yet"' );
+ptk_test_ok( 'Signed off' === $c::section_summary( 'footer', array( 'signoff' => 'With gratitude', 'links' => array() ) ), 'a footer with a sign-off says "Signed off"' );
+ptk_test_ok( '2 links added' === $c::section_summary( 'footer', array( 'signoff' => '', 'links' => array( 1, 2 ) ) ), 'a footer with no sign-off but links counts them' );
+
+ptk_test_ok( true === $c::section_is_empty( 'events', array( 'rows' => array() ) ), 'section_is_empty agrees with "Nothing yet"' );
+ptk_test_ok( false === $c::section_is_empty( 'events', array( 'rows' => array( 1 ) ) ), 'section_is_empty is false once there is content' );
+
+ptk_test_ok( in_array( 'announcement', $c::foldable_types(), true ), 'announcement folds' );
+ptk_test_ok( in_array( 'footer', $c::foldable_types(), true ), 'footer folds' );
+ptk_test_ok( ! in_array( 'header', $c::foldable_types(), true ), 'header never folds -- it is the only thing on step 1' );
+
 ptk_test_done();
