@@ -738,6 +738,23 @@ class PTK_Newsletter_Builder {
     }
 
     /**
+     * Task 4: the "Preview" toggle shown at 782px and below, new look only.
+     * newsletter-builder.js binds its click to add/remove
+     * .ptk-nl-preview-open on .ptk-nl-preview -- a pure CSS reveal (see the
+     * stylesheet's task-4 section) that never touches that column's width,
+     * so scalePreview()'s own math (computed once at boot) stays valid
+     * whether the toggle has been pressed or not.
+     */
+    private static function render_preview_toggle() {
+        if ( ! PTK_Hub_Look::on() ) {
+            return;
+        }
+        ?>
+        <button type="button" class="ptk-nl-preview-toggle" aria-expanded="false" aria-controls="ptk-nl-preview-frame">Preview</button>
+        <?php
+    }
+
+    /**
      * Canonical admin URL of the Newsletter Builder page.
      *
      * @return string
@@ -1562,6 +1579,10 @@ class PTK_Newsletter_Builder {
                         <?php endif; ?>
                     <?php endif; ?>
                 </div>
+
+                <?php /* Task 4: the "Preview" toggle shown at 782px and below -- new look only,
+                        renders nothing when the look is off (see the method). */ ?>
+                <?php self::render_preview_toggle(); ?>
 
                 <?php /* The live preview is a COLUMN of the wizard, visible on every step — it must never carry
                         data-step, or the JS's "hide every non-current [data-step]" would hide it on steps 1-3. */ ?>

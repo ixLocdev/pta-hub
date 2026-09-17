@@ -870,6 +870,19 @@
             var dir = $(this).attr('data-step-nav') === 'prev' ? -1 : 1;
             showStep(currentStep + dir, true);
         });
+
+        // Task 4: the "Preview" toggle at 782px and below (new look only --
+        // the button only exists in the markup when the look is on, so this
+        // binding is a harmless no-op with it off). Purely a class + aria
+        // flip: newsletter-builder.css's task-4 rules do the showing/hiding
+        // by height alone, never width, so scalePreview()'s own math (fixed
+        // at boot) never needs recomputing here.
+        $(document).on('click', '.ptk-nl-preview-toggle', function () {
+            var $btn = $(this);
+            var $preview = $('.ptk-nl-preview');
+            var open = $preview.toggleClass('ptk-nl-preview-open').hasClass('ptk-nl-preview-open');
+            $btn.attr('aria-expanded', open ? 'true' : 'false');
+        });
     }
 
     /* ──────────────────────────────────────────

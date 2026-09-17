@@ -1560,3 +1560,148 @@
     max-height: 320px;
     resize: vertical;
 }
+
+/* ── Phase 3, task 4: fit and phone ──────────────────────────────
+   Everything below is scoped under body.ptk-hub-look, so it can only ever
+   run when the new look is on -- with it off this file contributes nothing
+   new and the Builder is exactly what it was. No one-sided borders; colors
+   and radii come from the tokens declared on body.ptk-hub-look in hub.css. */
+
+body.ptk-hub-look .ptk-nl-builder {
+    font-family: var(--ptk-font-sans);
+    color: var(--ptk-text);
+}
+
+body.ptk-hub-look .ptk-nl-builder h1 {
+    font-family: var(--ptk-font-serif);
+    font-weight: 600;
+    color: var(--ptk-text);
+}
+
+body.ptk-hub-look .ptk-nl-intro,
+body.ptk-hub-look .ptk-nl-step-blurb,
+body.ptk-hub-look .ptk-nl-field-group .description,
+body.ptk-hub-look .ptk-nl-arrange-panel .description,
+body.ptk-hub-look .ptk-nl-preview-panel .description,
+body.ptk-hub-look .ptk-nl-step-count {
+    color: var(--ptk-text-dim);
+}
+
+/* Fields */
+body.ptk-hub-look .ptk-nl-field-group label {
+    color: var(--ptk-text);
+    font-family: var(--ptk-font-sans);
+}
+
+body.ptk-hub-look .ptk-nl-field-group input[type="text"],
+body.ptk-hub-look .ptk-nl-field-group input[type="date"],
+body.ptk-hub-look .ptk-nl-field-group input[type="number"],
+body.ptk-hub-look .ptk-nl-field-group input[type="url"],
+body.ptk-hub-look .ptk-nl-field-group textarea,
+body.ptk-hub-look .ptk-nl-preview-panel input[type="text"] {
+    border-color: var(--ptk-line);
+    border-radius: var(--ptk-radius-field);
+    background: var(--ptk-surface);
+    color: var(--ptk-text);
+}
+
+body.ptk-hub-look .ptk-nl-field-group input:focus,
+body.ptk-hub-look .ptk-nl-field-group textarea:focus {
+    border-color: var(--ptk-primary);
+    outline-color: var(--ptk-primary);
+}
+
+/* Buttons -- every button this screen renders, at a real 44px tap target. */
+body.ptk-hub-look .ptk-nl-submit-row .button,
+body.ptk-hub-look .ptk-nl-step-nav .button,
+body.ptk-hub-look .ptk-nl-preview-panel .button,
+body.ptk-hub-look .ptk-nl-msg-actions .button,
+body.ptk-hub-look .ptk-nl-preview-toggle {
+    min-height: 44px;
+    border-radius: var(--ptk-radius-field);
+}
+
+body.ptk-hub-look .ptk-nl-submit-row .button-primary,
+body.ptk-hub-look .ptk-nl-step-nav .button-primary {
+    background: var(--ptk-primary);
+    border-color: var(--ptk-primary);
+}
+
+/* Panels' chrome -- blocks, the arrange panel, the preview-link and share
+   panels all read as the same family of card, full four-sided border. */
+body.ptk-hub-look .ptk-nl-block,
+body.ptk-hub-look .ptk-nl-arrange-panel,
+body.ptk-hub-look .ptk-nl-submit-row,
+body.ptk-hub-look .ptk-nl-preview-panel,
+body.ptk-hub-look .ptk-nl-preview {
+    background: var(--ptk-surface);
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-card);
+}
+
+body.ptk-hub-look .ptk-nl-preview {
+    background: var(--ptk-bg);
+}
+
+body.ptk-hub-look .ptk-nl-step-link {
+    min-height: 44px;
+}
+
+/* The "Preview" toggle: only exists in the markup when the new look is on
+   (see PTK_Newsletter_Builder::render_preview_toggle()), and only shown at
+   782px and below -- above that the preview sits in its own column and
+   needs no toggle. */
+body.ptk-hub-look .ptk-nl-preview-toggle {
+    display: none;
+    width: 100%;
+    margin: 8px 0 0;
+    font-family: var(--ptk-font-sans);
+    font-weight: 700;
+    color: var(--ptk-primary);
+    background: var(--ptk-primary-soft);
+    border: 1px solid var(--ptk-primary);
+}
+
+/* 782px is WordPress admin's own mobile breakpoint. */
+@media (max-width: 782px) {
+    /* The step nav (5 steps) stays one line and scrolls sideways instead of
+       wrapping -- wrapping across two or three lines is what was eating the
+       screen on a phone. The Back/Next row is already a two-item flex row
+       with no wrap, so it needs no change here. */
+    body.ptk-hub-look .ptk-nl-steps ul {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    body.ptk-hub-look .ptk-nl-step-link {
+        flex: 0 0 auto;
+    }
+
+    /* The live preview already sits below the form in DOM order at this
+       width (the 1200px rule above stacks the wizard into one column) --
+       here it additionally collapses behind the "Preview" toggle. Only
+       max-height/overflow change: .ptk-nl-preview keeps a real, nonzero
+       WIDTH the whole time, which is what scalePreview() needs at boot
+       (see the file banner's rule 2) -- nothing here ever sets its width
+       to 0 or gives it display:none. */
+    body.ptk-hub-look .ptk-nl-preview-toggle {
+        display: block;
+    }
+
+    body.ptk-hub-look .ptk-nl-preview {
+        max-height: 0;
+        overflow: hidden;
+        border-width: 0;
+        margin: 0;
+        padding: 0;
+    }
+
+    body.ptk-hub-look .ptk-nl-preview.ptk-nl-preview-open {
+        max-height: none;
+        overflow-y: visible;
+        border-width: 1px;
+        margin-top: 16px;
+        padding: 16px;
+    }
+}
