@@ -54,6 +54,7 @@ if ( ! function_exists( 'ptk_glossary_url' ) ) {
 require_once PTK_PLUGIN_DIR . 'includes/class-focal-point.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-hub-look.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-hub-ui.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-simple-mode.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-post-type.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-newsletter-post-type.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-newsletter-builder.php';
@@ -183,6 +184,7 @@ function ptk_init() {
     PTK_Multisite::init();
     PTK_Content_Lock::init();
     PTK_Hub_Look::init();
+    PTK_Simple_Mode::init();
     PTK_Site_Colors::init();
     PTK_Auto_Updater::init();
     PTK_Network_Provisioning::init();
