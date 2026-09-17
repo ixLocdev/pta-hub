@@ -55,7 +55,13 @@ class PTK_Hub_Look {
         $hook      = (string) $hook;
         $post_type = (string) $post_type;
 
-        if ( in_array( $post_type, self::POST_TYPES, true ) ) {
+        // A Hub post type counts only on WordPress's own list and editor
+        // screens. Every submenu page under the PTA Hub menu also reports
+        // post_type = pta_knowledge, and those pages (the content wizard,
+        // vendor approvals, analytics...) are migrated one at a time via
+        // PAGES -- never by accident through their parent menu.
+        $core = array( 'edit.php', 'post.php', 'post-new.php', 'edit', 'post', 'edit-' . $post_type, $post_type );
+        if ( in_array( $post_type, self::POST_TYPES, true ) && in_array( $hook, $core, true ) ) {
             return true;
         }
         foreach ( self::PAGES as $page ) {
