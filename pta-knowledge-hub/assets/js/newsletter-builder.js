@@ -2873,6 +2873,19 @@
 
     var eventsRemoveAllState = { removed: null };
 
+    /**
+     * Re-render the calendar panel if it's open, so "Already added" reflects
+     * whatever just changed in Coming up (Remove all / its Undo). A no-op
+     * when the panel is closed -- it recomputes "Already added" fresh from
+     * the live rows the next time it opens anyway.
+     */
+    function refreshOpenCalendarPanel() {
+        var $panel = $('[data-calendar-import] [data-calendar-panel]').first();
+        if ($panel.length && $panel.attr('hidden') === undefined) {
+            renderCalendarPanel($panel);
+        }
+    }
+
     function bindRemoveAllEvents() {
         $(document).on('click', '[data-remove-all-events]', function (e) {
             e.preventDefault();
@@ -2906,6 +2919,10 @@
                 removedRows.push($(this).detach());
             });
             eventsRemoveAllState.removed = removedRows;
+            // Any earlier "Added N. Undo" from the calendar panel now points
+            // at rows this just removed -- drop it so a stale Undo can't
+            // fight with this one.
+            calState.lastAdded = null;
 
             $section.find('[data-remove-all-confirm]').attr('hidden', 'hidden');
             var word = 1 === count ? 'date' : 'dates';
@@ -2915,6 +2932,7 @@
 
             serializeAndPreview();
             updateEventsActionState();
+            refreshOpenCalendarPanel();
         });
 
         $(document).on('click', '[data-events-undo-remove-all]', function (e) {
@@ -2932,6 +2950,7 @@
             $section.find('[data-events-removed-msg]').attr('hidden', 'hidden').empty();
             serializeAndPreview();
             updateEventsActionState();
+            refreshOpenCalendarPanel();
         });
     }
 
