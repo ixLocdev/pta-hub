@@ -82,4 +82,36 @@ ptk_test_ok( '' !== trim( $by_type['footer']['signoff'] ), 'the footer keeps its
 // the photo/PII consent gate for someone just looking at it.
 ptk_test_ok( false === $d::blocks_have_images( $sanitized ), 'the example has no photos at all, anywhere' );
 
+// ---------------------------------------------------------------------
+// Round 3.1 fix (item 3): force_draft() -- the wp_insert_post_data guard
+// that keeps the example from going live through ANY save path (Quick
+// Edit, Bulk Edit, the block editor, REST), not just the Builder's own
+// form (that gate is handle_submission()'s, tested only live -- see this
+// file's header comment). A tiny in-memory get_post_meta() stub is enough
+// to exercise is_example()/force_draft() under plain php.
+// ---------------------------------------------------------------------
+if ( ! function_exists( 'get_post_meta' ) ) {
+    $GLOBALS['ptk_test_post_meta'] = array();
+    function get_post_meta( $post_id, $key = '', $single = false ) {
+        return isset( $GLOBALS['ptk_test_post_meta'][ $post_id ][ $key ] )
+            ? $GLOBALS['ptk_test_post_meta'][ $post_id ][ $key ]
+            : '';
+    }
+}
+$GLOBALS['ptk_test_post_meta'][101] = array( $e::META_EXAMPLE => 1 ); // the example
+$GLOBALS['ptk_test_post_meta'][102] = array(); // an ordinary newsletter
+
+foreach ( array( 'publish', 'future', 'private', 'pending' ) as $status ) {
+    $out = $e::force_draft( array( 'post_status' => $status ), array( 'ID' => 101 ) );
+    ptk_test_ok( 'draft' === $out['post_status'], "force_draft: the example's own post_status '$status' is forced back to draft" );
+}
+foreach ( array( 'draft', 'auto-draft', 'trash' ) as $status ) {
+    $out = $e::force_draft( array( 'post_status' => $status ), array( 'ID' => 101 ) );
+    ptk_test_ok( $status === $out['post_status'], "force_draft: the example's own already-safe post_status '$status' passes through untouched" );
+}
+$out = $e::force_draft( array( 'post_status' => 'publish' ), array( 'ID' => 102 ) );
+ptk_test_ok( 'publish' === $out['post_status'], 'force_draft: an ORDINARY newsletter publishing normally is completely untouched' );
+$out = $e::force_draft( array( 'post_status' => 'publish' ), array() ); // No ID: a brand-new post.
+ptk_test_ok( 'publish' === $out['post_status'], 'force_draft: a brand-new post (no ID yet) can never be the example, so it is untouched' );
+
 ptk_test_done();

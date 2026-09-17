@@ -40,6 +40,47 @@ class PTK_Example_Newsletter {
 
     public static function init() {
         add_action( 'admin_init', array( __CLASS__, 'maybe_create' ) );
+
+        // Round 3.1 fix (item 3): PTK_Newsletter_Builder::handle_submission()
+        // only blocks publishing the example through the Builder's OWN form.
+        // Quick Edit, Bulk Edit, the block editor, and the REST API all save
+        // a post through wp_insert_post()/wp_update_post() directly, none of
+        // which go anywhere near the Builder -- so the same guard has to
+        // live here too, at the one filter every one of those paths runs
+        // through right before the database write.
+        add_filter( 'wp_insert_post_data', array( __CLASS__, 'force_draft' ), 10, 2 );
+    }
+
+    /**
+     * The example newsletter must never become publicly visible, no matter
+     * which of WordPress's several "save a post" paths is used. Runs on
+     * every post save (not just pta_newsletter), so it starts by checking
+     * this IS an already-flagged example -- a brand-new post has no ID yet
+     * and can never be the example, so this only ever affects a save to an
+     * existing example post.
+     *
+     * @param array $data    Slashed post data about to be saved.
+     * @param array $postarr Raw $_POST-derived array, including ID for an update.
+     * @return array
+     */
+    public static function force_draft( array $data, array $postarr ) {
+        $post_id = isset( $postarr['ID'] ) ? absint( $postarr['ID'] ) : 0;
+        if ( ! $post_id || ! self::is_example( $post_id ) ) {
+            return $data;
+        }
+
+        // Anything that isn't already a non-public status gets forced back
+        // to draft -- 'publish', 'future', 'private', and 'pending' (pending
+        // still shows to anyone with edit_others_posts) all count as "could
+        // go live," so all of them are caught, not just 'publish'. Trash and
+        // auto-draft pass through untouched: deleting the example must
+        // still work.
+        $already_safe = array( 'draft', 'auto-draft', 'trash' );
+        if ( ! in_array( $data['post_status'], $already_safe, true ) ) {
+            $data['post_status'] = 'draft';
+        }
+
+        return $data;
     }
 
     /**
