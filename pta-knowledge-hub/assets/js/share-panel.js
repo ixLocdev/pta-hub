@@ -476,6 +476,16 @@
                 });
         }
 
+        // Round 3.1 fix (item 2): whether the consent checkbox's current
+        // CHECKED state came from the volunteer actually ticking it just
+        // now, as opposed to being pre-checked by the server from a past
+        // (possibly stale) confirmation. Only an armed tick may authorize
+        // "Use the top story's photo" / "Choose a different photo" -- see
+        // requireFreshPhotoConsent(). Starts false even when the checkbox
+        // renders pre-checked, so the very first attempt to change the
+        // photo after a page load always asks for one explicit tick.
+        var squareConsentArmed = false;
+
         // The choice buttons start disabled (server-rendered) until the
         // consent checkbox is ticked -- otherwise a volunteer could click
         // straight through to a 409 refusal with no visible reason why.
@@ -483,6 +493,10 @@
             var $root = $(this).closest('[data-share-photo]');
             var checked = $(this).prop('checked');
             $root.find('[data-share-photo-featured], [data-share-photo-choose]').prop('disabled', !checked);
+            // A real user interaction always sets this, whether they just
+            // ticked it (arming it) or unticked it (disarming it) --
+            // there is only ever one such checkbox on this panel.
+            squareConsentArmed = checked;
         });
 
         /**
@@ -491,22 +505,32 @@
          * file for the photo already behind the words. That's fine as long
          * as nothing changes, but "Use the top story's photo" / "Choose a
          * different photo" are exactly the actions that change WHICH photo
-         * this is, so a leftover checked box must not silently wave the new
-         * pick through. The first click on either button, while the box is
-         * still checked from before, unticks it and disables both buttons
-         * again (same as if the volunteer had unticked it themselves) and
-         * asks for a fresh tick instead of proceeding -- never a silent
-         * downgrade. A checkbox that starts unchecked (nothing confirmed
-         * yet) is unaffected: the buttons are already disabled server-side.
+         * this is, so a leftover checked box from BEFORE this attempt must
+         * not silently wave a new pick through -- only a checkbox the
+         * volunteer just armed (ticked) THEMSELVES, for this attempt, may.
+         * A checked-but-not-armed box (server-pre-checked, or left over
+         * from an earlier attempt) gets unticked and disabled again, with
+         * an inline message asking for a fresh tick, instead of proceeding
+         * -- never a silent downgrade.
          *
          * @return {boolean} True to proceed with the action right now.
          */
         function requireFreshPhotoConsent($root) {
             var $checkbox = $root.find('[data-share-photo-pii-ok]');
-            if (!$checkbox.length || !$checkbox.prop('checked')) {
+            if (!$checkbox.length) {
                 return true;
             }
-            $checkbox.prop('checked', false).trigger('change');
+            if ($checkbox.prop('checked') && squareConsentArmed) {
+                // Consumed: authorizes exactly this one attempt. The next
+                // photo change (even moments later) needs its own fresh
+                // tick, and the picker is about to be replaced with
+                // server-rendered HTML (a brand new checkbox element) anyway.
+                squareConsentArmed = false;
+                return true;
+            }
+            if ($checkbox.prop('checked')) {
+                $checkbox.prop('checked', false).trigger('change');
+            }
             var $consent = $root.find('[data-share-photo-consent]');
             if ($consent.length && !$consent.find('.ptk-nl-share-photo-refused').length) {
                 $consent.append('<p class="ptk-nl-share-photo-refused" role="alert">Please tick the box again to confirm this photo, then try again.</p>');
