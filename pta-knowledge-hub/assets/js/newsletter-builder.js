@@ -1844,12 +1844,21 @@
      * based on its current value: a placeholder text chip immediately (no
      * flash of nothing), upgraded to a real thumbnail + filename once
      * wp.media resolves the attachment.
+     *
+     * Round 3.1 fix (item 5): also flips the picker button's own label --
+     * "Add image" before a picture is chosen, "Change image" once one is,
+     * back to "Add image" the moment Remove image clears it. One place, so
+     * every image picker in the Builder (the top story's, each story
+     * card's) stays in sync automatically -- this already runs on every
+     * add/change/remove/prefill via openImagePicker(), the Remove image
+     * handler, and setFieldValue().
      */
     function refreshImageChip($hidden) {
         var $group = $hidden.closest('.ptk-nl-field-group');
         var id = parseInt($hidden.val(), 10) || 0;
 
         $group.find('.ptk-nl-image-chip').remove();
+        $group.find('> button.ptk-nl-add-image').first().text(id > 0 ? 'Change image' : 'Add image');
 
         if (id <= 0) {
             return;
