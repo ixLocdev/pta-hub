@@ -1239,20 +1239,13 @@
     margin: 0;
 }
 
-/* Both import buttons and their panels are full-width once opened, even
-   though their toggle buttons sit side by side in the action bar. */
-.ptk-nl-calendar-import,
-.ptk-nl-post-import {
-    position: relative;
-}
-
-.ptk-nl-calendar-panel,
-.ptk-nl-post-import-panel {
-    position: absolute;
-    z-index: 5;
-    top: 100%;
-    left: 0;
-    width: min(560px, 90vw);
+/* The toggle buttons sit side by side in the action bar, but once a panel
+   opens its wrapper claims the full row width (forcing the other buttons
+   onto their own line below) so the panel itself reads at full width
+   instead of being squeezed into a narrow flex column. */
+.ptk-nl-calendar-import:has(.ptk-nl-calendar-panel:not([hidden])),
+.ptk-nl-post-import:has(.ptk-nl-post-import-panel:not([hidden])) {
+    flex-basis: 100%;
 }
 
 .ptk-nl-post-import-panel {
@@ -1303,9 +1296,6 @@
 }
 
 .ptk-nl-post-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
     padding: 10px;
     margin-bottom: 6px;
     background: #ffffff;
@@ -1318,8 +1308,25 @@
     color: #7f8590;
 }
 
-.ptk-nl-post-row input[type="checkbox"] {
+/* The checkbox/thumbnail/title-meta-excerpt line stays a flex row; the
+   type choice + split checkbox + note sit BELOW it as their own block
+   (ptk-nl-post-row-extra), not more items squeezed into the same row --
+   several radios plus a checkbox plus the note text all in one flex line
+   would overflow the fields column on anything narrower than a wide
+   desktop. */
+.ptk-nl-post-row-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.ptk-nl-post-row-top input[type="checkbox"] {
     margin-top: 3px;
+}
+
+.ptk-nl-post-row-extra {
+    margin-top: 8px;
+    margin-left: 58px;
 }
 
 .ptk-nl-post-thumb {

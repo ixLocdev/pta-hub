@@ -2458,6 +2458,7 @@
                 var payload = calEscapeHtml(JSON.stringify(post));
 
                 html += '<div class="ptk-nl-post-row' + (already ? ' is-added' : '') + '">';
+                html += '<div class="ptk-nl-post-row-top">';
                 html += '<input type="checkbox" id="' + id + '" data-post-check value="' + payload + '"' + (already ? ' disabled' : '') + '>';
                 if (post.thumb_url) {
                     html += '<span class="ptk-nl-post-thumb"><img src="' + calEscapeHtml(post.thumb_url) + '" alt=""></span>';
@@ -2470,8 +2471,10 @@
                     '<span class="ptk-nl-post-row-meta">' + calEscapeHtml(formatShortDate(post.post_date)) + '</span>' +
                     (post.excerpt ? '<span class="ptk-nl-post-row-excerpt">' + calEscapeHtml(post.excerpt) + '</span>' : '') +
                     '</label>';
+                html += '</div>'; // .ptk-nl-post-row-top
 
                 if (!already) {
+                    html += '<div class="ptk-nl-post-row-extra">';
                     html += '<span class="ptk-nl-post-type-choice" role="group" aria-label="Add as">';
                     ['story', 'event', 'quick_note'].forEach(function (typeKey) {
                         var radioId = id + '-' + typeKey;
@@ -2493,8 +2496,9 @@
                     if (note) {
                         html += '<span class="ptk-nl-post-note">' + calEscapeHtml(note) + '</span>';
                     }
+                    html += '</div>'; // .ptk-nl-post-row-extra
                 }
-                html += '</div>';
+                html += '</div>'; // .ptk-nl-post-row
             });
             html += '</div>';
         }

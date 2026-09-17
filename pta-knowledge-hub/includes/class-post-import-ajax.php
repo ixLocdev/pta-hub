@@ -65,7 +65,13 @@ class PTK_Post_Import_Ajax {
         $rows = array();
         foreach ( $query->posts as $post ) {
             $thumb_id = get_post_thumbnail_id( $post );
-            $excerpt  = has_excerpt( $post ) ? $post->post_excerpt : wp_trim_words( wp_strip_all_tags( $post->post_content ), 30, '…' );
+            // PTK_Post_Importer::html_to_text(), not a raw wp_strip_all_tags():
+            // stripping tags directly would fuse "<p>BAKE SALE</p><p>Join us…"
+            // into "BAKE SALEJoin us…" with no space where the paragraph
+            // break was.
+            $excerpt = has_excerpt( $post )
+                ? $post->post_excerpt
+                : wp_trim_words( PTK_Post_Importer::html_to_text( $post->post_content ), 30, '…' );
 
             $post_data = array(
                 'id'        => $post->ID,
