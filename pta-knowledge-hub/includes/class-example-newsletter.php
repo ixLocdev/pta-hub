@@ -6,9 +6,10 @@
  * something to look at before writing their own instead of an empty form
  * and a guess. Created once per site, as a DRAFT, filled with realistic
  * #040-style content (announcement callout, top story, two shorter stories,
- * quick notes, three events, footer) and no photos -- a bundled photo would
- * be one more thing to keep in sync across every school site this plugin
- * runs on.
+ * quick notes, three events, footer) with three bundled stock photos
+ * (Pexels, free to use) so it looks like a real issue. 4.8.0 added the
+ * photos; sites whose example was created before that get them once via
+ * maybe_add_photos().
  *
  * WHY admin_init, not an activation hook: this plugin is deployed by
  * Network Admin > Plugins > Upload > "Replace current with uploaded",
@@ -37,6 +38,19 @@ class PTK_Example_Newsletter {
     const META_EXAMPLE = 'ptk_nl_is_example';
 
     const TITLE = 'EXAMPLE — a finished newsletter (do not publish)';
+
+    /** Set once the bundled photos have been added to an existing example. Never cleared. */
+    const OPTION_PHOTOS = 'ptk_example_newsletter_photos_v1';
+
+    /** Attachment meta marking a media item as one of the example's bundled photos (value = its key). */
+    const META_PHOTO_KEY = '_ptk_example_photo';
+
+    /** Bundled photos: key => file in assets/images/example/, alt text. */
+    const PHOTOS = array(
+        'first-week'    => array( 'file' => 'first-week.jpg', 'alt' => 'Students cheering in a classroom' ),
+        'homework-club' => array( 'file' => 'homework-club.jpg', 'alt' => 'Students working on worksheets at a table' ),
+        'supply-drive'  => array( 'file' => 'supply-drive.jpg', 'alt' => 'A student unpacking school supplies at her desk' ),
+    );
 
     public static function init() {
         add_action( 'admin_init', array( __CLASS__, 'maybe_create' ) );
@@ -91,8 +105,11 @@ class PTK_Example_Newsletter {
      */
     public static function maybe_create() {
         if ( get_option( self::OPTION_CREATED ) ) {
+            self::maybe_add_photos();
             return;
         }
+        // A brand-new example already gets its photos in create().
+        update_option( self::OPTION_PHOTOS, current_time( 'mysql' ) );
 
         // Set the flag FIRST: whether create() below succeeds or not, this
         // must never be retried on every single admin request, and must
@@ -147,16 +164,70 @@ class PTK_Example_Newsletter {
      * blocked).
      */
     protected static function create() {
-        $blocks = self::example_blocks();
+        $photos  = self::import_photos();
+        $blocks  = self::example_blocks( $photos );
+        $post_id = wp_insert_post( array(
+            'post_type'    => 'pta_newsletter',
+            'post_title'   => self::TITLE,
+            'post_content' => '',
+            'post_status'  => 'draft',
+        ), true );
 
+        if ( is_wp_error( $post_id ) || ! $post_id ) {
+            return;
+        }
+
+        update_post_meta( $post_id, self::META_EXAMPLE, 1 );
+        // Deliberately NO ptk_nl_issue meta: most_recent_newsletter_id() /
+        // next_issue_number() order by that meta key, and a fictional
+        // "issue 40" must never be mistaken for a real most-recent issue
+        // or push a school's real numbering off by one.
+        self::save_example( $post_id, $blocks, $photos );
+    }
+
+    /**
+     * 4.8.0: an example created before the photos existed gets them once.
+     * Left alone if someone has already put their own photos in it.
+     */
+    public static function maybe_add_photos() {
+        if ( get_option( self::OPTION_PHOTOS ) ) {
+            return;
+        }
+        update_option( self::OPTION_PHOTOS, current_time( 'mysql' ) );
+
+        if ( ! post_type_exists( 'pta_newsletter' ) || ! class_exists( 'PTK_Newsletter_Renderer' ) ) {
+            return;
+        }
+        $post_id = self::example_id();
+        if ( ! $post_id ) {
+            return;
+        }
+        $stored = json_decode( (string) get_post_meta( $post_id, 'ptk_nl_blocks', true ), true );
+        if ( is_array( $stored ) && class_exists( 'PTK_Newsletter_Data' ) && PTK_Newsletter_Data::blocks_image_ids( $stored ) ) {
+            return;
+        }
+
+        $photos = self::import_photos();
+        if ( ! $photos ) {
+            return;
+        }
+        self::save_example( $post_id, self::example_blocks( $photos ), $photos );
+    }
+
+    /**
+     * Render and store the example's content and meta, the same way a real
+     * newsletter's is saved, plus the share picture's photo.
+     */
+    protected static function save_example( $post_id, array $blocks, array $photos ) {
         $school_name = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
         $today       = current_time( 'Y-m-d' );
+        $theme       = class_exists( 'PTK_Newsletter_Builder' ) ? PTK_Newsletter_Builder::DEFAULT_THEME : 'harbor-navy';
 
         $rendered = PTK_Newsletter_Renderer::render( $blocks, array(
             'issue'         => 40,
             'date'          => $today,
             'today'         => $today,
-            'theme'         => class_exists( 'PTK_Newsletter_Builder' ) ? PTK_Newsletter_Builder::DEFAULT_THEME : 'harbor-navy',
+            'theme'         => $theme,
             'logo_url'      => '',
             'school_name'   => $school_name,
             'join_url'      => '',
@@ -170,38 +241,94 @@ class PTK_Example_Newsletter {
 
         kses_remove_filters();
         try {
-            $post_id = wp_insert_post( array(
-                'post_type'    => 'pta_newsletter',
-                'post_title'   => self::TITLE,
+            wp_update_post( array(
+                'ID'           => $post_id,
                 'post_content' => $rendered,
-                'post_status'  => 'draft',
-            ), true );
+            ) );
         } finally {
             kses_init_filters();
         }
 
-        if ( is_wp_error( $post_id ) || ! $post_id ) {
-            return;
+        update_post_meta( $post_id, 'ptk_nl_date', $today );
+        update_post_meta( $post_id, 'ptk_nl_theme', $theme );
+        update_post_meta( $post_id, 'ptk_nl_blocks', wp_slash( wp_json_encode( $blocks ) ) );
+
+        if ( ! empty( $photos['first-week'] ) && class_exists( 'PTK_Share_Data' ) ) {
+            PTK_Share_Data::save_square_photo( $post_id, $photos['first-week'], 50, 30, 0 );
+        }
+    }
+
+    /**
+     * Copy the bundled photos into this site's media library (once -- an
+     * existing copy is reused) and return key => attachment id. Missing
+     * files or a failed upload just leave that photo out.
+     *
+     * @return array<string,int>
+     */
+    protected static function import_photos() {
+        $ids = array();
+        $dir = trailingslashit( defined( 'PTK_PLUGIN_DIR' ) ? PTK_PLUGIN_DIR : dirname( __DIR__ ) . '/' ) . 'assets/images/example/';
+
+        foreach ( self::PHOTOS as $key => $photo ) {
+            $existing = get_posts( array(
+                'post_type'      => 'attachment',
+                'post_status'    => 'inherit',
+                'posts_per_page' => 1,
+                'meta_key'       => self::META_PHOTO_KEY,
+                'meta_value'     => $key,
+                'fields'         => 'ids',
+                'no_found_rows'  => true,
+            ) );
+            if ( $existing ) {
+                $ids[ $key ] = (int) $existing[0];
+                continue;
+            }
+
+            $path = $dir . $photo['file'];
+            if ( ! is_readable( $path ) ) {
+                continue;
+            }
+            $upload = wp_upload_bits( 'example-newsletter-' . $photo['file'], null, file_get_contents( $path ) );
+            if ( ! is_array( $upload ) || ! empty( $upload['error'] ) ) {
+                continue;
+            }
+            $attachment_id = wp_insert_attachment( array(
+                'post_mime_type' => 'image/jpeg',
+                'post_title'     => 'Example newsletter photo (' . $key . ')',
+                'post_content'   => '',
+                'post_status'    => 'inherit',
+            ), $upload['file'] );
+            if ( is_wp_error( $attachment_id ) || ! $attachment_id ) {
+                continue;
+            }
+            if ( ! function_exists( 'wp_generate_attachment_metadata' ) ) {
+                require_once ABSPATH . 'wp-admin/includes/image.php';
+            }
+            wp_update_attachment_metadata( $attachment_id, wp_generate_attachment_metadata( $attachment_id, $upload['file'] ) );
+            update_post_meta( $attachment_id, '_wp_attachment_image_alt', $photo['alt'] );
+            update_post_meta( $attachment_id, self::META_PHOTO_KEY, $key );
+            $ids[ $key ] = (int) $attachment_id;
         }
 
-        update_post_meta( $post_id, self::META_EXAMPLE, 1 );
-        update_post_meta( $post_id, 'ptk_nl_date', $today );
-        update_post_meta( $post_id, 'ptk_nl_theme', class_exists( 'PTK_Newsletter_Builder' ) ? PTK_Newsletter_Builder::DEFAULT_THEME : 'harbor-navy' );
-        // Deliberately NO ptk_nl_issue meta: most_recent_newsletter_id() /
-        // next_issue_number() order by that meta key, and a fictional
-        // "issue 40" must never be mistaken for a real most-recent issue
-        // or push a school's real numbering off by one.
-        update_post_meta( $post_id, 'ptk_nl_blocks', wp_slash( wp_json_encode( $blocks ) ) );
+        return $ids;
     }
 
     /**
      * Realistic #040-style content: announcement callout, top story, two
-     * shorter stories, quick notes, three events, footer. No photos —
-     * see the class docblock.
+     * shorter stories, quick notes, three events, footer, with photos when
+     * they could be imported.
      *
+     * @param array<string,int> $photos From import_photos().
      * @return array[]
      */
-    protected static function example_blocks() {
+    protected static function example_blocks( array $photos = array() ) {
+        $photo = function ( $key, $fit, $x, $y ) use ( $photos ) {
+            if ( empty( $photos[ $key ] ) ) {
+                return array( 'image_id' => 0 );
+            }
+            return array( 'image_id' => $photos[ $key ], 'image_fit' => $fit, 'image_focal_x' => $x, 'image_focal_y' => $y, 'image_zoom' => 0 );
+        };
+
         return array(
             array(
                 'type' => PTK_Newsletter_Data::TYPE_HEADER,
@@ -239,32 +366,32 @@ class PTK_Example_Newsletter {
             ),
             array(
                 'type' => PTK_Newsletter_Data::TYPE_FEATURED,
-                'data' => array(
+                'data' => array_merge( array(
                     'eyebrow'   => 'Top story',
-                    'headline'  => 'Our library got a refresh this summer',
-                    'body'      => "Over the summer, volunteers repainted the library, added a reading nook, and sorted almost a thousand books onto new shelves. Stop by during drop-off this week to see it — and thank you to everyone who helped.",
-                    'link_url'  => 'https://example.org/volunteer',
-                    'link_text' => 'See how to help next time',
-                ),
+                    'headline'  => 'What a first week!',
+                    'body'      => "Thank you to the more than 200 families who stopped by for coffee and donuts on the first day, and to our teachers for such a warm welcome back. Classrooms are settling in and the halls are full again. Here's to a great year together.",
+                    'link_url'  => 'https://example.org/photos',
+                    'link_text' => 'See more first-week photos',
+                ), $photo( 'first-week', 'crop', 50, 42 ) ),
             ),
             array(
                 'type' => PTK_Newsletter_Data::TYPE_STORY_CARDS,
                 'data' => array(
                     'cards' => array(
-                        array(
-                            'eyebrow'   => 'Reminder',
-                            'heading'   => 'Early dismissal is Friday at 1 PM',
-                            'body'      => 'All students dismiss at 1 PM for a staff training afternoon. Aftercare still runs as usual.',
-                            'link_url'  => '',
-                            'link_text' => '',
-                        ),
-                        array(
+                        array_merge( array(
+                            'eyebrow'   => 'New this year',
+                            'heading'   => 'Homework Club starts October 1',
+                            'body'      => 'Grades 2–5 can stay in the library Tuesdays and Thursdays until 4 PM for homework help from teachers and parent volunteers. It is free, but space is limited.',
+                            'link_url'  => 'https://example.org/homework-club',
+                            'link_text' => 'Save a spot',
+                        ), $photo( 'homework-club', 'crop', 55, 45 ) ),
+                        array_merge( array(
                             'eyebrow'   => 'Volunteers needed',
-                            'heading'   => 'Picnic setup crew, Friday afternoon',
-                            'body'      => 'We need six volunteers from 3 to 5 PM to set up tables and the sign-in table before the picnic.',
+                            'heading'   => 'Help stock the classroom supply closet',
+                            'body'      => 'Teachers are running low on glue sticks, folders and tissues. Drop donations in the bins by the front office through Friday, or grab a shift sorting them.',
                             'link_url'  => 'https://example.org/volunteer',
                             'link_text' => 'Sign up for a shift',
-                        ),
+                        ), $photo( 'supply-drive', 'whole', 50, 50 ) ),
                     ),
                 ),
             ),
@@ -273,8 +400,8 @@ class PTK_Example_Newsletter {
                 'data' => array(
                     'label' => 'Good to know',
                     'items' => array(
+                        array( 'heading' => 'Early dismissal Friday', 'body' => 'All students dismiss at 1 PM for a staff training afternoon. Aftercare runs as usual.', 'link_url' => '', 'link_text' => '' ),
                         array( 'heading' => 'Lunch menu', 'body' => "This week's menu is posted on the school website.", 'link_url' => '', 'link_text' => '' ),
-                        array( 'heading' => 'Box Tops', 'body' => 'Scan your receipts in the app — every dollar goes straight to the PTA.', 'link_url' => '', 'link_text' => '' ),
                         array( 'heading' => 'Lost and found', 'body' => 'Filling up fast — check the bin by the front office before it goes to donation.', 'link_url' => '', 'link_text' => '' ),
                     ),
                 ),

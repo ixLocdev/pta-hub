@@ -70,7 +70,7 @@ ptk_test_ok( '' !== trim( $by_type['announcement']['headline'] ), 'the announcem
 ptk_test_ok( count( $by_type['announcement']['timeline'] ) === 3, 'the announcement keeps its 3 timeline dates' );
 ptk_test_ok( count( $by_type['events']['rows'] ) === 3, 'events keeps its 3 rows (spec item 9: "3 events")' );
 ptk_test_ok( '' !== trim( $by_type['featured']['headline'] ), 'the top story keeps its headline' );
-ptk_test_ok( (int) $by_type['featured']['image_id'] === 0, 'the top story has no photo (spec item 9: "no photos")' );
+ptk_test_ok( (int) $by_type['featured']['image_id'] === 0, 'without imported photos, the top story has no photo' );
 ptk_test_ok( count( $by_type['story_cards']['cards'] ) === 2, 'story_cards keeps its 2 cards (spec item 9: "2 stories")' );
 foreach ( $by_type['story_cards']['cards'] as $card ) {
     ptk_test_ok( (int) $card['image_id'] === 0, 'a story card has no photo' );
@@ -80,7 +80,7 @@ ptk_test_ok( '' !== trim( $by_type['footer']['signoff'] ), 'the footer keeps its
 
 // No image anywhere -- the whole example is photo-free, so it never trips
 // the photo/PII consent gate for someone just looking at it.
-ptk_test_ok( false === $d::blocks_have_images( $sanitized ), 'the example has no photos at all, anywhere' );
+ptk_test_ok( false === $d::blocks_have_images( $sanitized ), 'without imported photos, the example has no photos anywhere' );
 
 // ---------------------------------------------------------------------
 // Round 3.1 fix (item 3): force_draft() -- the wp_insert_post_data guard
@@ -113,5 +113,20 @@ $out = $e::force_draft( array( 'post_status' => 'publish' ), array( 'ID' => 102 
 ptk_test_ok( 'publish' === $out['post_status'], 'force_draft: an ORDINARY newsletter publishing normally is completely untouched' );
 $out = $e::force_draft( array( 'post_status' => 'publish' ), array() ); // No ID: a brand-new post.
 ptk_test_ok( 'publish' === $out['post_status'], 'force_draft: a brand-new post (no ID yet) can never be the example, so it is untouched' );
+
+
+// ---------------------------------------------------------------------
+// 4.8.0: with imported photos, the top story and both story cards carry
+// them (sanitize_blocks() keeps the ids and the crop settings), and every
+// bundled photo file ships with the plugin.
+// ---------------------------------------------------------------------
+$with_photos = $d::sanitize_blocks( $method->invoke( null, array( 'first-week' => 11, 'homework-club' => 12, 'supply-drive' => 13 ) ) );
+$by_type = array();
+foreach ( $with_photos as $b ) { $by_type[ $b['type'] ] = $b['data']; }
+ptk_test_ok( 11 === $by_type['featured']['image_id'] && 'crop' === $by_type['featured']['image_fit'], 'example top story uses the first-week photo, cropped' );
+ptk_test_ok( 12 === $by_type['story_cards']['cards'][0]['image_id'] && 13 === $by_type['story_cards']['cards'][1]['image_id'], 'example story cards use the homework-club and supply-drive photos' );
+foreach ( $e::PHOTOS as $key => $photo ) {
+    ptk_test_ok( is_readable( __DIR__ . '/../assets/images/example/' . $photo['file'] ), "bundled example photo exists: {$photo['file']}" );
+}
 
 ptk_test_done();
