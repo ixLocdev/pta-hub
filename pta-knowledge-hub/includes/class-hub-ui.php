@@ -170,17 +170,39 @@ class PTK_Hub_UI {
     }
 
     /**
-     * A single "this needs you" row: one stamp, a sentence, and an optional link.
+     * A single "this needs you" row: one stamp, and either a plain sentence
+     * (with an optional link) or an array of items -- each
+     * array( 'text' => '…', 'url' => '…' ) -- rendered as separate links
+     * inside the same <p>, separated by a middot. Still exactly one stamp.
      */
     public static function waiting_row( $sentence, $url = '', $link_label = '' ) {
-        $url = '' !== (string) $url ? esc_url( (string) $url ) : '';
-
         $out  = '<div class="ptk-waiting">';
         $out .= self::stamp( 'Waiting for you', 'warning' );
-        $out .= '<p class="ptk-waiting-text">' . esc_html( $sentence );
-        if ( '' !== $url && '' !== (string) $link_label ) {
-            $out .= ' <a href="' . esc_attr( $url ) . '">' . esc_html( $link_label ) . '</a>';
+        $out .= '<p class="ptk-waiting-text">';
+
+        if ( is_array( $sentence ) ) {
+            $links = array();
+            foreach ( $sentence as $item ) {
+                $text     = isset( $item['text'] ) ? (string) $item['text'] : '';
+                $item_url = isset( $item['url'] ) ? (string) $item['url'] : '';
+                if ( '' === $text ) {
+                    continue;
+                }
+                if ( '' !== $item_url ) {
+                    $links[] = '<a href="' . esc_attr( esc_url( $item_url ) ) . '">' . esc_html( $text ) . '</a>';
+                } else {
+                    $links[] = esc_html( $text );
+                }
+            }
+            $out .= implode( '<span class="ptk-waiting-sep"> &middot; </span>', $links );
+        } else {
+            $url = '' !== (string) $url ? esc_url( (string) $url ) : '';
+            $out .= esc_html( $sentence );
+            if ( '' !== $url && '' !== (string) $link_label ) {
+                $out .= ' <a href="' . esc_attr( $url ) . '">' . esc_html( $link_label ) . '</a>';
+            }
         }
+
         $out .= '</p>';
         $out .= '</div>';
         return $out;

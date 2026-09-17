@@ -80,6 +80,9 @@ class PTK_Welcome {
         if ( 'pta_knowledge_page_' . self::PAGE_SLUG !== $hook ) {
             return;
         }
+        if ( class_exists( 'PTK_Hub_Look' ) && PTK_Hub_Look::on() ) {
+            return;
+        }
         wp_enqueue_style(
             'ptk-welcome',
             PTK_PLUGIN_URL . 'assets/css/welcome.css',
@@ -229,7 +232,209 @@ class PTK_Welcome {
         return $cards;
     }
 
+    /**
+     * The six things a volunteer might want to do, in order. Pure: the
+     * caller passes a capability map and the real destinations, so tests
+     * need no WordPress. Each item: key, title, meta, url, soft (bool).
+     *
+     * @param array $caps  e.g. array( 'edit_posts' => bool, 'manage_options' => bool, 'council' => bool )
+     * @param array $urls  key => url, supplied by render_new_home(); missing keys give ''.
+     * @return array[]
+     */
+    public static function intentions( array $caps, array $urls = array() ) {
+        $edit_posts     = ! empty( $caps['edit_posts'] );
+        $manage_options = ! empty( $caps['manage_options'] );
+
+        $catalog = array(
+            'newsletter' => array(
+                'title'  => "Tell families what's happening",
+                'meta'   => "Write this week's newsletter. Five short steps, with a preview as you go.",
+                'needs'  => $edit_posts,
+                'soft'   => true,
+            ),
+            'answer'     => array(
+                'title'  => 'Answer a question families keep asking',
+                'meta'   => 'Write it down once, and it lives on the Hub for everyone.',
+                'needs'  => $edit_posts,
+                'soft'   => false,
+            ),
+            'vendor'     => array(
+                'title'  => "Recommend someone we've used",
+                'meta'   => 'A DJ, a caterer, a photographer — add them to the shared directory.',
+                'needs'  => $edit_posts,
+                'soft'   => false,
+            ),
+            'word'       => array(
+                'title'  => 'Explain a PTA word',
+                'meta'   => 'Add a plain-English definition to the glossary.',
+                'needs'  => $edit_posts,
+                'soft'   => false,
+            ),
+            'fix'        => array(
+                'title'  => "Fix something that's wrong",
+                'meta'   => 'Find what this site has written and change it.',
+                'needs'  => $edit_posts,
+                'soft'   => false,
+            ),
+        );
+
+        $intentions = array();
+        foreach ( $catalog as $key => $item ) {
+            if ( ! $item['needs'] ) {
+                continue;
+            }
+            $intentions[] = array(
+                'key'   => $key,
+                'title' => $item['title'],
+                'meta'  => $item['meta'],
+                'url'   => isset( $urls[ $key ] ) ? (string) $urls[ $key ] : '',
+                'soft'  => $item['soft'],
+            );
+        }
+
+        // The "not sure" route needs at least two real choices to be worth offering.
+        if ( count( $intentions ) >= 2 ) {
+            $intentions[] = array(
+                'key'   => 'unsure',
+                'title' => "I'm not sure where to start",
+                'meta'  => 'Pick the sentence that sounds like you.',
+                'url'   => '',
+                'soft'  => false,
+            );
+        }
+
+        return $intentions;
+    }
+
+    /** Plain-language cues for the "not sure" picker: intention key => sentence. */
+    public static function cues() {
+        return array(
+            'newsletter' => 'We have a PTA meeting next Thursday',
+            'answer'     => 'Parents keep emailing about pickup',
+            'vendor'     => 'The DJ from the spring dance was great',
+            'word'       => 'Someone asked what "Title I" means',
+            'fix'        => "There's a typo on the website",
+        );
+    }
+
+    /**
+     * The new home screen: six intentions instead of a card grid, rendered
+     * only when the PTA Hub look is on (see render_page()).
+     */
+    private static function render_new_home() {
+        $caps = array(
+            'edit_posts'     => current_user_can( 'edit_posts' ),
+            'manage_options' => current_user_can( 'manage_options' ),
+            'council'        => self::is_council_admin(),
+        );
+
+        $vendor_url = '';
+        if ( $caps['council'] ) {
+            $vendor_url = admin_url( 'edit.php?post_type=ptk_vendor' );
+        }
+        // No helper/option holds the public Vendor Directory page's id or
+        // url, so non-council volunteers get no vendor intention rather
+        // than a guessed link (dropped below when the url is empty).
+
+        $urls = array(
+            'newsletter' => class_exists( 'PTK_Newsletter_Builder' ) ? PTK_Newsletter_Builder::url() : '',
+            'answer'     => class_exists( 'PTK_Content_Wizard' ) ? PTK_Content_Wizard::url() : '',
+            // No GET parameter preselects the glossary category in the
+            // wizard, so this is the same plain wizard url as "answer".
+            'word'       => class_exists( 'PTK_Content_Wizard' ) ? PTK_Content_Wizard::url() : '',
+            'vendor'     => $vendor_url,
+            'fix'        => admin_url( 'edit.php?post_type=pta_knowledge' ),
+        );
+
+        $intentions = self::intentions( $caps, $urls );
+        $cues       = self::cues();
+
+        echo '<div class="wrap">';
+        echo PTK_Hub_UI::page_open( 'What would you like to do?', "Nothing goes out to families until you say so." );
+
+        echo '<div class="ptk-cards">';
+        foreach ( $intentions as $intention ) {
+            // Drop any intention (other than "unsure") whose url is empty —
+            // there is nowhere real to send the volunteer.
+            if ( 'unsure' !== $intention['key'] && '' === $intention['url'] ) {
+                continue;
+            }
+
+            if ( 'unsure' === $intention['key'] ) {
+                $body = '';
+                foreach ( $cues as $cue_key => $cue_sentence ) {
+                    $target = null;
+                    foreach ( $intentions as $candidate ) {
+                        if ( $candidate['key'] === $cue_key ) {
+                            $target = $candidate;
+                            break;
+                        }
+                    }
+                    if ( ! $target || '' === $target['url'] ) {
+                        continue;
+                    }
+                    $body .= '<a class="ptk-cue" href="' . esc_url( $target['url'] ) . '">'
+                        . '<span class="ptk-cue-text">&#8220;' . esc_html( $cue_sentence ) . '&#8221;</span>'
+                        . esc_html( $target['title'] )
+                        . '</a>';
+                }
+                echo PTK_Hub_UI::card( array(
+                    'title' => $intention['title'],
+                    'meta'  => $intention['meta'],
+                    'body'  => $body,
+                    'key'   => $intention['key'],
+                ) );
+                continue;
+            }
+
+            echo PTK_Hub_UI::card( array(
+                'title' => $intention['title'],
+                'meta'  => $intention['meta'],
+                'url'   => $intention['url'],
+                'soft'  => $intention['soft'],
+                'key'   => $intention['key'],
+            ) );
+        }
+        echo '</div>';
+
+        $nudges = self::get_nudges();
+        if ( ! empty( $nudges ) ) {
+            $items = array();
+            foreach ( $nudges as $n ) {
+                $label = strtolower( substr( $n['label'], 0, 1 ) ) . substr( $n['label'], 1 );
+                $items[] = array(
+                    'text' => number_format_i18n( $n['count'] ) . ' ' . $label,
+                    'url'  => $n['url'],
+                );
+            }
+            echo PTK_Hub_UI::waiting_row( $items );
+        }
+
+        $quiet = array();
+        if ( current_user_can( 'manage_options' ) && class_exists( 'PTK_Share_Settings' ) ) {
+            $quiet[] = array(
+                'label' => 'Set up the basics (once)',
+                'url'   => PTK_Share_Settings::page_url(),
+            );
+        }
+        $quiet[] = array(
+            'label' => 'Show all of WordPress',
+            'url'   => admin_url(),
+        );
+        if ( ! empty( $quiet ) ) {
+            echo PTK_Hub_UI::quiet_links( $quiet );
+        }
+
+        echo PTK_Hub_UI::page_close();
+        echo '</div>';
+    }
+
     public static function render_page() {
+        if ( class_exists( 'PTK_Hub_Look' ) && PTK_Hub_Look::on() ) {
+            self::render_new_home();
+            return;
+        }
+
         $nudges = self::get_nudges();
         $cards  = self::get_cards();
         ?>

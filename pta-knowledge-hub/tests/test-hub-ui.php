@@ -62,4 +62,45 @@ ptk_test_ok( false !== strpos( $fold, '<details' ) && false !== strpos( $fold, '
 ptk_test_ok( false === strpos( $fold, ' open' ), 'a closed fold has no open attribute' );
 ptk_test_ok( false !== strpos( $u::section_fold( array( 'title' => 'T', 'body' => '', 'open' => true ) ), '<details class="ptk-fold" open' ), 'an open fold is open' );
 
+$multi = $u::waiting_row( array(
+    array( 'text' => '2 vendor reviews to approve', 'url' => 'https://example.org/vendors' ),
+    array( 'text' => '1 topic suggestion from members', 'url' => 'https://example.org/suggestions' ),
+) );
+ptk_test_ok( 1 === substr_count( $multi, 'class="ptk-stamp' ), 'array form still renders exactly one stamp' );
+ptk_test_ok( false !== strpos( $multi, '2 vendor reviews to approve' ) && false !== strpos( $multi, 'https://example.org/vendors' ), 'array form renders the first item as a link' );
+ptk_test_ok( false !== strpos( $multi, '1 topic suggestion from members' ) && false !== strpos( $multi, 'https://example.org/suggestions' ), 'array form renders the second item as a link' );
+ptk_test_ok( false !== strpos( $multi, 'ptk-waiting-sep' ), 'array form separates items visually' );
+
+require __DIR__ . '/../includes/class-welcome.php';
+
+// The six intentions: what the volunteer wants, not what the system stores.
+$intents = PTK_Welcome::intentions( array( 'edit_posts' => true, 'manage_options' => true ) );
+$titles  = array_column( $intents, 'title' );
+ptk_test_ok( 6 === count( $intents ), 'six intentions for a full-capability user' );
+ptk_test_ok( "Tell families what's happening" === $titles[0], 'the newsletter comes first' );
+ptk_test_ok( in_array( "I'm not sure where to start", $titles, true ), 'the unsure route is always offered' );
+ptk_test_ok( "I'm not sure where to start" === end( $titles ), 'the unsure route comes last' );
+foreach ( $titles as $title ) {
+    ptk_test_ok( ! preg_match( '/\b(Add New|Edit|Publish|Manage|Settings|Post|Entry)\b/', $title ), "no system words in: $title" );
+}
+foreach ( $intents as $i ) {
+    ptk_test_ok( isset( $i['key'], $i['title'], $i['meta'], $i['url'] ), "intention has key/title/meta/url: {$i['title']}" );
+}
+
+// Someone who can't edit sees only what they can actually do.
+$limited = PTK_Welcome::intentions( array( 'edit_posts' => false, 'manage_options' => false ) );
+ptk_test_ok( count( $limited ) < count( $intents ), 'fewer choices without editing rights' );
+ptk_test_ok( ! in_array( "I'm not sure where to start", array_column( $limited, 'title' ), true ), 'the unsure route needs at least two others' );
+
+// URLs come from the caller, so the list stays pure and testable.
+$with_urls = PTK_Welcome::intentions( array( 'edit_posts' => true, 'manage_options' => true ), array( 'newsletter' => 'https://example.org/nl' ) );
+ptk_test_ok( 'https://example.org/nl' === $with_urls[0]['url'], 'a supplied url lands on its intention' );
+
+// The "not sure" picker maps a plain sentence to each of the other five.
+$cues = PTK_Welcome::cues();
+ptk_test_ok( 5 === count( $cues ), 'one cue per real intention' );
+foreach ( $cues as $key => $cue ) {
+    ptk_test_ok( is_string( $cue ) && '' !== $cue && ! preg_match( '/\b(Add New|Edit|Publish|Manage|Settings|Post|Entry)\b/', $cue ), "cue for $key is plain: $cue" );
+}
+
 ptk_test_done();

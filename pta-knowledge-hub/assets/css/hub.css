@@ -192,6 +192,10 @@ body.ptk-hub-look .ptk-waiting-text {
     font-size: 14px;
 }
 
+body.ptk-hub-look .ptk-waiting-sep {
+    color: var(--ptk-text-dim);
+}
+
 /* Next steps row */
 
 body.ptk-hub-look .ptk-next-steps {
