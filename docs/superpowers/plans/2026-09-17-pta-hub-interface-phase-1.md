@@ -6,6 +6,11 @@
 
 **Architecture:** One option (`ptk_hub_new_look`, default `0`) gates everything. `PTK_Hub_Look` answers "is it on for this site, and is this a Hub screen?" and enqueues `assets/css/hub.css` only when both are true. `PTK_Hub_UI` renders the shared parts (page header, card, stamp, waiting row, next steps, empty state) so screens cannot drift. `PTK_Welcome` gains a second rendering path — the six intentions, in the new parts — used only when the look is on; its current output is untouched otherwise.
 
+**Strings:** hardcoded English, like the rest of this plugin today — no `__()` wrappers. The plugin has
+no translation calls anywhere yet, and the test harness stubs none, so adding them here would fatal the
+plain-PHP tests. (The spec's note about keeping the text domain applies when translation is actually
+taken on, as its own piece of work.)
+
 **Tech Stack:** WordPress plugin PHP (no build step), vanilla CSS custom properties, plain-PHP tests (`tests/test-*.php`, run with `php`), Literata + Karla (SIL OFL) bundled under `assets/fonts/`.
 
 **Spec:** `docs/superpowers/specs/2026-09-17-pta-hub-interface-design.md` (phase 1 = build-order items 1 and 2).
@@ -88,7 +93,12 @@ class PTK_Hub_Look {
     /** Per-site option. '1' = on. Absent or '0' = off. */
     const OPTION = 'ptk_hub_new_look';
 
-    /** Hub pages registered by this plugin, by their page slug. */
+    /**
+     * Hub pages registered by this plugin, by their page slug. Later phases
+     * migrate more screens (vendor approvals, the content wizard, suggestions,
+     * analytics) -- each one is added here when its screen is migrated, never
+     * before, so a half-styled screen can't appear.
+     */
     const PAGES = array(
         'ptk-welcome',
         'ptk-newsletter-builder',
@@ -169,8 +179,11 @@ In `pta-knowledge-hub.php`, beside the other `require_once` lines (after `class-
 
 ```php
 require_once PTK_PLUGIN_DIR . 'includes/class-hub-look.php';
-require_once PTK_PLUGIN_DIR . 'includes/class-hub-ui.php';
 ```
+
+**Only that one line.** `pta-knowledge-hub.php` runs on every request, so a `require_once` for a file
+that does not exist yet fatals every page on all 11 sites, setting on or off. `class-hub-ui.php` is
+required in Task 4, when it exists. The CLI tests would not catch it: they never load the plugin file.
 
 and where other classes are initialised:
 
@@ -231,24 +244,21 @@ Run: `cd pta-knowledge-hub && php tests/test-hub-look.php` → PASS.
 
 In `includes/class-share-settings.php`, in the settings form (after the existing sections) render:
 
+Match the file's existing markup — plain `<h2>` / `<label>` / `<p class="description">` sections, not
+Settings-API `form-table` markup (this page is a manual `admin-post.php` handler with a nonce, not the
+Settings API):
+
 ```php
 <h2>The look of these screens</h2>
-<table class="form-table" role="presentation">
-    <tr>
-        <th scope="row">New PTA Hub look</th>
-        <td>
-            <label>
-                <input type="checkbox" name="ptk_hub_new_look" <?php checked( PTK_Hub_Look::on() ); ?>>
-                Use the new PTA Hub look on this site
-            </label>
-            <p class="description">
-                A calmer, plainer set of screens, with plain-English questions instead of technical labels.
-                Off by default while it is being tested — turning it on changes only what you and other
-                volunteers see when you sign in, never what families see on the website.
-            </p>
-        </td>
-    </tr>
-</table>
+<label>
+    <input type="checkbox" name="ptk_hub_new_look" value="1" <?php checked( PTK_Hub_Look::on() ); ?>>
+    Use the new PTA Hub look on this site
+</label>
+<p class="description">
+    A calmer, plainer set of screens, with plain-English questions instead of technical labels.
+    Off by default while it is being tested — turning it on changes only what you and other
+    volunteers see when you sign in, never what families see on the website.
+</p>
 ```
 
 and in the save handler, beside the other `update_option()` calls:
@@ -294,8 +304,17 @@ $pairs = array(
     array( '#FFFFFF', '#356F8A', 4.5 ),
     array( '#356F8A', '#E7F1F5', 4.5 ),
     array( '#4E8A68', '#FFFFFF', 4.5 ),
-    array( '#C58A39', '#FFFFFF', 3.0 ),
+    array( '#4E8A68', '#F8F9F7', 4.5 ),
     array( '#B85C5C', '#FFFFFF', 4.5 ),
+    array( '#B85C5C', '#F8F9F7', 4.5 ),
+    // The warning color is used for a stamp's border and its uppercase text.
+    // Borders need 3:1; the text needs 4.5:1, so it is checked at both.
+    array( '#C58A39', '#FFFFFF', 3.0 ),
+    array( '#C58A39', '#F8F9F7', 3.0 ),
+);
+$text_pairs = array(
+    array( '#C58A39', '#FFFFFF', 4.5 ),
+    array( '#C58A39', '#F8F9F7', 4.5 ),
 );
 foreach ( $pairs as $pair ) {
     list( $fg, $bg, $min ) = $pair;
@@ -339,6 +358,10 @@ Run: `cd pta-knowledge-hub && php tests/test-hub-look.php`
 Expected: PASS. **If a pair fails, darken that token in the spec's table and here until it passes** —
 the palette is the starting point, not permission to ship unreadable text. Report any change made.
 
+`#C58A39` is likely to fail the 4.5:1 **text** check while passing 3:1 for a border. If it does, use a
+darkened warning ink for stamp text (a `--ptk-warning-ink` token) and keep `#C58A39` for the border, so
+Lucas's color still reads as the stamp's color. Report the value chosen.
+
 - [ ] **Step 5: Fetch and subset the fonts**
 
 Download Literata (Regular 400, SemiBold 600) and Karla (Regular 400, Bold 700) from Google Fonts'
@@ -358,10 +381,26 @@ and the phone rules from the spec (`@media (max-width: 782px)`). Constraints:
 - Focus: `outline: 2px solid var(--ptk-primary); outline-offset: 2px` on every interactive part.
 - Nothing outside `body.ptk-hub-look` is styled.
 
-- [ ] **Step 7: Check the ban mechanically**
+- [ ] **Step 7: Check both bans mechanically**
 
 Run: `grep -nE "border-(left|right):" pta-knowledge-hub/assets/css/hub.css | grep -v "none"`
 Expected: no output.
+
+Run: `grep -nE "#[0-9a-fA-F]{3,8}" pta-knowledge-hub/assets/css/hub.css | grep -v -- "--ptk-"`
+Expected: no output — every color outside the token declarations comes from `var(--ptk-…)`.
+
+Also assert the fonts shipped, in `tests/test-hub-look.php`:
+
+```php
+foreach ( array( 'Literata-Regular', 'Literata-SemiBold', 'Karla-Regular', 'Karla-Bold' ) as $face ) {
+    $path = __DIR__ . '/../assets/fonts/' . $face . '.woff2';
+    ptk_test_ok( is_readable( $path ), "bundled font exists: $face.woff2" );
+    ptk_test_ok( filesize( $path ) < 60000, "$face.woff2 is under 60KB (" . filesize( $path ) . ')' );
+}
+foreach ( array( 'OFL-Literata.txt', 'OFL-Karla.txt' ) as $license ) {
+    ptk_test_ok( is_readable( __DIR__ . '/../assets/fonts/' . $license ), "license shipped: $license" );
+}
+```
 
 - [ ] **Step 8: Commit**
 
@@ -468,6 +507,22 @@ ptk_test_ok( count( $limited ) < count( $intents ), 'fewer choices without editi
 Pure: takes a capability map, returns the ordered list (`key`, `title`, `meta`, `url`) from the spec's
 §4 table. No `current_user_can()` inside — the caller passes the map, which is what makes it testable.
 
+**Every one of the six points at something that already exists in phase 1** — no card leads to an
+unbuilt screen:
+
+| Intention | Phase-1 destination |
+|---|---|
+| Tell families what's happening | `PTK_Newsletter_Builder::url()` |
+| Answer a question families keep asking | `PTK_Content_Wizard::url()` |
+| Recommend someone we've used | the vendor admin screen this plugin already registers |
+| Explain a PTA word | the glossary screen it already registers |
+| Fix something that's wrong | `edit.php?post_type=pta_knowledge` (what you've written, with WordPress's own search) — the purpose-built find-and-change screen is a later phase |
+| I'm not sure where to start | no new screen: the card expands in place to the other five, each with a plain-language cue ("We have a PTA meeting next Thursday" → Tell families what's happening) |
+
+Capability rules: the first two need `edit_posts`; vendors and glossary need whatever their own screens
+need; "Fix something that's wrong" needs `edit_posts`; "I'm not sure where to start" shows whenever at
+least two others do.
+
 - [ ] **Step 4: Run to verify it passes.**
 
 - [ ] **Step 5: Render it, only when the look is on**
@@ -484,8 +539,10 @@ if ( class_exists( 'PTK_Hub_Look' ) && PTK_Hub_Look::on() ) {
 `render_new_home()` uses `PTK_Hub_UI` parts: page title "What would you like to do?", the reassurance
 line "Nothing goes out to families until you say so.", the intentions as cards (the first one carrying
 `--soft`), `waiting_row()` with a single `stamp( 'Waiting for you', 'warning' )` **only when there is
-something waiting**, then the two quiet links ("Set up the basics (once)", "Show all of WordPress" —
-the latter a placeholder link until Simple mode lands in phase 2).
+something waiting**, then the two quiet links: "Set up the basics (once)" pointing at
+`PTK_Share_Settings`'s page (the existing settings screen), and "Show all of WordPress", which in
+phase 1 links to `admin.php`/the dashboard and becomes the real Simple-mode switch in phase 2. Neither
+link is rendered if the person lacks the capability for its destination.
 
 - [ ] **Step 6: Verify both paths in Playground**
 
