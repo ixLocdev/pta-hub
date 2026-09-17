@@ -50,6 +50,10 @@ class PTK_Simple_Mode {
         add_action( 'admin_post_' . self::TOGGLE_ACTION, array( __CLASS__, 'handle_toggle' ) );
         add_filter( 'login_redirect', array( __CLASS__, 'filter_login_redirect' ), 10, 3 );
         add_action( 'admin_init', array( __CLASS__, 'maybe_leave_dashboard' ) );
+
+        // Task 4: quieter Hub screens -- clear other plugins' notices before
+        // WordPress prints them.
+        add_action( 'in_admin_header', array( __CLASS__, 'clear_foreign_notices' ) );
     }
 
     /**
@@ -495,5 +499,66 @@ class PTK_Simple_Mode {
 
         wp_safe_redirect( $target );
         exit;
+    }
+
+    /* ------------------------------------------------------------------
+     * Task 4: quieter Hub screens.
+     * ----------------------------------------------------------------*/
+
+    /**
+     * Pure: should other plugins' admin_notices/all_admin_notices callbacks
+     * be cleared right now? Only on a Hub screen, only with Simple mode on.
+     */
+    public static function should_clear_notices( $is_hub_screen, $simple_on ) {
+        return (bool) $is_hub_screen && (bool) $simple_on;
+    }
+
+    /**
+     * in_admin_header: strip every other plugin's (and WordPress's own
+     * update-nag's) admin_notices/all_admin_notices callback before they
+     * print, keeping only this plugin's own. Runs before WordPress fires
+     * those hooks -- in_admin_header fires first in wp-admin's own template.
+     */
+    public static function clear_foreign_notices() {
+        $is_hub_screen = class_exists( 'PTK_Hub_Look' ) && PTK_Hub_Look::active();
+        if ( ! self::should_clear_notices( $is_hub_screen, self::active_for_user() ) ) {
+            return;
+        }
+        self::strip_notice_hooks( 'admin_notices' );
+        self::strip_notice_hooks( 'all_admin_notices' );
+    }
+
+    /** Remove every callback on $hook except ones belonging to this plugin's own PTK_* classes. */
+    private static function strip_notice_hooks( $hook ) {
+        global $wp_filter;
+        if ( empty( $wp_filter[ $hook ] ) || ! is_object( $wp_filter[ $hook ] ) || ! isset( $wp_filter[ $hook ]->callbacks ) ) {
+            return;
+        }
+        foreach ( $wp_filter[ $hook ]->callbacks as $priority => $callbacks ) {
+            foreach ( $callbacks as $id => $cb ) {
+                if ( isset( $cb['function'] ) && self::callback_belongs_to_hub( $cb['function'] ) ) {
+                    continue;
+                }
+                unset( $wp_filter[ $hook ]->callbacks[ $priority ][ $id ] );
+            }
+            if ( empty( $wp_filter[ $hook ]->callbacks[ $priority ] ) ) {
+                unset( $wp_filter[ $hook ]->callbacks[ $priority ] );
+            }
+        }
+    }
+
+    /** Does a hooked callback belong to one of this plugin's own PTK_* classes (or a plain ptk_-prefixed function)? */
+    private static function callback_belongs_to_hub( $function ) {
+        $target = $function;
+        if ( is_array( $target ) ) {
+            $target = $target[0];
+        }
+        if ( is_object( $target ) ) {
+            $target = get_class( $target );
+        }
+        if ( ! is_string( $target ) ) {
+            return false;
+        }
+        return 0 === strpos( $target, 'PTK_' ) || 0 === strpos( $target, 'ptk_' );
     }
 }

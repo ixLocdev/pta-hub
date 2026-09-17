@@ -100,4 +100,10 @@ ptk_test_ok( false === $t::should_leave_dashboard( 'index.php', true, true, fals
 ptk_test_ok( false === $t::should_leave_dashboard( 'index.php', true, false, true, false ), 'a cron request never leaves' );
 ptk_test_ok( false === $t::should_leave_dashboard( 'index.php', true, false, false, true ), 'a network-admin request never leaves' );
 
+// should_clear_notices(): only a Hub screen, only with Simple mode on.
+ptk_test_ok( true === $t::should_clear_notices( true, true ), 'a Hub screen with Simple mode on clears notices' );
+ptk_test_ok( false === $t::should_clear_notices( false, true ), 'Simple mode on but not a Hub screen does not clear notices' );
+ptk_test_ok( false === $t::should_clear_notices( true, false ), 'a Hub screen but Simple mode off does not clear notices' );
+ptk_test_ok( false === $t::should_clear_notices( false, false ), 'neither a Hub screen nor Simple mode on does not clear notices' );
+
 ptk_test_done();
