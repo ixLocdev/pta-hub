@@ -119,6 +119,9 @@ ptk_test_ok( 'BAKE SALE' === $sections2[0]['heading'], 'ALL-CAPS heading capture
 $single = '<h1>Just one heading</h1><p>Body text.</p>';
 ptk_test_ok( array() === $t::detect_sections( $single ), 'a single heading is not treated as a roundup' );
 
+$decor = '<h2>Welcome</h2><h2>Upcoming</h2><p>Everything you need to know this week about the PTA.</p>';
+ptk_test_ok( array() === $t::detect_sections( $decor ), 'a heading with nothing under it does not count as a section (page-builder layouts)' );
+
 $plain = '<p>Just a normal single-topic post with a couple of paragraphs.</p><p>Nothing that looks like a section heading here.</p>';
 ptk_test_ok( array() === $t::detect_sections( $plain ), 'ordinary post has no detected sections' );
 

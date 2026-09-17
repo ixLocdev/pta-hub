@@ -367,6 +367,17 @@ class PTK_Post_Importer {
      * @return array[] Each: array('heading' => string, 'text' => string). Empty when no split is available.
      */
     public static function detect_sections( $html ) {
+        $sections = self::find_sections( $html );
+        // Page-builder layouts use headings for decoration too; only count
+        // sections that actually have something under them.
+        $sections = array_values( array_filter( $sections, function ( $section ) {
+            return strlen( trim( $section['text'] ) ) >= 3 && '' !== trim( $section['heading'] );
+        } ) );
+        return count( $sections ) >= 2 ? $sections : array();
+    }
+
+    /** Raw heading-or-ALL-CAPS split, before detect_sections() filters it. */
+    protected static function find_sections( $html ) {
         $html = (string) $html;
 
         // 1) HTML headings.

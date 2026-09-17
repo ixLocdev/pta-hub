@@ -1325,8 +1325,13 @@
 }
 
 .ptk-nl-post-row-extra {
+    display: none;
     margin-top: 8px;
     margin-left: 58px;
+}
+
+.ptk-nl-post-row.is-checked .ptk-nl-post-row-extra {
+    display: block;
 }
 
 .ptk-nl-post-thumb {

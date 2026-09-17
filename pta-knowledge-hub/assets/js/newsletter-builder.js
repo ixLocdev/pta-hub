@@ -2487,15 +2487,6 @@
                         html += '<label class="ptk-nl-post-split"><input type="checkbox" data-post-split> Split into separate items</label>';
                     }
 
-                    var note = '';
-                    if (post.flyer) {
-                        note = 'Add a sentence or two';
-                    } else if (post.shortened) {
-                        note = 'Shortened from your post — edit as you like';
-                    }
-                    if (note) {
-                        html += '<span class="ptk-nl-post-note">' + calEscapeHtml(note) + '</span>';
-                    }
                     html += '</div>'; // .ptk-nl-post-row-extra
                 }
                 html += '</div>'; // .ptk-nl-post-row
@@ -2620,6 +2611,11 @@
 
         $(document).on('change', '[data-post-check]', function () {
             var $panel = $(this).closest('[data-post-import-panel]');
+            // The Story/Event/Quick note choice only appears once a post is
+            // ticked -- a list of every post with every choice open is a wall.
+            $panel.find('[data-post-check]').each(function () {
+                $(this).closest('.ptk-nl-post-row').toggleClass('is-checked', this.checked);
+            });
             updatePostAddSelectedCount($panel.closest('[data-post-import]').attr('data-post-import'), $panel);
         });
 
@@ -2627,7 +2623,7 @@
             e.preventDefault();
             var context = $(this).attr('data-post-context');
             var $panel = $(this).closest('[data-post-import-panel]');
-            $panel.find('[data-post-check]:not(:disabled)').prop('checked', true);
+            $panel.find('[data-post-check]:not(:disabled)').prop('checked', true).first().trigger('change');
             updatePostAddSelectedCount(context, $panel);
         });
 
@@ -2635,7 +2631,7 @@
             e.preventDefault();
             var context = $(this).attr('data-post-context');
             var $panel = $(this).closest('[data-post-import-panel]');
-            $panel.find('[data-post-check]').prop('checked', false);
+            $panel.find('[data-post-check]').prop('checked', false).first().trigger('change');
             updatePostAddSelectedCount(context, $panel);
         });
 
