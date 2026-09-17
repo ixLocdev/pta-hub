@@ -53,6 +53,7 @@ if ( ! function_exists( 'ptk_glossary_url' ) ) {
  */
 require_once PTK_PLUGIN_DIR . 'includes/class-focal-point.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-hub-look.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-hub-ui.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-post-type.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-newsletter-post-type.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-newsletter-builder.php';

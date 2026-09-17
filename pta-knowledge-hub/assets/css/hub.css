@@ -341,3 +341,43 @@ body.ptk-hub-look .ptk-page :is(a, button, input, select, textarea, summary, [ta
         transition: none;
     }
 }
+
+/* Expandable card ("I'm not sure where to start") */
+
+body.ptk-hub-look .ptk-card--expand > summary {
+    cursor: pointer;
+    list-style: none;
+}
+
+body.ptk-hub-look .ptk-card--expand > summary::-webkit-details-marker {
+    display: none;
+}
+
+body.ptk-hub-look .ptk-card--expand > summary .ptk-card-title {
+    display: block;
+}
+
+body.ptk-hub-look .ptk-card--expand > summary .ptk-card-meta {
+    display: block;
+    margin-top: 4px;
+}
+
+body.ptk-hub-look .ptk-card-body {
+    margin-top: var(--ptk-space-3);
+}
+
+body.ptk-hub-look .ptk-card-body .ptk-cue {
+    display: block;
+    padding: var(--ptk-space-1) 0;
+    font-size: 14px;
+}
+
+body.ptk-hub-look .ptk-card-body .ptk-cue + .ptk-cue {
+    border-top: 1px solid var(--ptk-line);
+}
+
+body.ptk-hub-look .ptk-card-body .ptk-cue-text {
+    display: block;
+    color: var(--ptk-text-dim);
+    font-size: 12.5px;
+}
