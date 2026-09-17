@@ -19,4 +19,10 @@ ptk_test_ok( false === $t::is_hub_screen( 'edit.php', 'post' ), 'the ordinary po
 ptk_test_ok( false === $t::is_hub_screen( 'plugins.php', '' ), 'core screens are not' );
 ptk_test_ok( false === $t::is_hub_screen( 'toplevel_page_something-else', '' ), "another plugin's page is not" );
 
+// Saving the checkbox: only an explicit tick turns it on.
+ptk_test_ok( '1' === $t::sanitize_choice( 'on' ), 'a ticked checkbox stores 1' );
+ptk_test_ok( '1' === $t::sanitize_choice( '1' ), '1 stores 1' );
+ptk_test_ok( '0' === $t::sanitize_choice( null ), 'an unticked checkbox stores 0' );
+ptk_test_ok( '0' === $t::sanitize_choice( 'yes please' ), 'anything else stores 0' );
+
 ptk_test_done();

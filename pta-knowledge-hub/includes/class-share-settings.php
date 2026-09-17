@@ -533,6 +533,19 @@ class PTK_Share_Settings {
             );
         }
 
+        // ---- The new Hub look (per-site, ships off) ----
+        $look_before = PTK_Hub_Look::on();
+        update_option( PTK_Hub_Look::OPTION, PTK_Hub_Look::sanitize_choice( isset( $_POST['ptk_hub_new_look'] ) ? wp_unslash( $_POST['ptk_hub_new_look'] ) : null ) );
+        $look_after = PTK_Hub_Look::on();
+        if ( $look_before !== $look_after ) {
+            $notice['messages'][] = array(
+                'ok',
+                $look_after
+                    ? 'The new PTA Hub look is on for this site.'
+                    : 'Back to the usual look.',
+            );
+        }
+
         if ( empty( $notice['messages'] ) ) {
             $notice['messages'][] = array( 'ok', 'Settings saved. Nothing needed changing.' );
         }
@@ -761,6 +774,15 @@ class PTK_Share_Settings {
                     <p class="ptk-ss-field-error" id="ptk-contact-email-error"><?php echo esc_html( $notice['email_error'] ); ?></p>
                 <?php endif; ?>
                 <p class="description">Added to the "Got news?" closing as "Questions? Email {address}." Only shown when a news link above is also set. Leave it empty to leave it out.</p>
+
+                <h2>The look of these screens</h2>
+                <p>
+                    <label for="ptk-hub-new-look">
+                        <input type="checkbox" id="ptk-hub-new-look" name="ptk_hub_new_look" value="1"<?php checked( PTK_Hub_Look::on() ); ?>>
+                        Use the new PTA Hub look on this site
+                    </label>
+                </p>
+                <p class="description">A calmer, plainer set of screens, with plain-English questions instead of technical labels. Off by default while it is being tested &mdash; turning it on changes only what you and other volunteers see when you sign in, never what families see on the website.</p>
 
                 <?php submit_button( 'Save settings' ); ?>
             </form>

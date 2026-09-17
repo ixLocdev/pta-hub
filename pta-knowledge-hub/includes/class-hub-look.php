@@ -66,6 +66,12 @@ class PTK_Hub_Look {
         return false;
     }
 
+    /** Pure: what a submitted checkbox should store. */
+    public static function sanitize_choice( $submitted ) {
+        $submitted = is_scalar( $submitted ) ? (string) $submitted : '';
+        return ( 'on' === $submitted || '1' === $submitted ) ? '1' : '0';
+    }
+
     /** True only when the look is on AND we are on a Hub screen. */
     public static function active() {
         if ( ! self::on() || ! function_exists( 'get_current_screen' ) ) {
