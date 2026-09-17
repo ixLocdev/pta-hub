@@ -3,7 +3,7 @@
  * Plugin Name: PTA Knowledge Hub
  * Plugin URI:  https://github.com/your-pta/knowledge-hub
  * Description: A searchable knowledge base for your PTA. Volunteers add content through WordPress, parents and members find answers instantly via a smart search bar.
- * Version:     4.5.3
+ * Version:     4.6.0
  * Author:      Lucas Deichl
  * License:     GPL-2.0-or-later
  * Text Domain: pta-knowledge-hub
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'PTK_VERSION', '4.5.3' );
+define( 'PTK_VERSION', '4.6.0' );
 define( 'PTK_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PTK_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -63,6 +63,7 @@ require_once PTK_PLUGIN_DIR . 'includes/class-share-image.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-share-panel.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-share-page.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-share-settings.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-newsletter-seo.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-search-engine.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-single-enhancements.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-qr-codes.php';
@@ -147,6 +148,7 @@ function ptk_init() {
     PTK_Share_Panel::init();
     PTK_Share_Page::init();
     PTK_Share_Settings::init();
+    PTK_Newsletter_SEO::init();
     PTK_Search_Engine::init();
     PTK_Single_Enhancements::init();
     PTK_QR_Codes::init();
