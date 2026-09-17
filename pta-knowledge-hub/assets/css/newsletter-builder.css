@@ -1076,3 +1076,133 @@
         overflow-y: visible;
     }
 }
+
+/* ── Round 4: "Add from your calendar" (step 2, events section) ──
+   Inline panel, not a modal -- full borders and background fills only,
+   per house rule (never a one-sided accent bar). */
+
+.ptk-nl-calendar-hint {
+    margin-top: 4px;
+}
+
+.ptk-nl-calendar-import {
+    margin: 8px 0 16px;
+}
+
+.ptk-nl-calendar-panel {
+    margin-top: 10px;
+    padding: 14px;
+    background: #f6f7fb;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+}
+
+.ptk-nl-cal-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.ptk-nl-cal-chip {
+    border-radius: 999px;
+    border: 1px solid #c7d2e8;
+    background: #ffffff;
+}
+
+.ptk-nl-cal-chip.is-active {
+    background: #1a2f5c;
+    border-color: #1a2f5c;
+    color: #ffffff;
+}
+
+.ptk-nl-cal-status {
+    margin: 8px 0;
+    color: #50575e;
+}
+
+.ptk-nl-cal-status.ptk-nl-cal-error {
+    color: #a51d23;
+    font-weight: 600;
+}
+
+.ptk-nl-cal-list {
+    max-height: 360px;
+    overflow-y: auto;
+}
+
+.ptk-nl-cal-day {
+    margin-bottom: 12px;
+}
+
+.ptk-nl-cal-day h4 {
+    margin: 0 0 6px;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #50575e;
+}
+
+.ptk-nl-cal-event {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 10px;
+    margin-bottom: 4px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.ptk-nl-cal-event.is-added {
+    background: #f0f0f1;
+    color: #7f8590;
+    cursor: default;
+}
+
+.ptk-nl-cal-event input[type="checkbox"] {
+    margin-top: 3px;
+}
+
+.ptk-nl-cal-event-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ptk-nl-cal-event-title {
+    font-weight: 600;
+}
+
+.ptk-nl-cal-event-meta {
+    font-size: 12px;
+    color: #50575e;
+}
+
+.ptk-nl-cal-tag {
+    display: inline-block;
+    padding: 1px 8px;
+    margin-left: 4px;
+    border-radius: 999px;
+    background: #e8ecf6;
+    color: #1a2f5c;
+    font-weight: 600;
+}
+
+.ptk-nl-cal-already {
+    font-weight: 600;
+    color: #7f8590;
+}
+
+.ptk-nl-cal-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.ptk-nl-cal-refresh {
+    font-size: 13px;
+}

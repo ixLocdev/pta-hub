@@ -127,6 +127,8 @@
         // Added in 4.4.0 (round 3): an existing "crop" photo shows its
         // picker immediately, with no click required.
         safeBoot(initFocalPickers);
+        // Round 4: "Add from your calendar" on step 2.
+        safeBoot(bindCalendarImport);
     });
 
     /**
@@ -1996,6 +1998,283 @@
         } catch (err) {
             // The server still enforces the photo check; nothing is lost.
         }
+    }
+
+    /* --------------------------------------------------------------
+     * Round 4: "Add from your calendar" -- step 2's events section.
+     *
+     * Mount point is rendered server-side by
+     * PTK_Newsletter_Builder::render_calendar_import() (only when a
+     * calendar is configured): a toggle button and an empty
+     * [data-calendar-panel]. Everything else -- range chips, the
+     * day-grouped checkbox list, fetching, "Already added" detection,
+     * and appending rows -- is built here from JSON the ptk_calendar_events
+     * AJAX action returns (server: includes/class-ics-events-ajax.php).
+     * ------------------------------------------------------------ */
+
+    var CAL_RANGES = [
+        { key: 'this_week', label: 'This week' },
+        { key: 'next_week', label: 'Next week' },
+        { key: 'next_2_weeks', label: 'Next 2 weeks' },
+        { key: 'this_month', label: 'This month' }
+    ];
+
+    var calState = { range: 'this_week', events: [], loading: false, error: '' };
+
+    /** Strip emoji/pictographic characters a pasted calendar title often carries. */
+    function stripEmoji(str) {
+        str = String(str || '');
+        try {
+            // A space, not '', so an emoji sitting flush against text
+            // (real feed titles do this) doesn't fuse the words on either
+            // side of it; the \s+ collapse below cleans up the rest.
+            return str.replace(/\p{Extended_Pictographic}/gu, ' ').replace(/\s+/g, ' ').trim();
+        } catch (err) {
+            // Older engines without Unicode property escapes: leave as-is
+            // rather than throw.
+            return str.trim();
+        }
+    }
+
+    /** date + lowercased/trimmed title, the same identity the spec uses for "already added." */
+    function calEventKey(date, title) {
+        return date + '|' + String(title || '').trim().toLowerCase();
+    }
+
+    /** Every {date,title} already in the events repeater, as a lookup keyed by calEventKey(). */
+    function existingEventKeys() {
+        var keys = {};
+        $('#ptk-nl-blocks > .ptk-nl-block[data-type="events"] [data-rows-for="rows"] [data-row]').each(function () {
+            var $row = $(this);
+            var date = $row.find('[data-field="date"]').val() || '';
+            var title = $row.find('[data-field="title"]').val() || '';
+            if (date && title) {
+                keys[calEventKey(date, title)] = true;
+            }
+        });
+        return keys;
+    }
+
+    function parseYmd(dateStr) {
+        var m = String(dateStr || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!m) {
+            return null;
+        }
+        return new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
+    }
+
+    function formatDayHeading(dateStr) {
+        var d = parseYmd(dateStr);
+        if (!d) {
+            return dateStr;
+        }
+        return d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+    }
+
+    function formatShortDate(dateStr) {
+        var d = parseYmd(dateStr);
+        if (!d) {
+            return dateStr;
+        }
+        return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    }
+
+    /** "9am · Gym", "All day", "9am -- through Fri, Oct 3" -- the events row's plain-English "detail". */
+    function calEventDetail(ev) {
+        var when = ev.all_day ? 'All day' : (ev.time || '');
+        var parts = [];
+        if (when) {
+            parts.push(when);
+        }
+        if (ev.location) {
+            parts.push(ev.location.split('\n')[0]);
+        }
+        var detail = parts.join(' · ');
+        if (ev.end && ev.end !== ev.start) {
+            detail += (detail ? ' -- ' : '') + 'through ' + formatShortDate(ev.end);
+        }
+        return detail || 'All day';
+    }
+
+    function calNonceReady() {
+        return typeof ptkNlData !== 'undefined' && ptkNlData && ptkNlData.ajaxUrl && ptkNlData.calendarNonce;
+    }
+
+    function fetchCalendarEvents(range, refresh) {
+        if (!calNonceReady()) {
+            return;
+        }
+        var $panel = $('[data-calendar-panel]');
+        calState.loading = true;
+        renderCalendarPanel($panel);
+
+        $.post(ptkNlData.ajaxUrl, {
+            action: 'ptk_calendar_events',
+            nonce: ptkNlData.calendarNonce,
+            range: range,
+            issue_date: $('[name="ptk_nl_date"]').val() || '',
+            refresh: refresh ? 1 : 0
+        }).done(function (response) {
+            calState.loading = false;
+            if (response && response.success) {
+                calState.events = (response.data && response.data.events) || [];
+                calState.error = '';
+            } else {
+                calState.events = [];
+                calState.error = (response && response.data && response.data.message) || 'Couldn’t reach your calendar. Try again in a minute.';
+            }
+            renderCalendarPanel($panel);
+        }).fail(function () {
+            calState.loading = false;
+            calState.events = [];
+            calState.error = 'Couldn’t reach your calendar. Try again in a minute.';
+            renderCalendarPanel($panel);
+        });
+    }
+
+    function calEscapeHtml(str) {
+        return String(str == null ? '' : str).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+
+    function renderCalendarPanel($panel) {
+        if (!$panel || !$panel.length) {
+            return;
+        }
+
+        var html = '<div class="ptk-nl-cal-chips" role="group" aria-label="Date range">';
+        CAL_RANGES.forEach(function (r) {
+            html += '<button type="button" class="button ptk-nl-cal-chip' + (r.key === calState.range ? ' is-active' : '') +
+                '" data-calendar-range="' + r.key + '" aria-pressed="' + (r.key === calState.range ? 'true' : 'false') + '">' + r.label + '</button>';
+        });
+        html += '</div>';
+
+        if (calState.loading) {
+            html += '<p class="ptk-nl-cal-status">Loading your calendar…</p>';
+        } else if (calState.error) {
+            html += '<p class="ptk-nl-cal-status ptk-nl-cal-error">' + calEscapeHtml(calState.error) + '</p>';
+        } else if (!calState.events.length) {
+            html += '<p class="ptk-nl-cal-status">No events found in this range.</p>';
+        } else {
+            var existing = existingEventKeys();
+            var byDay = {};
+            var order = [];
+            calState.events.forEach(function (ev) {
+                if (!byDay[ev.start]) {
+                    byDay[ev.start] = [];
+                    order.push(ev.start);
+                }
+                byDay[ev.start].push(ev);
+            });
+
+            html += '<div class="ptk-nl-cal-list">';
+            order.forEach(function (day) {
+                html += '<div class="ptk-nl-cal-day"><h4>' + calEscapeHtml(formatDayHeading(day)) + '</h4>';
+                byDay[day].forEach(function (ev) {
+                    var already = !!existing[calEventKey(ev.start, ev.title)];
+                    uidCounter++;
+                    var id = 'ptk-nl-cal-ev-' + uidCounter;
+                    var payload = calEscapeHtml(JSON.stringify(ev));
+                    html += '<label class="ptk-nl-cal-event' + (already ? ' is-added' : '') + '" for="' + id + '">' +
+                        '<input type="checkbox" id="' + id + '" data-calendar-check value="' + payload + '"' +
+                        (already ? ' disabled' : '') + '>' +
+                        '<span class="ptk-nl-cal-event-body">' +
+                        '<span class="ptk-nl-cal-event-title">' + calEscapeHtml(stripEmoji(ev.title)) + '</span>' +
+                        '<span class="ptk-nl-cal-event-meta">' + calEscapeHtml(calEventDetail(ev)) +
+                        (ev.tag ? ' <span class="ptk-nl-cal-tag">' + calEscapeHtml(ev.tag) + '</span>' : '') +
+                        (already ? ' <span class="ptk-nl-cal-already">Already added</span>' : '') +
+                        '</span></span></label>';
+                });
+                html += '</div>';
+            });
+            html += '</div>';
+        }
+
+        html += '<div class="ptk-nl-cal-actions">' +
+            '<a href="#" class="ptk-nl-cal-refresh" data-calendar-refresh>Refresh</a>' +
+            '<button type="button" class="button button-primary" data-calendar-add disabled>Add selected (0)</button>' +
+            '</div>';
+
+        $panel.html(html);
+        updateAddSelectedCount($panel);
+    }
+
+    function updateAddSelectedCount($panel) {
+        var n = $panel.find('[data-calendar-check]:checked').length;
+        $panel.find('[data-calendar-add]').prop('disabled', n === 0).text('Add selected (' + n + ')');
+    }
+
+    function bindCalendarImport() {
+        $(document).on('click', '[data-calendar-toggle]', function (e) {
+            e.preventDefault();
+            var $wrap = $(this).closest('[data-calendar-import]');
+            var $panel = $wrap.find('[data-calendar-panel]');
+            if ($panel.attr('hidden') !== undefined) {
+                $panel.removeAttr('hidden');
+                fetchCalendarEvents(calState.range, false);
+            } else {
+                $panel.attr('hidden', 'hidden');
+            }
+        });
+
+        $(document).on('click', '[data-calendar-range]', function (e) {
+            e.preventDefault();
+            calState.range = $(this).attr('data-calendar-range');
+            fetchCalendarEvents(calState.range, false);
+        });
+
+        $(document).on('click', '[data-calendar-refresh]', function (e) {
+            e.preventDefault();
+            fetchCalendarEvents(calState.range, true);
+        });
+
+        $(document).on('change', '[data-calendar-check]', function () {
+            updateAddSelectedCount($(this).closest('[data-calendar-panel]'));
+        });
+
+        $(document).on('click', '[data-calendar-add]', function (e) {
+            e.preventDefault();
+            var $panel = $(this).closest('[data-calendar-panel]');
+            var $checked = $panel.find('[data-calendar-check]:checked');
+            if (!$checked.length) {
+                return;
+            }
+
+            var $section = $('#ptk-nl-blocks > .ptk-nl-block[data-type="events"]');
+            var $rowsContainer = $section.find('[data-rows-for="rows"]').first();
+            if (!$rowsContainer.length) {
+                return;
+            }
+
+            var $firstNewRow = null;
+            $checked.each(function () {
+                var ev;
+                try {
+                    ev = JSON.parse($(this).val());
+                } catch (err) {
+                    return;
+                }
+                var $row = addRow($rowsContainer, {
+                    date: ev.start,
+                    title: stripEmoji(ev.title),
+                    desc: calEventDetail(ev)
+                });
+                if ($row && !$firstNewRow) {
+                    $firstNewRow = $row;
+                }
+            });
+
+            $panel.attr('hidden', 'hidden');
+            serializeAndPreview();
+
+            if ($firstNewRow) {
+                var $focusable = $firstNewRow.find('[data-field]').first();
+                if ($focusable.length) {
+                    scrollAndFocus($focusable);
+                }
+            }
+        });
     }
 
 })(jQuery);

@@ -38,6 +38,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 require_once PTK_PLUGIN_DIR . 'includes/class-newsletter-data.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-newsletter-renderer.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-share-settings.php';
 
 class PTK_Newsletter_Builder {
 
@@ -790,6 +791,12 @@ class PTK_Newsletter_Builder {
         );
 
         $nl_data['previewLinkNonce'] = wp_create_nonce( 'ptk_nl_preview_link' );
+
+        // Round 4: "Add from your calendar" needs its own nonce (a
+        // different AJAX action than the preview) -- always localized, even
+        // when no calendar is set up, so nothing breaks if it's added later
+        // without a page reload having happened in between.
+        $nl_data['calendarNonce'] = wp_create_nonce( 'ptk_calendar_events' );
 
         // Just saved or published: land on the last step ("Publish & share",
         // round 3.1 -- was step 4 before the split), where the notice's
@@ -1561,6 +1568,43 @@ class PTK_Newsletter_Builder {
     }
 
     /**
+     * Round 4: "Add from your calendar" -- shown above the events repeater
+     * only when the school has set a Google Calendar (Newsletter settings).
+     * When it hasn't: a one-line hint, and ONLY for people who can actually
+     * go set it up (manage_options) -- a volunteer without that capability
+     * would just be told about a button they can't use.
+     *
+     * The inline panel itself (range chips, day-grouped checkbox list,
+     * "Add selected") is built entirely by assets/js/newsletter-builder.js
+     * from JSON the ptk_calendar_events AJAX action returns -- this method
+     * only renders the trigger button + an empty mount point, plus the data
+     * the JS needs to know the feature is even on (ptkNlData.calendar, see
+     * enqueue_assets()).
+     */
+    protected static function render_calendar_import() {
+        $configured = '' !== (string) get_option( PTK_Share_Settings::GCAL_OPTION, '' );
+
+        if ( ! $configured ) {
+            if ( ! current_user_can( 'manage_options' ) ) {
+                return;
+            }
+            ?>
+            <p class="description ptk-nl-calendar-hint">
+                Want to pull events straight from your PTA’s Google Calendar?
+                <a href="<?php echo esc_url( PTK_Share_Settings::page_url() ); ?>">Set it up on Newsletter settings</a>.
+            </p>
+            <?php
+            return;
+        }
+        ?>
+        <div class="ptk-nl-calendar-import" data-calendar-import>
+            <button type="button" class="button" data-calendar-toggle>Add from your calendar</button>
+            <div class="ptk-nl-calendar-panel" data-calendar-panel hidden></div>
+        </div>
+        <?php
+    }
+
+    /**
      * Render the fixed fields (or repeatable-row scaffolding) for one block type.
      *
      * @param string $type Block type slug.
@@ -1656,6 +1700,7 @@ class PTK_Newsletter_Builder {
 
             case 'events':
                 ?>
+                <?php self::render_calendar_import(); ?>
                 <div class="ptk-nl-rows" data-rows data-rows-for="rows"></div>
                 <button type="button" class="button ptk-nl-add">+ Add event</button>
                 <template data-row-template>
