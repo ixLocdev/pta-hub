@@ -649,14 +649,23 @@ class PTK_Newsletter_Builder {
 
         list( $kind, $text ) = $notices[ $msg ];
 
+        // Task 3: plainer wording + a status stamp, new look only. $on
+        // gates every byte added below it, so the look-off box is
+        // untouched -- same text, same markup.
+        $on = PTK_Hub_Look::on();
+        if ( $on ) {
+            $text = PTK_Builder_Copy::notice_text( true, $msg, $text );
+        }
+        $stamp = $on ? self::notice_stamp( $msg ) : '';
+
         $live_url = ( $edit_id && in_array( $msg, array( 'published', 'updated' ), true ) && 'publish' === get_post_status( $edit_id ) )
             ? (string) get_permalink( $edit_id )
             : '';
         ?>
         <div class="ptk-nl-msg ptk-nl-msg-<?php echo esc_attr( $kind ); ?>" role="status">
             <p>
-                <strong><?php echo esc_html( $text ); ?></strong>
-                <?php if ( 'published' === $msg && '' !== $live_url ) : ?>
+                <strong><?php echo esc_html( $text ); ?></strong><?php echo $stamp; // phpcs:ignore WordPress.Security.EscapeOutput -- built by PTK_Hub_UI::stamp(), pre-escaped. ?>
+                <?php if ( ! $on && 'published' === $msg && '' !== $live_url ) : ?>
                     Now share it below.
                 <?php endif; ?>
             </p>
@@ -668,6 +677,64 @@ class PTK_Newsletter_Builder {
             <?php endif; ?>
         </div>
         <?php
+        self::render_next_steps( $edit_id, $msg, $on );
+    }
+
+    /**
+     * Task 3: the status stamp shown next to a redirect message -- NOT SENT
+     * YET on a save, SENT on a publish/update. Never called when the new
+     * look is off.
+     *
+     * @param string $msg The ?ptk_nl_msg= value.
+     * @return string Pre-escaped markup, or ''.
+     */
+    private static function notice_stamp( $msg ) {
+        if ( 'saved' === $msg ) {
+            return ' ' . PTK_Hub_UI::stamp( 'NOT SENT YET', 'dim' );
+        }
+        if ( 'published' === $msg || 'updated' === $msg ) {
+            return ' ' . PTK_Hub_UI::stamp( 'SENT', 'success' );
+        }
+        return '';
+    }
+
+    /**
+     * Task 3: the "what's next" row shown after a publish/update, new look
+     * only. Each link points at something that already exists on this same
+     * page load: the share panel and its Email (GiveBacks) channel further
+     * down this same step, a fresh Builder for next week's issue, and the
+     * Hub home.
+     *
+     * @param int    $edit_id The newsletter just saved, or 0.
+     * @param string $msg     The ?ptk_nl_msg= value.
+     * @param bool   $on      PTK_Hub_Look::on(), passed in so this never
+     *                        re-derives it and can never disagree with the
+     *                        notice box above it.
+     */
+    private static function render_next_steps( $edit_id, $msg, $on ) {
+        if ( ! $on || ! $edit_id || ! in_array( $msg, array( 'published', 'updated' ), true ) ) {
+            return;
+        }
+        echo PTK_Hub_UI::next_steps( array( // phpcs:ignore WordPress.Security.EscapeOutput -- escaped inside next_steps().
+            array( 'label' => 'Share it', 'url' => '#ptk-nl-share-panel' ),
+            array( 'label' => 'Copy the email for GiveBacks', 'url' => '#ptk-nl-share-email' ),
+            array( 'label' => "Start next week's", 'url' => self::url() ),
+            array( 'label' => "I'm done", 'url' => admin_url( 'edit.php?post_type=pta_knowledge&page=ptk-welcome' ) ),
+        ) );
+    }
+
+    /**
+     * Task 3: the EXAMPLE stamp, shown in place of the publish controls on
+     * the example newsletter -- new look only. Spec's stamp table (§4)
+     * gives EXAMPLE the 'error' state (a sample to look at, never to send).
+     *
+     * @return string Pre-escaped markup, or ''.
+     */
+    private static function example_stamp() {
+        if ( ! PTK_Hub_Look::on() ) {
+            return '';
+        }
+        return ' ' . PTK_Hub_UI::stamp( 'EXAMPLE', 'error' );
     }
 
     /**
@@ -1461,7 +1528,7 @@ class PTK_Newsletter_Builder {
                                             it to explore is harmless, but handle_submission() blocks Publish
                                             server-side too (belt and braces, matches the photo/PII gate's
                                             pattern). */ ?>
-                                    <button type="submit" name="ptk_nl_status" value="draft" class="button button-secondary">Save draft</button>
+                                    <button type="submit" name="ptk_nl_status" value="draft" class="button button-secondary">Save draft</button><?php echo self::example_stamp(); // phpcs:ignore WordPress.Security.EscapeOutput -- built by PTK_Hub_UI::stamp(), pre-escaped. ?>
                                     <a class="button button-primary" href="<?php echo esc_url( self::url() ); ?>">Start a new newsletter</a>
                                 <?php elseif ( $is_published ) : ?>
                                     <?php /* Live already: no Save draft (it would take the newsletter down) and no

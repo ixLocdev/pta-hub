@@ -164,6 +164,40 @@ class PTK_Builder_Copy {
     }
 
     /**
+     * Task 3: the redirect-notice text (?ptk_nl_msg=) after a save/publish.
+     * 'off' is today's literal text; 'on' is the plainer wording a volunteer
+     * reads instead. Only 'saved', 'published' and 'updated' have new-look
+     * wording -- 'pii' has no message here on purpose (see
+     * PTK_Newsletter_Builder::render_notice()'s own comment).
+     *
+     * @return array
+     */
+    public static function notices() {
+        return array(
+            'saved'     => array( 'off' => 'Draft saved.', 'on' => 'Saved. Nobody sees it yet.' ),
+            'published' => array( 'off' => 'Newsletter published.', 'on' => "You're all set. Families can read it here." ),
+            'updated'   => array( 'off' => 'Newsletter updated.', 'on' => 'Updated. Families see the new version now.' ),
+        );
+    }
+
+    /**
+     * A redirect-message's text: the new-look wording when $on is true, else
+     * today's literal text. Falls back to $default when $msg has no entry.
+     *
+     * @param bool   $on      PTK_Hub_Look::on().
+     * @param string $msg     The ?ptk_nl_msg= value.
+     * @param string $default What to return when this message has no entry.
+     * @return string
+     */
+    public static function notice_text( $on, $msg, $default = '' ) {
+        $map = self::notices();
+        if ( ! isset( $map[ $msg ] ) ) {
+            return $default;
+        }
+        return $on ? $map[ $msg ]['on'] : $map[ $msg ]['off'];
+    }
+
+    /**
      * Block types that fold on the new look (task 2). Header stays out of
      * this list on purpose -- it's the only thing on step 1, so a fold
      * around it would just be a wrapper. Everything else the spec names

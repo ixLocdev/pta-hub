@@ -516,7 +516,7 @@ class PTK_Share_Panel {
         // rendering the picture's markup itself more than once.
         $full_url_for_mirrors = self::current_picture_url( $post_id );
         ?>
-        <div class="ptk-nl-share-panel" data-step="5" data-share-panel data-post-id="<?php echo esc_attr( $post_id ); ?>">
+        <div class="ptk-nl-share-panel"<?php echo PTK_Hub_Look::on() ? ' id="ptk-nl-share-panel"' : ''; // phpcs:ignore WordPress.Security.EscapeOutput -- static string, no user input. ?> data-step="5" data-share-panel data-post-id="<?php echo esc_attr( $post_id ); ?>">
             <div class="ptk-nl-share-intro">
                 <h3>Share this newsletter</h3>
                 <p class="description">Ready-to-paste posts for your PTA&#8217;s pages and groups. Nothing is posted for you &#8212; copy, paste, and change anything you like. Your changes are kept.</p>
@@ -655,7 +655,7 @@ class PTK_Share_Panel {
         $subject = PTK_Newsletter_Email::subject( $ctx['blocks'], $opts );
         $html    = PTK_Newsletter_Email::generate( $ctx['blocks'], $opts );
         ?>
-        <details class="ptk-nl-share-channel" data-share-channel="email" data-share-email>
+        <details class="ptk-nl-share-channel" data-share-channel="email" data-share-email<?php echo PTK_Hub_Look::on() ? ' id="ptk-nl-share-email"' : ''; // phpcs:ignore WordPress.Security.EscapeOutput -- static string, no user input. ?>>
             <summary><h4>Email (GiveBacks)</h4></summary>
             <p class="ptk-nl-share-tip">A teaser email for your weekly GiveBacks send — the announcement, a linked list of what&#8217;s inside, and one button to the full newsletter. No images: paste the code into GiveBacks&#8217; HTML block.</p>
 
