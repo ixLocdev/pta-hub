@@ -174,10 +174,16 @@ class PTK_Newsletter_News_Listing {
     }
 
     /**
-     * Registered unconditionally -- see class docblock. No public effect
-     * by itself.
+     * Only while the setting is on (4.11.0 review): once 'category' is
+     * attached to the post type, WordPress files every newsletter under the
+     * default "Uncategorized" category on save and category archives start
+     * querying the post type -- a public change Lucas doesn't want while
+     * this ships off.
      */
     public static function register_taxonomy() {
+        if ( ! self::on() ) {
+            return;
+        }
         register_taxonomy_for_object_type( 'category', 'pta_newsletter' );
     }
 
