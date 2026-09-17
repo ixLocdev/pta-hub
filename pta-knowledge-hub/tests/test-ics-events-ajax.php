@@ -30,7 +30,9 @@ $r = $t::range_for( 'next_2_weeks', $issue );
 ptk_test_ok( '2026-09-14' === $r['start'] && '2026-09-27' === $r['end'], '"Next 2 weeks" spans this issue week plus the next one' );
 
 $r = $t::range_for( 'this_month', $issue );
-ptk_test_ok( '2026-09-01' === $r['start'] && '2026-09-30' === $r['end'], '"This month" is the calendar month containing the issue week' );
+ptk_test_ok( '2026-09-14' === $r['start'] && '2026-09-30' === $r['end'], '"This month" runs from the issue week to the end of its month (no past dates)' );
+$r = $t::range_for( 'this_month', '2026-09-29' ); // week of Mon Sep 28, mostly in October
+ptk_test_ok( '2026-09-28' === $r['start'] && '2026-10-31' === $r['end'], '"This month" for a week straddling two months uses the month most of the week is in' );
 
 // A Sunday issue date belongs to the NEXT week (matches issue_week_monday's own rule).
 $r = $t::range_for( 'this_week', '2026-09-13' ); // a Sunday

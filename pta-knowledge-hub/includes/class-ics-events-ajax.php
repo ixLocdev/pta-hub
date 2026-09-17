@@ -64,8 +64,12 @@ class PTK_Ics_Events_Ajax {
                 $end   = ( clone $start )->modify( '+13 days' );
                 break;
             case 'this_month':
-                $start = ( clone $monday_dt )->modify( 'first day of this month' );
-                $end   = ( clone $monday_dt )->modify( 'last day of this month' );
+                // From the issue week to the end of its month -- dates
+                // already past are no use in a newsletter. The week's
+                // Thursday decides the month, so a week that straddles
+                // two months counts as the month most of it is in.
+                $start = clone $monday_dt;
+                $end   = ( clone $monday_dt )->modify( '+3 days' )->modify( 'last day of this month' );
                 break;
             case 'this_week':
             default:
