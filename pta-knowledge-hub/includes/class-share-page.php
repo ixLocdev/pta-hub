@@ -145,6 +145,7 @@ class PTK_Share_Page {
         $ctx       = PTK_Share_Panel::context( $post_id );
         $opts      = $ctx['opts'];
         $instagram = PTK_Share_Data::resolve_caption( $post_id, 'instagram', $ctx['blocks'], $opts );
+        $facebook  = PTK_Share_Data::resolve_caption( $post_id, 'facebook', $ctx['blocks'], $opts );
         $whatsapp  = PTK_Share_Data::resolve_caption( $post_id, 'whatsapp', $ctx['blocks'], $opts );
         $square    = self::stored_square( $post_id );
 
@@ -193,16 +194,16 @@ class PTK_Share_Page {
             <p class="ptk-sp-dateline"><?php echo esc_html( $dateline ); ?></p>
         <?php endif; ?>
         <p class="ptk-sp-intro"><?php echo $square
-            ? 'Save the picture to your phone, then copy the words into Instagram or WhatsApp. Nothing is posted until you post it.'
-            : 'Copy the words below into Instagram or WhatsApp. Nothing is posted until you post it.'; ?></p>
+            ? 'Save the picture to your phone, then copy the words into Instagram, Facebook or WhatsApp. Nothing is posted until you post it.'
+            : 'Copy the words below into Instagram, Facebook or WhatsApp. Nothing is posted until you post it.'; ?></p>
     </header>
 
     <?php if ( $square ) : ?>
         <section class="ptk-sp-section" aria-labelledby="ptk-sp-picture">
-            <p class="ptk-sp-rule"><span>§ The picture</span></p>
+            <p class="ptk-sp-rule"><span>§ Share picture</span></p>
             <h2 class="ptk-sp-h2" id="ptk-sp-picture">Save the picture</h2>
-            <img class="ptk-sp-square" src="<?php echo esc_url( $square['url'] ); ?>"<?php if ( $square['width'] && $square['height'] ) : ?> width="<?php echo esc_attr( $square['width'] ); ?>" height="<?php echo esc_attr( $square['height'] ); ?>"<?php endif; ?> alt="<?php echo esc_attr( 'Square picture for Instagram' . ( '' !== $issue ? ', Newsletter № ' . $issue : '' ) ); ?>">
-            <p class="ptk-sp-help">Press and hold the picture, then choose <strong>Save to Photos</strong> (on Android, <strong>Download image</strong>).</p>
+            <img class="ptk-sp-square" src="<?php echo esc_url( $square['url'] ); ?>"<?php if ( $square['width'] && $square['height'] ) : ?> width="<?php echo esc_attr( $square['width'] ); ?>" height="<?php echo esc_attr( $square['height'] ); ?>"<?php endif; ?> alt="<?php echo esc_attr( 'Share picture' . ( '' !== $issue ? ', Newsletter № ' . $issue : '' ) ); ?>">
+            <p class="ptk-sp-help">Press and hold the picture, then choose <strong>Save to Photos</strong> (on Android, <strong>Download image</strong>). Use it on Instagram, Facebook or WhatsApp.</p>
         </section>
     <?php endif; ?>
 
@@ -214,9 +215,19 @@ class PTK_Share_Page {
         <p class="ptk-sp-status" data-sp-status role="status" aria-live="polite"></p>
     </section>
 
+    <section class="ptk-sp-section" aria-labelledby="ptk-sp-facebook" data-sp-channel>
+        <p class="ptk-sp-rule"><span>§ Facebook</span></p>
+        <h2 class="ptk-sp-h2" id="ptk-sp-facebook">Facebook post</h2>
+        <?php if ( $square ) : ?><p class="ptk-sp-tip">Post the share picture with this text — picture posts get noticed more in groups.</p><?php endif; ?>
+        <div class="ptk-sp-text" data-sp-text><?php echo esc_html( $facebook['text'] ); ?></div>
+        <button type="button" class="ptk-sp-button" data-sp-copy>Copy Facebook post</button>
+        <p class="ptk-sp-status" data-sp-status role="status" aria-live="polite"></p>
+    </section>
+
     <section class="ptk-sp-section" aria-labelledby="ptk-sp-whatsapp" data-sp-channel>
         <p class="ptk-sp-rule"><span>§ WhatsApp</span></p>
         <h2 class="ptk-sp-h2" id="ptk-sp-whatsapp">WhatsApp message</h2>
+        <?php if ( $square ) : ?><p class="ptk-sp-tip">Paste the text — WhatsApp shows a preview of the newsletter from the link. Adding the picture is optional.</p><?php endif; ?>
         <div class="ptk-sp-text" data-sp-text><?php echo esc_html( $whatsapp['text'] ); ?></div>
         <div class="ptk-sp-links">
             <button type="button" class="ptk-sp-link" data-sp-copy>Copy WhatsApp message</button>

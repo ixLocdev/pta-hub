@@ -119,8 +119,79 @@
     color: #6b7280;
 }
 
+/* Round 3.2: the Share picture block, first on the step, one place for the
+   picture and its controls -- see class-share-panel.php's render(). */
+.ptk-nl-share-picture {
+    margin-top: 20px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.ptk-nl-share-picture h4 {
+    margin: 0 0 4px;
+    font-size: 15px;
+}
+
 .ptk-nl-share-square {
     margin-top: 14px;
+}
+
+/* Round 3.2: "Adjust the picture" -- folded by default so the Share
+   picture block's default view is short. Same disclosure pattern as the
+   channels below it (full-width hairline above, never a side bar). */
+.ptk-nl-share-adjust {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.ptk-nl-share-adjust > summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 28px;
+}
+
+.ptk-nl-share-adjust > summary::-webkit-details-marker {
+    display: none;
+}
+
+.ptk-nl-share-adjust > summary::before {
+    content: "\25B8"; /* ▸ */
+    display: inline-block;
+    font-size: 12px;
+    color: #6b7280;
+    transition: transform 0.15s ease;
+}
+
+.ptk-nl-share-adjust[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.ptk-nl-share-adjust > summary:focus-visible {
+    outline: 2px solid #2271b1;
+    outline-offset: 2px;
+}
+
+.ptk-nl-share-adjust h4 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #3c434a;
+}
+
+.ptk-nl-share-adjust > summary + * {
+    margin-top: 10px;
+}
+
+/* Round 3.2: the one-line plain tip above a channel's Copy button. */
+.ptk-nl-share-tip {
+    margin: 0 0 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #3c434a;
 }
 
 .ptk-nl-share-figure {

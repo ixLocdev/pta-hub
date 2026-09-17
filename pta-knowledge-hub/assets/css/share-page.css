@@ -136,6 +136,13 @@ body.ptk-sp {
     color: #111111;
 }
 
+/* Round 3.2: one-line plain tip above a channel's caption. */
+.ptk-sp-tip {
+    margin: 0 0 8px;
+    font-size: 14px;
+    color: #374151;
+}
+
 /* ---- Caption text ------------------------------------------------ */
 
 /* Read like the house form field: the words you are about to paste. */

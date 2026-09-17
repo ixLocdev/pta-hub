@@ -8,10 +8,15 @@
  *
  * DOM contract (see PTK_Share_Panel::render()):
  *   [data-share-panel][data-post-id]
+ *     [data-share-picture-block]
+ *       [data-share-square] -- the ONE share picture, re-rendered by the
+ *         server (round 3.2: no longer nested inside a channel)
  *     details[data-share-channel][data-dirty?] -- collapsible, round 3.1
  *       [data-share-stale] [data-share-text] [data-share-copy]
  *       [data-share-reset] [data-share-status] [data-share-whatsapp?]
- *       [data-share-square] (instagram only; re-rendered by the server)
+ *       [data-share-save-picture-mirror] (facebook/whatsapp; round 3.2 --
+ *         mirrors the ONE picture's href, kept in sync by
+ *         syncSavePictureMirrors())
  *
  * The dirty rule: a channel saves only once it is dirty. It becomes dirty on
  * its first `input`, OR loads dirty (data-dirty="1" from PHP) when stored
@@ -367,6 +372,7 @@
                         initPhotoPicker($area);
                         initSquareCanvas($area);
                         saveButtonPending(false);
+                        syncSavePictureMirrors($panel, $area);
                         $status.text('Picture updated');
                     } else {
                         $status.text(errorText(res, 'The picture could not be changed.'));
@@ -393,7 +399,7 @@
             // its selection into a newsletter image field.
             if (!frame) {
                 frame = wp.media({
-                    title: 'Choose a square picture for Instagram',
+                    title: 'Choose a share picture',
                     button: { text: 'Use this picture' },
                     library: { type: 'image' },
                     multiple: false
@@ -413,7 +419,7 @@
 
         $area.on('click', '[data-share-generated]', function (e) {
             e.preventDefault();
-            send({ mode: 'generated' }, 'Making the square…');
+            send({ mode: 'generated' }, 'Making the picture…');
         });
 
         /* ──────────────────────────────────────────
@@ -501,6 +507,7 @@
                         initPhotoPicker($area);
                         initSquareCanvas($area);
                         saveButtonPending(false);
+                        syncSavePictureMirrors($panel, $area);
                         $status.text('Picture updated');
                         return;
                     }
@@ -711,12 +718,14 @@
                             initPhotoPicker($area);
                             initSquareCanvas($area);
                             saveButtonPending(false);
+                            syncSavePictureMirrors($panel, $area);
                         }
                     }
                 });
             }, SQUARE_RENDER_DEBOUNCE);
         });
 
+        syncSavePictureMirrors($panel, $area);
         initPhotoPicker($area);
         initSquareCanvas($area);
     }
@@ -735,6 +744,28 @@
      * @param {jQuery} $area The [data-share-square] area.
      * @param {string} html  The server-rendered square markup.
      */
+    /**
+     * Round 3.2 (spec Part 1): Facebook/WhatsApp's "Save the picture"
+     * buttons are mirrors of the ONE picture rendered in the Share picture
+     * block, by reference -- never a second image. Whenever $area
+     * re-renders after a real change (new picture, photo swap, color
+     * change), copy its master [data-share-save-picture] anchor's href
+     * onto every mirror in the panel, and hide a mirror when there is
+     * currently no picture to save.
+     *
+     * @param {jQuery} $panel [data-share-panel]
+     * @param {jQuery} $area  [data-share-square]
+     */
+    function syncSavePictureMirrors($panel, $area) {
+        var href = $area.find('[data-share-save-picture]').attr('href') || '';
+        var $mirrors = $panel.find('[data-share-save-picture-mirror]');
+        if (href) {
+            $mirrors.attr('href', href).prop('hidden', false).show();
+        } else {
+            $mirrors.hide();
+        }
+    }
+
     function updateSquareImage($area, html, onLoaded) {
         var src = $('<div>').html(html).find('.ptk-nl-share-figure img').attr('src');
         if (!src) {

@@ -364,7 +364,7 @@ class PTK_Share_Panel {
         if ( empty( $_POST['pii_ok'] ) ) {
             wp_send_json_error(
                 array(
-                    'message'  => 'Please confirm the photos are OK before using one on the Instagram square — the same checkbox as Publish.',
+                    'message'  => 'Please confirm the photos are OK before using one on the share picture — the same checkbox as Publish.',
                     'needsPii' => true,
                     'piiLabel' => PTK_Newsletter_Builder::PII_CHECKBOX_LABEL,
                 ),
@@ -496,6 +496,12 @@ class PTK_Share_Panel {
         $ctx       = self::context( $post_id );
         $published = self::is_published( $post_id );
         $caps      = PTK_Share_Image::capabilities();
+
+        // Round 3.2 (spec Part 1): Facebook/WhatsApp's "Save the picture"
+        // buttons mirror THIS URL by reference -- computed once here so
+        // both the loop below and the mirrored buttons agree, without
+        // rendering the picture's markup itself more than once.
+        $full_url_for_mirrors = self::current_picture_url( $post_id );
         ?>
         <div class="ptk-nl-share-panel" data-step="5" data-share-panel data-post-id="<?php echo esc_attr( $post_id ); ?>">
             <div class="ptk-nl-share-intro">
@@ -504,6 +510,22 @@ class PTK_Share_Panel {
                 <?php if ( ! $published ) : ?>
                     <p class="ptk-nl-share-note">These are previews. Once this newsletter is published, the link is added to each post and you can change and copy them here.</p>
                 <?php endif; ?>
+            </div>
+
+            <?php
+            // Round 3.2 (spec Part 1): the picture and its controls live in
+            // ONE place, first on the step -- not duplicated inside each
+            // channel. Facebook and WhatsApp below only get a one-line tip
+            // plus a button that mirrors THIS picture's own download link
+            // (share-panel.js's syncSavePictureMirrors()), never a second
+            // generated image.
+            ?>
+            <div class="ptk-nl-share-picture" data-share-picture-block>
+                <h4>Share picture</h4>
+                <div class="ptk-nl-share-square" data-share-square>
+                    <?php echo self::square_html( $post_id, $ctx ); // phpcs:ignore WordPress.Security.EscapeOutput -- built and escaped in square_html(). ?>
+                </div>
+                <?php self::render_phone_handoff( $post_id, $published, $caps ); ?>
             </div>
 
             <?php
@@ -523,6 +545,12 @@ class PTK_Share_Panel {
                     <summary><h4><?php echo esc_html( $label ); ?></h4></summary>
                     <?php $first_channel = false; ?>
 
+                    <?php if ( 'facebook' === $channel ) : ?>
+                        <p class="ptk-nl-share-tip">Post the share picture with this text — picture posts get noticed more in groups.</p>
+                    <?php elseif ( 'whatsapp' === $channel ) : ?>
+                        <p class="ptk-nl-share-tip">Paste the text — WhatsApp shows a preview of the newsletter from the link. Adding the picture is optional.</p>
+                    <?php endif; ?>
+
                     <p class="ptk-nl-share-stale" data-share-stale<?php echo ( $caption['stored'] && $caption['stale'] ) ? '' : ' hidden'; ?>>The newsletter changed since you edited this.</p>
 
                     <label class="screen-reader-text" for="<?php echo esc_attr( $field ); ?>"><?php echo esc_html( $label . ' post text' ); ?></label>
@@ -537,6 +565,9 @@ class PTK_Share_Panel {
                     <?php if ( $published ) : ?>
                     <div class="ptk-nl-share-actions">
                         <button type="button" class="button button-primary" data-share-copy>Copy text</button>
+                        <?php if ( ( 'facebook' === $channel || 'whatsapp' === $channel ) && '' !== $full_url_for_mirrors ) : ?>
+                            <a class="button" href="<?php echo esc_url( $full_url_for_mirrors ); ?>" download data-share-save-picture-mirror>Save the picture</a>
+                        <?php endif; ?>
                         <?php if ( 'facebook' === $channel && $published && '' !== self::facebook_url() ) : ?>
                             <a class="button" href="<?php echo esc_url( self::facebook_url() ); ?>" target="_blank" rel="noopener noreferrer">Open your Facebook group</a>
                         <?php endif; ?>
@@ -547,13 +578,6 @@ class PTK_Share_Panel {
                         <span class="ptk-nl-share-status" data-share-status role="status" aria-live="polite"></span>
                     </div>
                     <?php endif; ?>
-
-                    <?php if ( 'instagram' === $channel ) : ?>
-                        <div class="ptk-nl-share-square" data-share-square>
-                            <?php echo self::square_html( $post_id, $ctx ); // phpcs:ignore WordPress.Security.EscapeOutput -- built and escaped in square_html(). ?>
-                        </div>
-                        <?php self::render_phone_handoff( $post_id, $published, $caps ); ?>
-                    <?php endif; ?>
                 </details>
             <?php endforeach; ?>
         </div>
@@ -561,7 +585,49 @@ class PTK_Share_Panel {
     }
 
     /**
-     * The Instagram picture area: the square (generated or uploaded) and
+     * The full-size download URL of the share picture as it stands right
+     * now (custom upload or the generated one), or '' when there is none to
+     * download. Round 3.2: used to mirror "Save the picture" onto the
+     * Facebook/WhatsApp channels without rendering the picture a second
+     * time -- ensure_square() is hash-cached, so calling it again here
+     * costs a couple of post-meta reads, never a second GD render.
+     *
+     * @param int $post_id
+     * @return string
+     */
+    public static function current_picture_url( $post_id ) {
+        $caps   = PTK_Share_Image::capabilities();
+        $square = PTK_Share_Data::get_square( $post_id );
+
+        if ( ! $square['custom'] && ! $caps['freetype'] ) {
+            return '';
+        }
+
+        $ctx    = self::context( $post_id );
+        $photo  = PTK_Share_Data::get_square_photo( $post_id );
+        $result = PTK_Share_Image::ensure_square( $post_id, array(
+            'issue'         => $ctx['opts']['issue'],
+            'date'          => $ctx['opts']['date'],
+            'school_name'   => $ctx['opts']['school_name'],
+            'background'    => PTK_Share_Color::square_background_color(),
+            'text'          => PTK_Share_Color::square_text_color(),
+            'photo_id'      => $photo['photo_id'],
+            'photo_focal_x' => $photo['focal_x'],
+            'photo_focal_y' => $photo['focal_y'],
+            'photo_zoom'    => $photo['zoom'],
+            'photo_text'    => PTK_Share_Color::square_photo_text_color(),
+            'photo_bar'     => PTK_Share_Color::square_photo_bar_color(),
+        ) );
+
+        if ( is_wp_error( $result ) || ! $result ) {
+            return '';
+        }
+
+        return (string) wp_get_attachment_url( $result );
+    }
+
+    /**
+     * The Share picture area: the square (generated or uploaded) and
      * its controls, or a plain sentence where a picture cannot be shown.
      * Returned as a string so the AJAX handlers can send back the same
      * markup after a change.
@@ -616,7 +682,7 @@ class PTK_Share_Panel {
                 $message = 'The square picture could not be found. Upload one instead.';
             }
         } else {
-            $message = 'Upload a square picture for Instagram.';
+            $message = 'Upload a share picture.';
         }
 
         // Round 3.1 (spec Problem B): a photo square can be mirrored client
@@ -656,7 +722,7 @@ class PTK_Share_Panel {
         <?php if ( '' !== $image_url ) : ?>
             <figure class="ptk-nl-share-figure"<?php echo $canvas_enabled ? ' data-share-canvas-figure' : ''; ?>>
                 <div class="ptk-nl-share-figure-stack">
-                    <img class="ptk-nl-share-img" src="<?php echo esc_url( $image_url ); ?>" alt="<?php echo esc_attr( $square['custom'] ? 'Your square picture for Instagram' : 'Square picture for Instagram with this issue number and date' ); ?>" width="270" height="270">
+                    <img class="ptk-nl-share-img" src="<?php echo esc_url( $image_url ); ?>" alt="<?php echo esc_attr( $square['custom'] ? 'Your own share picture' : 'Share picture for this issue with the issue number and date' ); ?>" width="270" height="270">
                     <?php if ( $canvas_enabled ) : ?>
                         <canvas class="ptk-nl-share-canvas" data-share-canvas width="1080" height="1080" hidden
                             <?php foreach ( $canvas_data as $attr => $value ) : ?>
@@ -665,27 +731,41 @@ class PTK_Share_Panel {
                         ></canvas>
                     <?php endif; ?>
                 </div>
-                <figcaption><?php echo $square['custom'] ? 'Your own picture.' : 'Made for you from this issue.'; ?></figcaption>
+                <figcaption><?php echo $square['custom'] ? 'Your own picture.' : 'Made for you from this issue. Use it on Instagram, Facebook or WhatsApp.'; ?></figcaption>
             </figure>
         <?php else : ?>
             <p class="ptk-nl-share-note"><?php echo esc_html( $message ); ?></p>
         <?php endif; ?>
 
-        <div class="ptk-nl-share-actions">
-            <?php if ( '' !== $full_url ) : ?>
-                <a class="button" href="<?php echo esc_url( $full_url ); ?>" download data-share-save-picture>Save the picture</a>
-            <?php endif; ?>
-            <?php if ( $can_upload ) : ?>
-                <button type="button" class="button" data-share-upload><?php echo '' !== $image_url ? 'Upload your own instead' : 'Upload a square picture'; ?></button>
-            <?php endif; ?>
-            <?php if ( $square['custom'] && $caps['freetype'] ) : ?>
-                <button type="button" class="button-link" data-share-generated>Use the generated square again</button>
-            <?php endif; ?>
-        </div>
-
-        <?php if ( ! $square['custom'] ) : ?>
-            <?php echo self::square_photo_html( $post_id, $ctx, $photo ); // phpcs:ignore WordPress.Security.EscapeOutput -- built and escaped below. ?>
+        <?php if ( '' !== $full_url ) : ?>
+            <div class="ptk-nl-share-actions">
+                <a class="button button-primary" href="<?php echo esc_url( $full_url ); ?>" download data-share-save-picture>Save the picture</a>
+            </div>
         <?php endif; ?>
+
+        <?php
+        // Round 3.2: everything that changes how the picture looks --
+        // upload, the photo/colors controls -- folds under one disclosure
+        // so the default view of the Share picture block stays short (spec
+        // Part 1). Closed by default, always in the DOM so the AJAX
+        // handlers below (which re-render this whole string) have
+        // something to attach to either way.
+        ?>
+        <details class="ptk-nl-share-adjust" data-share-adjust>
+            <summary><h4>Adjust the picture</h4></summary>
+            <div class="ptk-nl-share-actions">
+                <?php if ( $can_upload ) : ?>
+                    <button type="button" class="button" data-share-upload><?php echo '' !== $image_url ? 'Upload your own instead' : 'Upload a share picture'; ?></button>
+                <?php endif; ?>
+                <?php if ( $square['custom'] && $caps['freetype'] ) : ?>
+                    <button type="button" class="button-link" data-share-generated>Use the generated picture again</button>
+                <?php endif; ?>
+            </div>
+
+            <?php if ( ! $square['custom'] ) : ?>
+                <?php echo self::square_photo_html( $post_id, $ctx, $photo ); // phpcs:ignore WordPress.Security.EscapeOutput -- built and escaped below. ?>
+            <?php endif; ?>
+        </details>
         <?php
         return (string) ob_get_clean();
     }
