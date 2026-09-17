@@ -103,4 +103,10 @@ foreach ( $cues as $key => $cue ) {
     ptk_test_ok( is_string( $cue ) && '' !== $cue && ! preg_match( '/\b(Add New|Edit|Publish|Manage|Settings|Post|Entry)\b/', $cue ), "cue for $key is plain: $cue" );
 }
 
+// The waiting sentence reads right for one and for many.
+ptk_test_ok( '1 topic suggestion from members' === PTK_Welcome::waiting_text( 'Topic suggestions from members', 1 ), 'one suggestion reads singular' );
+ptk_test_ok( '3 topic suggestions from members' === PTK_Welcome::waiting_text( 'Topic suggestions from members', 3 ), 'three suggestions read plural' );
+ptk_test_ok( '1 entry due for a review' === PTK_Welcome::waiting_text( 'Entries due for a review', 1 ), 'one entry reads singular' );
+ptk_test_ok( '2 something new' === PTK_Welcome::waiting_text( 'Something new', 2 ), 'an unknown label still gets its count in front' );
+
 ptk_test_done();

@@ -318,6 +318,24 @@ class PTK_Welcome {
     }
 
     /**
+     * Pure: "2 vendor reviews to approve" / "1 vendor review to approve".
+     * The nudge labels are plural nouns; a count of one gets the singular.
+     */
+    public static function waiting_text( $label, $count ) {
+        $count    = (int) $count;
+        $singular = array(
+            'Vendor reviews to approve'      => 'vendor review to approve',
+            'Topic suggestions from members' => 'topic suggestion from members',
+            'Entries due for a review'       => 'entry due for a review',
+        );
+        if ( 1 === $count && isset( $singular[ $label ] ) ) {
+            return '1 ' . $singular[ $label ];
+        }
+        $label = strtolower( substr( $label, 0, 1 ) ) . substr( $label, 1 );
+        return number_format( $count ) . ' ' . $label;
+    }
+
+    /**
      * The new home screen: six intentions instead of a card grid, rendered
      * only when the PTA Hub look is on (see render_page()).
      */
@@ -401,9 +419,8 @@ class PTK_Welcome {
         if ( ! empty( $nudges ) ) {
             $items = array();
             foreach ( $nudges as $n ) {
-                $label = strtolower( substr( $n['label'], 0, 1 ) ) . substr( $n['label'], 1 );
                 $items[] = array(
-                    'text' => number_format_i18n( $n['count'] ) . ' ' . $label,
+                    'text' => self::waiting_text( $n['label'], $n['count'] ),
                     'url'  => $n['url'],
                 );
             }
