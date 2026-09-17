@@ -797,14 +797,19 @@ class PTK_Share_Image {
      *
      * @return string
      */
-    public static function attachment_filename( $post_id, $issue ) {
+    public static function attachment_filename( $post_id, $issue, $stamp = '' ) {
         $post_id = absint( $post_id );
         $issue   = preg_replace( '/[^A-Za-z0-9\-]/', '', (string) $issue );
+        // 4.6.1: a short stamp of what was drawn, so every redraw gets a new
+        // address. Reusing a name let browsers (which keep images for a
+        // year here) keep showing the old picture after it was redrawn.
+        $stamp   = preg_replace( '/[^a-f0-9]/', '', strtolower( (string) $stamp ) );
+        $suffix  = '' !== $stamp ? '-' . $stamp : '';
 
         if ( '' === $issue ) {
-            return 'share-square-' . $post_id . '.png';
+            return 'share-square-' . $post_id . $suffix . '.png';
         }
-        return 'share-square-' . $post_id . '-' . $issue . '.png';
+        return 'share-square-' . $post_id . '-' . $issue . $suffix . '.png';
     }
 
     /**
@@ -922,7 +927,7 @@ class PTK_Share_Image {
             );
         }
 
-        $upload = wp_upload_bits( self::attachment_filename( $post_id, $issue ), null, $png );
+        $upload = wp_upload_bits( self::attachment_filename( $post_id, $issue, substr( md5( $current_hash ), 0, 8 ) ), null, $png );
         if ( ! is_array( $upload ) || ! empty( $upload['error'] ) ) {
             $message = ( is_array( $upload ) && ! empty( $upload['error'] ) )
                 ? $upload['error']

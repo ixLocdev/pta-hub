@@ -135,6 +135,14 @@ ptk_test_ok(
 // ---------------------------------------------------------------------
 
 ptk_test_ok(
+    $t::attachment_filename( 12, '042', 'a1b2c3d4' ) === 'share-square-12-042-a1b2c3d4.png',
+    'attachment_filename adds the drawing stamp so a redraw gets a new address'
+);
+ptk_test_ok(
+    $t::attachment_filename( 12, '042', '../x' ) === 'share-square-12-042.png',
+    'attachment_filename drops a stamp that is not plain hex'
+);
+ptk_test_ok(
     $t::attachment_filename( 12, '042' ) === 'share-square-12-042.png',
     'attachment_filename names the file after the post and issue'
 );
