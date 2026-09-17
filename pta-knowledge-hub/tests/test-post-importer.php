@@ -195,9 +195,7 @@ $roundup_post = array(
 );
 $s = $t::build_suggestion( $roundup_post, '2026-11-10' );
 ptk_test_ok( true === $s['can_split'], 'weekly roundup with 3 headings offers a split' );
-ptk_test_ok( 3 === count( $s['sections'] ), 'sections array has all 3 detected sections' );
-
-$section_suggestion = $t::build_section_suggestion( $s['sections'][0], array( 'id' => 104, 'permalink' => $roundup_post['permalink'], 'home_host' => 'example.org' ), '2026-11-10' );
-ptk_test_ok( 'BAKE SALE' === $section_suggestion['title'] || false !== strpos( $section_suggestion['title'], 'BAKE SALE' ), 'a split section becomes its own suggestion' );
+ptk_test_ok( 3 === count( $s['split_items'] ), 'split_items array has all 3 detected sections, pre-built server-side' );
+ptk_test_ok( 'BAKE SALE' === $s['split_items'][0]['title'], 'first split item is its own ready-to-use suggestion' );
 
 ptk_test_done();

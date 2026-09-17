@@ -1127,8 +1127,22 @@
 }
 
 .ptk-nl-cal-list {
-    max-height: 360px;
+    max-height: 420px;
     overflow-y: auto;
+}
+
+/* Round 5 (live-testing fix): "Select all" / "Clear" + "Add all (N)" above
+   the list, so a long range doesn't mean ticking every box by hand. */
+.ptk-nl-cal-select-all,
+.ptk-nl-post-select-all {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.ptk-nl-select-all-link {
+    font-size: 13px;
 }
 
 .ptk-nl-cal-day {
@@ -1205,4 +1219,219 @@
 
 .ptk-nl-cal-refresh {
     font-size: 13px;
+}
+
+/* ── Round 5: "Bring in your recent posts" (step 2 near Coming up, step 3
+   near Stories) -- same inline-panel pattern as the calendar import above. */
+
+.ptk-nl-events-actions,
+.ptk-nl-stories-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0 16px;
+}
+
+.ptk-nl-events-actions .ptk-nl-calendar-import,
+.ptk-nl-events-actions .ptk-nl-post-import,
+.ptk-nl-stories-actions .ptk-nl-post-import {
+    margin: 0;
+}
+
+/* Both import buttons and their panels are full-width once opened, even
+   though their toggle buttons sit side by side in the action bar. */
+.ptk-nl-calendar-import,
+.ptk-nl-post-import {
+    position: relative;
+}
+
+.ptk-nl-calendar-panel,
+.ptk-nl-post-import-panel {
+    position: absolute;
+    z-index: 5;
+    top: 100%;
+    left: 0;
+    width: min(560px, 90vw);
+}
+
+.ptk-nl-post-import-panel {
+    margin-top: 10px;
+    padding: 14px;
+    background: #f6f7fb;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+}
+
+.ptk-nl-post-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.ptk-nl-post-chip {
+    border-radius: 999px;
+    border: 1px solid #c7d2e8;
+    background: #ffffff;
+}
+
+.ptk-nl-post-chip.is-active {
+    background: #1a2f5c;
+    border-color: #1a2f5c;
+    color: #ffffff;
+}
+
+.ptk-nl-post-search {
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.ptk-nl-post-status {
+    margin: 8px 0;
+    color: #50575e;
+}
+
+.ptk-nl-post-status.ptk-nl-post-error {
+    color: #a51d23;
+    font-weight: 600;
+}
+
+.ptk-nl-post-list {
+    max-height: 420px;
+    overflow-y: auto;
+}
+
+.ptk-nl-post-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px;
+    margin-bottom: 6px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+
+.ptk-nl-post-row.is-added {
+    background: #f0f0f1;
+    color: #7f8590;
+}
+
+.ptk-nl-post-row input[type="checkbox"] {
+    margin-top: 3px;
+}
+
+.ptk-nl-post-thumb {
+    flex: 0 0 auto;
+    width: 48px;
+    height: 48px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #e5e7eb;
+}
+
+.ptk-nl-post-thumb img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.ptk-nl-post-row-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.ptk-nl-post-row-title {
+    font-weight: 600;
+}
+
+.ptk-nl-post-row-meta {
+    font-size: 12px;
+    color: #50575e;
+}
+
+.ptk-nl-post-row-excerpt {
+    font-size: 12px;
+    color: #50575e;
+}
+
+.ptk-nl-post-already {
+    font-weight: 600;
+    color: #7f8590;
+}
+
+.ptk-nl-post-type-choice {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    margin-top: 6px;
+    font-size: 12px;
+}
+
+.ptk-nl-post-type-choice label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 400;
+}
+
+.ptk-nl-post-split {
+    margin-top: 6px;
+    font-size: 12px;
+}
+
+.ptk-nl-post-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.ptk-nl-post-actions-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.ptk-nl-post-refresh {
+    font-size: 13px;
+}
+
+/* Round 5 (live-testing fix): "Shortened from your post" / "Add a
+   sentence or two" note -- UI only, never written into the newsletter. */
+.ptk-nl-post-note {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    font-style: italic;
+    color: #50575e;
+}
+
+/* ── Round 5 (live-testing fix): discoverability jump line, step 2 ── */
+
+.ptk-nl-jump-hint {
+    margin: 8px 0 0;
+    font-size: 13px;
+}
+
+.ptk-nl-jump-link {
+    text-decoration: underline;
+}
+
+/* ── Round 5 (live-testing fix): textareas grow to fit their content
+   instead of clipping text behind a scrollbar. JS sets an inline height;
+   this just removes the default resize handle/scrollbar fighting it and
+   caps the eventual scrollbar at ~12 rows. */
+
+.ptk-nl-field-group textarea,
+.ptk-nl-row textarea {
+    overflow-y: hidden;
+    max-height: 320px;
+    resize: vertical;
 }

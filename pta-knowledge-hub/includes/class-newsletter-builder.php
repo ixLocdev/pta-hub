@@ -798,6 +798,10 @@ class PTK_Newsletter_Builder {
         // without a page reload having happened in between.
         $nl_data['calendarNonce'] = wp_create_nonce( 'ptk_calendar_events' );
 
+        // Round 5: "Bring in your recent posts" needs its own nonce (a
+        // different AJAX action than the calendar import).
+        $nl_data['postsNonce'] = wp_create_nonce( 'ptk_import_posts' );
+
         // Just saved or published: land on the last step ("Publish & share",
         // round 3.1 -- was step 4 before the split), where the notice's
         // follow-up lives (the share panel, the photo check). Without this the
@@ -1228,6 +1232,9 @@ class PTK_Newsletter_Builder {
                                     <span class="ptk-nl-step-count"><?php echo esc_html( sprintf( 'Step %d of %d', $step_number, $step_last ) ); ?></span>
                                 </h2>
                                 <p class="ptk-nl-step-blurb"><?php echo esc_html( $step['blurb'] ); ?></p>
+                                <?php if ( 2 === $step_number ) : ?>
+                                    <?php self::render_step2_jump_hint(); ?>
+                                <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
 
@@ -1598,9 +1605,59 @@ class PTK_Newsletter_Builder {
         }
         ?>
         <div class="ptk-nl-calendar-import" data-calendar-import>
+            <?php /* Round 3.1's original outline "button" class; Round 5
+                    (live-testing fix) has the JS add/remove button-primary
+                    here depending on whether Coming up has any rows yet --
+                    see updateEventsActionState() in newsletter-builder.js. */ ?>
             <button type="button" class="button" data-calendar-toggle>Add from your calendar</button>
             <div class="ptk-nl-calendar-panel" data-calendar-panel hidden></div>
         </div>
+        <?php
+    }
+
+    /**
+     * Round 5: "Bring in your recent posts" -- shown on step 2 (near Coming
+     * up, $context 'events') and step 3 (near Stories, $context 'stories').
+     * Same shape as render_calendar_import(): a toggle + an empty mount
+     * point; everything else (range chips, search, the checkbox list,
+     * per-row Story/Event/Quick note choice, "Add selected") is built by
+     * assets/js/newsletter-builder.js from JSON the ptk_import_posts AJAX
+     * action returns (server: includes/class-post-import-ajax.php).
+     *
+     * @param string $context 'events' | 'stories' -- distinguishes the two
+     *   mount points so each keeps its own panel state client-side.
+     */
+    protected static function render_post_import( $context ) {
+        ?>
+        <div class="ptk-nl-post-import" data-post-import="<?php echo esc_attr( $context ); ?>">
+            <button type="button" class="button" data-post-import-toggle>Bring in your recent posts</button>
+            <div class="ptk-nl-post-import-panel" data-post-import-panel hidden></div>
+        </div>
+        <?php
+    }
+
+    /**
+     * Round 5 (live-testing fix): a short line just under step 2's blurb
+     * pointing at the calendar-import and post-import panels, which
+     * otherwise sit far down the page under a long Announcement card where
+     * nobody scrolls to find them. Only the parts that apply are shown --
+     * a school with no calendar configured (and not able to set one up)
+     * only sees the posts link.
+     */
+    protected static function render_step2_jump_hint() {
+        $configured = '' !== (string) get_option( PTK_Share_Settings::GCAL_OPTION, '' );
+
+        $links = array();
+        if ( $configured ) {
+            $links[] = '<a href="#" class="ptk-nl-jump-link" data-jump-hint data-jump-target="calendar-events">Add dates from your calendar &darr;</a>';
+        }
+        $links[] = '<a href="#" class="ptk-nl-jump-link" data-jump-hint data-jump-target="posts-events">Bring in recent posts</a>';
+
+        if ( empty( $links ) ) {
+            return;
+        }
+        ?>
+        <p class="ptk-nl-jump-hint"><?php echo wp_kses( implode( ' &middot; ', $links ), array( 'a' => array( 'href' => true, 'class' => true, 'data-jump-hint' => true, 'data-jump-target' => true ) ) ); ?></p>
         <?php
     }
 
@@ -1700,12 +1757,23 @@ class PTK_Newsletter_Builder {
 
             case 'events':
                 ?>
-                <?php self::render_calendar_import(); ?>
+                <?php /* Round 5 (live-testing fix): one action bar so "Add from
+                        your calendar" / "Bring in your recent posts" / "+ Add
+                        event" sit together -- updateEventsActionState() in
+                        newsletter-builder.js makes the first two primary
+                        (filled) when the list is empty, and all three equal
+                        outline buttons once rows exist. */ ?>
+                <div class="ptk-nl-events-actions" data-events-actions>
+                    <?php self::render_calendar_import(); ?>
+                    <?php self::render_post_import( 'events' ); ?>
+                    <button type="button" class="button ptk-nl-add" data-add-event-btn>+ Add event</button>
+                </div>
                 <div class="ptk-nl-rows" data-rows data-rows-for="rows"></div>
-                <button type="button" class="button ptk-nl-add">+ Add event</button>
                 <template data-row-template>
                     <!-- Row fields intentionally have no static ids: the later JS task assigns a unique id per cloned row and points each label's for at it. -->
                     <div class="ptk-nl-row" data-row>
+                        <!-- Round 5: which post (if any) this row was imported from -- see the note on TYPE_EVENTS in class-newsletter-data.php. -->
+                        <input type="hidden" data-field="source_post" value="0">
                         <div class="ptk-nl-field-group">
                             <label>Date</label>
                             <input type="date" data-field="date">
@@ -1785,11 +1853,16 @@ class PTK_Newsletter_Builder {
 
             case 'story_cards':
                 ?>
+                <div class="ptk-nl-stories-actions" data-stories-actions>
+                    <?php self::render_post_import( 'stories' ); ?>
+                    <button type="button" class="button ptk-nl-add" data-add-story-btn>+ Add story</button>
+                </div>
                 <div class="ptk-nl-rows" data-rows data-rows-for="cards"></div>
-                <button type="button" class="button ptk-nl-add">+ Add story</button>
                 <template data-row-template>
                     <!-- Row fields intentionally have no static ids: the later JS task assigns a unique id per cloned row and points each label's for at it. -->
                     <div class="ptk-nl-row" data-row>
+                        <!-- Round 5: which post (if any) this card was imported from -- see the note on TYPE_STORY_CARDS in class-newsletter-data.php. -->
+                        <input type="hidden" data-field="source_post" value="0">
                         <div class="ptk-nl-field-group">
                             <label>Short label</label>
                             <input type="text" data-field="eyebrow">
@@ -1849,6 +1922,8 @@ class PTK_Newsletter_Builder {
                 <template data-row-template>
                     <!-- Row fields intentionally have no static ids: assignRowIds() gives them out. -->
                     <div class="ptk-nl-row" data-row>
+                        <!-- Round 5: which post (if any) this note was imported from -- see the note on TYPE_QUICK_NOTES in class-newsletter-data.php. -->
+                        <input type="hidden" data-field="source_post" value="0">
                         <div class="ptk-nl-field-group">
                             <label>Headline</label>
                             <input type="text" data-field="heading">

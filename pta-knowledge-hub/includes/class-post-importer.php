@@ -498,6 +498,18 @@ class PTK_Post_Importer {
 
         $sections = self::detect_sections( $content );
 
+        // Pre-compute each section's own suggestion server-side, so ticking
+        // "Split into separate items" in the panel needs no extra round
+        // trip -- the JS just swaps in this array instead of the one-item
+        // suggestion above.
+        $split_items = array();
+        if ( count( $sections ) >= 2 ) {
+            $post_context = array( 'id' => isset( $post['id'] ) ? $post['id'] : 0, 'permalink' => $permalink, 'home_host' => $home_host );
+            foreach ( $sections as $section ) {
+                $split_items[] = self::build_section_suggestion( $section, $post_context, $issue_date );
+            }
+        }
+
         return array(
             'source_post'   => isset( $post['id'] ) ? (int) $post['id'] : 0,
             'type'          => $type,
@@ -512,7 +524,7 @@ class PTK_Post_Importer {
             'image_id'      => $has_image ? (int) $post['image_id'] : 0,
             'permalink'     => $permalink,
             'can_split'     => count( $sections ) >= 2,
-            'sections'      => $sections,
+            'split_items'   => $split_items,
         );
     }
 

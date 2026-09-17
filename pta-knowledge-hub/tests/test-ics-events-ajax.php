@@ -34,6 +34,9 @@ ptk_test_ok( '2026-09-14' === $r['start'] && '2026-09-30' === $r['end'], '"This 
 $r = $t::range_for( 'this_month', '2026-09-29' ); // week of Mon Sep 28, mostly in October
 ptk_test_ok( '2026-09-28' === $r['start'] && '2026-10-31' === $r['end'], '"This month" for a week straddling two months uses the month most of the week is in' );
 
+$r = $t::range_for( 'next_3_months', $issue );
+ptk_test_ok( '2026-09-14' === $r['start'] && '2026-12-13' === $r['end'], '"Next 3 months" runs from the issue week Monday through the day before the same date 3 months later' );
+
 // A Sunday issue date belongs to the NEXT week (matches issue_week_monday's own rule).
 $r = $t::range_for( 'this_week', '2026-09-13' ); // a Sunday
 ptk_test_ok( '2026-09-14' === $r['start'], 'a Sunday issue date rolls to the following Monday, like issue_week_monday() everywhere else' );

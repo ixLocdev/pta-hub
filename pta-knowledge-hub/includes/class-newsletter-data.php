@@ -263,9 +263,14 @@ class PTK_Newsletter_Data {
                         continue;
                     }
                     $clean_rows[] = array(
-                        'date'  => self::sanitize_date( isset( $row['date'] ) ? $row['date'] : '' ),
-                        'title' => sanitize_text_field( self::str_field( isset( $row['title'] ) ? $row['title'] : '' ) ),
-                        'desc'  => wp_kses_post( self::str_field( isset( $row['desc'] ) ? $row['desc'] : '' ) ),
+                        'date'        => self::sanitize_date( isset( $row['date'] ) ? $row['date'] : '' ),
+                        'title'       => sanitize_text_field( self::str_field( isset( $row['title'] ) ? $row['title'] : '' ) ),
+                        'desc'        => wp_kses_post( self::str_field( isset( $row['desc'] ) ? $row['desc'] : '' ) ),
+                        // Round 5: which post (if any) "Bring in your recent
+                        // posts" pulled this row from, so re-opening the
+                        // panel can mark it "Already added" even after a
+                        // save/reload. Not shown or used anywhere else.
+                        'source_post' => absint( isset( $row['source_post'] ) ? $row['source_post'] : 0 ),
                     );
                 }
                 return array( 'rows' => $clean_rows );
@@ -298,6 +303,8 @@ class PTK_Newsletter_Data {
                             'image_id'  => absint( isset( $card['image_id'] ) ? $card['image_id'] : 0 ),
                             'link_url'  => esc_url_raw( self::str_field( isset( $card['link_url'] ) ? $card['link_url'] : '' ) ),
                             'link_text' => sanitize_text_field( self::str_field( isset( $card['link_text'] ) ? $card['link_text'] : '' ) ),
+                            // Round 5: see the matching note on TYPE_EVENTS above.
+                            'source_post' => absint( isset( $card['source_post'] ) ? $card['source_post'] : 0 ),
                         ),
                         self::sanitize_image_crop( $card )
                     );
@@ -316,6 +323,8 @@ class PTK_Newsletter_Data {
                         'body'      => wp_kses_post( self::str_field( isset( $item['body'] ) ? $item['body'] : '' ) ),
                         'link_url'  => self::sanitize_link_url( isset( $item['link_url'] ) ? $item['link_url'] : '' ),
                         'link_text' => sanitize_text_field( self::str_field( isset( $item['link_text'] ) ? $item['link_text'] : '' ) ),
+                        // Round 5: see the matching note on TYPE_EVENTS above.
+                        'source_post' => absint( isset( $item['source_post'] ) ? $item['source_post'] : 0 ),
                     );
                 }
                 return array(

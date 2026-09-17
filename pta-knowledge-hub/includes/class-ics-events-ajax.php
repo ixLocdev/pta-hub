@@ -43,7 +43,7 @@ class PTK_Ics_Events_Ajax {
      * -- not today's week -- so the default matches what the newsletter is
      * actually covering.
      *
-     * @param string $range_key 'this_week' | 'next_week' | 'next_2_weeks' | 'this_month'.
+     * @param string $range_key 'this_week' | 'next_week' | 'next_2_weeks' | 'this_month' | 'next_3_months'.
      * @param string $issue_date 'Y-m-d', may be ''.
      * @return array{start:string,end:string}|null
      */
@@ -70,6 +70,14 @@ class PTK_Ics_Events_Ajax {
                 // two months counts as the month most of it is in.
                 $start = clone $monday_dt;
                 $end   = ( clone $monday_dt )->modify( '+3 days' )->modify( 'last day of this month' );
+                break;
+            case 'next_3_months':
+                // A long-range chip for schools that like to plan ahead:
+                // the issue week's Monday through the day before the same
+                // date 3 months later (e.g. Mon 2026-09-14 -> 2026-12-13),
+                // matching the exclusive-end convention "this_month" uses.
+                $start = clone $monday_dt;
+                $end   = ( clone $monday_dt )->modify( '+3 months' )->modify( '-1 day' );
                 break;
             case 'this_week':
             default:

@@ -66,6 +66,8 @@ require_once PTK_PLUGIN_DIR . 'includes/class-share-settings.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-calendar-source.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-ics-reader.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-ics-events-ajax.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-post-importer.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-post-import-ajax.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-newsletter-seo.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-search-engine.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-single-enhancements.php';
@@ -152,6 +154,7 @@ function ptk_init() {
     PTK_Share_Page::init();
     PTK_Share_Settings::init();
     PTK_Ics_Events_Ajax::init();
+    PTK_Post_Import_Ajax::init();
     PTK_Newsletter_SEO::init();
     PTK_Search_Engine::init();
     PTK_Single_Enhancements::init();
