@@ -25,5 +25,6 @@
     border-color: #135e96;
 }
 .ptk-welcome-btn-secondary { background: #fff; color: #2271b1; }
+.ptk-welcome-btn + .ptk-welcome-btn { margin-left: 8px; }
 .ptk-welcome-btn:focus { outline: 2px solid #2271b1; outline-offset: 1px; }
 .ptk-welcome-footer { font-size: 13px; color: #646970; margin: 24px 0 0; }

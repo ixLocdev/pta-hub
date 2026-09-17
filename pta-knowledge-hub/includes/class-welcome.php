@@ -153,27 +153,32 @@ class PTK_Welcome {
         // (below) steps back to secondary. Two blue "primary" buttons on
         // one page is no primary action at all (spec Decision 8).
         if ( current_user_can( 'edit_posts' ) && class_exists( 'PTK_Newsletter_Builder' ) ) {
-            $last_line = '';
-            $last_id   = PTK_Newsletter_Builder::most_recent_newsletter_id();
+            $last_line  = '';
+            $last_label = '';
+            $edit_url   = '';
+            $last_id    = PTK_Newsletter_Builder::most_recent_newsletter_id();
             if ( $last_id ) {
                 $last_issue = get_post_meta( $last_id, 'ptk_nl_issue', true );
                 $last_date  = (string) get_post_meta( $last_id, 'ptk_nl_date', true );
                 if ( $last_issue && class_exists( 'PTK_Share_Text' ) ) {
                     $edit_url  = add_query_arg( 'ptk_nl_edit_id', $last_id, PTK_Newsletter_Builder::url() );
                     $date_str  = preg_match( '/^\d{4}-\d{2}-\d{2}$/', $last_date ) ? date_i18n( 'M j', strtotime( $last_date ) ) : '';
-                    $last_line = 'No. ' . PTK_Share_Text::issue_label( $last_issue )
-                        . ( '' !== $date_str ? ' · ' . $date_str : '' )
-                        . ' · <a href="' . esc_url( $edit_url ) . '">Edit</a>';
+                    $last_label = 'No. ' . PTK_Share_Text::issue_label( $last_issue );
+                    $last_line  = $last_label . ( '' !== $date_str ? ' · ' . $date_str : '' ) . '.';
                 }
             }
             $cards[] = array(
                 'icon'    => '📰',
                 'title'   => "Write this week's newsletter",
-                'desc'    => 'Four short steps, with a live preview as you go.' . ( $last_line ? ' Last issue: ' . $last_line : '' ),
+                'desc'    => 'Five short steps, with a live preview as you go.' . ( $last_line ? ' Last issue: ' . $last_line : '' ),
                 'button'  => 'Start the newsletter',
                 'url'     => PTK_Newsletter_Builder::url(),
                 'primary' => true,
                 'new_tab' => false,
+                // A second, quieter button to pick up the latest issue again
+                // (fix a typo after sending, finish a draft).
+                'second_button' => $edit_url ? 'Edit ' . $last_label : '',
+                'second_url'    => $edit_url,
             );
         }
 
@@ -259,6 +264,11 @@ class PTK_Welcome {
                            href="<?php echo esc_url( $c['url'] ); ?>"<?php echo $c['new_tab'] ? ' target="_blank" rel="noopener"' : ''; ?>>
                             <?php echo esc_html( $c['button'] ); ?>
                         </a>
+                        <?php if ( ! empty( $c['second_button'] ) && ! empty( $c['second_url'] ) ) : ?>
+                            <a class="ptk-welcome-btn ptk-welcome-btn-secondary" href="<?php echo esc_url( $c['second_url'] ); ?>">
+                                <?php echo esc_html( $c['second_button'] ); ?>
+                            </a>
+                        <?php endif; ?>
                     </div>
                 <?php endforeach; ?>
             </div>
