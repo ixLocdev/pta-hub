@@ -40,6 +40,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 require_once __DIR__ . '/class-calendar-source.php';
 require_once __DIR__ . '/class-ics-reader.php';
+require_once __DIR__ . '/class-newsletter-news-listing.php';
+require_once __DIR__ . '/class-newsletter-linked-post.php';
 
 class PTK_Share_Settings {
 
@@ -506,6 +508,31 @@ class PTK_Share_Settings {
             }
         }
 
+        // ---- Round 8: newsletters with news posts (both default OFF) ----
+        $in_news_before = (bool) get_option( PTK_Newsletter_News_Listing::OPTION, false );
+        $in_news_after  = ! empty( $_POST['ptk_newsletters_in_news'] );
+        update_option( PTK_Newsletter_News_Listing::OPTION, $in_news_after ? 1 : 0 );
+        if ( $in_news_before !== $in_news_after ) {
+            $notice['messages'][] = array(
+                'ok',
+                $in_news_after
+                    ? 'Newsletters will now appear with your news posts.'
+                    : 'Newsletters no longer appear with your news posts.',
+            );
+        }
+
+        $linked_before = (bool) get_option( PTK_Newsletter_Linked_Post::OPTION, false );
+        $linked_after  = ! empty( $_POST['ptk_newsletters_linked_post'] );
+        update_option( PTK_Newsletter_Linked_Post::OPTION, $linked_after ? 1 : 0 );
+        if ( $linked_before !== $linked_after ) {
+            $notice['messages'][] = array(
+                'ok',
+                $linked_after
+                    ? 'Publishing a newsletter will now also create (or update) a short linked post.'
+                    : 'Newsletters no longer create a linked post. Posts already made are left as they are.',
+            );
+        }
+
         if ( empty( $notice['messages'] ) ) {
             $notice['messages'][] = array( 'ok', 'Settings saved. Nothing needed changing.' );
         }
@@ -704,6 +731,26 @@ class PTK_Share_Settings {
                     <p class="ptk-ss-field-result"><?php echo esc_html( $notice['gcal_result'] ); ?></p>
                 <?php endif; ?>
                 <p class="description">In Google Calendar: open your calendar’s <strong>Settings</strong>, then <strong>“Integrate calendar,”</strong> and paste the <strong>“Public address in iCal format.”</strong> The calendar must be set to public. This is different from the calendar page above -- it&#8217;s what lets step 2 of the newsletter builder offer &#8220;Add from your calendar.&#8221; Leave it empty to hide that button.</p>
+
+                <h2>Newsletters in your news list</h2>
+                <p>
+                    <label for="ptk-newsletters-in-news">
+                        <input type="checkbox" id="ptk-newsletters-in-news" name="ptk_newsletters_in_news" value="1"<?php checked( (bool) get_option( PTK_Newsletter_News_Listing::OPTION, false ) ); ?>>
+                        Show newsletters with your news posts
+                    </label>
+                </p>
+                <p class="description">Published newsletters also appear in your news list, blog page and RSS feed, as if they were posts. They stay one page &mdash; nothing is copied.</p>
+
+                <p>
+                    <label for="ptk-newsletters-linked-post">
+                        <input type="checkbox" id="ptk-newsletters-linked-post" name="ptk_newsletters_linked_post" value="1"<?php checked( (bool) get_option( PTK_Newsletter_Linked_Post::OPTION, false ) ); ?>>
+                        Also add a short news post that links to it
+                    </label>
+                </p>
+                <p class="description">Creates a real, separate post &mdash; a short summary with a link to the full newsletter &mdash; every time you publish or update one. Turning this off later leaves any posts it already made in place.</p>
+                <?php if ( get_option( PTK_Newsletter_News_Listing::OPTION, false ) && get_option( PTK_Newsletter_Linked_Post::OPTION, false ) ) : ?>
+                    <p class="description"><strong>Heads up:</strong> with both of these on, a newsletter can show up twice in your news list &mdash; once as itself, once as the short linked post.</p>
+                <?php endif; ?>
 
                 <h2>Contact email</h2>
                 <p>

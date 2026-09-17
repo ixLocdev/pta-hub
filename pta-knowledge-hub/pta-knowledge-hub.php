@@ -69,6 +69,8 @@ require_once PTK_PLUGIN_DIR . 'includes/class-ics-events-ajax.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-post-importer.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-post-import-ajax.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-newsletter-seo.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-newsletter-news-listing.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-newsletter-linked-post.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-search-engine.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-single-enhancements.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-qr-codes.php';
@@ -156,6 +158,8 @@ function ptk_init() {
     PTK_Ics_Events_Ajax::init();
     PTK_Post_Import_Ajax::init();
     PTK_Newsletter_SEO::init();
+    PTK_Newsletter_News_Listing::init();
+    PTK_Newsletter_Linked_Post::init();
     PTK_Search_Engine::init();
     PTK_Single_Enhancements::init();
     PTK_QR_Codes::init();

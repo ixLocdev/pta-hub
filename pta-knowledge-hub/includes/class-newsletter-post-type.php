@@ -72,7 +72,11 @@ class PTK_Newsletter_Post_Type {
             // rather than left as dead config.
             'show_in_menu'       => 'edit.php?post_type=pta_knowledge',
             'show_in_rest'       => false,
-            'supports'           => array( 'title', 'thumbnail', 'revisions', 'author' ),
+            // 'excerpt' added round 8: PTK_Newsletter_News_Listing writes a
+            // computed excerpt on every save so get_the_excerpt() has
+            // something to return wherever a newsletter is listed among
+            // posts -- see that class for when that actually happens.
+            'supports'           => array( 'title', 'thumbnail', 'excerpt', 'revisions', 'author' ),
             'has_archive'        => 'newsletters',
             'rewrite'            => array( 'slug' => 'newsletters' ),
             'capability_type'    => 'post',
