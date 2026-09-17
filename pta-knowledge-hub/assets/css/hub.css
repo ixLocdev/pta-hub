@@ -1,0 +1,343 @@
+/**
+ * The PTA Hub look.
+ *
+ * Loads only when "Use the new PTA Hub look" is on for this site AND the
+ * current screen belongs to the Hub (see PTK_Hub_Look::active()). With the
+ * setting off this file is never enqueued and nothing here can run.
+ *
+ * Every color used below is one of the eleven tokens declared on
+ * `body.ptk-hub-look` -- no raw hex appears anywhere else in this file.
+ *
+ * No one-sided borders. Nothing in here uses border-left or border-right as
+ * an accent bar or rail. Emphasis comes from a full background fill, a full
+ * four-sided border, spacing, a stamp, or type weight -- never a side bar.
+ *
+ * Every selector below is scoped under body.ptk-hub-look so this file can
+ * never bleed into WordPress chrome or any screen the Hub look isn't active
+ * on. It restyles only .ptk-* parts, never #wpcontent, #wpbody, .wrap, h1,
+ * .button, admin-menu or notices, even under the body class.
+ */
+
+@font-face {
+    font-family: 'Literata';
+    font-style: normal;
+    font-weight: 400 600;
+    font-display: swap;
+    src: url(../fonts/Literata-Variable.woff2) format('woff2');
+}
+
+@font-face {
+    font-family: 'Karla';
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url(../fonts/Karla-Variable.woff2) format('woff2');
+}
+
+body.ptk-hub-look {
+    --ptk-bg: #F8F9F7;
+    --ptk-surface: #FFFFFF;
+    --ptk-primary: #356F8A;
+    --ptk-primary-soft: #E7F1F5;
+    --ptk-text: #243039;
+    --ptk-text-dim: #68747C;
+    --ptk-success: #477E5F;
+    --ptk-warning: #BD8437;
+    --ptk-warning-ink: #96692B;
+    --ptk-error: #B15858;
+    --ptk-line: #E2E6E4;
+
+    --ptk-font-serif: 'Literata', Georgia, serif;
+    --ptk-font-sans: 'Karla', system-ui, -apple-system, sans-serif;
+
+    --ptk-radius-card: 12px;
+    --ptk-radius-field: 9px;
+    --ptk-radius-stamp: 4px;
+
+    --ptk-space-1: 8px;
+    --ptk-space-2: 12px;
+    --ptk-space-3: 16px;
+    --ptk-space-4: 22px;
+    --ptk-space-5: 28px;
+}
+
+/* Page shell */
+
+body.ptk-hub-look .ptk-page {
+    max-width: 880px;
+    font-family: var(--ptk-font-sans);
+    color: var(--ptk-text);
+    line-height: 1.5;
+    background: var(--ptk-bg);
+    padding: var(--ptk-space-4);
+}
+
+body.ptk-hub-look .ptk-page a {
+    color: var(--ptk-primary);
+}
+
+body.ptk-hub-look .ptk-page-title {
+    font: 600 28px/1.25 var(--ptk-font-serif);
+    color: var(--ptk-text);
+    margin: 0 0 var(--ptk-space-1);
+}
+
+body.ptk-hub-look .ptk-page-lead {
+    font-size: 14px;
+    color: var(--ptk-text-dim);
+    margin: 0 0 var(--ptk-space-4);
+}
+
+body.ptk-hub-look .ptk-question {
+    font: 400 20px/1.35 var(--ptk-font-serif);
+    color: var(--ptk-text);
+    margin: 0 0 var(--ptk-space-2);
+}
+
+/* Cards */
+
+body.ptk-hub-look .ptk-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--ptk-space-3);
+}
+
+body.ptk-hub-look .ptk-card {
+    display: block;
+    background: var(--ptk-surface);
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-card);
+    padding: var(--ptk-space-4);
+    color: inherit;
+    text-decoration: none;
+    min-height: 44px;
+}
+
+body.ptk-hub-look .ptk-card--soft {
+    background: var(--ptk-primary-soft);
+}
+
+body.ptk-hub-look .ptk-card:hover,
+body.ptk-hub-look .ptk-card:focus {
+    border-color: var(--ptk-primary);
+}
+
+body.ptk-hub-look .ptk-card-title {
+    font: 700 15px/1.4 var(--ptk-font-sans);
+    color: var(--ptk-text);
+    margin: 0 0 4px;
+}
+
+body.ptk-hub-look .ptk-card-meta {
+    font-size: 12.5px;
+    color: var(--ptk-text-dim);
+    margin: 0;
+}
+
+/* Body copy and help text */
+
+body.ptk-hub-look .ptk-help {
+    font-size: 12.5px;
+    color: var(--ptk-text-dim);
+}
+
+/* Stamps */
+
+body.ptk-hub-look .ptk-stamp {
+    display: inline-block;
+    white-space: nowrap;
+    transform: rotate(-3deg);
+    border: 2px solid currentColor;
+    outline: 1px solid currentColor;
+    outline-offset: -4px;
+    border-radius: var(--ptk-radius-stamp);
+    padding: 3px 8px;
+    font: 700 11.5px/1 var(--ptk-font-sans);
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--ptk-text-dim);
+}
+
+body.ptk-hub-look .ptk-stamp--success {
+    color: var(--ptk-success);
+}
+
+body.ptk-hub-look .ptk-stamp--warning {
+    color: var(--ptk-warning-ink);
+    border-color: var(--ptk-warning);
+    outline-color: var(--ptk-warning);
+}
+
+body.ptk-hub-look .ptk-stamp--dim {
+    color: var(--ptk-text-dim);
+}
+
+body.ptk-hub-look .ptk-stamp--error {
+    color: var(--ptk-error);
+}
+
+/* Waiting row */
+
+body.ptk-hub-look .ptk-waiting {
+    display: flex;
+    align-items: center;
+    gap: var(--ptk-space-2);
+    background: var(--ptk-surface);
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-card);
+    padding: var(--ptk-space-3);
+}
+
+body.ptk-hub-look .ptk-waiting-text {
+    font-size: 14px;
+}
+
+/* Next steps row */
+
+body.ptk-hub-look .ptk-next-steps {
+    font-size: 14px;
+    margin-top: var(--ptk-space-4);
+}
+
+body.ptk-hub-look .ptk-next-steps a + a::before {
+    content: " \00B7 ";
+    color: var(--ptk-text-dim);
+}
+
+/* Quiet links at the foot */
+
+body.ptk-hub-look .ptk-quiet-links {
+    font-size: 13px;
+    color: var(--ptk-text-dim);
+}
+
+body.ptk-hub-look .ptk-quiet-links a {
+    color: var(--ptk-primary);
+}
+
+/* Empty state */
+
+body.ptk-hub-look .ptk-empty {
+    text-align: center;
+    color: var(--ptk-text-dim);
+    padding: var(--ptk-space-5);
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-card);
+}
+
+/* Buttons */
+
+body.ptk-hub-look .ptk-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 18px;
+    border-radius: var(--ptk-radius-field);
+    font: 700 14px/1 var(--ptk-font-sans);
+    border: 1px solid var(--ptk-line);
+    background: var(--ptk-surface);
+    color: var(--ptk-text);
+    text-decoration: none;
+}
+
+body.ptk-hub-look .ptk-btn-primary {
+    background: var(--ptk-primary);
+    border-color: var(--ptk-primary);
+    color: var(--ptk-surface);
+}
+
+/* Fields */
+
+body.ptk-hub-look .ptk-field {
+    display: block;
+    margin-bottom: var(--ptk-space-3);
+}
+
+body.ptk-hub-look .ptk-field label {
+    display: block;
+    font: 700 14px/1.4 var(--ptk-font-sans);
+    color: var(--ptk-text);
+    margin-bottom: 6px;
+}
+
+body.ptk-hub-look .ptk-field input,
+body.ptk-hub-look .ptk-field select,
+body.ptk-hub-look .ptk-field textarea {
+    display: block;
+    width: 100%;
+    font-size: 14px;
+    font-family: var(--ptk-font-sans);
+    color: var(--ptk-text);
+    background: var(--ptk-surface);
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-field);
+    padding: 10px 12px;
+}
+
+body.ptk-hub-look .ptk-field .ptk-help {
+    margin-top: 6px;
+}
+
+/* Foldable section */
+
+body.ptk-hub-look .ptk-fold {
+    background: var(--ptk-surface);
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-card);
+    padding: var(--ptk-space-3);
+}
+
+body.ptk-hub-look .ptk-fold-summary {
+    cursor: pointer;
+    font: 400 20px/1.35 var(--ptk-font-serif);
+    color: var(--ptk-text);
+}
+
+body.ptk-hub-look .ptk-fold-summary-meta {
+    display: block;
+    font-size: 14px;
+    color: var(--ptk-text-dim);
+    margin-top: 4px;
+}
+
+body.ptk-hub-look .ptk-fold[open] .ptk-fold-summary {
+    margin-bottom: var(--ptk-space-2);
+}
+
+/* Focus */
+
+body.ptk-hub-look .ptk-page :is(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--ptk-primary);
+    outline-offset: 2px;
+    box-shadow: none;
+}
+
+@media (max-width: 782px) {
+    body.ptk-hub-look .ptk-page {
+        padding: var(--ptk-space-3);
+    }
+
+    body.ptk-hub-look .ptk-page-title {
+        font-size: 26px;
+    }
+
+    body.ptk-hub-look .ptk-cards {
+        grid-template-columns: 1fr;
+    }
+
+    body.ptk-hub-look .ptk-card {
+        min-height: 44px;
+    }
+
+    body.ptk-hub-look .ptk-waiting {
+        flex-wrap: wrap;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.ptk-hub-look .ptk-card,
+    body.ptk-hub-look .ptk-btn {
+        transition: none;
+    }
+}

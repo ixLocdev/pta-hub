@@ -72,6 +72,26 @@ class PTK_Hub_Look {
         return ( 'on' === $submitted || '1' === $submitted ) ? '1' : '0';
     }
 
+    /** WCAG relative-luminance contrast between two #rrggbb colors. */
+    public static function contrast_ratio( $fg, $bg ) {
+        $lum = function ( $hex ) {
+            $hex = ltrim( (string) $hex, '#' );
+            $out = 0.0;
+            $channels = array( 0.2126, 0.7152, 0.0722 );
+            foreach ( array( 0, 2, 4 ) as $i => $offset ) {
+                $c = hexdec( substr( $hex, $offset, 2 ) ) / 255;
+                $c = ( $c <= 0.03928 ) ? $c / 12.92 : pow( ( $c + 0.055 ) / 1.055, 2.4 );
+                $out += $c * $channels[ $i ];
+            }
+            return $out;
+        };
+        $a = $lum( $fg );
+        $b = $lum( $bg );
+        $light = max( $a, $b );
+        $dark  = min( $a, $b );
+        return ( $light + 0.05 ) / ( $dark + 0.05 );
+    }
+
     /** True only when the look is on AND we are on a Hub screen. */
     public static function active() {
         if ( ! self::on() || ! function_exists( 'get_current_screen' ) ) {

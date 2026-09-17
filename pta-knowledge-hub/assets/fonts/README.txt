@@ -16,3 +16,17 @@ to a plugin zip that is 218 KB; these three files are about 66 KB together.
 Only the three weights the square actually draws with are here. If a future
 design needs another weight, subset it the same way rather than dropping in a
 full family.
+
+---
+
+Fonts bundled for the Hub admin screens (PTK_Hub_Look, assets/css/hub.css).
+
+  Literata-Variable.woff2   Literata, variable weight 400-900 (used 400-600)
+  Karla-Variable.woff2      Karla, variable weight 400-800 (used 400-700)
+
+Both are licensed under the SIL Open Font License 1.1 -- see OFL-Literata.txt
+and OFL-Karla.txt.
+
+Source: fetched directly from fonts.gstatic.com as served, each already a
+single variable-weight woff2 in the Latin subset -- no further subsetting
+needed. Literata is 39,260 B, Karla is 24,264 B.
