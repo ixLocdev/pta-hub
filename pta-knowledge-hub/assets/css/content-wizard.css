@@ -1517,7 +1517,11 @@ body.ptk-hub-look .ptk-qf-type-picker.is-open { display: block; }
 /* 4.17.2: the old wizard reserved 300px of the form's width for the
    "Related entries" sidebar, which this screen doesn't have. Left in place
    it squeezed the card to 320px and clipped the question. */
-body.ptk-hub-look .ptk-qf-form {
+/* The rule being overridden lives in a min-width:1280px media query and is
+   written as `.ptk-wizard-wrap form#ptk-wizard-form`, so it needs an ID in
+   the selector to beat it -- a plain class rule loses however late it sits. */
+body.ptk-hub-look form#ptk-wizard-form.ptk-qf-form {
     max-width: none;
     width: 100%;
+    float: none;
 }
