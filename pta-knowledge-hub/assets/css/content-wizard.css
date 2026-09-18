@@ -976,4 +976,143 @@ body.ptk-hub-look .ptk-wizard-fold.is-collapsed > *:not(.ptk-wizard-section-titl
     body.ptk-hub-look .ptk-field-third {
         width: 100%;
     }
+
+    body.ptk-hub-look .ptk-qf-wrap {
+        padding: 0 var(--ptk-space-2);
+    }
+}
+
+/* ── Task 2: the question-first screen ("one page that grows") ────────
+   Rendered only by render_question_first_wizard(), new look + new entry
+   only -- these classes never appear anywhere else, so scoping every rule
+   under body.ptk-hub-look is just belt-and-braces, matching the rest of
+   this file's convention. No one-sided borders anywhere below: emphasis
+   comes from a full background fill (.ptk-qf-type-line) or full borders
+   (.ptk-qf-block, already inherited from .ptk-field-group's card look
+   above), never a left/right accent bar.
+
+   The three follow-up reveals and "Anything else?" use a plain checkbox
+   + <details> (no JavaScript) -- see the "3. Follow-ups" comment in
+   class-content-wizard.php. Nothing here is ever display:none at first
+   paint for a no-JS visitor: .ptk-qf-toggle-input is a real, visible,
+   tabbable checkbox and .ptk-qf-more/.ptk-qf-type-picker are real <details>
+   elements the browser already knows how to open with no script at all. */
+
+body.ptk-hub-look .ptk-qf-wrap {
+    max-width: 640px;
+}
+
+body.ptk-hub-look .ptk-qf-block {
+    margin-bottom: var(--ptk-space-4);
+}
+
+body.ptk-hub-look .ptk-qf-label {
+    display: block;
+    font: 700 17px/1.4 var(--ptk-font-sans);
+    color: var(--ptk-text);
+    margin-bottom: var(--ptk-space-2);
+}
+
+body.ptk-hub-look .ptk-qf-input {
+    width: 100%;
+    font-size: 16px;
+    padding: 12px 14px;
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-field);
+    background: var(--ptk-surface);
+    color: var(--ptk-text);
+    box-sizing: border-box;
+}
+
+body.ptk-hub-look .ptk-qf-input:focus {
+    border-color: var(--ptk-primary);
+    outline-color: var(--ptk-primary);
+}
+
+body.ptk-hub-look .ptk-qf-followups {
+    margin-bottom: var(--ptk-space-4);
+}
+
+/* Each follow-up (checkbox + label + reveal panel) is its own row -- .ptk-qf-followup
+   groups them so this stacking never depends on how much label text wraps. */
+body.ptk-hub-look .ptk-qf-followup {
+    margin-bottom: var(--ptk-space-2);
+}
+
+/* The checkbox itself stays visible and reachable (never display:none) --
+   it IS the control that opens each group, with or without JS. */
+body.ptk-hub-look .ptk-qf-toggle-input {
+    width: 20px;
+    height: 20px;
+    margin: 0 10px 0 0;
+    vertical-align: middle;
+}
+
+body.ptk-hub-look .ptk-qf-toggle {
+    display: inline;
+    font: 700 15px/1.4 var(--ptk-font-sans);
+    color: var(--ptk-text);
+    cursor: pointer;
+    vertical-align: middle;
+}
+
+body.ptk-hub-look .ptk-qf-reveal {
+    display: none;
+    padding: var(--ptk-space-3) 0 var(--ptk-space-2) 30px;
+}
+
+body.ptk-hub-look .ptk-qf-toggle-input:checked ~ .ptk-qf-reveal {
+    display: block;
+}
+
+body.ptk-hub-look .ptk-qf-type-line {
+    background: var(--ptk-primary-soft);
+    border-radius: var(--ptk-radius-card);
+    padding: var(--ptk-space-3) var(--ptk-space-4);
+    font-size: 15px;
+    color: var(--ptk-text);
+    margin-bottom: var(--ptk-space-2);
+}
+
+body.ptk-hub-look .ptk-qf-linklike {
+    background: none;
+    border: none;
+    padding: 0;
+    margin-left: 4px;
+    font: inherit;
+    font-weight: 700;
+    color: var(--ptk-primary);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+body.ptk-hub-look .ptk-qf-type-picker,
+body.ptk-hub-look .ptk-qf-more {
+    background: var(--ptk-surface);
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-card);
+    padding: var(--ptk-space-3) var(--ptk-space-4);
+    margin-bottom: var(--ptk-space-4);
+}
+
+body.ptk-hub-look .ptk-qf-type-picker summary,
+body.ptk-hub-look .ptk-qf-more summary {
+    font: 700 15px/1.4 var(--ptk-font-sans);
+    color: var(--ptk-text);
+    cursor: pointer;
+}
+
+body.ptk-hub-look .ptk-qf-type-picker[open] summary,
+body.ptk-hub-look .ptk-qf-more[open] summary {
+    margin-bottom: var(--ptk-space-3);
+}
+
+body.ptk-hub-look .ptk-qf-type-picker .ptk-category-cards {
+    margin-top: var(--ptk-space-3);
+}
+
+@media (max-width: 480px) {
+    body.ptk-hub-look .ptk-qf-reveal {
+        padding-left: 0;
+    }
 }

@@ -65,6 +65,7 @@
         initLinkButtons();
         initAutosave();
         bindFolding();
+        bindQuestionFirstToggles();
 
         // If in edit mode, pre-fill the form.
         if (typeof ptkWizardData !== 'undefined' && ptkWizardData.editMode && ptkWizardData.editData) {
@@ -122,13 +123,18 @@
             // Initialize link buttons on newly visible textareas.
             initLinkButtons();
 
-            // Scroll to basics (skip during restore).
-            if (!isRestoring) {
+            // Scroll to basics (skip during restore). Task 2's
+            // question-first screen reuses this same .ptk-category-card
+            // click handler for its "Change that" picker but has no
+            // #ptk-step-basics at all -- guard for that rather than
+            // letting .offset() on an empty selection throw.
+            var $basicsStep = $('#ptk-step-basics');
+            if (!isRestoring && $basicsStep.length) {
                 if (REDUCE_MOTION) {
-                    window.scrollTo(0, $('#ptk-step-basics').offset().top - 50);
+                    window.scrollTo(0, $basicsStep.offset().top - 50);
                 } else {
                     $('html, body').animate({
-                        scrollTop: $('#ptk-step-basics').offset().top - 50
+                        scrollTop: $basicsStep.offset().top - 50
                     }, 200);
                 }
             }
@@ -137,6 +143,35 @@
             // visibility -- recompute which step is "current" right away
             // rather than waiting for the next scroll.
             updateFolds();
+        });
+    }
+
+    /* ──────────────────────────────────────────
+     * Task 2: the question-first screen's follow-up toggles
+     *
+     * The reveal itself is pure CSS (see .ptk-qf-toggle-input:checked in
+     * content-wizard.css) -- this only adds a convenience on top, same
+     * spirit as bindCategorySelection() adding the first empty step/
+     * timeline/checklist item above: when "Are there steps to follow?" is
+     * ticked and the steps repeater is still empty, add the first step so
+     * there's somewhere to type right away. A no-op if the question-first
+     * markup isn't on the page (the old category-first screen has no
+     * #ptk-qf-has-steps at all).
+     * ────────────────────────────────────────── */
+
+    function bindQuestionFirstToggles() {
+        var $stepsToggle = $('#ptk-qf-has-steps');
+        if (!$stepsToggle.length) {
+            return;
+        }
+        $stepsToggle.on('change', function () {
+            if (!this.checked) {
+                return;
+            }
+            var $steps = $('#ptk-howto-steps');
+            if ($steps.find('.ptk-repeater-item').length === 0) {
+                addStep($steps);
+            }
         });
     }
 
@@ -731,24 +766,32 @@
                     return false;
                 }
             } else if (category === 'faq') {
-                if (!$('#ptk-faq-short-answer').val().trim()) {
+                // The question-first screen (Task 2) has no
+                // #ptk-faq-short-answer field -- it has one generic
+                // #ptk-answer field instead, mapped onto the right
+                // category-specific field server-side. Fall back to it
+                // when the category-specific field isn't on the page.
+                var $faqField = $('#ptk-faq-short-answer').length ? $('#ptk-faq-short-answer') : $('#ptk-answer');
+                if (!$faqField.val().trim()) {
                     e.preventDefault();
                     alert('Please provide a Quick Answer for your FAQ entry.');
-                    $('#ptk-faq-short-answer').focus();
+                    $faqField.focus();
                     return false;
                 }
             } else if (category === 'resource') {
-                if (!$('#ptk-resource-desc').val().trim()) {
+                var $resField = $('#ptk-resource-desc').length ? $('#ptk-resource-desc') : $('#ptk-answer');
+                if (!$resField.val().trim()) {
                     e.preventDefault();
                     alert('Please provide a Description for your Resource.');
-                    $('#ptk-resource-desc').focus();
+                    $resField.focus();
                     return false;
                 }
             } else if (category === 'glossary') {
-                if (!$('#ptk-glossary-definition').val().trim()) {
+                var $glField = $('#ptk-glossary-definition').length ? $('#ptk-glossary-definition') : $('#ptk-answer');
+                if (!$glField.val().trim()) {
                     e.preventDefault();
                     alert('Please provide a Definition for your Glossary Term.');
-                    $('#ptk-glossary-definition').focus();
+                    $glField.focus();
                     return false;
                 }
             } else if (category === 'checklist') {
@@ -759,16 +802,24 @@
                         return false;
                     }
                 });
+                // The question-first screen derives checklist items from
+                // dash-prefixed lines in #ptk-answer server-side (no
+                // ptk_checklist_item[] inputs on the page at all) -- accept
+                // any non-empty answer there too.
+                if (!hasItem && $('input[name="ptk_checklist_item[]"]').length === 0 && $('#ptk-answer').val() && $('#ptk-answer').val().trim()) {
+                    hasItem = true;
+                }
                 if (!hasItem) {
                     e.preventDefault();
                     alert('Please add at least one checklist item.');
                     return false;
                 }
             } else if (category === 'policy') {
-                if (!$('#ptk-policy-summary').val().trim()) {
+                var $polField = $('#ptk-policy-summary').length ? $('#ptk-policy-summary') : $('#ptk-answer');
+                if (!$polField.val().trim()) {
                     e.preventDefault();
                     alert('Please provide a Summary for your Policy entry.');
-                    $('#ptk-policy-summary').focus();
+                    $polField.focus();
                     return false;
                 }
             }

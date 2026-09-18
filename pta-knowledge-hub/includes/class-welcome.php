@@ -356,10 +356,13 @@ class PTK_Welcome {
 
         $urls = array(
             'newsletter' => class_exists( 'PTK_Newsletter_Builder' ) ? PTK_Newsletter_Builder::url() : '',
-            'answer'     => class_exists( 'PTK_Content_Wizard' ) ? PTK_Content_Wizard::url() : '',
-            // No GET parameter preselects the glossary category in the
-            // wizard, so this is the same plain wizard url as "answer".
-            'word'       => class_exists( 'PTK_Content_Wizard' ) ? PTK_Content_Wizard::url() : '',
+            // ?ptk_for=question / ?ptk_for=word pick the question-first
+            // screen's headline and starting type (plan Task 2) -- only
+            // read by the wizard when the new look is on; with it off the
+            // wizard ignores ptk_for entirely, so this is a harmless extra
+            // query arg on the old screen.
+            'answer'     => class_exists( 'PTK_Content_Wizard' ) ? add_query_arg( 'ptk_for', 'question', PTK_Content_Wizard::url() ) : '',
+            'word'       => class_exists( 'PTK_Content_Wizard' ) ? add_query_arg( 'ptk_for', 'word', PTK_Content_Wizard::url() ) : '',
             'vendor'     => $vendor_url,
             'fix'        => admin_url( 'edit.php?post_type=pta_knowledge' ),
         );
