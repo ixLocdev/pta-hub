@@ -18,6 +18,8 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+require_once PTK_PLUGIN_DIR . 'includes/class-wizard-copy.php';
+
 class PTK_Content_Wizard {
 
     /** @var string Validation error from handle_submission, shown by render_wizard. */
@@ -550,6 +552,12 @@ class PTK_Content_Wizard {
         }
         $is_edit = ! empty( $edit_data );
 
+        // Phase 4, task 1: every label below is picked through
+        // PTK_Wizard_Copy::label()/meta_text(), which returns today's exact
+        // literal string when $on is false -- so with the new look off this
+        // page is byte-for-byte what it always was.
+        $on = PTK_Hub_Look::on();
+
         // Check for success redirect.
         if ( isset( $_GET['ptk_created'] ) ) {
             $post_id = absint( $_GET['ptk_created'] );
@@ -595,7 +603,7 @@ class PTK_Content_Wizard {
             <?php endif; ?>
 
             <?php if ( ! $is_edit ) : ?>
-                <p class="ptk-wizard-meta">4 quick steps &middot; takes about 5 minutes <span class="ptk-required-legend"><span class="ptk-required">*</span> required</span></p>
+                <p class="ptk-wizard-meta"><?php echo PTK_Wizard_Copy::meta_text( $on, 'intro_meta', '4 quick steps &middot; takes about 5 minutes' ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed, pre-escaped strings from PTK_Wizard_Copy. ?> <span class="ptk-required-legend"><span class="ptk-required">*</span> required</span></p>
             <?php endif; ?>
 
             <?php if ( $is_edit ) : ?>
@@ -620,7 +628,7 @@ class PTK_Content_Wizard {
                 <div class="ptk-wizard-section ptk-wizard-step" id="ptk-step-category">
                     <h2 class="ptk-wizard-section-title">
                         <span class="ptk-step-number">1</span>
-                        What type of entry are you creating?
+                        <?php echo PTK_Wizard_Copy::meta_text( $on, 'category', 'What type of entry are you creating?' ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed, pre-escaped strings from PTK_Wizard_Copy; the trailing "\n" replaces the newline PHP's closing tag eats, so the off-look output keeps its original line break. ?>
                     </h2>
                     <div class="ptk-category-cards">
                         <?php foreach ( $categories as $cat ) :
@@ -652,7 +660,7 @@ class PTK_Content_Wizard {
                     </h2>
 
                     <div class="ptk-field-group">
-                        <label for="ptk-title" class="ptk-field-label">Title <span class="ptk-required">*</span></label>
+                        <label for="ptk-title" class="ptk-field-label"><?php echo PTK_Wizard_Copy::label( $on, 'title', 'Title' ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed, pre-escaped strings from PTK_Wizard_Copy. ?> <span class="ptk-required">*</span></label>
                         <input type="text" id="ptk-title" name="ptk_title" class="ptk-field-input" required
                                placeholder="e.g., How to Set Up for a Bake Sale"
                                value="<?php echo isset( $_GET['ptk_prefill_title'] ) ? esc_attr( sanitize_text_field( wp_unslash( $_GET['ptk_prefill_title'] ) ) ) : ''; ?>">
@@ -660,21 +668,21 @@ class PTK_Content_Wizard {
                     </div>
 
                     <div class="ptk-field-group">
-                        <label for="ptk-excerpt" class="ptk-field-label">Short Summary</label>
+                        <label for="ptk-excerpt" class="ptk-field-label"><?php echo PTK_Wizard_Copy::label( $on, 'excerpt', 'Short Summary' ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed, pre-escaped strings from PTK_Wizard_Copy. ?></label>
                         <textarea id="ptk-excerpt" name="ptk_excerpt" class="ptk-field-textarea" rows="2"
                                   placeholder="e.g., A quick way to set up the bake sale tables and signage."></textarea>
                         <p class="ptk-field-hint">1-2 sentences. This shows on search result cards.</p>
                     </div>
 
                     <div class="ptk-field-group">
-                        <label for="ptk-tags" class="ptk-field-label">Tags</label>
+                        <label for="ptk-tags" class="ptk-field-label"><?php echo PTK_Wizard_Copy::label( $on, 'tags', 'Tags' ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed, pre-escaped strings from PTK_Wizard_Copy. ?></label>
                         <input type="text" id="ptk-tags" name="ptk_tags" class="ptk-field-input"
                                placeholder="e.g., bake sale, fundraiser, spring (comma-separated)">
                         <p class="ptk-field-hint">Add keywords people might search for, separated by commas.</p>
                     </div>
 
                     <div class="ptk-field-group">
-                        <label class="ptk-field-label">Featured Image</label>
+                        <label class="ptk-field-label"><?php echo PTK_Wizard_Copy::label( $on, 'featured_image', 'Featured Image' ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed, pre-escaped strings from PTK_Wizard_Copy. ?></label>
                         <div class="ptk-image-upload" id="ptk-featured-image-wrap">
                             <input type="hidden" name="ptk_featured_image" id="ptk-featured-image-id" value="">
                             <div class="ptk-image-preview" id="ptk-featured-image-preview"></div>
@@ -696,7 +704,7 @@ class PTK_Content_Wizard {
                     </h2>
 
                     <div class="ptk-field-group">
-                        <label for="ptk-howto-intro" class="ptk-field-label">Introduction</label>
+                        <label for="ptk-howto-intro" class="ptk-field-label"><?php echo PTK_Wizard_Copy::label( $on, 'introduction', 'Introduction' ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed, pre-escaped strings from PTK_Wizard_Copy. ?></label>
                         <div class="ptk-textarea-wrap">
                             <textarea id="ptk-howto-intro" name="ptk_howto_intro" class="ptk-field-textarea ptk-linkable" rows="3"
                                       placeholder="e.g., This guide walks you through setting up a bake sale table from start to finish."></textarea>
@@ -706,7 +714,7 @@ class PTK_Content_Wizard {
 
                     <div class="ptk-field-row">
                         <div class="ptk-field-group ptk-field-half">
-                            <label for="ptk-howto-difficulty" class="ptk-field-label">Difficulty</label>
+                            <label for="ptk-howto-difficulty" class="ptk-field-label"><?php echo PTK_Wizard_Copy::label( $on, 'difficulty', 'Difficulty' ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed, pre-escaped strings from PTK_Wizard_Copy. ?></label>
                             <select id="ptk-howto-difficulty" name="ptk_difficulty" class="ptk-field-select">
                                 <option value="">— Select —</option>
                                 <option value="Easy">Easy</option>
@@ -715,14 +723,14 @@ class PTK_Content_Wizard {
                             </select>
                         </div>
                         <div class="ptk-field-group ptk-field-half">
-                            <label for="ptk-howto-time" class="ptk-field-label">Time Estimate</label>
+                            <label for="ptk-howto-time" class="ptk-field-label"><?php echo PTK_Wizard_Copy::label( $on, 'time_estimate', 'Time Estimate' ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed, pre-escaped strings from PTK_Wizard_Copy. ?></label>
                             <input type="text" id="ptk-howto-time" name="ptk_time_estimate" class="ptk-field-input"
                                    placeholder="e.g., 30 minutes">
                         </div>
                     </div>
 
                     <div class="ptk-field-group">
-                        <label class="ptk-field-label">What You'll Need</label>
+                        <label class="ptk-field-label"><?php echo PTK_Wizard_Copy::label( $on, 'materials', "What You'll Need" ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed, pre-escaped strings from PTK_Wizard_Copy. ?></label>
                         <div class="ptk-textarea-wrap">
                             <textarea name="ptk_howto_materials" class="ptk-field-textarea ptk-linkable" rows="3"
                                       placeholder="List materials or prerequisites, one per line."></textarea>
@@ -731,7 +739,7 @@ class PTK_Content_Wizard {
                     </div>
 
                     <div class="ptk-field-group">
-                        <label class="ptk-field-label">Steps <span class="ptk-required">*</span></label>
+                        <label class="ptk-field-label"><?php echo PTK_Wizard_Copy::label( $on, 'steps', 'Steps' ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed, pre-escaped strings from PTK_Wizard_Copy. ?> <span class="ptk-required">*</span></label>
                         <p class="ptk-field-hint">Add each step of your guide. You can optionally add an image or link to any step.</p>
                         <div class="ptk-repeater" id="ptk-howto-steps" data-min="1">
                             <!-- Steps added by JS -->
@@ -862,7 +870,7 @@ class PTK_Content_Wizard {
 
                     <div class="ptk-field-row">
                         <div class="ptk-field-group ptk-field-half">
-                            <label for="ptk-resource-url" class="ptk-field-label">Resource URL</label>
+                            <label for="ptk-resource-url" class="ptk-field-label"><?php echo PTK_Wizard_Copy::label( $on, 'resource_url', 'Resource URL' ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed, pre-escaped strings from PTK_Wizard_Copy. ?></label>
                             <input type="url" id="ptk-resource-url" name="ptk_resource_url" class="ptk-field-input"
                                    placeholder="https://...">
                             <p class="ptk-field-hint">Link to the resource if it's hosted online.</p>
@@ -895,7 +903,7 @@ class PTK_Content_Wizard {
                     </div>
 
                     <div class="ptk-field-group">
-                        <label for="ptk-resource-howto" class="ptk-field-label">How to Use</label>
+                        <label for="ptk-resource-howto" class="ptk-field-label"><?php echo PTK_Wizard_Copy::label( $on, 'resource_howto', 'How to Use' ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed, pre-escaped strings from PTK_Wizard_Copy. ?></label>
                         <div class="ptk-textarea-wrap">
                             <textarea id="ptk-resource-howto" name="ptk_resource_howto" class="ptk-field-textarea ptk-linkable" rows="3"
                                       placeholder="e.g., 1. Print double-sided. 2. Fill in dates. 3. Post on the bulletin board."></textarea>
@@ -946,7 +954,7 @@ class PTK_Content_Wizard {
                     </h2>
 
                     <div class="ptk-field-group">
-                        <label for="ptk-checklist-intro" class="ptk-field-label">Introduction</label>
+                        <label for="ptk-checklist-intro" class="ptk-field-label"><?php echo PTK_Wizard_Copy::label( $on, 'introduction', 'Introduction' ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed, pre-escaped strings from PTK_Wizard_Copy. ?></label>
                         <div class="ptk-textarea-wrap">
                             <textarea id="ptk-checklist-intro" name="ptk_checklist_intro" class="ptk-field-textarea ptk-linkable" rows="2"
                                       placeholder="e.g., Run through this list two weeks before any school-wide event."></textarea>
@@ -1035,10 +1043,10 @@ class PTK_Content_Wizard {
                         <div class="ptk-submit-options">
                             <label class="ptk-field-label">Save as:</label>
                             <label class="ptk-radio-label">
-                                <input type="radio" name="ptk_status" value="draft" checked> Draft (recommended &mdash; review before publishing)
+                                <input type="radio" name="ptk_status" value="draft" checked> <?php echo PTK_Wizard_Copy::meta_text( $on, 'save_draft', 'Draft (recommended &mdash; review before publishing)' ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed, pre-escaped strings from PTK_Wizard_Copy; trailing "\n" replaces the newline the closing tag eats. ?>
                             </label>
                             <label class="ptk-radio-label">
-                                <input type="radio" name="ptk_status" value="publish"> Publish now (visible immediately)
+                                <input type="radio" name="ptk_status" value="publish"> <?php echo PTK_Wizard_Copy::meta_text( $on, 'save_publish', 'Publish now (visible immediately)' ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed, pre-escaped strings from PTK_Wizard_Copy; trailing "\n" replaces the newline the closing tag eats. ?>
                             </label>
                         </div>
                         <button type="submit" class="button button-primary button-hero" id="ptk-wizard-submit-btn">
