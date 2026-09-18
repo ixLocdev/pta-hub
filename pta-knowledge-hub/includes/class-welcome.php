@@ -265,8 +265,8 @@ class PTK_Welcome {
                 'soft'   => false,
             ),
             'word'       => array(
-                'title'  => 'Explain a PTA word',
-                'meta'   => 'Add a plain-English definition to the glossary.',
+                'title'  => 'Explain a word or phrase',
+                'meta'   => 'ASE, GiveBacks, room parent — in plain English.',
                 'needs'  => $edit_posts,
                 'soft'   => false,
             ),

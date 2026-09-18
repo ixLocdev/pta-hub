@@ -1349,13 +1349,13 @@ class PTK_Content_Wizard {
         $is_word = ( 'word' === $for );
 
         $headline = $is_word
-            ? 'Which word should we explain?'
+            ? 'Which word or phrase should we explain?'
             : "What's the question families keep asking?";
 
         // One plain sentence above the card. Most people work the screen out
         // on their own; this is for the person who wants to be told.
         $intro = $is_word
-            ? 'Explain a PTA word, so nobody has to guess. Write the word, then what it means.'
+            ? 'Explain a PTA word, acronym or phrase, so nobody has to guess. Write it, then what it means.'
             : 'Answer a question families keep asking you. It lives on the Hub so the next person can find it.';
 
         $answer_label = $is_word ? 'What does it mean?' : "What's the answer?";
