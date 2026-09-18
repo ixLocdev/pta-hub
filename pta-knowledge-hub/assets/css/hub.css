@@ -210,7 +210,11 @@ body.ptk-hub-look .ptk-next-steps {
 }
 
 body.ptk-hub-look .ptk-next-steps a + a::before {
-    content: " \00B7 ";
+    /* A margin, not spaces inside content(): a trailing space in a generated
+       string collapses and the links run together. Same fix as the quiet
+       links at the foot of the home screen. */
+    content: "\00B7";
+    margin: 0 7px;
     color: var(--ptk-text-dim);
 }
 
