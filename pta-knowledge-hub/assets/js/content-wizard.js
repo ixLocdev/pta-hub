@@ -1158,13 +1158,28 @@
                 }
             }
 
-            // Disable submit button(s) to prevent double-submit.
+            // Disable submit button(s) to prevent double-submit -- deferred
+            // to the next tick. A disabled form control is not "successful"
+            // (HTML forms spec), so disabling the just-clicked button
+            // SYNCHRONOUSLY, inside this submit handler, drops its own
+            // name=ptk_status/value=... pair from the very submission it
+            // just triggered -- $_POST['ptk_status'] then arrives empty and
+            // handle_submission() silently falls back to 'draft' regardless
+            // of which button was clicked. setTimeout(..., 0) disables
+            // (and relabels) the button only after the browser has already
+            // captured the form's data for this submission.
             if (qfClickedButton) {
-                $('#ptk-qf-submit-publish, #ptk-qf-submit-draft').prop('disabled', true);
-                $(qfClickedButton).text(chosenStatus === 'publish' ? 'Putting it on the Hub…' : 'Saving…');
+                var $clicked = $(qfClickedButton);
+                var clickedLabel = chosenStatus === 'publish' ? 'Putting it on the Hub…' : 'Saving…';
+                setTimeout(function () {
+                    $('#ptk-qf-submit-publish, #ptk-qf-submit-draft').prop('disabled', true);
+                    $clicked.text(clickedLabel);
+                }, 0);
             } else {
                 var btnText = isEdit ? 'Updating...' : 'Creating...';
-                $('#ptk-wizard-submit-btn').prop('disabled', true).text(btnText);
+                setTimeout(function () {
+                    $('#ptk-wizard-submit-btn').prop('disabled', true).text(btnText);
+                }, 0);
             }
         });
     }
