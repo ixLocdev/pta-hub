@@ -1513,3 +1513,11 @@ body.ptk-hub-look .ptk-qf-hidden-signal {
    removed. .is-open is added by the "Change that" button. */
 body.ptk-hub-look .ptk-qf-type-picker { display: none; }
 body.ptk-hub-look .ptk-qf-type-picker.is-open { display: block; }
+
+/* 4.17.2: the old wizard reserved 300px of the form's width for the
+   "Related entries" sidebar, which this screen doesn't have. Left in place
+   it squeezed the card to 320px and clipped the question. */
+body.ptk-hub-look .ptk-qf-form {
+    max-width: none;
+    width: 100%;
+}
