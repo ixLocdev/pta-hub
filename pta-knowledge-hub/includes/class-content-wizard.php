@@ -545,7 +545,12 @@ class PTK_Content_Wizard {
      * @return string
      */
     private static function fold_class( $on ) {
-        return $on ? ' ptk-wizard-fold' : '';
+        // 4.15.1: folding is gone from this screen. It collapsed each part to
+        // a strip whose fields could not be reached -- you could watch the
+        // questions change but not answer them. The wizard has no step
+        // boundaries to hang folding off, unlike the Newsletter Builder.
+        unset( $on );
+        return '';
     }
 
     /**

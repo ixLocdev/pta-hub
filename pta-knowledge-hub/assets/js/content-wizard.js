@@ -205,7 +205,7 @@
             return;
         }
 
-        var $folds = $('.ptk-wizard-fold').filter(function () {
+        var $folds = $([]).filter(function () {
             return !$(this).hasClass('ptk-hidden');
         });
         if ($folds.length === 0) {
