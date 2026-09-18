@@ -583,6 +583,71 @@ class PTK_Content_Wizard {
     }
 
     /**
+     * The confirmation screen's original one-line summary paragraph
+     * ("Your knowledge entry has been published and is now searchable.").
+     * Phase 4, task 3 gives the new look its own headline that already
+     * says this, so this paragraph is redundant (and for a draft, actively
+     * wrong -- it always says "published") once the new look is on;
+     * this returns '' in that case and the literal original sentence
+     * otherwise, so the off-look output is unchanged.
+     *
+     * @param bool $on        PTK_Hub_Look::on().
+     * @param bool $is_update Whether this was an update to an existing entry.
+     * @return string
+     */
+    private static function legacy_summary_para( $on, $is_update ) {
+        if ( $on ) {
+            return '';
+        }
+        return '<p>Your knowledge entry has been ' . ( $is_update ? 'updated' : 'published and is now searchable' ) . '.</p>';
+    }
+
+    /**
+     * Phase 4, task 3: the confirmation screen's stamp (SENT / NOT SENT
+     * YET), new look only. Renders '' when the new look is off or this
+     * $notice_key carries no stamp.
+     *
+     * @param bool   $on          PTK_Hub_Look::on().
+     * @param string $notice_key  'created', 'updated' or 'draft'.
+     * @return string Pre-escaped markup, or ''.
+     */
+    private static function notice_stamp_html( $on, $notice_key ) {
+        $stamp = PTK_Wizard_Copy::notice_stamp( $on, $notice_key );
+        if ( ! $stamp ) {
+            return '';
+        }
+        return ' ' . PTK_Hub_UI::stamp( $stamp[0], $stamp[1] );
+    }
+
+    /**
+     * Phase 4, task 3: the "what would you like to do next" row on the
+     * confirmation screen, new look only. Every link points at something
+     * that already exists: the entry itself, a fresh wizard, the Newsletter
+     * Builder, and the Hub home. Renders nothing when the new look is off.
+     *
+     * @param bool   $on         PTK_Hub_Look::on().
+     * @param string $notice_key 'created', 'updated' or 'draft'.
+     * @param int    $post_id    The entry just saved.
+     * @param string $view_link  Its permalink.
+     */
+    private static function render_next_steps( $on, $notice_key, $post_id, $view_link ) {
+        if ( ! $on ) {
+            return;
+        }
+        $steps = array();
+        if ( 'draft' !== $notice_key ) {
+            $steps[] = array( 'label' => 'See it on the Hub', 'url' => $view_link );
+        }
+        $steps[] = array( 'label' => 'Answer another question', 'url' => self::url() );
+        if ( class_exists( 'PTK_Newsletter_Builder' ) ) {
+            $steps[] = array( 'label' => 'Tell families about it (the newsletter)', 'url' => PTK_Newsletter_Builder::url() );
+        }
+        $steps[] = array( 'label' => "I'm done", 'url' => admin_url( 'edit.php?post_type=pta_knowledge&page=ptk-welcome' ) );
+
+        echo PTK_Hub_UI::next_steps( $steps ); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped inside next_steps().
+    }
+
+    /**
      * Render the wizard page.
      */
     public static function render_wizard() {
@@ -611,18 +676,25 @@ class PTK_Content_Wizard {
             $is_update = isset( $_GET['ptk_updated'] ) && '1' === $_GET['ptk_updated'];
             $edit_link = get_edit_post_link( $post_id, 'raw' );
             $view_link = get_permalink( $post_id );
+            // Phase 4, task 3: which confirmation this is -- a draft reads
+            // "nobody sees it yet" regardless of $is_update, since saving an
+            // already-published entry as a draft would be a different
+            // action (unpublishing) this screen doesn't offer.
+            $notice_key      = ( 'draft' === get_post_status( $post_id ) ) ? 'draft' : ( $is_update ? 'updated' : 'created' );
+            $legacy_headline = $is_update ? 'Entry Updated Successfully!' : 'Entry Created Successfully!';
             ?>
             <div class="wrap ptk-wizard-wrap">
                 <div class="ptk-wizard-success">
                     <span class="dashicons dashicons-yes-alt"></span>
-                    <h2><?php echo $is_update ? 'Entry Updated Successfully!' : 'Entry Created Successfully!'; ?></h2>
-                    <p>Your knowledge entry has been <?php echo $is_update ? 'updated' : 'published and is now searchable'; ?>.</p>
+                    <h2><?php echo esc_html( PTK_Wizard_Copy::notice_text( $on, $notice_key, $legacy_headline ) ); // phpcs:ignore WordPress.Security.EscapeOutput -- esc_html() applied above. ?><?php echo self::notice_stamp_html( $on, $notice_key ); // phpcs:ignore WordPress.Security.EscapeOutput -- built by PTK_Hub_UI::stamp(), pre-escaped. ?></h2>
+                    <?php echo self::legacy_summary_para( $on, $is_update ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed strings; trailing "\n" replaces the newline the closing tag eats. ?>
                     <div class="ptk-wizard-success-actions">
                         <a href="<?php echo esc_url( $view_link ); ?>" class="button button-primary" target="_blank">View Entry</a>
                         <a href="<?php echo esc_url( self::url() . '&ptk_edit_id=' . $post_id ); ?>" class="button">Edit in Wizard</a>
                         <a href="<?php echo esc_url( $edit_link ); ?>" class="button">Edit in WordPress</a>
                         <a href="<?php echo esc_url( self::url() ); ?>" class="button">Create Another</a>
                     </div>
+                    <?php self::render_next_steps( $on, $notice_key, $post_id, $view_link ); ?>
                 </div>
             </div>
             <?php
@@ -644,7 +716,7 @@ class PTK_Content_Wizard {
 
             <?php if ( self::$submission_error ) : ?>
                 <div class="notice notice-error inline" style="margin:16px 0;padding:12px 16px;">
-                    <p style="margin:0;"><strong>Couldn&rsquo;t save your entry:</strong> <?php echo esc_html( self::$submission_error ); ?>
+                    <p style="margin:0;"><strong>Couldn&rsquo;t save your entry:</strong> <?php echo esc_html( PTK_Wizard_Copy::validation_text( $on, self::$submission_error ) ); ?>
                     Nothing was published &mdash; scroll down, fix that field, and save again.</p>
                 </div>
             <?php endif; ?>

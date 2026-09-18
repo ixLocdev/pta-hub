@@ -83,4 +83,31 @@ foreach ( PTK_Wizard_Copy::BANNED_WORDS as $word ) {
 $merged = $c::all_entries();
 ptk_test_ok( count( $merged ) === count( $c::labels() ) + count( $c::meta() ), 'all_entries() is labels() + meta() with no key collisions' );
 
+// Task 3: the confirmation screen's headline + stamp.
+ptk_test_ok( 'Fallback text' === $c::notice_text( false, 'created', 'Fallback text' ), 'notice_text() off returns $default untouched' );
+ptk_test_ok( "You're all set. Families can find this on the Hub." === $c::notice_text( true, 'created', 'Fallback text' ), 'notice_text() on for a new entry is the plan\'s sentence' );
+ptk_test_ok( 'Updated. Families see the new version now.' === $c::notice_text( true, 'updated', 'Fallback text' ), 'notice_text() on for an update is the plan\'s sentence' );
+ptk_test_ok( 'Saved. Nobody sees it yet.' === $c::notice_text( true, 'draft', 'Fallback text' ), 'notice_text() on for a draft is the plan\'s sentence' );
+ptk_test_ok( 'Fallback text' === $c::notice_text( true, 'nope', 'Fallback text' ), 'notice_text() falls back for an unknown key even when on' );
+
+ptk_test_ok( null === $c::notice_stamp( false, 'created' ), 'notice_stamp() is null when off' );
+ptk_test_ok( array( 'SENT', 'success' ) === $c::notice_stamp( true, 'created' ), 'a new entry stamps SENT/success' );
+ptk_test_ok( array( 'SENT', 'success' ) === $c::notice_stamp( true, 'updated' ), 'an update stamps SENT/success' );
+ptk_test_ok( array( 'NOT SENT YET', 'dim' ) === $c::notice_stamp( true, 'draft' ), 'a draft stamps NOT SENT YET/dim' );
+ptk_test_ok( null === $c::notice_stamp( true, 'nope' ), 'notice_stamp() is null for an unknown key' );
+
+foreach ( PTK_Wizard_Copy::BANNED_WORDS as $word ) {
+    foreach ( $c::notices() as $key => $entry ) {
+        ptk_test_ok( false === strpos( $entry['on'], $word ), "notice $key has no banned word ($word)" );
+    }
+}
+
+// Task 3: validation messages, keyed by today's literal $submission_error text.
+ptk_test_ok( 'Please add a Title and pick a category, then save again.' === $c::validation_text( false, 'Please add a Title and pick a category, then save again.' ), 'validation_text() off returns the literal text unchanged' );
+ptk_test_ok( 'This needs a title so families can find it. Pick a category too, then save again.' === $c::validation_text( true, 'Please add a Title and pick a category, then save again.' ), 'validation_text() on rewrites the missing-title error as a sentence' );
+ptk_test_ok( 'Some dynamic error the map does not know about.' === $c::validation_text( true, 'Some dynamic error the map does not know about.' ), 'validation_text() on passes through an unmapped (e.g. dynamic) message untouched' );
+foreach ( $c::validation() as $off => $on ) {
+    ptk_test_ok( '?' === substr( $on, -1 ) || preg_match( '/^[A-Z][a-z]/', $on ), "validation message reads as a sentence: \"$on\"" );
+}
+
 ptk_test_done();

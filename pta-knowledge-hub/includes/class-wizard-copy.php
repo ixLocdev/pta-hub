@@ -141,4 +141,113 @@ class PTK_Wizard_Copy {
     public static function all_entries() {
         return array_merge( self::labels(), self::meta() );
     }
+
+    /**
+     * Task 3: the confirmation screen's headline + stamp, keyed by
+     * 'created' (a brand-new entry, published), 'updated' (an existing
+     * entry, re-saved while published) and 'draft' (saved as a draft,
+     * either way). 'off' is today's literal heading text (unused by
+     * notice_text()'s $default path but kept here so the whole table is
+     * self-documenting); 'on' is the plan's plain-English confirmation;
+     * 'stamp' is array( text, state ) for PTK_Hub_UI::stamp(), or null for
+     * no stamp.
+     *
+     * @return array
+     */
+    public static function notices() {
+        return array(
+            'created' => array(
+                'off'   => 'Entry Created Successfully!',
+                'on'    => "You're all set. Families can find this on the Hub.",
+                'stamp' => array( 'SENT', 'success' ),
+            ),
+            'updated' => array(
+                'off'   => 'Entry Updated Successfully!',
+                'on'    => 'Updated. Families see the new version now.',
+                'stamp' => array( 'SENT', 'success' ),
+            ),
+            'draft'   => array(
+                'off'   => 'Entry Created Successfully!',
+                'on'    => 'Saved. Nobody sees it yet.',
+                'stamp' => array( 'NOT SENT YET', 'dim' ),
+            ),
+        );
+    }
+
+    /**
+     * A confirmation heading: the new-look sentence when $on is true, else
+     * $default (today's literal heading -- callers pass it explicitly
+     * since 'created' and 'updated' already differ in the off-look and
+     * $default carries that, rather than notices()'s own 'off' value).
+     *
+     * @param bool   $on      PTK_Hub_Look::on().
+     * @param string $key     A notices() key ('created', 'updated', 'draft').
+     * @param string $default What to return when off, or when $key has no entry.
+     * @return string
+     */
+    public static function notice_text( $on, $key, $default = '' ) {
+        $map = self::notices();
+        if ( ! $on || ! isset( $map[ $key ] ) ) {
+            return $default;
+        }
+        return $map[ $key ]['on'];
+    }
+
+    /**
+     * A confirmation's stamp: array( text, state ) for PTK_Hub_UI::stamp(),
+     * or null when $on is false or $key has no entry.
+     *
+     * @param bool   $on  PTK_Hub_Look::on().
+     * @param string $key A notices() key.
+     * @return array|null
+     */
+    public static function notice_stamp( $on, $key ) {
+        $map = self::notices();
+        if ( ! $on || ! isset( $map[ $key ]['stamp'] ) ) {
+            return null;
+        }
+        return $map[ $key ]['stamp'];
+    }
+
+    /**
+     * Task 3: server-side validation messages, keyed by today's exact
+     * literal $submission_error string (PTK_Content_Wizard sets that
+     * property before it knows PTK_Hub_Look::on(), so there's no semantic
+     * key to look up by -- the off string itself is the key, same
+     * off-is-the-source-of-truth convention as the rest of this class).
+     *
+     * @return array
+     */
+    public static function validation() {
+        return array(
+            'Please add a Title and pick a category, then save again.'
+                => 'This needs a title so families can find it. Pick a category too, then save again.',
+            'Please provide a Quick Answer for your FAQ entry.'
+                => 'This needs a quick answer so families have something to read.',
+            'Please provide a Description for your Resource.'
+                => 'This needs a description so families know what it is.',
+            'Please provide a Definition for your Glossary Term.'
+                => 'This needs a definition so families know what it means.',
+            'Please provide a Summary for your Policy entry.'
+                => 'This needs a summary so families know what it says.',
+            'That entry no longer exists — it may have been deleted. Nothing was saved.'
+                => 'This entry is gone — someone may have deleted it. Nothing was saved.',
+        );
+    }
+
+    /**
+     * A validation message: the new-look sentence when $on is true and
+     * $text is a known literal, else $text unchanged.
+     *
+     * @param bool   $on   PTK_Hub_Look::on().
+     * @param string $text The literal $submission_error text.
+     * @return string
+     */
+    public static function validation_text( $on, $text ) {
+        if ( ! $on ) {
+            return $text;
+        }
+        $map = self::validation();
+        return isset( $map[ $text ] ) ? $map[ $text ] : $text;
+    }
 }
