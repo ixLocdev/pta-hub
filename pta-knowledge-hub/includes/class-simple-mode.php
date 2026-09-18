@@ -189,8 +189,13 @@ class PTK_Simple_Mode {
      * once-in-a-while admin job, not a volunteer's day-to-day task -- the
      * home screen's "Set up the basics (once)" quiet link and direct
      * "waiting for you" links reach them without a menu entry.
+     *
+     * @param bool $written_screen_on Swap the raw "All Entries" list for
+     *   "What you've written" (PTK_Written_List) -- true whenever the new
+     *   look is on, since that screen only exists then. Defaults to false
+     *   so a caller passing nothing still gets the raw list slug.
      */
-    public static function hub_task_submenu_slugs() {
+    public static function hub_task_submenu_slugs( $written_screen_on = false ) {
         return array(
             'ptk-welcome',
             'ptk-newsletter-builder',
@@ -199,7 +204,7 @@ class PTK_Simple_Mode {
             // even though it's otherwise a once-in-a-while admin screen.
             'ptk-share-settings',
             'ptk-content-wizard',
-            self::HUB_TOP_SLUG,
+            $written_screen_on ? 'ptk-written' : self::HUB_TOP_SLUG,
             'edit.php?post_type=pta_newsletter',
         );
     }
@@ -257,7 +262,9 @@ class PTK_Simple_Mode {
         }
 
         if ( ! empty( $submenu[ self::HUB_TOP_SLUG ] ) ) {
-            $task_keep = self::hub_task_submenu_slugs();
+            // active_for_user() above already guarantees the new look is
+            // on here, so "What you've written" always exists in its place.
+            $task_keep = self::hub_task_submenu_slugs( true );
             foreach ( $submenu[ self::HUB_TOP_SLUG ] as $item ) {
                 if ( empty( $item[2] ) || self::keep_menu_slug( $item[2], $task_keep ) ) {
                     continue;

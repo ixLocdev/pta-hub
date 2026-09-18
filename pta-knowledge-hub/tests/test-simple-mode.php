@@ -69,6 +69,16 @@ foreach ( array( 'ptk-settings', 'ptk-search-analytics', 'ptk-content-importer',
     ptk_test_ok( ! in_array( $admin_slug, $hub_tasks, true ), "hub_task_submenu_slugs() drops the once-in-a-while admin screen $admin_slug" );
 }
 
+// With the new look on, "What you've written" replaces the raw list in the
+// kept menu -- the raw list stays registered (WordPress's own screen), just
+// not in the trimmed Simple mode menu.
+$hub_tasks_written = $t::hub_task_submenu_slugs( true );
+ptk_test_ok( in_array( 'ptk-written', $hub_tasks_written, true ), 'hub_task_submenu_slugs( true ) keeps ptk-written' );
+ptk_test_ok( ! in_array( 'edit.php?post_type=pta_knowledge', $hub_tasks_written, true ), 'hub_task_submenu_slugs( true ) drops the raw All Entries list' );
+foreach ( array( 'ptk-welcome', 'ptk-newsletter-builder', 'ptk-share-settings', 'ptk-content-wizard', 'edit.php?post_type=pta_newsletter' ) as $task_slug ) {
+    ptk_test_ok( in_array( $task_slug, $hub_tasks_written, true ), "hub_task_submenu_slugs( true ) still keeps $task_slug" );
+}
+
 // The admin-bar keep list.
 $bar_keep = $t::admin_bar_keep_ids();
 foreach ( array( 'site-name', 'my-sites', 'my-account', 'ptk-simple-mode' ) as $bar_id ) {

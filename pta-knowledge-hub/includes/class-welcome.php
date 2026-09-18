@@ -364,7 +364,7 @@ class PTK_Welcome {
             'answer'     => class_exists( 'PTK_Content_Wizard' ) ? add_query_arg( 'ptk_for', 'question', PTK_Content_Wizard::url() ) : '',
             'word'       => class_exists( 'PTK_Content_Wizard' ) ? add_query_arg( 'ptk_for', 'word', PTK_Content_Wizard::url() ) : '',
             'vendor'     => $vendor_url,
-            'fix'        => admin_url( 'edit.php?post_type=pta_knowledge' ),
+            'fix'        => class_exists( 'PTK_Written_List' ) ? PTK_Written_List::url() : admin_url( 'edit.php?post_type=pta_knowledge' ),
         );
 
         $intentions = self::intentions( $caps, $urls );
