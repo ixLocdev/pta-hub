@@ -265,7 +265,9 @@
 
         if ($changeBtn.length && $picker.length) {
             $changeBtn.on('click', function () {
-                $picker.prop('open', true);
+                // 4.17.1: the picker is hidden until asked for, so reveal it
+                // as well as opening it.
+                $picker.addClass('is-open').prop('open', true);
                 var $firstRadio = $picker.find('input[type="radio"]').first();
                 if ($firstRadio.length) {
                     $firstRadio.trigger('focus');
@@ -1148,7 +1150,11 @@
             // (set by bindQfSubmit()) says which one was actually clicked;
             // falls back to the old radio for the category-first screen.
             var chosenStatus = qfClickedButton ? $(qfClickedButton).val() : $('input[name="ptk_status"]:checked').val();
-            if (chosenStatus === 'publish') {
+            // 4.17.1: no confirm dialog on the new-look card. The screen
+            // already says "Nobody sees it until you do", the button says
+            // exactly what it does, and the confirmation afterwards offers a
+            // way back -- per the design rules, undo beats "are you sure?".
+            if (chosenStatus === 'publish' && !$('body').hasClass('ptk-hub-look')) {
                 var publishMsg = isEdit
                     ? 'Publish these changes now? They will be visible to everyone right away.'
                     : 'Put this on the Hub now? Families will be able to see it right away. Choose Cancel to go back (you can pick "Keep it to myself for now" instead).';

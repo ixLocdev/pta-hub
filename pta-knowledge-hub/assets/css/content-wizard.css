@@ -1506,3 +1506,10 @@ body.ptk-hub-look .ptk-qf-hidden-signal {
     white-space: nowrap;
     border: 0;
 }
+
+/* 4.17.1: the eight types stay out of sight until someone asks for them.
+   Shipping both the quiet line AND an always-visible "Pick a different type"
+   pill put the filing cabinet back on screen, which is what this redesign
+   removed. .is-open is added by the "Change that" button. */
+body.ptk-hub-look .ptk-qf-type-picker { display: none; }
+body.ptk-hub-look .ptk-qf-type-picker.is-open { display: block; }
