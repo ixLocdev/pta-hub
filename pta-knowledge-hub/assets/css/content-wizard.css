@@ -982,96 +982,347 @@ body.ptk-hub-look .ptk-wizard-fold.is-collapsed > *:not(.ptk-wizard-section-titl
     }
 }
 
-/* ── Task 2: the question-first screen ("one page that grows") ────────
-   Rendered only by render_question_first_wizard(), new look + new entry
-   only -- these classes never appear anywhere else, so scoping every rule
-   under body.ptk-hub-look is just belt-and-braces, matching the rest of
-   this file's convention. No one-sided borders anywhere below: emphasis
-   comes from a full background fill (.ptk-qf-type-line) or full borders
-   (.ptk-qf-block, already inherited from .ptk-field-group's card look
-   above), never a left/right accent bar.
+/* ── "You write the answer itself" (2026-09-18 spec) ───────────────────
+   Rendered only by render_question_first_wizard() /
+   render_question_first_confirmation(), new look + new entry only -- these
+   classes never appear anywhere else, so scoping every rule under
+   body.ptk-hub-look is belt-and-braces, matching the rest of this file's
+   convention.
 
-   The three follow-up reveals and "Anything else?" use a plain checkbox
-   + <details> (no JavaScript) -- see the "3. Follow-ups" comment in
-   class-content-wizard.php. Nothing here is ever display:none at first
-   paint for a no-JS visitor: .ptk-qf-toggle-input is a real, visible,
-   tabbable checkbox and .ptk-qf-more/.ptk-qf-type-picker are real <details>
-   elements the browser already knows how to open with no script at all. */
+   No one-sided borders anywhere below. The card has a full four-sided
+   border; a block added by a chip is set off by spacing and a full-width
+   dashed top rule (never a left/right bar); emphasis otherwise comes from
+   a full background fill, weight, or the stamp.
+
+   The question/answer fields are real <input>/<textarea> styled to look
+   like plain text at rest (no box, no background) -- see .ptk-qf-question-
+   input / .ptk-qf-answer-input below: no border until :hover (dashed) or
+   :focus (solid --ptk-primary underline + a visible outline ring). The
+   four chips and the blocks they add are progressive enhancement --
+   content-wizard.js is what actually shows/hides .ptk-qf-added-block; with
+   JS off they simply stay [hidden] and never get filled in, which the
+   spec explicitly allows. */
 
 body.ptk-hub-look .ptk-qf-wrap {
-    max-width: 640px;
+    max-width: 620px;
+    margin: 0 auto;
 }
 
-body.ptk-hub-look .ptk-qf-block {
-    margin-bottom: var(--ptk-space-4);
+body.ptk-hub-look .ptk-qf-back {
+    display: inline-block;
+    font: 700 13px/1 var(--ptk-font-sans);
+    color: var(--ptk-text-dim);
+    text-decoration: none;
+    margin: var(--ptk-space-3) 0 var(--ptk-space-4);
 }
 
-body.ptk-hub-look .ptk-qf-label {
-    display: block;
-    font: 700 17px/1.4 var(--ptk-font-sans);
-    color: var(--ptk-text);
-    margin-bottom: var(--ptk-space-2);
+body.ptk-hub-look .ptk-qf-back:hover {
+    color: var(--ptk-primary);
 }
 
-body.ptk-hub-look .ptk-qf-input {
-    width: 100%;
-    font-size: 16px;
-    padding: 12px 14px;
-    border: 1px solid var(--ptk-line);
-    border-radius: var(--ptk-radius-field);
+/* The card itself */
+
+body.ptk-hub-look .ptk-qf-card {
     background: var(--ptk-surface);
-    color: var(--ptk-text);
-    box-sizing: border-box;
-}
-
-body.ptk-hub-look .ptk-qf-input:focus {
-    border-color: var(--ptk-primary);
-    outline-color: var(--ptk-primary);
-}
-
-body.ptk-hub-look .ptk-qf-followups {
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-card);
+    padding: var(--ptk-space-5) var(--ptk-space-4);
     margin-bottom: var(--ptk-space-4);
 }
 
-/* Each follow-up (checkbox + label + reveal panel) is its own row -- .ptk-qf-followup
-   groups them so this stacking never depends on how much label text wraps. */
-body.ptk-hub-look .ptk-qf-followup {
-    margin-bottom: var(--ptk-space-2);
+body.ptk-hub-look .ptk-qf-field {
+    margin-bottom: var(--ptk-space-3);
 }
 
-/* The checkbox itself stays visible and reachable (never display:none) --
-   it IS the control that opens each group, with or without JS. */
-body.ptk-hub-look .ptk-qf-toggle-input {
-    width: 20px;
-    height: 20px;
-    margin: 0 10px 0 0;
-    vertical-align: middle;
-}
+/* Text-at-rest fields: no box until touched. A dashed underline on
+   hover invites the click; a solid primary underline + a visible ring
+   marks focus, satisfying the spec without ever drawing a box at rest. */
 
-body.ptk-hub-look .ptk-qf-toggle {
-    display: inline;
-    font: 700 15px/1.4 var(--ptk-font-sans);
-    color: var(--ptk-text);
-    cursor: pointer;
-    vertical-align: middle;
-}
-
-body.ptk-hub-look .ptk-qf-reveal {
-    display: none;
-    padding: var(--ptk-space-3) 0 var(--ptk-space-2) 30px;
-}
-
-body.ptk-hub-look .ptk-qf-toggle-input:checked ~ .ptk-qf-reveal {
+body.ptk-hub-look .ptk-qf-question-input {
     display: block;
+    width: 100%;
+    box-sizing: border-box;
+    font: 400 24px/1.35 var(--ptk-font-serif);
+    color: var(--ptk-text);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 2px 0 6px;
+    outline: none;
 }
+
+body.ptk-hub-look .ptk-qf-answer-input {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    resize: none;
+    overflow: hidden;
+    font: 400 16px/1.6 var(--ptk-font-sans);
+    color: var(--ptk-text);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 4px 0 6px;
+    outline: none;
+}
+
+body.ptk-hub-look .ptk-qf-question-input:hover,
+body.ptk-hub-look .ptk-qf-answer-input:hover {
+    border-bottom-style: dashed;
+    border-bottom-color: var(--ptk-text-dim);
+}
+
+body.ptk-hub-look .ptk-qf-question-input:focus,
+body.ptk-hub-look .ptk-qf-answer-input:focus {
+    border-bottom-style: solid;
+    border-bottom-color: var(--ptk-primary);
+    outline: 2px solid var(--ptk-primary-soft);
+    outline-offset: 3px;
+    border-radius: 2px;
+}
+
+body.ptk-hub-look .ptk-qf-question-input::placeholder,
+body.ptk-hub-look .ptk-qf-answer-input::placeholder {
+    color: var(--ptk-text-dim);
+    opacity: .8;
+}
+
+/* Blocks a chip adds -- inside the card, set off by a full-width dashed
+   rule above (never a side bar) and a small round remove control. */
+
+body.ptk-hub-look .ptk-qf-added-block {
+    position: relative;
+    margin: var(--ptk-space-3) 0;
+    padding-top: var(--ptk-space-3);
+    border-top: 1px dashed var(--ptk-line);
+}
+
+body.ptk-hub-look .ptk-qf-block-remove {
+    position: absolute;
+    top: var(--ptk-space-3);
+    right: 0;
+    width: 24px;
+    height: 24px;
+    line-height: 22px;
+    text-align: center;
+    padding: 0;
+    background: var(--ptk-bg);
+    border: 1px solid var(--ptk-line);
+    border-radius: 50%;
+    color: var(--ptk-text-dim);
+    font-size: 15px;
+    cursor: pointer;
+}
+
+body.ptk-hub-look .ptk-qf-block-remove:hover {
+    border-color: var(--ptk-error);
+    color: var(--ptk-error);
+}
+
+/* + steps -- a plain numbered list, the way a parent reads it. Reuses the
+   existing .ptk-repeater-item markup (addStep() in content-wizard.js);
+   these rules strip its usual card/box look down to plain list rows. */
+
+body.ptk-hub-look .ptk-qf-steps-repeater {
+    counter-reset: ptk-qf-step;
+    padding-right: 30px;
+}
+
+body.ptk-hub-look .ptk-qf-steps-repeater .ptk-repeater-item {
+    counter-increment: ptk-qf-step;
+    position: relative;
+    background: none;
+    border: none;
+    padding: 6px 0 6px 30px;
+    margin: 0;
+}
+
+body.ptk-hub-look .ptk-qf-steps-repeater .ptk-repeater-item::before {
+    content: counter(ptk-qf-step) ".";
+    position: absolute;
+    left: 0;
+    top: 8px;
+    font: 700 15px/1.5 var(--ptk-font-sans);
+    color: var(--ptk-primary);
+}
+
+/* No "Step N" label (the ::before counter already numbers it) and no
+   reorder arrows (a short card has no room for drag order) -- but the
+   remove control stays, small, so a bad step can still go without
+   clearing the whole block. */
+body.ptk-hub-look .ptk-qf-steps-repeater .ptk-repeater-header {
+    position: absolute;
+    top: 6px;
+    right: 0;
+    background: none;
+}
+
+body.ptk-hub-look .ptk-qf-steps-repeater .ptk-repeater-number,
+body.ptk-hub-look .ptk-qf-steps-repeater .ptk-repeater-up,
+body.ptk-hub-look .ptk-qf-steps-repeater .ptk-repeater-down {
+    display: none;
+}
+
+body.ptk-hub-look .ptk-qf-steps-repeater .ptk-repeater-item {
+    padding-right: 26px;
+}
+
+body.ptk-hub-look .ptk-qf-steps-repeater .ptk-repeater-remove {
+    background: none;
+    border: none;
+    color: var(--ptk-text-dim);
+    cursor: pointer;
+    padding: 2px;
+}
+
+body.ptk-hub-look .ptk-qf-steps-repeater .ptk-repeater-remove:hover {
+    color: var(--ptk-error);
+}
+
+body.ptk-hub-look .ptk-qf-steps-repeater .ptk-repeater-body textarea {
+    width: 100%;
+    box-sizing: border-box;
+    border: none;
+    border-bottom: 1px dashed transparent;
+    background: transparent;
+    font: 400 15px/1.5 var(--ptk-font-sans);
+    color: var(--ptk-text);
+    padding: 2px 0;
+    resize: vertical;
+}
+
+body.ptk-hub-look .ptk-qf-steps-repeater .ptk-repeater-body textarea:hover {
+    border-bottom-color: var(--ptk-text-dim);
+}
+
+body.ptk-hub-look .ptk-qf-steps-repeater .ptk-repeater-body textarea:focus {
+    outline: none;
+    border-bottom: 1px solid var(--ptk-primary);
+}
+
+body.ptk-hub-look .ptk-qf-steps-repeater .ptk-step-link-fields,
+body.ptk-hub-look .ptk-qf-steps-repeater .ptk-step-image {
+    margin-top: 4px;
+}
+
+body.ptk-hub-look .ptk-qf-add-more {
+    display: inline-block;
+    background: none;
+    border: none;
+    padding: 4px 0 4px 30px;
+    font: 700 13px/1.4 var(--ptk-font-sans);
+    color: var(--ptk-primary);
+    cursor: pointer;
+}
+
+/* + a form or file -- a link row */
+
+body.ptk-hub-look .ptk-qf-block-input {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    font: 400 15px/1.5 var(--ptk-font-sans);
+    color: var(--ptk-text);
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed var(--ptk-text-dim);
+    padding: 4px 30px 6px 0;
+}
+
+body.ptk-hub-look .ptk-qf-block-input:focus {
+    outline: none;
+    border-bottom: 1px solid var(--ptk-primary);
+}
+
+body.ptk-hub-look .ptk-qf-upload-link {
+    display: inline-block;
+    margin-top: 6px;
+    background: none;
+    border: none;
+    padding: 0;
+    font: 400 13px/1.4 var(--ptk-font-sans);
+    color: var(--ptk-text-dim);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+body.ptk-hub-look .ptk-qf-file-upload .ptk-file-preview {
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--ptk-text);
+}
+
+/* + a date -- a date line */
+
+body.ptk-hub-look .ptk-qf-block-date .dashicons {
+    color: var(--ptk-text-dim);
+    vertical-align: middle;
+    margin-right: 6px;
+}
+
+body.ptk-hub-look .ptk-qf-date-input {
+    display: inline-block;
+    width: auto;
+    border: none;
+    border-bottom: 1px dashed var(--ptk-text-dim);
+    background: transparent;
+    font: 400 15px/1.5 var(--ptk-font-sans);
+    color: var(--ptk-text);
+    padding: 2px 30px 4px 0;
+}
+
+body.ptk-hub-look .ptk-qf-date-input:focus {
+    outline: none;
+    border-bottom: 1px solid var(--ptk-primary);
+}
+
+/* + a picture -- shown the way a parent sees it */
+
+body.ptk-hub-look .ptk-qf-block-image .ptk-image-preview img {
+    display: block;
+    max-width: 100%;
+    max-height: 260px;
+    border-radius: var(--ptk-radius-field);
+}
+
+/* The four chips */
+
+body.ptk-hub-look .ptk-qf-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ptk-space-2);
+    margin-top: var(--ptk-space-3);
+    padding-top: var(--ptk-space-3);
+    border-top: 1px dashed var(--ptk-line);
+}
+
+body.ptk-hub-look .ptk-qf-chip {
+    background: none;
+    border: 1px dashed var(--ptk-text-dim);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font: 700 13px/1.2 var(--ptk-font-sans);
+    color: var(--ptk-text-dim);
+    cursor: pointer;
+}
+
+body.ptk-hub-look .ptk-qf-chip:hover,
+body.ptk-hub-look .ptk-qf-chip:focus {
+    border-style: solid;
+    border-color: var(--ptk-primary);
+    color: var(--ptk-primary);
+    outline: none;
+}
+
+/* The quiet type line + "Change that" picker */
 
 body.ptk-hub-look .ptk-qf-type-line {
     background: var(--ptk-primary-soft);
     border-radius: var(--ptk-radius-card);
     padding: var(--ptk-space-3) var(--ptk-space-4);
-    font-size: 15px;
+    font-size: 14px;
     color: var(--ptk-text);
-    margin-bottom: var(--ptk-space-2);
+    margin-bottom: var(--ptk-space-3);
 }
 
 body.ptk-hub-look .ptk-qf-linklike {
@@ -1086,33 +1337,172 @@ body.ptk-hub-look .ptk-qf-linklike {
     cursor: pointer;
 }
 
-body.ptk-hub-look .ptk-qf-type-picker,
-body.ptk-hub-look .ptk-qf-more {
+a.ptk-qf-linklike {
+    display: inline-block;
+    margin-left: 4px;
+}
+
+body.ptk-hub-look .ptk-qf-type-picker {
     background: var(--ptk-surface);
     border: 1px solid var(--ptk-line);
     border-radius: var(--ptk-radius-card);
     padding: var(--ptk-space-3) var(--ptk-space-4);
-    margin-bottom: var(--ptk-space-4);
+    margin-bottom: var(--ptk-space-3);
 }
 
-body.ptk-hub-look .ptk-qf-type-picker summary,
-body.ptk-hub-look .ptk-qf-more summary {
-    font: 700 15px/1.4 var(--ptk-font-sans);
+body.ptk-hub-look .ptk-qf-type-picker summary {
+    font: 700 14px/1.4 var(--ptk-font-sans);
     color: var(--ptk-text);
     cursor: pointer;
 }
 
-body.ptk-hub-look .ptk-qf-type-picker[open] summary,
-body.ptk-hub-look .ptk-qf-more[open] summary {
+body.ptk-hub-look .ptk-qf-type-picker[open] summary {
     margin-bottom: var(--ptk-space-3);
 }
 
 body.ptk-hub-look .ptk-qf-type-picker .ptk-category-cards {
-    margin-top: var(--ptk-space-3);
+    margin-top: 0;
+}
+
+/* The quiet "similar entry already exists" line -- one line, never a
+   floating box. */
+
+body.ptk-hub-look .ptk-qf-similar {
+    font-size: 13px;
+    color: var(--ptk-text-dim);
+    margin: 0 0 var(--ptk-space-3);
+}
+
+body.ptk-hub-look .ptk-qf-similar a {
+    color: var(--ptk-primary);
+}
+
+/* Actions under the card */
+
+body.ptk-hub-look .ptk-qf-actions {
+    text-align: center;
+    margin-top: var(--ptk-space-4);
+}
+
+body.ptk-hub-look .ptk-qf-actions .ptk-btn {
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+body.ptk-hub-look .ptk-qf-actions .ptk-btn-primary {
+    min-width: 220px;
+}
+
+body.ptk-hub-look .ptk-qf-btn-quiet {
+    background: none;
+    border-color: transparent;
+    color: var(--ptk-text-dim);
+    text-decoration: underline;
+    margin-left: var(--ptk-space-2);
+}
+
+body.ptk-hub-look .ptk-qf-btn-quiet:hover {
+    color: var(--ptk-text);
+}
+
+body.ptk-hub-look .ptk-qf-reassure {
+    font-size: 12.5px;
+    color: var(--ptk-text-dim);
+    margin: var(--ptk-space-2) 0 0;
+}
+
+/* Phase 3: the read-only confirmation card */
+
+body.ptk-hub-look .ptk-qf-card--done .ptk-qf-readonly {
+    margin-bottom: var(--ptk-space-3);
+}
+
+body.ptk-hub-look .ptk-qf-stamp-row {
+    margin-bottom: var(--ptk-space-3);
+}
+
+body.ptk-hub-look h2.ptk-qf-question {
+    font: 400 24px/1.35 var(--ptk-font-serif);
+    color: var(--ptk-text);
+    margin: 0 0 var(--ptk-space-3);
+}
+
+body.ptk-hub-look .ptk-qf-answer p {
+    font: 400 16px/1.6 var(--ptk-font-sans);
+    color: var(--ptk-text);
+    margin: 0 0 12px;
+}
+
+body.ptk-hub-look .ptk-qf-block-steps.ptk-qf-readonly {
+    padding-left: 20px;
+    margin: 0 0 var(--ptk-space-3);
+}
+
+body.ptk-hub-look .ptk-qf-block-date.ptk-qf-readonly,
+body.ptk-hub-look .ptk-qf-block-link.ptk-qf-readonly {
+    font-size: 15px;
+    color: var(--ptk-text);
+}
+
+body.ptk-hub-look .ptk-qf-block-date.ptk-qf-readonly .dashicons,
+body.ptk-hub-look .ptk-qf-block-link.ptk-qf-readonly .dashicons {
+    color: var(--ptk-text-dim);
+    vertical-align: middle;
+    margin-right: 6px;
+}
+
+body.ptk-hub-look .ptk-qf-block-image.ptk-qf-readonly img {
+    display: block;
+    max-width: 100%;
+    max-height: 320px;
+    border-radius: var(--ptk-radius-field);
+}
+
+body.ptk-hub-look .ptk-qf-done-message {
+    font-size: 15px;
+    color: var(--ptk-text);
+    margin-bottom: var(--ptk-space-3);
 }
 
 @media (max-width: 480px) {
-    body.ptk-hub-look .ptk-qf-reveal {
-        padding-left: 0;
+    body.ptk-hub-look .ptk-qf-wrap {
+        max-width: 100%;
     }
+
+    body.ptk-hub-look .ptk-qf-card {
+        padding: var(--ptk-space-4) var(--ptk-space-3);
+    }
+
+    body.ptk-hub-look .ptk-qf-question-input {
+        font-size: 20px;
+    }
+
+    body.ptk-hub-look .ptk-qf-actions .ptk-btn {
+        display: flex;
+        width: 100%;
+    }
+
+    body.ptk-hub-look .ptk-qf-btn-quiet {
+        margin-left: 0;
+        margin-top: var(--ptk-space-2);
+    }
+}
+
+/* The hidden signal checkboxes (ptk-qf-has-steps/date/link): kept out of
+   the accessibility tree (aria-hidden, tabindex="-1" on the elements
+   themselves) and visually hidden here, same pattern as core's
+   .screen-reader-text but clipped instead of shown -- they carry no label
+   of their own, so they must never be reachable by a keyboard or screen
+   reader user. */
+body.ptk-hub-look .ptk-qf-hidden-signal {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }

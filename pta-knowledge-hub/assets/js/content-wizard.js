@@ -67,6 +67,10 @@
         bindFolding();
         bindQuestionFirstToggles();
         bindQuietTypeLine();
+        bindQfChips();
+        bindQfSubmit();
+        bindQfAnswerAutogrow();
+        bindQfSimilar();
 
         // If in edit mode, pre-fill the form.
         if (typeof ptkWizardData !== 'undefined' && ptkWizardData.editMode && ptkWizardData.editData) {
@@ -290,6 +294,184 @@
         });
         $(document).on('click', '.ptk-qf-type-picker .ptk-category-card', function () {
             lockToCard($(this));
+        });
+    }
+
+    /* ──────────────────────────────────────────
+     * 2026-09-18 spec "you write the answer itself": the four chips
+     *
+     * Each chip reveals its block *inside the card* and keeps one of the
+     * hidden signal checkboxes (#ptk-qf-has-steps/-date/-link) in sync, so
+     * the existing live-guess/validation code above (questionFirstSignals(),
+     * bindQuietTypeLine()) keeps working completely unchanged -- it only
+     * ever asked "is this checked?", never how the checkbox got there.
+     * The picture chip is different: it opens the media library directly
+     * (openMediaPicker(), unchanged) rather than revealing an empty block
+     * first, since there's nothing to type -- picking a photo IS filling
+     * in the block.
+     * ────────────────────────────────────────── */
+
+    function qfShowBlock(name) {
+        $('#ptk-qf-' + name + '-block').removeAttr('hidden').show();
+        $('.ptk-qf-chip[data-block="' + name + '"]').hide();
+    }
+
+    function qfHideBlock(name) {
+        $('#ptk-qf-' + name + '-block').attr('hidden', 'hidden').hide();
+        $('.ptk-qf-chip[data-block="' + name + '"]').show();
+    }
+
+    function bindQfChips() {
+        if (!$('.ptk-qf-card').length) {
+            return;
+        }
+
+        $(document).on('click', '.ptk-qf-chip', function () {
+            var name = $(this).data('block');
+
+            if (name === 'image') {
+                openMediaPicker('ptk-featured-image', 'image');
+                return;
+            }
+
+            qfShowBlock(name);
+
+            if (name === 'steps') {
+                $('#ptk-qf-has-steps').prop('checked', true).trigger('change');
+                var $steps = $('#ptk-howto-steps');
+                if ($steps.find('.ptk-repeater-item').length === 0) {
+                    addStep($steps);
+                } else {
+                    $steps.find('textarea').first().trigger('focus');
+                }
+            } else if (name === 'date') {
+                $('#ptk-qf-has-date').prop('checked', true).trigger('change');
+                $('#ptk-event-date').trigger('focus');
+            } else if (name === 'link') {
+                $('#ptk-qf-has-link').prop('checked', true).trigger('change');
+                $('#ptk-resource-url').trigger('focus');
+            }
+        });
+
+        $(document).on('click', '.ptk-qf-block-remove', function () {
+            var name = $(this).data('block');
+
+            if (name === 'steps') {
+                $('#ptk-howto-steps').empty();
+                $('#ptk-qf-has-steps').prop('checked', false).trigger('change');
+            } else if (name === 'date') {
+                $('#ptk-event-date').val('');
+                $('#ptk-qf-has-date').prop('checked', false).trigger('change');
+            } else if (name === 'link') {
+                $('#ptk-resource-url').val('');
+                $('#ptk-resource-file-id').val('');
+                $('#ptk-resource-file-preview').html('');
+                $('#ptk-qf-has-link').prop('checked', false).trigger('change');
+            } else if (name === 'image') {
+                $('#ptk-featured-image-id').val('');
+                $('#ptk-featured-image-preview').html('');
+            }
+
+            qfHideBlock(name);
+        });
+
+    }
+
+    /* ──────────────────────────────────────────
+     * The two submit buttons ("Put it on the Hub" / "Keep it to myself for
+     * now") replace the old screen's "Save as:" radios -- each is a real
+     * <button type="submit" name="ptk_status" value="...">, so a no-JS
+     * visitor gets a working choice with no script at all. This only adds
+     * the same "are you sure?" pause bindFormValidation() already gives
+     * Publish on the old screen, keyed off which button was actually
+     * clicked instead of a checked radio.
+     * ────────────────────────────────────────── */
+
+    var qfClickedButton = null;
+
+    function bindQfSubmit() {
+        $(document).on('click', '#ptk-qf-submit-publish, #ptk-qf-submit-draft', function () {
+            qfClickedButton = this;
+        });
+    }
+
+    /* ──────────────────────────────────────────
+     * The answer textarea grows as you type instead of scrolling.
+     * ────────────────────────────────────────── */
+
+    function qfAutogrow($el) {
+        $el.css('height', 'auto');
+        $el.css('height', $el[0].scrollHeight + 'px');
+    }
+
+    function bindQfAnswerAutogrow() {
+        var $answer = $('#ptk-answer');
+        if (!$answer.length || !$answer.hasClass('ptk-qf-answer-input')) {
+            return;
+        }
+        $answer.on('input', function () { qfAutogrow($(this)); });
+        qfAutogrow($answer);
+    }
+
+    /* ──────────────────────────────────────────
+     * The one quiet line: "Families can already read: X — open it
+     * instead?" Same ptk_wizard_related AJAX action and localized
+     * ptkWizardRelated data as the old screen's related-entries panel
+     * (wizard-related.js), but that script targets #ptk-wizard-related --
+     * a floating box the new card intentionally has no room for -- so this
+     * is a small, separate binding that shows only the single best match
+     * as one line under the card, never a list.
+     * ────────────────────────────────────────── */
+
+    function bindQfSimilar() {
+        var $line = $('#ptk-qf-similar');
+        if (!$line.length || typeof ptkWizardRelated === 'undefined') {
+            return;
+        }
+        var $title = $('#ptk-title');
+        var timer = null;
+        var lastQuery = '';
+
+        function check() {
+            var title = $.trim($title.val() || '');
+            var category = $('input[name="ptk_category"]:checked').val() || '';
+            if (title.length < 3 || !category) {
+                $line.hide();
+                return;
+            }
+            if (title === lastQuery) {
+                return;
+            }
+            lastQuery = title;
+
+            var data = new FormData();
+            data.append('action', 'ptk_wizard_related');
+            data.append('_wpnonce', ptkWizardRelated.nonce);
+            data.append('title', title);
+            data.append('edit_id', 0);
+
+            fetch(ptkWizardRelated.ajaxUrl, { method: 'POST', body: data, credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (json) {
+                    var items = (json && json.success) ? (json.data || []) : [];
+                    if (!items.length) {
+                        $line.hide();
+                        return;
+                    }
+                    var item = items[0];
+                    $line.empty();
+                    $line.append(document.createTextNode('Families can already read: '));
+                    $line.append($('<a>', { href: item.permalink, target: '_blank', rel: 'noopener' }).text(item.title));
+                    $line.append(document.createTextNode(' — open it instead?'));
+                    $line.show();
+                })
+                .catch(function () { $line.hide(); });
+        }
+
+        $title.on('blur', check);
+        $title.on('input', function () {
+            clearTimeout(timer);
+            timer = setTimeout(check, 400);
         });
     }
 
@@ -765,10 +947,27 @@
                 ? attachment.sizes.thumbnail.url
                 : attachment.url;
 
+            // The "you write the answer itself" card (2026-09-18 spec)
+            // shows the picture the way a parent will see it, not a small
+            // upload-widget thumbnail -- its own CSS
+            // (.ptk-qf-block-image .ptk-image-preview img) sizes it, so
+            // skip the fixed inline size here and reveal the block + hide
+            // the "+ a picture" chip. Everywhere else (the old screen,
+            // both looks) keeps its usual small inline-sized thumbnail,
+            // unchanged.
+            var isQfImage = target === 'ptk-featured-image' && $('#ptk-qf-image-block').length > 0;
+
             $('#' + target + '-id').val(attachment.id);
-            $('#' + target + '-preview').html(
-                '<img src="' + thumbUrl + '" alt="" style="max-width:150px;max-height:150px;border-radius:4px;">'
-            );
+            if (isQfImage) {
+                $('#' + target + '-preview').html(
+                    '<img src="' + thumbUrl + '" alt="">'
+                );
+                qfShowBlock('image');
+            } else {
+                $('#' + target + '-preview').html(
+                    '<img src="' + thumbUrl + '" alt="" style="max-width:150px;max-height:150px;border-radius:4px;">'
+                );
+            }
             $('[data-target="' + target + '"].ptk-remove-image').removeClass('ptk-hidden');
         });
 
@@ -943,21 +1142,30 @@
             }
 
             // Publishing is immediate and site-wide — give one plain-language
-            // moment of pause (Draft, the default, needs none).
-            var chosenStatus = $('input[name="ptk_status"]:checked').val();
+            // moment of pause (Draft, the default, needs none). The "you
+            // write the answer itself" card (2026-09-18 spec) has two real
+            // submit buttons instead of a "Save as:" radio -- qfClickedButton
+            // (set by bindQfSubmit()) says which one was actually clicked;
+            // falls back to the old radio for the category-first screen.
+            var chosenStatus = qfClickedButton ? $(qfClickedButton).val() : $('input[name="ptk_status"]:checked').val();
             if (chosenStatus === 'publish') {
                 var publishMsg = isEdit
                     ? 'Publish these changes now? They will be visible to everyone right away.'
-                    : 'Publish now? This entry will be visible to everyone right away. Choose Cancel to go back (you can pick "Draft" to review it first).';
+                    : 'Put this on the Hub now? Families will be able to see it right away. Choose Cancel to go back (you can pick "Keep it to myself for now" instead).';
                 if (!window.confirm(publishMsg)) {
                     e.preventDefault();
                     return false;
                 }
             }
 
-            // Disable submit button to prevent double-submit.
-            var btnText = isEdit ? 'Updating...' : 'Creating...';
-            $('#ptk-wizard-submit-btn').prop('disabled', true).text(btnText);
+            // Disable submit button(s) to prevent double-submit.
+            if (qfClickedButton) {
+                $('#ptk-qf-submit-publish, #ptk-qf-submit-draft').prop('disabled', true);
+                $(qfClickedButton).text(chosenStatus === 'publish' ? 'Putting it on the Hub…' : 'Saving…');
+            } else {
+                var btnText = isEdit ? 'Updating...' : 'Creating...';
+                $('#ptk-wizard-submit-btn').prop('disabled', true).text(btnText);
+            }
         });
     }
 

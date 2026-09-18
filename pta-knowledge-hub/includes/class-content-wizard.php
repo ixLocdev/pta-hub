@@ -694,6 +694,18 @@ class PTK_Content_Wizard {
             $is_update = isset( $_GET['ptk_updated'] ) && '1' === $_GET['ptk_updated'];
             $edit_link = get_edit_post_link( $post_id, 'raw' );
             $view_link = get_permalink( $post_id );
+
+            // Spec "you write the answer itself", §3: a fresh save from the
+            // question-first screen gets its own read-only confirmation --
+            // the same card, stamped, never the old button row that names
+            // "WordPress". Gated on the ptk_qf redirect flag set only by
+            // that screen's own submission (see handle_submission()), so
+            // this never fires for the old category-first screen or for an
+            // edit (which always keeps that screen's own confirmation).
+            if ( $on && ! $is_update && isset( $_GET['ptk_qf'] ) ) {
+                self::render_question_first_confirmation( $post_id, $view_link );
+                return;
+            }
             // Phase 4, task 3: which confirmation this is -- a draft reads
             // "nobody sees it yet" regardless of $is_update, since saving an
             // already-published entry as a draft would be a different
@@ -1304,29 +1316,31 @@ class PTK_Content_Wizard {
     }
 
     /**
-     * Task 2: "one page that grows" -- the question-first screen, spec §2.
+     * 2026-09-18 spec "you write the answer itself": one centered card,
+     * ~560px, that looks like the answer a parent will read -- not a form.
      * Second rendering path, new look + new entry only (render_wizard()
-     * branches here before it prints anything else). Posts to the exact
-     * same handle_submission() as the old category-first screen, using the
-     * SAME field names wherever a field already exists (the title input,
-     * the steps repeater, the resource URL/file fields, the event date
-     * field, the links repeater, the excerpt/tags/featured-image fields,
-     * the save-as radios) -- reused verbatim, same ids, so the JS that
-     * already drives them (repeaters, media uploads, link popup, autosave,
-     * validation) keeps working untouched. The one new field is a single
-     * "answer" textarea (ptk_answer_text) that doesn't correspond to any
-     * one category's field, because at this point in the flow no category
-     * has been picked yet -- apply_question_first_mapping() (called from
-     * handle_submission()) copies it onto whichever category-specific
-     * field the final category needs, server-side, so it works with JS on
-     * or off.
+     * branches here before it prints anything else). Replaces the 4.16.0
+     * question-first *form* (this same method) with the finished thing
+     * itself: real question/answer inputs styled as text, four dashed
+     * chips that add blocks inside the card, and two buttons under it.
      *
-     * Nothing here is ever display:none at first paint: the follow-up
-     * groups (steps / file-or-link / date) and "Anything else?" use plain
-     * checkboxes and a <details> element, which the BROWSER shows or hides
-     * with no JavaScript at all -- so a no-JS visitor can open every group
-     * and fill in every field. content-wizard.js only adds small live
-     * touches on top (the quiet type line, Task 3).
+     * Posts to the exact same handle_submission() as the old category-first
+     * screen, using the SAME field names wherever a field already exists
+     * (the title input, the steps repeater, the resource URL/file fields,
+     * the event date field, the featured-image field, the save-as value)
+     * -- reused verbatim, same ids, so the server-side mapping
+     * (resolve_question_first_category()/apply_question_first_mapping(),
+     * unchanged from 4.16.0) and the JS that already drives repeaters,
+     * media uploads and validation keep working untouched.
+     *
+     * Works without JavaScript: the question and answer are real
+     * <input>/<textarea> elements inside a real <form> and post fine on
+     * their own (required attribute on the question; "Put it on the Hub" /
+     * "Keep it to myself for now" are real submit buttons, not radios a
+     * script has to translate). The four chips and their blocks are
+     * progressive enhancement -- with JS off they stay hidden and simply
+     * never get filled in or submitted, exactly as the spec allows ("the
+     * chips are progressive enhancement").
      *
      * @param WP_Term[] $categories
      */
@@ -1348,12 +1362,10 @@ class PTK_Content_Wizard {
         // right type. "Change that" sets ptk_type_locked=1, which both
         // sides treat as the volunteer's explicit, never-overridden choice.
         $default_category = PTK_Entry_Type::guess( array( 'came_from' => $is_word ? 'word' : 'question' ) );
+        $type_names       = PTK_Entry_Type::names();
         ?>
         <div class="wrap ptk-wizard-wrap ptk-qf-wrap">
-            <h1 class="ptk-wizard-header">
-                <span class="dashicons dashicons-welcome-learn-more"></span>
-                <?php echo esc_html( $headline ); ?>
-            </h1>
+            <a class="ptk-qf-back" href="<?php echo esc_url( self::url() ); ?>">&larr; Back to the Hub</a>
 
             <?php if ( self::$submission_error ) : ?>
                 <div class="notice notice-error inline" style="margin:16px 0;padding:12px 16px;">
@@ -1362,90 +1374,86 @@ class PTK_Content_Wizard {
                 </div>
             <?php endif; ?>
 
-            <aside id="ptk-wizard-related" class="ptk-wizard-related" aria-label="Related entries">
-                <h3 class="ptk-wizard-related-title">Related entries</h3>
-                <p class="ptk-wizard-related-empty">Start typing your question above &mdash; we'll show similar existing entries here.</p>
-                <div class="ptk-wizard-related-list" hidden></div>
-            </aside>
-
             <form method="post" action="" id="ptk-wizard-form" class="ptk-qf-form" enctype="multipart/form-data">
                 <?php wp_nonce_field( 'ptk_wizard_submit', 'ptk_wizard_nonce' ); ?>
                 <input type="hidden" name="ptk_came_from" value="<?php echo esc_attr( $is_word ? 'word' : 'question' ); ?>">
 
-                <!-- 1. The question -->
-                <div class="ptk-qf-block">
-                    <label for="ptk-title" class="ptk-qf-label"><?php echo esc_html( $headline ); ?> <span class="ptk-required">*</span></label>
-                    <input type="text" id="ptk-title" name="ptk_title" class="ptk-field-input ptk-qf-input" required
-                           placeholder="<?php echo $is_word ? 'e.g., POSSE' : 'e.g., Can I bring my dog to a PTA meeting?'; ?>"
-                           value="<?php echo isset( $_GET['ptk_prefill_title'] ) ? esc_attr( sanitize_text_field( wp_unslash( $_GET['ptk_prefill_title'] ) ) ) : ''; ?>">
-                </div>
+                <!-- The card: the question and the answer, styled as the
+                     text a parent will read, then whatever blocks the four
+                     chips below have added. -->
+                <div class="ptk-qf-card">
 
-                <!-- 2. The answer -->
-                <div class="ptk-qf-block" id="ptk-qf-answer-block">
-                    <label for="ptk-answer" class="ptk-qf-label">What's the answer? <span class="ptk-required">*</span></label>
-                    <textarea id="ptk-answer" name="ptk_answer_text" class="ptk-field-textarea ptk-qf-input" rows="4"
-                              placeholder="Write it the way you'd say it out loud."></textarea>
-                </div>
+                    <!-- 1. The question -->
+                    <div class="ptk-qf-field">
+                        <label for="ptk-title" class="screen-reader-text"><?php echo esc_html( $headline ); ?></label>
+                        <input type="text" id="ptk-title" name="ptk_title" class="ptk-qf-question-input" required
+                               placeholder="<?php echo $is_word ? 'ASE' : 'Where do I park for drop-off?'; ?>"
+                               value="<?php echo isset( $_GET['ptk_prefill_title'] ) ? esc_attr( sanitize_text_field( wp_unslash( $_GET['ptk_prefill_title'] ) ) ) : ''; ?>">
+                    </div>
 
-                <!-- 3. Follow-ups: plain checkboxes, CSS-only reveal (no JS required).
-                     The checkbox, its label and its reveal panel are true
-                     siblings (not nested) so a plain "~" sibling selector in
-                     CSS can show the panel on :checked -- no JavaScript is
-                     needed for this reveal to work. -->
-                <div class="ptk-qf-followups">
-                    <div class="ptk-qf-followup">
-                        <input type="checkbox" name="ptk_qf_has_steps" id="ptk-qf-has-steps" class="ptk-qf-toggle-input">
-                        <label for="ptk-qf-has-steps" class="ptk-qf-toggle">Are there steps to follow?</label>
-                        <div class="ptk-qf-reveal">
-                            <div class="ptk-field-group">
-                                <div class="ptk-repeater" id="ptk-howto-steps" data-min="0">
-                                    <!-- Steps added by JS -->
-                                </div>
-                                <button type="button" class="button ptk-add-step" data-repeater="ptk-howto-steps">
-                                    <span class="dashicons dashicons-plus-alt2"></span> Add Step
-                                </button>
-                            </div>
+                    <!-- 2. The answer -->
+                    <div class="ptk-qf-field">
+                        <label for="ptk-answer" class="screen-reader-text">What's the answer?</label>
+                        <textarea id="ptk-answer" name="ptk_answer_text" class="ptk-qf-answer-input" rows="3"
+                                  placeholder="Write it the way you'd say it out loud."></textarea>
+                    </div>
+
+                    <!-- 3. Blocks the four chips add -- hidden until a chip
+                         (or, for the picture, the media library) adds one.
+                         Real fields with the same names the old follow-ups
+                         posted, so nothing server-side has to change. -->
+                    <div class="ptk-qf-added-block ptk-qf-block-steps" id="ptk-qf-steps-block" data-block="steps" hidden>
+                        <button type="button" class="ptk-qf-block-remove" data-block="steps" aria-label="Remove steps">&times;</button>
+                        <div class="ptk-repeater ptk-qf-steps-repeater" id="ptk-howto-steps" data-min="0">
+                            <!-- Steps added by JS -->
+                        </div>
+                        <button type="button" class="ptk-qf-add-more ptk-add-step" data-repeater="ptk-howto-steps">+ another step</button>
+                    </div>
+
+                    <div class="ptk-qf-added-block ptk-qf-block-link" id="ptk-qf-link-block" data-block="link" hidden>
+                        <button type="button" class="ptk-qf-block-remove" data-block="link" aria-label="Remove">&times;</button>
+                        <label for="ptk-resource-url" class="screen-reader-text">Where is it?</label>
+                        <input type="url" id="ptk-resource-url" name="ptk_resource_url" class="ptk-qf-block-input"
+                               placeholder="Paste a link&hellip;">
+                        <div class="ptk-image-upload ptk-qf-file-upload" id="ptk-resource-file-wrap">
+                            <input type="hidden" name="ptk_resource_file_id" id="ptk-resource-file-id" value="">
+                            <div class="ptk-file-preview" id="ptk-resource-file-preview"></div>
+                            <button type="button" class="ptk-qf-upload-link ptk-upload-file-btn" data-target="ptk-resource-file">&hellip;or upload a file</button>
                         </div>
                     </div>
 
-                    <div class="ptk-qf-followup">
-                        <input type="checkbox" name="ptk_qf_has_link" id="ptk-qf-has-link" class="ptk-qf-toggle-input">
-                        <label for="ptk-qf-has-link" class="ptk-qf-toggle">Is there a form, file or page families need?</label>
-                        <div class="ptk-qf-reveal">
-                            <div class="ptk-field-group">
-                                <label for="ptk-resource-url" class="ptk-field-label">Where is it?</label>
-                                <input type="url" id="ptk-resource-url" name="ptk_resource_url" class="ptk-field-input"
-                                       placeholder="https://...">
-                                <p class="ptk-field-hint">Paste a link, or upload a file below.</p>
-                            </div>
-                            <div class="ptk-field-group">
-                                <div class="ptk-image-upload" id="ptk-resource-file-wrap">
-                                    <input type="hidden" name="ptk_resource_file_id" id="ptk-resource-file-id" value="">
-                                    <div class="ptk-file-preview" id="ptk-resource-file-preview"></div>
-                                    <button type="button" class="button ptk-upload-file-btn" data-target="ptk-resource-file">
-                                        <span class="dashicons dashicons-upload"></span> Upload File
-                                    </button>
-                                    <button type="button" class="button ptk-remove-file ptk-hidden" data-target="ptk-resource-file">Remove</button>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="ptk-qf-added-block ptk-qf-block-date" id="ptk-qf-date-block" data-block="date" hidden>
+                        <button type="button" class="ptk-qf-block-remove" data-block="date" aria-label="Remove date">&times;</button>
+                        <span class="dashicons dashicons-calendar-alt"></span>
+                        <label for="ptk-event-date" class="screen-reader-text">When?</label>
+                        <input type="date" id="ptk-event-date" name="ptk_event_date" class="ptk-qf-block-input ptk-qf-date-input">
                     </div>
 
-                    <div class="ptk-qf-followup">
-                        <input type="checkbox" name="ptk_qf_has_date" id="ptk-qf-has-date" class="ptk-qf-toggle-input">
-                        <label for="ptk-qf-has-date" class="ptk-qf-toggle">Does it happen on a date?</label>
-                        <div class="ptk-qf-reveal">
-                            <div class="ptk-field-group">
-                                <label for="ptk-event-date" class="ptk-field-label">When?</label>
-                                <input type="date" id="ptk-event-date" name="ptk_event_date" class="ptk-field-input">
-                            </div>
-                        </div>
+                    <div class="ptk-qf-added-block ptk-qf-block-image" id="ptk-qf-image-block" data-block="image" hidden>
+                        <button type="button" class="ptk-qf-block-remove" data-block="image" aria-label="Remove picture">&times;</button>
+                        <input type="hidden" name="ptk_featured_image" id="ptk-featured-image-id" value="">
+                        <div class="ptk-image-preview" id="ptk-featured-image-preview"></div>
+                    </div>
+
+                    <!-- 4. The four chips -->
+                    <div class="ptk-qf-chips">
+                        <button type="button" class="ptk-qf-chip" data-block="steps">+ steps</button>
+                        <button type="button" class="ptk-qf-chip" data-block="link">+ a form or file</button>
+                        <button type="button" class="ptk-qf-chip" data-block="date">+ a date</button>
+                        <button type="button" class="ptk-qf-chip" data-block="image">+ a picture</button>
                     </div>
                 </div>
 
-                <!-- 4. The quiet type line (Task 3 fills this in live) -->
+                <!-- Hidden signals the live type guess (Task 3's JS,
+                     unchanged) and the server-side guess both read --
+                     never shown to the volunteer, kept in sync with the
+                     blocks above by content-wizard.js. -->
+                <input type="checkbox" name="ptk_qf_has_steps" id="ptk-qf-has-steps" class="ptk-qf-hidden-signal" aria-hidden="true" tabindex="-1">
+                <input type="checkbox" name="ptk_qf_has_link" id="ptk-qf-has-link" class="ptk-qf-hidden-signal" aria-hidden="true" tabindex="-1">
+                <input type="checkbox" name="ptk_qf_has_date" id="ptk-qf-has-date" class="ptk-qf-hidden-signal" aria-hidden="true" tabindex="-1">
+
+                <!-- The quiet type line (Task 3 fills this in live) -->
                 <p class="ptk-qf-type-line" id="ptk-qf-type-line">
-                    <?php $type_names = PTK_Entry_Type::names(); ?>
                     We'll file this as a <strong id="ptk-qf-type-name"><?php echo esc_html( isset( $type_names[ $default_category ] ) ? $type_names[ $default_category ] : $default_category ); ?></strong>, <span id="ptk-qf-type-why"><?php echo esc_html( PTK_Entry_Type::explain( $default_category ) ); ?></span>.
                     <button type="button" class="ptk-qf-linklike" id="ptk-qf-change-type">Change that</button>
                 </p>
@@ -1467,57 +1475,13 @@ class PTK_Content_Wizard {
                 </details>
                 <input type="hidden" name="ptk_type_locked" id="ptk-type-locked" value="0">
 
-                <!-- 5. Anything else -->
-                <details class="ptk-qf-more">
-                    <summary>Anything else?</summary>
+                <p class="ptk-qf-similar" id="ptk-qf-similar" hidden></p>
 
-                    <div class="ptk-field-group">
-                        <label class="ptk-field-label">Would a picture help?</label>
-                        <div class="ptk-image-upload" id="ptk-featured-image-wrap">
-                            <input type="hidden" name="ptk_featured_image" id="ptk-featured-image-id" value="">
-                            <div class="ptk-image-preview" id="ptk-featured-image-preview"></div>
-                            <button type="button" class="button ptk-upload-btn" data-target="ptk-featured-image">
-                                <span class="dashicons dashicons-format-image"></span> Choose Image
-                            </button>
-                            <button type="button" class="button ptk-remove-image ptk-hidden" data-target="ptk-featured-image">Remove</button>
-                        </div>
-                    </div>
-
-                    <div class="ptk-field-group">
-                        <label for="ptk-tags" class="ptk-field-label">What words might someone search for?</label>
-                        <input type="text" id="ptk-tags" name="ptk_tags" class="ptk-field-input"
-                               placeholder="e.g., bake sale, fundraiser, spring (comma-separated)">
-                    </div>
-
-                    <div class="ptk-field-group">
-                        <label for="ptk-excerpt" class="ptk-field-label">If someone reads one line, what should it say?</label>
-                        <textarea id="ptk-excerpt" name="ptk_excerpt" class="ptk-field-textarea" rows="2"
-                                  placeholder="e.g., A quick way to set up the bake sale tables and signage."></textarea>
-                    </div>
-
-                    <div class="ptk-repeater" id="ptk-links-repeater" data-min="0">
-                        <!-- Link items added by JS -->
-                    </div>
-                    <button type="button" class="button ptk-add-link-item" data-repeater="ptk-links-repeater">
-                        <span class="dashicons dashicons-plus-alt2"></span> Add Link
-                    </button>
-                </details>
-
-                <!-- 6. Submit -->
-                <div class="ptk-wizard-submit-area">
-                    <div class="ptk-submit-options">
-                        <label class="ptk-field-label">Save as:</label>
-                        <label class="ptk-radio-label">
-                            <input type="radio" name="ptk_status" value="draft" checked> <?php echo PTK_Wizard_Copy::meta_text( true, 'save_draft', 'Draft' ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed, pre-escaped strings from PTK_Wizard_Copy. ?>
-                        </label>
-                        <label class="ptk-radio-label">
-                            <input type="radio" name="ptk_status" value="publish"> <?php echo PTK_Wizard_Copy::meta_text( true, 'save_publish', 'Publish now' ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed, pre-escaped strings from PTK_Wizard_Copy. ?>
-                        </label>
-                    </div>
-                    <button type="submit" class="button button-primary button-hero" id="ptk-wizard-submit-btn">
-                        <span class="dashicons dashicons-saved"></span> Create Entry
-                    </button>
-                    <p class="ptk-submit-note">You can always edit the entry later in WordPress if needed.</p>
+                <!-- Submit -->
+                <div class="ptk-qf-actions">
+                    <button type="submit" name="ptk_status" value="publish" id="ptk-qf-submit-publish" class="ptk-btn ptk-btn-primary">Put it on the Hub</button>
+                    <button type="submit" name="ptk_status" value="draft" id="ptk-qf-submit-draft" class="ptk-btn ptk-qf-btn-quiet">Keep it to myself for now</button>
+                    <p class="ptk-qf-reassure">Nobody sees it until you do.</p>
                 </div>
             </form>
         </div>
@@ -1540,6 +1504,121 @@ class PTK_Content_Wizard {
                     <button type="button" class="button" id="ptk-link-popup-cancel">Cancel</button>
                 </div>
             </div>
+        </div>
+        <?php
+    }
+
+    /**
+     * 2026-09-18 spec "you write the answer itself", §3: the read-only
+     * confirmation for a fresh question-first save -- the same card,
+     * stamped SENT / NOT SENT YET, with the message, the quiet type line
+     * and the next steps. Never shown for an edit (editing keeps the full
+     * old form and its own confirmation) -- render_wizard() only calls
+     * this when the ptk_qf redirect flag is set (see handle_submission()).
+     *
+     * Pulls everything back through get_edit_data()/parse_content_for_edit()
+     * -- the exact same reader the old edit screen already relies on to
+     * repopulate its fields -- rather than trusting $_POST (gone after the
+     * redirect) or re-deriving anything new.
+     *
+     * @param int    $post_id
+     * @param string $view_link
+     */
+    private static function render_question_first_confirmation( $post_id, $view_link ) {
+        $data     = self::get_edit_data( $post_id );
+        $category = isset( $data['category'] ) ? $data['category'] : '';
+        $fields   = isset( $data['fields'] ) ? $data['fields'] : array();
+        $title    = isset( $data['title'] ) ? $data['title'] : '';
+
+        $answer_field_for_category = array(
+            'how-to-guide'   => 'intro',
+            'event-playbook' => 'overview',
+            'faq'            => 'short_answer',
+            'resource'       => 'description',
+            'glossary'       => 'definition',
+            'checklist'      => 'intro',
+            'policy'         => 'summary',
+        );
+        $answer = '';
+        if ( isset( $answer_field_for_category[ $category ] ) && ! empty( $fields[ $answer_field_for_category[ $category ] ] ) ) {
+            $answer = $fields[ $answer_field_for_category[ $category ] ];
+        }
+
+        $steps = array();
+        if ( 'how-to-guide' === $category && ! empty( $fields['steps'] ) ) {
+            $steps = $fields['steps'];
+        } elseif ( 'checklist' === $category && ! empty( $fields['items'] ) ) {
+            $steps = $fields['items'];
+        } elseif ( 'event-playbook' === $category && ! empty( $fields['timeline'] ) ) {
+            foreach ( $fields['timeline'] as $t ) {
+                $steps[] = isset( $t['what'] ) ? $t['what'] : '';
+            }
+        }
+
+        $date = ( 'event-playbook' === $category && ! empty( $fields['date'] ) ) ? $fields['date'] : '';
+
+        $link = array( 'text' => '', 'url' => '' );
+        if ( 'resource' === $category && ! empty( $fields['url'] ) ) {
+            $link = array( 'text' => 'More information', 'url' => $fields['url'] );
+        } elseif ( ! empty( $fields['links'] ) ) {
+            $link = $fields['links'][0];
+        }
+
+        $status     = get_post_status( $post_id );
+        $notice_key = ( 'draft' === $status ) ? 'draft' : 'created';
+        $stamp      = PTK_Wizard_Copy::notice_stamp( true, $notice_key );
+        $message    = PTK_Wizard_Copy::notice_text( true, $notice_key, '' );
+        $type_names = PTK_Entry_Type::names();
+        $type_name  = isset( $type_names[ $category ] ) ? $type_names[ $category ] : $category;
+        $type_why   = PTK_Entry_Type::explain( $category );
+        ?>
+        <div class="wrap ptk-wizard-wrap ptk-qf-wrap">
+            <a class="ptk-qf-back" href="<?php echo esc_url( self::url() ); ?>">&larr; Back to the Hub</a>
+
+            <div class="ptk-qf-card ptk-qf-card--done">
+                <?php if ( $stamp ) : ?>
+                    <div class="ptk-qf-stamp-row"><?php echo PTK_Hub_UI::stamp( $stamp[0], $stamp[1] ); // phpcs:ignore WordPress.Security.EscapeOutput -- pre-escaped by PTK_Hub_UI::stamp(). ?></div>
+                <?php endif; ?>
+
+                <h2 class="ptk-qf-question ptk-qf-readonly"><?php echo esc_html( $title ); ?></h2>
+                <div class="ptk-qf-answer ptk-qf-readonly"><?php echo wp_kses_post( wpautop( esc_html( $answer ) ) ); ?></div>
+
+                <?php if ( ! empty( $steps ) ) : ?>
+                <ol class="ptk-qf-block-steps ptk-qf-readonly">
+                    <?php foreach ( $steps as $step_text ) :
+                        if ( '' === trim( (string) $step_text ) ) {
+                            continue;
+                        }
+                        ?>
+                        <li><?php echo esc_html( $step_text ); ?></li>
+                    <?php endforeach; ?>
+                </ol>
+                <?php endif; ?>
+
+                <?php if ( '' !== $date ) : ?>
+                <p class="ptk-qf-block-date ptk-qf-readonly"><span class="dashicons dashicons-calendar-alt"></span> <?php echo esc_html( date_i18n( 'l, F j, Y', strtotime( $date ) ) ); ?></p>
+                <?php endif; ?>
+
+                <?php if ( ! empty( $link['url'] ) ) : ?>
+                <p class="ptk-qf-block-link ptk-qf-readonly"><span class="dashicons dashicons-media-default"></span> <a href="<?php echo esc_url( $link['url'] ); ?>" target="_blank" rel="noopener"><?php echo esc_html( '' !== $link['text'] ? $link['text'] : $link['url'] ); ?></a></p>
+                <?php endif; ?>
+
+                <?php if ( ! empty( $data['featured_url'] ) ) : ?>
+                <div class="ptk-qf-block-image ptk-qf-readonly"><img src="<?php echo esc_url( $data['featured_url'] ); ?>" alt=""></div>
+                <?php endif; ?>
+            </div>
+
+            <p class="ptk-qf-done-message">
+                <?php echo esc_html( $message ); ?>
+                <?php if ( 'draft' !== $notice_key ) : ?><a href="<?php echo esc_url( $view_link ); ?>"><?php echo esc_html( $view_link ); ?></a><?php endif; ?>
+            </p>
+
+            <p class="ptk-qf-type-line">
+                Filed as a <strong><?php echo esc_html( $type_name ); ?></strong>, <?php echo esc_html( $type_why ); ?>.
+                <a class="ptk-qf-linklike" href="<?php echo esc_url( self::url() . '&ptk_edit_id=' . $post_id ); ?>">Change that</a>
+            </p>
+
+            <?php self::render_next_steps( true, $notice_key, $post_id, $view_link ); ?>
         </div>
         <?php
     }
@@ -1832,6 +1911,18 @@ class PTK_Content_Wizard {
         );
         if ( $is_update ) {
             $redirect_args['ptk_updated'] = '1';
+        }
+        // 4.17.0: mark a fresh save from the question-first "write the
+        // answer" screen so render_wizard() can show its own read-only
+        // confirmation card instead of the old success screen's button row
+        // (which names "WordPress" and offers an "Edit in Wizard" link that
+        // doesn't apply here). ptk_answer_text only ever exists on that
+        // screen's markup (see render_question_first_wizard()), and never
+        // on an edit (editing always keeps the full old form), so this is
+        // additive -- it changes nothing for the old category-first screen
+        // or for edits, both of which never set it.
+        if ( isset( $_POST['ptk_answer_text'] ) && ! $is_update ) {
+            $redirect_args['ptk_qf'] = '1';
         }
 
         wp_safe_redirect( add_query_arg( $redirect_args, self::url() ) );
