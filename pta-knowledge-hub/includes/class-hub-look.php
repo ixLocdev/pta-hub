@@ -26,6 +26,7 @@ class PTK_Hub_Look {
         'ptk-welcome',
         'ptk-newsletter-builder',
         'ptk-share-settings',
+        'ptk-content-wizard',
     );
 
     /** Post types the Hub owns. */

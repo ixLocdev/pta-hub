@@ -785,3 +785,195 @@
     position: relative;
     top: 1px;
 }
+
+/* ── Phase 4, task 2: the Hub's look, folded steps ──────────────────────
+   Everything below is scoped under body.ptk-hub-look, so it can only ever
+   run when the new look is on -- with it off this file contributes nothing
+   new and the wizard is exactly what it was. No one-sided borders; colors,
+   radii and type come from the tokens declared on body.ptk-hub-look in
+   hub.css. Re-skins the wizard's existing .ptk-wizard-* classes in place,
+   the same technique used for the Newsletter Builder (see
+   newsletter-builder.css's own "Phase 3, task 4" section) -- no markup is
+   restructured, so this file never needs to know whether a given element
+   exists only in one look. */
+
+body.ptk-hub-look .ptk-wizard-wrap {
+    max-width: 880px;
+    font-family: var(--ptk-font-sans);
+    color: var(--ptk-text);
+}
+
+body.ptk-hub-look .ptk-wizard-header {
+    font-family: var(--ptk-font-serif);
+    font-weight: 600;
+    font-size: 28px;
+    color: var(--ptk-text);
+}
+
+body.ptk-hub-look .ptk-wizard-intro,
+body.ptk-hub-look .ptk-wizard-meta,
+body.ptk-hub-look .ptk-field-hint,
+body.ptk-hub-look .ptk-submit-note {
+    color: var(--ptk-text-dim);
+}
+
+body.ptk-hub-look .ptk-required-legend {
+    color: var(--ptk-text-dim);
+}
+
+body.ptk-hub-look .ptk-required {
+    color: var(--ptk-error);
+}
+
+/* Steps as cards */
+body.ptk-hub-look .ptk-wizard-section {
+    background: var(--ptk-surface);
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-card);
+    padding: var(--ptk-space-4);
+}
+
+body.ptk-hub-look .ptk-wizard-section-title {
+    font: 400 20px/1.35 var(--ptk-font-serif);
+    color: var(--ptk-text);
+}
+
+/* "Question N of 4" replaces the plain numbered badge. */
+body.ptk-hub-look .ptk-step-number {
+    display: none;
+}
+
+body.ptk-hub-look .ptk-wizard-question-count {
+    display: block;
+    font: 700 12.5px/1 var(--ptk-font-sans);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--ptk-text-dim);
+    margin-bottom: 4px;
+}
+
+/* Fields, in the Hub's voice */
+body.ptk-hub-look .ptk-field-label {
+    font: 700 14px/1.4 var(--ptk-font-sans);
+    color: var(--ptk-text);
+}
+
+body.ptk-hub-look .ptk-field-input,
+body.ptk-hub-look .ptk-field-textarea,
+body.ptk-hub-look .ptk-field-select {
+    font-family: var(--ptk-font-sans);
+    color: var(--ptk-text);
+    background: var(--ptk-surface);
+    border-color: var(--ptk-line);
+    border-radius: var(--ptk-radius-field);
+}
+
+body.ptk-hub-look .ptk-field-input:focus,
+body.ptk-hub-look .ptk-field-textarea:focus,
+body.ptk-hub-look .ptk-field-select:focus {
+    border-color: var(--ptk-primary);
+    outline-color: var(--ptk-primary);
+}
+
+/* Category cards */
+body.ptk-hub-look .ptk-category-card {
+    border-radius: var(--ptk-radius-card);
+    border-color: var(--ptk-line);
+    background: var(--ptk-surface);
+    min-height: 44px;
+}
+
+body.ptk-hub-look .ptk-category-card.ptk-card-selected {
+    border-color: var(--ptk-primary);
+    background: var(--ptk-primary-soft);
+}
+
+body.ptk-hub-look .ptk-card-name {
+    font: 700 15px/1.4 var(--ptk-font-sans);
+    color: var(--ptk-text);
+}
+
+body.ptk-hub-look .ptk-card-desc {
+    color: var(--ptk-text-dim);
+}
+
+/* Buttons -- every button on this screen, at a real 44px tap target. */
+body.ptk-hub-look .button,
+body.ptk-hub-look .ptk-add-step,
+body.ptk-hub-look .ptk-add-timeline,
+body.ptk-hub-look .ptk-add-checklist-item,
+body.ptk-hub-look .ptk-add-link-item {
+    min-height: 44px;
+    border-radius: var(--ptk-radius-field);
+    font-family: var(--ptk-font-sans);
+}
+
+body.ptk-hub-look .button-primary,
+body.ptk-hub-look #ptk-wizard-submit-btn {
+    background: var(--ptk-primary);
+    border-color: var(--ptk-primary);
+}
+
+/* ── Folding: one step open, the rest a one-line summary ──────────────
+   .ptk-wizard-fold is added server-side (task 2's fold_class()) to each of
+   the wizard's four steps; content-wizard.js toggles .is-collapsed on it
+   and fills in .ptk-wizard-fold-meta's text once a step is left. Collapsing
+   hides every direct child except the heading and the meta line -- no
+   markup is restructured to do this, so the same DOM works whether or not
+   the section ever collapses. */
+body.ptk-hub-look .ptk-wizard-fold > .ptk-wizard-section-title {
+    cursor: pointer;
+    margin-bottom: var(--ptk-space-2);
+}
+
+body.ptk-hub-look .ptk-wizard-fold-meta {
+    display: none;
+    font-size: 14px;
+    color: var(--ptk-text-dim);
+    margin: -12px 0 var(--ptk-space-2);
+}
+
+body.ptk-hub-look .ptk-wizard-fold.is-collapsed {
+    padding-bottom: var(--ptk-space-2);
+}
+
+body.ptk-hub-look .ptk-wizard-fold.is-collapsed > .ptk-wizard-section-title {
+    margin-bottom: 0;
+}
+
+body.ptk-hub-look .ptk-wizard-fold.is-collapsed > .ptk-wizard-fold-meta {
+    display: block;
+}
+
+body.ptk-hub-look .ptk-wizard-fold.is-collapsed > *:not(.ptk-wizard-section-title):not(.ptk-wizard-fold-meta) {
+    /* !important: a handful of the wizard's own buttons (e.g.
+       .ptk-add-link-item) already set their own display with !important,
+       which would otherwise win over this collapse regardless of
+       selector specificity. */
+    display: none !important;
+}
+
+/* 782px is WordPress admin's own mobile breakpoint: one column, no
+   horizontal scroll, tap targets stay >= 44px (already true above). */
+@media (max-width: 782px) {
+    body.ptk-hub-look .ptk-wizard-wrap {
+        padding: 0 var(--ptk-space-2);
+    }
+
+    body.ptk-hub-look .ptk-wizard-header {
+        font-size: 24px;
+    }
+
+    body.ptk-hub-look .ptk-category-cards {
+        grid-template-columns: 1fr;
+    }
+
+    body.ptk-hub-look .ptk-field-row {
+        flex-direction: column;
+    }
+
+    body.ptk-hub-look .ptk-field-half,
+    body.ptk-hub-look .ptk-field-third {
+        width: 100%;
+    }
+}

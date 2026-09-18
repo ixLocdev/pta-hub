@@ -64,6 +64,7 @@
         bindLinkPopup();
         initLinkButtons();
         initAutosave();
+        bindFolding();
 
         // If in edit mode, pre-fill the form.
         if (typeof ptkWizardData !== 'undefined' && ptkWizardData.editMode && ptkWizardData.editData) {
@@ -131,7 +132,145 @@
                     }, 200);
                 }
             }
+
+            // Phase 4, task 2: category and basics/fields just changed
+            // visibility -- recompute which step is "current" right away
+            // rather than waiting for the next scroll.
+            updateFolds();
         });
+    }
+
+    /* ──────────────────────────────────────────
+     * Phase 4, task 2: folding steps in the Hub's look
+     *
+     * PTK_Content_Wizard::fold_class() adds .ptk-wizard-fold to each of the
+     * wizard's four steps (server-side, new look only). Here we toggle
+     * .is-collapsed on every one of them except the "current" step -- the
+     * one nearest the top of the viewport -- and fill in its one-line
+     * summary. This never touches which step is actually visible
+     * (.ptk-hidden, controlled by bindCategorySelection() above,
+     * unchanged); it only decides how much of an already-visible step
+     * shows. Runs only when body carries .ptk-hub-look -- with the new
+     * look off these functions are still defined but every entry point
+     * below returns immediately, so nothing about the legacy reveal-all
+     * behavior changes.
+     * ────────────────────────────────────────── */
+
+    function hubLookActive() {
+        return document.body.className.indexOf('ptk-hub-look') !== -1;
+    }
+
+    /**
+     * The one-line summary a collapsed step shows. Purely a readout of the
+     * form's current values -- the wizard never posts back between steps,
+     * so this has to be computed client-side from whatever the volunteer
+     * has typed so far.
+     */
+    function foldSummaryFor($fold) {
+        var id = $fold.attr('id');
+
+        if (id === 'ptk-step-category') {
+            var $name = $('.ptk-category-card.ptk-card-selected .ptk-card-name');
+            return $name.length ? 'Category: ' + $.trim($name.text()) : 'Nothing yet';
+        }
+        if (id === 'ptk-step-basics') {
+            var title = $.trim($('#ptk-title').val() || '');
+            return title ? 'Title: ' + title : 'Nothing yet';
+        }
+        if (id === 'ptk-step-links') {
+            var linkCount = $fold.find('.ptk-repeater-item').length;
+            return linkCount > 0 ? (linkCount === 1 ? '1 link added' : linkCount + ' links added') : 'Nothing yet';
+        }
+
+        // The category's own fields step (one of the seven ptk-form-*
+        // sections): count how many of its own fields have something in
+        // them. Generic on purpose -- it works the same for every category
+        // without a per-category rule to keep in sync.
+        var filled = 0;
+        $fold.find('input[type="text"], input[type="url"], input[type="date"], textarea, select').each(function () {
+            var v = $(this).val();
+            if (v && $.trim(String(v)) !== '') {
+                filled++;
+            }
+        });
+        return filled > 0 ? (filled === 1 ? '1 field filled in' : filled + ' fields filled in') : 'Nothing yet';
+    }
+
+    /**
+     * Recompute which visible fold is "current" (open) and collapse the
+     * rest, with a fresh summary on each one that just closed.
+     */
+    function updateFolds() {
+        if (!hubLookActive()) {
+            return;
+        }
+
+        var $folds = $('.ptk-wizard-fold').filter(function () {
+            return !$(this).hasClass('ptk-hidden');
+        });
+        if ($folds.length === 0) {
+            return;
+        }
+
+        // The step nearest the top of the viewport (within a small
+        // threshold) is the one the volunteer is looking at right now;
+        // everything above it folds shut.
+        var threshold = 140;
+        var scrollTop = $(window).scrollTop();
+        var $current = $folds.first();
+        $folds.each(function () {
+            var top = $(this).offset().top - scrollTop;
+            if (top <= threshold) {
+                $current = $(this);
+            }
+        });
+
+        $folds.each(function () {
+            var $f = $(this);
+            var isCurrent = $f.is($current);
+            $f.toggleClass('is-collapsed', !isCurrent);
+            if (!isCurrent) {
+                $f.find('.ptk-wizard-fold-meta').first().text(foldSummaryFor($f));
+            }
+        });
+    }
+
+    var foldScrollTimer = null;
+
+    function bindFolding() {
+        if (!hubLookActive()) {
+            return;
+        }
+
+        $(window).on('scroll', function () {
+            if (foldScrollTimer) {
+                return;
+            }
+            foldScrollTimer = setTimeout(function () {
+                foldScrollTimer = null;
+                updateFolds();
+            }, 100);
+        });
+
+        // A collapsed step's heading is clickable: scroll it back into
+        // view, where the scroll handler above reopens it.
+        $(document).on('click', '.ptk-wizard-fold.is-collapsed > .ptk-wizard-section-title', function () {
+            var top = $(this).closest('.ptk-wizard-fold').offset().top - 90;
+            if (REDUCE_MOTION) {
+                window.scrollTo(0, top);
+            } else {
+                $('html, body').animate({ scrollTop: top }, 200);
+            }
+        });
+
+        // Re-check on every keystroke in the title field and blur of any
+        // wizard field, so a folded step's summary stays current even
+        // without a scroll.
+        $(document).on('blur', '.ptk-wizard-fold input, .ptk-wizard-fold textarea, .ptk-wizard-fold select', function () {
+            updateFolds();
+        });
+
+        updateFolds();
     }
 
     /* ──────────────────────────────────────────

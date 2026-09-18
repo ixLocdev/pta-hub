@@ -536,6 +536,53 @@ class PTK_Content_Wizard {
     }
 
     /**
+     * Phase 4, task 2: the class token that turns one of the wizard's four
+     * top-level steps into a foldable section, new look only. Appended
+     * straight into an existing class="..." attribute, so with the new
+     * look off this returns '' and the markup is untouched.
+     *
+     * @param bool $on PTK_Hub_Look::on().
+     * @return string
+     */
+    private static function fold_class( $on ) {
+        return $on ? ' ptk-wizard-fold' : '';
+    }
+
+    /**
+     * Phase 4, task 2: the one-line summary span shown inside a folded
+     * step's heading once it's collapsed -- filled in and shown/hidden by
+     * content-wizard.js, never by PHP (the wizard never posts back between
+     * steps, so PHP only ever knows the empty, first-load state). Renders
+     * nothing at all when the new look is off.
+     *
+     * @param bool $on PTK_Hub_Look::on().
+     * @return string
+     */
+    private static function fold_meta_span( $on ) {
+        if ( ! $on ) {
+            return '';
+        }
+        return '<span class="ptk-wizard-fold-meta"></span>';
+    }
+
+    /**
+     * Phase 4, task 2: "Question N of 4", new look only -- replaces the
+     * plain numbered badge's meaning without touching the badge markup
+     * itself (hub.css hides the badge and shows this instead once the new
+     * look is active). Renders nothing at all when the new look is off.
+     *
+     * @param bool $on    PTK_Hub_Look::on().
+     * @param int  $step  1-4.
+     * @return string
+     */
+    private static function question_count( $on, $step ) {
+        if ( ! $on ) {
+            return '';
+        }
+        return '<span class="ptk-wizard-question-count">Question ' . (int) $step . ' of 4</span>';
+    }
+
+    /**
      * Render the wizard page.
      */
     public static function render_wizard() {
@@ -625,11 +672,11 @@ class PTK_Content_Wizard {
                 <?php endif; ?>
 
                 <!-- Step 1: Choose Category -->
-                <div class="ptk-wizard-section ptk-wizard-step" id="ptk-step-category">
+                <div class="ptk-wizard-section ptk-wizard-step<?php echo self::fold_class( $on ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string. ?>" id="ptk-step-category">
                     <h2 class="ptk-wizard-section-title">
-                        <span class="ptk-step-number">1</span>
+                        <span class="ptk-step-number">1</span><?php echo self::question_count( $on, 1 ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string; trailing "\n" replaces the newline the closing tag eats. ?>
                         <?php echo PTK_Wizard_Copy::meta_text( $on, 'category', 'What type of entry are you creating?' ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed, pre-escaped strings from PTK_Wizard_Copy; the trailing "\n" replaces the newline PHP's closing tag eats, so the off-look output keeps its original line break. ?>
-                    </h2>
+                    </h2><?php echo self::fold_meta_span( $on ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string; trailing "\n" replaces the newline the closing tag eats. ?>
                     <div class="ptk-category-cards">
                         <?php foreach ( $categories as $cat ) :
                             $icon = self::get_category_icon( $cat->slug );
@@ -653,11 +700,11 @@ class PTK_Content_Wizard {
                 </div>
 
                 <!-- Step 2: Basic Info (always shown after category) -->
-                <div class="ptk-wizard-section ptk-wizard-step ptk-hidden" id="ptk-step-basics">
+                <div class="ptk-wizard-section ptk-wizard-step ptk-hidden<?php echo self::fold_class( $on ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string. ?>" id="ptk-step-basics">
                     <h2 class="ptk-wizard-section-title">
-                        <span class="ptk-step-number">2</span>
+                        <span class="ptk-step-number">2</span><?php echo self::question_count( $on, 2 ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string; trailing "\n" replaces the newline the closing tag eats. ?>
                         Basic Information
-                    </h2>
+                    </h2><?php echo self::fold_meta_span( $on ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string; trailing "\n" replaces the newline the closing tag eats. ?>
 
                     <div class="ptk-field-group">
                         <label for="ptk-title" class="ptk-field-label"><?php echo PTK_Wizard_Copy::label( $on, 'title', 'Title' ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed, pre-escaped strings from PTK_Wizard_Copy. ?> <span class="ptk-required">*</span></label>
@@ -697,11 +744,11 @@ class PTK_Content_Wizard {
                 <!-- Category-Specific Forms -->
 
                 <!-- HOW-TO GUIDE -->
-                <div class="ptk-wizard-section ptk-wizard-step ptk-hidden ptk-category-form" id="ptk-form-how-to-guide">
+                <div class="ptk-wizard-section ptk-wizard-step ptk-hidden ptk-category-form<?php echo self::fold_class( $on ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string. ?>" id="ptk-form-how-to-guide">
                     <h2 class="ptk-wizard-section-title">
-                        <span class="ptk-step-number">3</span>
+                        <span class="ptk-step-number">3</span><?php echo self::question_count( $on, 3 ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string; trailing "\n" replaces the newline the closing tag eats. ?>
                         Build Your How-To Guide
-                    </h2>
+                    </h2><?php echo self::fold_meta_span( $on ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string; trailing "\n" replaces the newline the closing tag eats. ?>
 
                     <div class="ptk-field-group">
                         <label for="ptk-howto-intro" class="ptk-field-label"><?php echo PTK_Wizard_Copy::label( $on, 'introduction', 'Introduction' ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed, pre-escaped strings from PTK_Wizard_Copy. ?></label>
@@ -760,11 +807,11 @@ class PTK_Content_Wizard {
                 </div>
 
                 <!-- EVENT PLAYBOOK -->
-                <div class="ptk-wizard-section ptk-wizard-step ptk-hidden ptk-category-form" id="ptk-form-event-playbook">
+                <div class="ptk-wizard-section ptk-wizard-step ptk-hidden ptk-category-form<?php echo self::fold_class( $on ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string. ?>" id="ptk-form-event-playbook">
                     <h2 class="ptk-wizard-section-title">
-                        <span class="ptk-step-number">3</span>
+                        <span class="ptk-step-number">3</span><?php echo self::question_count( $on, 3 ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string; trailing "\n" replaces the newline the closing tag eats. ?>
                         Build Your Event Playbook
-                    </h2>
+                    </h2><?php echo self::fold_meta_span( $on ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string; trailing "\n" replaces the newline the closing tag eats. ?>
 
                     <div class="ptk-field-group">
                         <label for="ptk-event-overview" class="ptk-field-label">Event Overview</label>
@@ -821,11 +868,11 @@ class PTK_Content_Wizard {
                 </div>
 
                 <!-- FAQ -->
-                <div class="ptk-wizard-section ptk-wizard-step ptk-hidden ptk-category-form" id="ptk-form-faq">
+                <div class="ptk-wizard-section ptk-wizard-step ptk-hidden ptk-category-form<?php echo self::fold_class( $on ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string. ?>" id="ptk-form-faq">
                     <h2 class="ptk-wizard-section-title">
-                        <span class="ptk-step-number">3</span>
+                        <span class="ptk-step-number">3</span><?php echo self::question_count( $on, 3 ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string; trailing "\n" replaces the newline the closing tag eats. ?>
                         Write Your FAQ Entry
-                    </h2>
+                    </h2><?php echo self::fold_meta_span( $on ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string; trailing "\n" replaces the newline the closing tag eats. ?>
 
                     <div class="ptk-field-group">
                         <label for="ptk-faq-short-answer" class="ptk-field-label">Quick Answer <span class="ptk-required">*</span></label>
@@ -853,11 +900,11 @@ class PTK_Content_Wizard {
                 </div>
 
                 <!-- RESOURCE -->
-                <div class="ptk-wizard-section ptk-wizard-step ptk-hidden ptk-category-form" id="ptk-form-resource">
+                <div class="ptk-wizard-section ptk-wizard-step ptk-hidden ptk-category-form<?php echo self::fold_class( $on ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string. ?>" id="ptk-form-resource">
                     <h2 class="ptk-wizard-section-title">
-                        <span class="ptk-step-number">3</span>
+                        <span class="ptk-step-number">3</span><?php echo self::question_count( $on, 3 ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string; trailing "\n" replaces the newline the closing tag eats. ?>
                         Add Your Resource
-                    </h2>
+                    </h2><?php echo self::fold_meta_span( $on ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string; trailing "\n" replaces the newline the closing tag eats. ?>
 
                     <div class="ptk-field-group">
                         <label for="ptk-resource-desc" class="ptk-field-label">Description <span class="ptk-required">*</span></label>
@@ -913,11 +960,11 @@ class PTK_Content_Wizard {
                 </div>
 
                 <!-- GLOSSARY TERM -->
-                <div class="ptk-wizard-section ptk-wizard-step ptk-hidden ptk-category-form" id="ptk-form-glossary">
+                <div class="ptk-wizard-section ptk-wizard-step ptk-hidden ptk-category-form<?php echo self::fold_class( $on ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string. ?>" id="ptk-form-glossary">
                     <h2 class="ptk-wizard-section-title">
-                        <span class="ptk-step-number">3</span>
+                        <span class="ptk-step-number">3</span><?php echo self::question_count( $on, 3 ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string; trailing "\n" replaces the newline the closing tag eats. ?>
                         Define This Term
-                    </h2>
+                    </h2><?php echo self::fold_meta_span( $on ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string; trailing "\n" replaces the newline the closing tag eats. ?>
 
                     <div class="ptk-field-group">
                         <label for="ptk-glossary-definition" class="ptk-field-label">Plain-English Definition <span class="ptk-required">*</span></label>
@@ -947,11 +994,11 @@ class PTK_Content_Wizard {
                 </div>
 
                 <!-- CHECKLIST -->
-                <div class="ptk-wizard-section ptk-wizard-step ptk-hidden ptk-category-form" id="ptk-form-checklist">
+                <div class="ptk-wizard-section ptk-wizard-step ptk-hidden ptk-category-form<?php echo self::fold_class( $on ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string. ?>" id="ptk-form-checklist">
                     <h2 class="ptk-wizard-section-title">
-                        <span class="ptk-step-number">3</span>
+                        <span class="ptk-step-number">3</span><?php echo self::question_count( $on, 3 ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string; trailing "\n" replaces the newline the closing tag eats. ?>
                         Build Your Checklist
-                    </h2>
+                    </h2><?php echo self::fold_meta_span( $on ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string; trailing "\n" replaces the newline the closing tag eats. ?>
 
                     <div class="ptk-field-group">
                         <label for="ptk-checklist-intro" class="ptk-field-label"><?php echo PTK_Wizard_Copy::label( $on, 'introduction', 'Introduction' ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed, pre-escaped strings from PTK_Wizard_Copy. ?></label>
@@ -984,11 +1031,11 @@ class PTK_Content_Wizard {
                 </div>
 
                 <!-- POLICY / RULES -->
-                <div class="ptk-wizard-section ptk-wizard-step ptk-hidden ptk-category-form" id="ptk-form-policy">
+                <div class="ptk-wizard-section ptk-wizard-step ptk-hidden ptk-category-form<?php echo self::fold_class( $on ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string. ?>" id="ptk-form-policy">
                     <h2 class="ptk-wizard-section-title">
-                        <span class="ptk-step-number">3</span>
+                        <span class="ptk-step-number">3</span><?php echo self::question_count( $on, 3 ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string; trailing "\n" replaces the newline the closing tag eats. ?>
                         Document This Policy or Rule
-                    </h2>
+                    </h2><?php echo self::fold_meta_span( $on ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string; trailing "\n" replaces the newline the closing tag eats. ?>
 
                     <div class="ptk-field-group">
                         <label for="ptk-policy-summary" class="ptk-field-label">Summary <span class="ptk-required">*</span></label>
@@ -1022,11 +1069,11 @@ class PTK_Content_Wizard {
                 </div>
 
                 <!-- LINKS & RESOURCES (common to all types, shown when category selected) -->
-                <div class="ptk-wizard-section ptk-wizard-step ptk-hidden" id="ptk-step-links">
+                <div class="ptk-wizard-section ptk-wizard-step ptk-hidden<?php echo self::fold_class( $on ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string. ?>" id="ptk-step-links">
                     <h2 class="ptk-wizard-section-title">
-                        <span class="ptk-step-number">4</span>
+                        <span class="ptk-step-number">4</span><?php echo self::question_count( $on, 4 ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string; trailing "\n" replaces the newline the closing tag eats. ?>
                         Links &amp; Resources
-                    </h2>
+                    </h2><?php echo self::fold_meta_span( $on ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string; trailing "\n" replaces the newline the closing tag eats. ?>
                     <p class="ptk-field-hint" style="margin-bottom:16px;">Add any helpful links related to this entry. These will appear at the bottom.</p>
 
                     <div class="ptk-repeater" id="ptk-links-repeater" data-min="0">

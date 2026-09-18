@@ -20,7 +20,7 @@ ptk_test_ok( false === $t::is_hub_screen( 'plugins.php', '' ), 'core screens are
 ptk_test_ok( false === $t::is_hub_screen( 'toplevel_page_something-else', '' ), "another plugin's page is not" );
 // Every submenu page under the PTA Hub menu reports post_type = pta_knowledge;
 // only pages listed in PAGES (and the real list/editor screens) count.
-ptk_test_ok( false === $t::is_hub_screen( 'pta_knowledge_page_ptk-content-wizard', 'pta_knowledge' ), 'the content wizard is not a Hub screen yet, even under the Hub menu' );
+ptk_test_ok( true === $t::is_hub_screen( 'pta_knowledge_page_ptk-content-wizard', 'pta_knowledge' ), 'the content wizard is a Hub screen (Phase 4)' );
 ptk_test_ok( false === $t::is_hub_screen( 'pta_knowledge_page_ptk-vendor-approvals', 'pta_knowledge' ), 'vendor approvals is not a Hub screen yet' );
 ptk_test_ok( true === $t::is_hub_screen( 'pta_knowledge_page_ptk-welcome', 'pta_knowledge' ), 'Start Here is, under the Hub menu' );
 ptk_test_ok( true === $t::is_hub_screen( 'edit-pta_newsletter', 'pta_newsletter' ), 'the newsletter list screen id is a Hub screen' );
