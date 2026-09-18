@@ -1525,3 +1525,13 @@ body.ptk-hub-look form#ptk-wizard-form.ptk-qf-form {
     width: 100%;
     float: none;
 }
+
+/* The one-sentence explanation above the card. Quiet: it is for the person
+   who wants to be told, not a heading competing with the question. */
+body.ptk-hub-look .ptk-qf-intro {
+    max-width: 620px;
+    margin: 0 auto var(--ptk-space-3);
+    font-size: 13.5px;
+    color: var(--ptk-text-dim);
+    text-wrap: pretty;
+}

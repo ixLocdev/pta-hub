@@ -1352,6 +1352,17 @@ class PTK_Content_Wizard {
             ? 'Which word should we explain?'
             : "What's the question families keep asking?";
 
+        // One plain sentence above the card. Most people work the screen out
+        // on their own; this is for the person who wants to be told.
+        $intro = $is_word
+            ? 'Explain a PTA word, so nobody has to guess. Write the word, then what it means.'
+            : 'Answer a question families keep asking you. It lives on the Hub so the next person can find it.';
+
+        $answer_label = $is_word ? 'What does it mean?' : "What's the answer?";
+        $answer_hint  = $is_word
+            ? "After School Enrichment \xe2\x80\x94 the PTA's after-school classes, on Tuesdays and Wednesdays."
+            : 'A sentence or two is plenty.';
+
         // Task 3: the starting guess, before the volunteer has typed
         // anything -- PTK_Entry_Type::guess() with only 'came_from' known
         // yet. content-wizard.js recomputes this live as the follow-ups
@@ -1366,6 +1377,8 @@ class PTK_Content_Wizard {
         ?>
         <div class="wrap ptk-wizard-wrap ptk-qf-wrap">
             <a class="ptk-qf-back" href="<?php echo esc_url( self::url() ); ?>">&larr; Back to the Hub</a>
+
+            <p class="ptk-qf-intro"><?php echo esc_html( $intro ); ?></p>
 
             <?php if ( self::$submission_error ) : ?>
                 <div class="notice notice-error inline" style="margin:16px 0;padding:12px 16px;">
@@ -1393,9 +1406,9 @@ class PTK_Content_Wizard {
 
                     <!-- 2. The answer -->
                     <div class="ptk-qf-field">
-                        <label for="ptk-answer" class="screen-reader-text">What's the answer?</label>
+                        <label for="ptk-answer" class="screen-reader-text"><?php echo esc_html( $answer_label ); ?></label>
                         <textarea id="ptk-answer" name="ptk_answer_text" class="ptk-qf-answer-input" rows="3"
-                                  placeholder="Write it the way you'd say it out loud."></textarea>
+                                  placeholder="<?php echo esc_attr( $answer_hint ); ?>"></textarea>
                     </div>
 
                     <!-- 3. Blocks the four chips add -- hidden until a chip
