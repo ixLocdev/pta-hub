@@ -219,10 +219,22 @@ class PTK_Content_Wizard {
             PTK_VERSION
         );
 
+        // Task 3: the quiet type line's live guess -- a plain JS port of
+        // PTK_Entry_Type (class-entry-type.php), no jQuery dependency, so
+        // content-wizard.js can call it as a dependency without ordering
+        // surprises.
+        wp_enqueue_script(
+            'ptk-entry-type',
+            PTK_PLUGIN_URL . 'assets/js/entry-type.js',
+            array(),
+            PTK_VERSION,
+            true
+        );
+
         wp_enqueue_script(
             'ptk-content-wizard',
             PTK_PLUGIN_URL . 'assets/js/content-wizard.js',
-            array( 'jquery', 'media-upload' ),
+            array( 'jquery', 'media-upload', 'ptk-entry-type' ),
             PTK_VERSION,
             true
         );
@@ -760,32 +772,22 @@ class PTK_Content_Wizard {
                 <?php endif; ?>
 
                 <!-- Step 1: Choose Category -->
-                <div class="ptk-wizard-section ptk-wizard-step<?php echo self::fold_class( $on ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string. ?>" id="ptk-step-category">
-                    <h2 class="ptk-wizard-section-title">
-                        <span class="ptk-step-number">1</span><?php echo self::question_count( $on, 1 ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string; trailing "\n" replaces the newline the closing tag eats. ?>
-                        <?php echo PTK_Wizard_Copy::meta_text( $on, 'category', 'What type of entry are you creating?' ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed, pre-escaped strings from PTK_Wizard_Copy; the trailing "\n" replaces the newline PHP's closing tag eats, so the off-look output keeps its original line break. ?>
-                    </h2><?php echo self::fold_meta_span( $on ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string; trailing "\n" replaces the newline the closing tag eats. ?>
-                    <div class="ptk-category-cards">
-                        <?php foreach ( $categories as $cat ) :
-                            $icon = self::get_category_icon( $cat->slug );
-                            $desc = self::get_category_description( $cat->slug );
-                        ?>
-                        <label class="ptk-category-card" data-category="<?php echo esc_attr( $cat->slug ); ?>">
-                            <input type="radio" name="ptk_category" value="<?php echo esc_attr( $cat->slug ); ?>" required>
-                            <span class="ptk-card-icon dashicons <?php echo esc_attr( $icon ); ?>"></span>
-                            <span class="ptk-card-name"><?php echo esc_html( $cat->name ); ?></span>
-                            <span class="ptk-card-desc"><?php echo esc_html( $desc ); ?></span>
-                        </label>
-                        <?php endforeach; ?>
-
-                        <!-- Custom / Traditional Editor option -->
-                        <a href="<?php echo esc_url( admin_url( 'post-new.php?post_type=pta_knowledge&ptk_classic=1' ) ); ?>" class="ptk-category-card ptk-card-custom">
-                            <span class="ptk-card-icon dashicons dashicons-edit-large"></span>
-                            <span class="ptk-card-name">Custom Entry</span>
-                            <span class="ptk-card-desc">Use the full WordPress editor for freeform content</span>
-                        </a>
-                    </div>
-                </div>
+                <div class="ptk-wizard-section ptk-wizard-step<?php echo self::fold_class( $on ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string. ?>" id="ptk-step-category"><?php
+                    // A plain if/else that always echoes the exact same
+                    // "\n                    " / "\n                " that
+                    // used to surround this step's inline markup, so
+                    // splitting it into two methods (to avoid PHP's
+                    // alternate if/endif syntax leaking stray whitespace
+                    // into the byte-for-byte-must-match look-off output)
+                    // changes nothing about what's actually printed.
+                    echo "\n                    ";
+                    if ( $on && $is_edit ) {
+                        self::render_step1_locked_type( $edit_data, $categories );
+                    } else {
+                        self::render_step1_category_cards( $on, $categories );
+                    }
+                    echo "\n                ";
+                    ?></div>
 
                 <!-- Step 2: Basic Info (always shown after category) -->
                 <div class="ptk-wizard-section ptk-wizard-step ptk-hidden<?php echo self::fold_class( $on ); // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string. ?>" id="ptk-step-basics">
@@ -1217,6 +1219,91 @@ class PTK_Content_Wizard {
     }
 
     /**
+     * Task 3: Step 1 for editing an existing entry with the new look on --
+     * the quiet type line, already locked (ptk_type_locked=1) and showing
+     * the entry's current category, never re-guessed (nothing on this path
+     * ever calls PTK_Entry_Type::guess()). "Change that" opens the same
+     * category cards the old screen always had, same radios/names, just
+     * folded under a <details> instead of shown flat -- so what gets
+     * submitted is identical to today's edit screen, only the presentation
+     * around the category choice changes.
+     *
+     * A plain if/else in render_wizard() calls either this method or
+     * render_step1_category_cards() and echoes nothing else itself,
+     * specifically to avoid PHP's alternate if/endif syntax leaking stray
+     * whitespace into the byte-for-byte-must-match look-off output --
+     * kept as separate methods rather than one with a branch inside it.
+     *
+     * @param array     $edit_data  From get_edit_data(); may be empty.
+     * @param WP_Term[] $categories
+     */
+    private static function render_step1_locked_type( $edit_data, $categories ) {
+        $edit_category = isset( $edit_data['category'] ) && $edit_data['category'] ? $edit_data['category'] : 'faq';
+        $type_names    = PTK_Entry_Type::names();
+        $type_name     = isset( $type_names[ $edit_category ] ) ? $type_names[ $edit_category ] : $edit_category;
+        ?>
+        <p class="ptk-qf-type-line" id="ptk-qf-type-line">
+            This is filed as a <strong id="ptk-qf-type-name"><?php echo esc_html( $type_name ); ?></strong>, <span id="ptk-qf-type-why"><?php echo esc_html( PTK_Entry_Type::explain( $edit_category ) ); ?></span>.
+            <button type="button" class="ptk-qf-linklike" id="ptk-qf-change-type">Change that</button>
+        </p>
+        <input type="hidden" name="ptk_type_locked" id="ptk-type-locked" value="1">
+        <details class="ptk-qf-type-picker" id="ptk-qf-type-picker">
+            <summary>Pick a different type</summary>
+            <div class="ptk-category-cards">
+                <?php foreach ( $categories as $cat ) :
+                    $icon = self::get_category_icon( $cat->slug );
+                    $desc = self::get_category_description( $cat->slug );
+                ?>
+                <label class="ptk-category-card" data-category="<?php echo esc_attr( $cat->slug ); ?>">
+                    <input type="radio" name="ptk_category" value="<?php echo esc_attr( $cat->slug ); ?>" required <?php checked( $cat->slug, $edit_category ); ?>>
+                    <span class="ptk-card-icon dashicons <?php echo esc_attr( $icon ); ?>"></span>
+                    <span class="ptk-card-name"><?php echo esc_html( $cat->name ); ?></span>
+                    <span class="ptk-card-desc"><?php echo esc_html( $desc ); ?></span>
+                </label>
+                <?php endforeach; ?>
+            </div>
+        </details>
+        <?php
+    }
+
+    /**
+     * Step 1's flat category-card grid -- today's original markup,
+     * unchanged, factored out only so render_wizard() can pick between
+     * this and render_step1_locked_type() with a plain if/else rather than
+     * inline if/endif. Byte-for-byte identical output to before this was
+     * extracted.
+     *
+     * @param bool      $on
+     * @param WP_Term[] $categories
+     */
+    private static function render_step1_category_cards( $on, $categories ) {
+        ?><h2 class="ptk-wizard-section-title">
+                        <span class="ptk-step-number">1</span><?php echo self::question_count( $on, 1 ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string; trailing "\n" replaces the newline the closing tag eats. ?>
+                        <?php echo PTK_Wizard_Copy::meta_text( $on, 'category', 'What type of entry are you creating?' ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed, pre-escaped strings from PTK_Wizard_Copy; the trailing "\n" replaces the newline PHP's closing tag eats, so the off-look output keeps its original line break. ?>
+                    </h2><?php echo self::fold_meta_span( $on ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed string; trailing "\n" replaces the newline the closing tag eats. ?>
+                    <div class="ptk-category-cards">
+                        <?php foreach ( $categories as $cat ) :
+                            $icon = self::get_category_icon( $cat->slug );
+                            $desc = self::get_category_description( $cat->slug );
+                        ?>
+                        <label class="ptk-category-card" data-category="<?php echo esc_attr( $cat->slug ); ?>">
+                            <input type="radio" name="ptk_category" value="<?php echo esc_attr( $cat->slug ); ?>" required>
+                            <span class="ptk-card-icon dashicons <?php echo esc_attr( $icon ); ?>"></span>
+                            <span class="ptk-card-name"><?php echo esc_html( $cat->name ); ?></span>
+                            <span class="ptk-card-desc"><?php echo esc_html( $desc ); ?></span>
+                        </label>
+                        <?php endforeach; ?>
+
+                        <!-- Custom / Traditional Editor option -->
+                        <a href="<?php echo esc_url( admin_url( 'post-new.php?post_type=pta_knowledge&ptk_classic=1' ) ); ?>" class="ptk-category-card ptk-card-custom">
+                            <span class="ptk-card-icon dashicons dashicons-edit-large"></span>
+                            <span class="ptk-card-name">Custom Entry</span>
+                            <span class="ptk-card-desc">Use the full WordPress editor for freeform content</span>
+                        </a>
+                    </div><?php
+    }
+
+    /**
      * Task 2: "one page that grows" -- the question-first screen, spec §2.
      * Second rendering path, new look + new entry only (render_wizard()
      * branches here before it prints anything else). Posts to the exact
@@ -1251,12 +1338,16 @@ class PTK_Content_Wizard {
             ? 'Which word should we explain?'
             : "What's the question families keep asking?";
 
-        // Task 2 ships with a fixed starting category (glossary from
-        // "Explain a PTA word", faq otherwise) -- there is no category UI
-        // on this screen yet. Task 3 replaces this fixed value with
-        // PTK_Entry_Type::guess() (live, via the follow-ups and the
-        // question/answer text) plus the "Change that" override.
-        $default_category = $is_word ? 'glossary' : 'faq';
+        // Task 3: the starting guess, before the volunteer has typed
+        // anything -- PTK_Entry_Type::guess() with only 'came_from' known
+        // yet. content-wizard.js recomputes this live as the follow-ups
+        // and the question/answer text change (a JS port of the same
+        // ordered table, kept in sync by tests/test-entry-type-js.mjs);
+        // resolve_question_first_category() (handle_submission()) does the
+        // same on the server so a no-JS submission still lands on the
+        // right type. "Change that" sets ptk_type_locked=1, which both
+        // sides treat as the volunteer's explicit, never-overridden choice.
+        $default_category = PTK_Entry_Type::guess( array( 'came_from' => $is_word ? 'word' : 'question' ) );
         ?>
         <div class="wrap ptk-wizard-wrap ptk-qf-wrap">
             <h1 class="ptk-wizard-header">
@@ -1454,6 +1545,52 @@ class PTK_Content_Wizard {
     }
 
     /**
+     * Task 3: the real category for a question-first submission. If the
+     * volunteer used "Change that" (ptk_type_locked=1), their explicit
+     * pick always wins -- $submitted_category, unchanged, exactly as
+     * PTK_Content_Wizard::handle_submission() already trusted
+     * $_POST['ptk_category'] before this method existed. Otherwise this is
+     * a guess from what was actually typed, using the exact same
+     * PTK_Entry_Type::guess() the initial page load and content-wizard.js
+     * both use -- so a no-JS submission (where the radio value on the page
+     * never moved past its page-load default) still lands on the right
+     * type instead of silently keeping whatever the very first guess was.
+     *
+     * @param string $submitted_category $_POST['ptk_category'] as already read.
+     * @return string
+     */
+    private static function resolve_question_first_category( $submitted_category ) {
+        if ( isset( $_POST['ptk_type_locked'] ) && '1' === (string) $_POST['ptk_type_locked'] ) {
+            return $submitted_category;
+        }
+
+        $came_from = ( isset( $_POST['ptk_came_from'] ) && 'word' === $_POST['ptk_came_from'] ) ? 'word' : 'question';
+
+        $step_texts = isset( $_POST['ptk_step_text'] ) ? (array) wp_unslash( $_POST['ptk_step_text'] ) : array();
+        $step_count = 0;
+        foreach ( $step_texts as $t ) {
+            if ( '' !== trim( (string) $t ) ) {
+                $step_count++;
+            }
+        }
+
+        $has_date = ! empty( $_POST['ptk_qf_has_date'] ) || '' !== trim( (string) ( $_POST['ptk_event_date'] ?? '' ) );
+
+        $link_url = trim( (string) wp_unslash( $_POST['ptk_resource_url'] ?? '' ) );
+        $file_id  = absint( $_POST['ptk_resource_file_id'] ?? 0 );
+        $has_file_or_link = ! empty( $_POST['ptk_qf_has_link'] ) || '' !== $link_url || $file_id > 0;
+
+        return PTK_Entry_Type::guess( array(
+            'came_from'        => $came_from,
+            'step_count'       => $step_count,
+            'has_date'         => $has_date,
+            'has_file_or_link' => $has_file_or_link,
+            'question'         => isset( $_POST['ptk_title'] ) ? (string) wp_unslash( $_POST['ptk_title'] ) : '',
+            'answer'           => isset( $_POST['ptk_answer_text'] ) ? (string) wp_unslash( $_POST['ptk_answer_text'] ) : '',
+        ) );
+    }
+
+    /**
      * Task 2: copy the question-first screen's generic $_POST['ptk_answer_text']
      * onto the category-specific field $category's content generator
      * actually reads, and reconcile the two follow-ups (steps, file/link)
@@ -1582,13 +1719,19 @@ class PTK_Content_Wizard {
         $tags     = sanitize_text_field( wp_unslash( $_POST['ptk_tags'] ?? '' ) );
         $status   = in_array( $_POST['ptk_status'] ?? 'draft', array( 'publish', 'draft' ), true ) ? $_POST['ptk_status'] : 'draft';
 
-        // Task 2: the question-first screen posts one generic "answer" and
-        // reuses the steps/file-link/date fields regardless of category --
-        // copy them onto whatever the category-specific fields the rest of
-        // this method and generate_content() already read, before anything
-        // else runs. A no-op when the old category-first screen posted
-        // (ptk_answer_text only exists in the question-first markup).
+        // Task 2/3: the question-first screen posts one generic "answer"
+        // plus the reused steps/file-link/date follow-ups, regardless of
+        // category. First (Task 3) work out the real category server-side
+        // -- unless the volunteer explicitly locked one in via "Change
+        // that" (ptk_type_locked=1), $_POST['ptk_category'] is only ever
+        // the page-load-time guess and a no-JS visitor has no way to
+        // update it themselves. Then (Task 2) copy the answer/follow-ups
+        // onto whatever category-specific fields that category's content
+        // generator reads. Both are no-ops when the old category-first
+        // screen posted (ptk_answer_text only exists in the
+        // question-first markup).
         if ( isset( $_POST['ptk_answer_text'] ) ) {
+            $category = self::resolve_question_first_category( $category );
             self::apply_question_first_mapping( $category );
         }
 

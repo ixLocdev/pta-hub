@@ -66,6 +66,7 @@
         initAutosave();
         bindFolding();
         bindQuestionFirstToggles();
+        bindQuietTypeLine();
 
         // If in edit mode, pre-fill the form.
         if (typeof ptkWizardData !== 'undefined' && ptkWizardData.editMode && ptkWizardData.editData) {
@@ -172,6 +173,123 @@
             if ($steps.find('.ptk-repeater-item').length === 0) {
                 addStep($steps);
             }
+        });
+    }
+
+    /* ──────────────────────────────────────────
+     * Task 3: the quiet type line
+     *
+     * Lives under the answer field on the question-first screen (and, in
+     * edit mode, replaces the raw category grid in the old screen too --
+     * see render_step1_locked_type()). Recomputes PTK_Entry_Type::guess()
+     * (its JS port, entry-type.js) on every input/change and updates the
+     * line's text live, UNLESS #ptk-type-locked is "1" -- set the moment
+     * the volunteer picks a card from "Change that", and never cleared
+     * again for this page load, so an explicit choice always wins exactly
+     * as the plan requires. A no-op if the page has no #ptk-qf-type-line
+     * at all (nothing to bind).
+     * ────────────────────────────────────────── */
+
+    function questionFirstSignals() {
+        var stepCount = 0;
+        $('textarea[name="ptk_step_text[]"]').each(function () {
+            if ($.trim($(this).val() || '') !== '') {
+                stepCount++;
+            }
+        });
+
+        var $hasDate = $('#ptk-qf-has-date');
+        var hasDate = $hasDate.length ? $hasDate.is(':checked') : false;
+
+        var $hasLink = $('#ptk-qf-has-link');
+        var hasFileOrLink = $hasLink.length ? $hasLink.is(':checked') : false;
+
+        var cameFromInput = $('input[name="ptk_came_from"]').val();
+
+        return {
+            came_from: cameFromInput || '',
+            step_count: stepCount,
+            has_date: hasDate,
+            has_file_or_link: hasFileOrLink,
+            question: $('#ptk-title').val() || '',
+            answer: $('#ptk-answer').val() || ''
+        };
+    }
+
+    function setTypeLine(slug) {
+        if (typeof ptkEntryType === 'undefined') {
+            return;
+        }
+        $('#ptk-qf-type-name').text(ptkEntryType.ptkEntryTypeName(slug));
+        $('#ptk-qf-type-why').text(ptkEntryType.ptkEntryTypeExplain(slug));
+        $('input[name="ptk_category"][value="' + slug + '"]').prop('checked', true);
+    }
+
+    function bindQuietTypeLine() {
+        var $line = $('#ptk-qf-type-line');
+        if (!$line.length || typeof ptkEntryType === 'undefined') {
+            return;
+        }
+
+        var $locked = $('#ptk-type-locked');
+        var $picker = $('#ptk-qf-type-picker');
+        var $changeBtn = $('#ptk-qf-change-type');
+
+        function recompute() {
+            if ($locked.val() === '1') {
+                return;
+            }
+            setTypeLine(ptkEntryType.ptkEntryTypeGuess(questionFirstSignals()));
+        }
+
+        // Only the fields this screen actually has feed the live guess --
+        // harmless to bind selectors that don't exist on a given page.
+        $(document).on('input', '#ptk-title, #ptk-answer', recompute);
+        $(document).on('change',
+            '#ptk-qf-has-steps, #ptk-qf-has-date, #ptk-qf-has-link, ' +
+            'textarea[name="ptk_step_text[]"]',
+            recompute
+        );
+        // New steps are added asynchronously (addStep()); catch typing in
+        // ones that don't exist yet at bind time via delegation, and also
+        // recompute right after "Add Step" in case two-steps-or-more just
+        // became true from adding an empty one after a filled one.
+        $(document).on('input', 'textarea[name="ptk_step_text[]"]', recompute);
+        $(document).on('click', '.ptk-add-step', function () {
+            setTimeout(recompute, 0);
+        });
+
+        if ($changeBtn.length && $picker.length) {
+            $changeBtn.on('click', function () {
+                $picker.prop('open', true);
+                var $firstRadio = $picker.find('input[type="radio"]').first();
+                if ($firstRadio.length) {
+                    $firstRadio.trigger('focus');
+                }
+            });
+        }
+
+        // Picking a card is the explicit, never-overridden choice (plan
+        // Task 3): lock it in and reflect it in the line immediately. Bound
+        // to both the radio's own 'change' (a real user click on the
+        // label) and a 'click' on the card itself, since
+        // bindCategorySelection() above sets the radio's checked state
+        // with .prop() -- which does not always dispatch a 'change' event
+        // -- and runs first (registered earlier), so by the time either of
+        // these fires the radio is already the one the person picked.
+        function lockToCard($card) {
+            var slug = $card.find('input[type="radio"]').val();
+            if (!slug) {
+                return;
+            }
+            $locked.val('1');
+            setTypeLine(slug);
+        }
+        $(document).on('change', '.ptk-qf-type-picker input[name="ptk_category"]', function () {
+            lockToCard($(this).closest('.ptk-category-card'));
+        });
+        $(document).on('click', '.ptk-qf-type-picker .ptk-category-card', function () {
+            lockToCard($(this));
         });
     }
 
