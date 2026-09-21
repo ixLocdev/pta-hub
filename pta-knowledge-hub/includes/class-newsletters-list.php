@@ -100,8 +100,14 @@ class PTK_Newsletters_List {
 
         $is_sent = ( 'publish' === $post->post_status );
 
+        // The example newsletter the plugin writes for a new school looks
+        // exactly like a real one here, because it shows its own headline
+        // rather than the title that says "do not publish". Say what it is.
+        $is_example = class_exists( 'PTK_Example_Newsletter' ) && PTK_Example_Newsletter::is_example( $id );
+
         return array(
             'id'         => $id,
+            'is_example' => $is_example,
             'headline'   => $headline,
             'issue_line' => PTK_Newsletters_Copy::issue_line( $issue, $date ),
             'is_sent'    => $is_sent,
@@ -183,12 +189,21 @@ class PTK_Newsletters_List {
         $out  = '<article class="ptk-entry-card" data-ptk-key="' . esc_attr( $newsletter['id'] ) . '">';
         $out .= '<h2 class="ptk-entry-question">' . esc_html( $newsletter['headline'] ) . '</h2>';
 
+        // The screen's one stamp, and only ever one: a school has a single
+        // example newsletter, or none at all.
+        if ( ! empty( $newsletter['is_example'] ) ) {
+            $out .= '<p class="ptk-entry-stamp">' . PTK_Hub_UI::stamp( 'Example', 'dim' ) . '</p>';
+        }
+
         if ( '' !== $newsletter['issue_line'] ) {
             $out .= '<p class="ptk-entry-answer">' . esc_html( $newsletter['issue_line'] ) . '</p>';
         }
 
         if ( ! $newsletter['is_sent'] ) {
-            $out .= '<p class="ptk-entry-meta">' . esc_html( PTK_Newsletters_Copy::not_sent_note() ) . '</p>';
+            $note = ! empty( $newsletter['is_example'] )
+                ? PTK_Newsletters_Copy::example_note()
+                : PTK_Newsletters_Copy::not_sent_note();
+            $out .= '<p class="ptk-entry-meta">' . esc_html( $note ) . '</p>';
         }
 
         $out .= '<div class="ptk-entry-actions">';

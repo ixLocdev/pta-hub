@@ -1186,3 +1186,11 @@ body.ptk-hub-look .ptk-focal-reset {
         grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
     }
 }
+
+/* The one stamp a card may carry -- today only "Example", on the worked
+   newsletter a new school is given. Sits under the headline, above the
+   details, so it reads as a label on the thing rather than an alert. */
+
+body.ptk-hub-look .ptk-entry-stamp {
+    margin: var(--ptk-space-1) 0 0;
+}

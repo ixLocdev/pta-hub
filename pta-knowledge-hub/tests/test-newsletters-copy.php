@@ -26,6 +26,12 @@ ptk_test_ok( '' === $c::date_words( '2026-13-40' ), 'an impossible date renders 
 // --- the issue line combines number and date, plainly ---
 ptk_test_ok( "No. 41 \u{2014} September 21, 2026" === $c::issue_line( 41, '2026-09-21' ), 'issue number and date combine, with a real em dash like the rest of the Hub' );
 ptk_test_ok( false === strpos( $c::lead(), ' -- ' ), 'no typewriter double hyphens reach the screen' );
+
+// --- the example newsletter says what it is ---
+$example = $c::example_note();
+ptk_test_ok( false !== strpos( $example, "don't send it" ), 'the example says not to send it' );
+ptk_test_ok( $example !== $c::not_sent_note(), 'and does not read like an ordinary unsent one' );
+ptk_test_ok( false === strpos( $example, ' -- ' ), 'with a real dash, like the rest' );
 ptk_test_ok( 'No. 41' === $c::issue_line( 41, '' ), 'a missing date still shows the issue number' );
 ptk_test_ok( 'September 21, 2026' === $c::issue_line( 0, '2026-09-21' ), 'a missing issue number still shows the date' );
 ptk_test_ok( '' === $c::issue_line( 0, '' ), 'nothing known renders empty' );

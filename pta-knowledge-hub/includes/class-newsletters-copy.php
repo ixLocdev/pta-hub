@@ -78,6 +78,16 @@ class PTK_Newsletters_Copy {
     }
 
     /**
+     * The one newsletter nobody should send: the worked example the plugin
+     * writes for a new school. Its own headline is a real-looking "Week of
+     * ..." line, so without this the card is indistinguishable from a draft
+     * somebody started.
+     */
+    public static function example_note() {
+        return "This one is here to look at \u{2014} open it to see how a finished newsletter is put together, but don't send it.";
+    }
+
+    /**
      * A 'YYYY-MM-DD' date in plain words -- "September 21, 2026". Empty or
      * malformed input comes back empty rather than guessing.
      *
