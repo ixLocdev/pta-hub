@@ -29,7 +29,7 @@ class PTK_Newsletters_Copy {
 
     /** The one-line lead under the title. */
     public static function lead() {
-        return "Every newsletter this school has written, newest first -- the ones families have already seen, and the ones still being put together.";
+        return "Every newsletter this school has written, newest first \u{2014} the ones families have already seen, and the ones still being put together.";
     }
 
     /** The screen's one primary action: start a new issue. */
@@ -52,7 +52,7 @@ class PTK_Newsletters_Copy {
      * nothing yet for families to see. Never a dead link -- say so instead.
      */
     public static function not_sent_note() {
-        return "Not sent yet -- there's nothing here for families to see yet.";
+        return "Not sent yet \u{2014} there's nothing here for families to see yet.";
     }
 
     /**
@@ -74,7 +74,7 @@ class PTK_Newsletters_Copy {
         if ( '' !== $date_words ) {
             $parts[] = $date_words;
         }
-        return implode( ' -- ', $parts );
+        return implode( " \u{2014} ", $parts );
     }
 
     /**
@@ -103,7 +103,7 @@ class PTK_Newsletters_Copy {
     public static function empty_state() {
         return array(
             'title' => "You haven't written one yet.",
-            'text'  => 'When you start a newsletter, it lands here -- whether it has gone out to families yet or not.',
+            'text'  => "When you start a newsletter, it lands here \u{2014} whether it has gone out to families yet or not.",
         );
     }
 

@@ -162,15 +162,20 @@
         });
     }
 
-    /** Mount (or reset) the framing surface for a freshly chosen picture. A
-     * new photo always starts at "Whole photo" -- it may not even contain
-     * whatever the previous photo in this slot was framed for. */
+    /** Mount (or reset) the framing surface for a freshly chosen picture.
+     *
+     * A new photo starts at "Crop to fit", centered, which is exactly what
+     * every entry picture has always done -- so a volunteer who accepts the
+     * defaults gets what the site has always shown, and "Whole photo" stays
+     * a deliberate choice for a flyer or a graphic that must not be cut.
+     * The focal point starts in the middle because a new photo may contain
+     * nothing like whatever the last one in this slot was framed for. */
     function mountFraming(picture) {
         $frameBlock.find('[data-field="image_focal_x"]').val(50);
         $frameBlock.find('[data-field="image_focal_y"]').val(50);
         $frameBlock.find('[data-field="image_zoom"]').val(0);
-        $frameBlock.find('[data-field="image_fit"]').val('whole');
-        syncFitButtons('whole');
+        $frameBlock.find('[data-field="image_fit"]').val('crop');
+        syncFitButtons('crop');
         $frameBlock.removeAttr('hidden');
         $altPreview.attr('hidden', 'hidden');
 
@@ -178,7 +183,7 @@
             window.ptkInitFocalPicker($frameBlock, {
                 aspect: framingAspect,
                 src: picture.url,
-                mode: 'whole'
+                mode: 'crop'
             });
             // ptkInitFocalPicker appends the photo surface as the LAST
             // child of $frameBlock; move the toggle after it so the order

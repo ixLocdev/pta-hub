@@ -24,7 +24,8 @@ ptk_test_ok( '' === $c::date_words( 'not-a-date' ), 'a malformed date renders em
 ptk_test_ok( '' === $c::date_words( '2026-13-40' ), 'an impossible date renders empty' );
 
 // --- the issue line combines number and date, plainly ---
-ptk_test_ok( 'No. 41 -- September 21, 2026' === $c::issue_line( 41, '2026-09-21' ), 'issue number and date combine' );
+ptk_test_ok( "No. 41 \u{2014} September 21, 2026" === $c::issue_line( 41, '2026-09-21' ), 'issue number and date combine, with a real em dash like the rest of the Hub' );
+ptk_test_ok( false === strpos( $c::lead(), ' -- ' ), 'no typewriter double hyphens reach the screen' );
 ptk_test_ok( 'No. 41' === $c::issue_line( 41, '' ), 'a missing date still shows the issue number' );
 ptk_test_ok( 'September 21, 2026' === $c::issue_line( 0, '2026-09-21' ), 'a missing issue number still shows the date' );
 ptk_test_ok( '' === $c::issue_line( 0, '' ), 'nothing known renders empty' );
