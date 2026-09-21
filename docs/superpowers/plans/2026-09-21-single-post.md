@@ -213,7 +213,7 @@ Copy the shape of `PTK_Content_Wizard::render_question_first_wizard()` — the c
   - `post_excerpt` = `PTK_Post_Parts::summary( $parts )`
   - `post_type` = `post`, status `publish` or `draft`
   - featured image = the chosen picture (`set_post_thumbnail`)
-  - meta: the parts, the framing, and `PTK_Post_Renderer::hash()` of what was rendered
+  - meta: the parts; **all five framing fields the picker returns** (`image_id`, `focalX`, `focalY`, `zoom`, `fit` — the same hidden fields Task 5 Step 3 put on the screen, not just the id); and `PTK_Post_Renderer::hash()` of what was rendered
 - [ ] **Step 4: Publishing rights.** Offer *Put it on the website* only when `current_user_can( 'publish_posts' )`; otherwise show only the draft button and the copy line that says who presses it. Never offer an action that will fail.
 - [ ] **Step 5: Verify in the browser end to end** — write a post with every chip used, publish it, then **open it on the front end** and confirm the headline, picture, callout, steps and button all render, and that the home page's Latest news row shows the summary. A saved record is not proof; the published page is.
 - [ ] **Step 6: Commit** — `"Save a post the Hub wrote"`
@@ -254,7 +254,7 @@ Build it from `class-newsletters-list.php` — same cards, same shape, no new CS
 **Files:** Modify `class-post-writer.php`, `class-post-copy.php`
 
 - [ ] **Step 1:** `?ptk_post_edit_id=N` loads the parts back into the screen.
-- [ ] **Step 2: The guard.** Before loading, compare `PTK_Post_Renderer::hash( $post->post_content )` with the stored hash. On a mismatch, do not load the form: say plainly that the post was changed in WordPress, and offer *Open it in WordPress* and *Go back*. **Only the screen that owns a field may write it** — a 4.27.0 bug taught this the hard way, where an older form silently reset framing it did not know about.
+- [ ] **Step 2: The guard.** Before loading, compare `PTK_Post_Renderer::hash( $post->post_content )` with the stored hash. On a mismatch, do not load the form: say plainly that the post was changed in WordPress, and offer *Open it in WordPress* and *Go back*. **Only the screen that owns a field may write it** — a 4.27.0 bug taught this the hard way, where an older form silently reset framing it did not know about. The precedent is `includes/class-content-wizard.php`, the `$framing_posted` guard in `handle_submission()` (commit `26d6563`); read it before writing this step.
 - [ ] **Step 3: Verify in the browser:** edit a Hub post here (works), then edit the same post in WordPress, come back, and confirm the warning appears and nothing is overwritten.
 - [ ] **Step 4: Commit** — `"Edit a post, and never overwrite work done elsewhere"`
 
