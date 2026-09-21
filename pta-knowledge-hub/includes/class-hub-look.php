@@ -34,6 +34,7 @@ class PTK_Hub_Look {
         'ptk-search-analytics',
         'ptk-newsletters',
         'ptk-post-writer',
+        'ptk-posts',
     );
 
     /** Post types the Hub owns. */

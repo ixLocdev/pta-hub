@@ -27,6 +27,7 @@ ptk_test_ok( true === $t::is_hub_screen( 'pta_knowledge_page_ptk-words', 'pta_kn
 ptk_test_ok( true === $t::is_hub_screen( 'pta_knowledge_page_ptk-search-analytics', 'pta_knowledge' ), "what families are looking for is a Hub screen" );
 ptk_test_ok( true === $t::is_hub_screen( 'pta_knowledge_page_ptk-newsletters', 'pta_knowledge' ), 'your newsletters is a Hub screen' );
 ptk_test_ok( true === $t::is_hub_screen( 'pta_knowledge_page_ptk-post-writer', 'pta_knowledge' ), 'the single post writing screen is a Hub screen' );
+ptk_test_ok( true === $t::is_hub_screen( 'pta_knowledge_page_ptk-posts', 'pta_knowledge' ), 'your posts is a Hub screen' );
 ptk_test_ok( true === $t::is_hub_screen( 'pta_knowledge_page_ptk-welcome', 'pta_knowledge' ), 'Start Here is, under the Hub menu' );
 ptk_test_ok( true === $t::is_hub_screen( 'edit-pta_newsletter', 'pta_newsletter' ), 'the newsletter list screen id is a Hub screen' );
 ptk_test_ok( true === $t::is_hub_screen( 'pta_knowledge', 'pta_knowledge' ), 'the entry editor screen id is a Hub screen' );

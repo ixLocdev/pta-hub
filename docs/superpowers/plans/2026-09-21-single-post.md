@@ -273,14 +273,25 @@ not -- never a dead link.
 
 Build it from `class-newsletters-list.php` — same cards, same shape, no new CSS if the existing classes fit.
 
-- [ ] **Step 1: Failing test for the classification, as a PURE function** — `PTK_Posts_List::kind( $has_parts_meta, $has_newsletter_meta )` returns `'ours'`, `'wordpress'` or `'newsletter'`. Cases: parts only → ours; newsletter meta → newsletter (even if parts somehow exist); neither → wordpress.
-- [ ] **Step 2: Watch it fail. Step 3: Implement. Step 4: Pass.**
-- [ ] **Step 5:** The screen: slug `ptk-posts`, gated on the look, a card per post newest first. Per the spec:
+- [x] **Step 1: Failing test for the classification, as a PURE function** — `PTK_Posts_List::kind( $has_parts_meta, $has_newsletter_meta )` returns `'ours'`, `'wordpress'` or `'newsletter'`. Cases: parts only → ours; newsletter meta → newsletter (even if parts somehow exist); neither → wordpress.
+- [x] **Step 2: Watch it fail. Step 3: Implement. Step 4: Pass.**
+- [x] **Step 5:** The screen: slug `ptk-posts`, gated on the look, a card per post newest first. Per the spec:
   - **ours** → *Open it* (the writing screen) + *See what families see* + *Remove it*
   - **wordpress** → says it was written in WordPress; *Open it in WordPress*; **no Remove**
   - **newsletter** (`_ptk_linked_source_newsletter_id`) → **not listed at all**
-- [ ] **Step 6: Verify in the browser** with all three kinds present: write one here, write one in WordPress, and publish a newsletter with the linked-post setting on to generate the third. Confirm the third never appears.
-- [ ] **Step 7: Commit** — `"Your posts"`
+- [x] **Step 6: Verify in the browser** with all three kinds present: write one here, write one in WordPress, and publish a newsletter with the linked-post setting on to generate the third. Confirm the third never appears.
+- [x] **Step 7: Commit** — `"Your posts"`
+
+**Built without *Remove it*:** that is Task 10, and a button that does nothing
+is worse than one that is not there yet. Same reasoning the other way for
+*Open it*, which points at `?ptk_post_edit_id=N` and only loads the post once
+Task 9 lands.
+
+**Verified with all three kinds really present:** a post written here, one
+written in WordPress ("11/4 | ELECTION DAY BAKE SALE"), and a third made by
+turning the linked-post setting on and saving a published newsletter, so the
+plugin's own `save_post_pta_newsletter` hook created it. The newsletter's post
+never appears on the screen; the other two do, with the right actions each.
 
 ---
 
