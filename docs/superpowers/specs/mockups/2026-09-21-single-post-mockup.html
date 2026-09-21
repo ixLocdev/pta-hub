@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Single post — what it looks like published</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,500;1,6..72,500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#1a2f5c; --ink:#111111; --body:#4a4a4a; --muted:#6b6b6b;
+    --rule:#e6e3dc; --cream:#f6f4ef; --chip:#f0eee7; --red:#a51d23;
+    --yellow:#ffd166; --onnavy:#cfd8e3;
+    --fr:'Libre Franklin',system-ui,sans-serif;
+    --nr:'Newsreader',Georgia,serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#e9e7e2;font-family:var(--fr);color:var(--body);
+       -webkit-font-smoothing:antialiased}
+  .sheet{max-width:720px;margin:0 auto 40px;background:#fff;padding:0 28px 48px}
+  .note{max-width:720px;margin:0 auto;padding:26px 28px 10px;font-size:13px;color:var(--muted)}
+  .note b{color:var(--ink)}
+  .banner{max-width:720px;margin:32px auto 0;padding:12px 28px;background:var(--navy);
+          color:#fff;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+
+  /* § section rule */
+  .sect{display:flex;align-items:center;gap:12px;margin:38px 0 14px}
+  .sect span{font-family:var(--nr);font-style:italic;font-weight:500;font-size:15px;color:var(--navy);white-space:nowrap}
+  .sect i{display:block;flex:1;height:1px;background:var(--ink)}
+
+  .dateline{font-family:var(--nr);font-style:italic;font-weight:500;font-size:15px;color:var(--navy);margin:0 0 6px}
+  h1{font-size:44px;font-weight:800;line-height:1.02;letter-spacing:-.025em;color:var(--ink);margin:0}
+  .strongrule{height:3px;width:56px;background:var(--red);margin:14px 0 22px}
+  h2{font-size:30px;font-weight:800;line-height:1.05;letter-spacing:-.02em;color:var(--ink);margin:0 0 10px}
+  h3{font-size:19px;font-weight:700;line-height:1.3;color:var(--ink);margin:0 0 4px}
+  p{font-size:17px;line-height:1.65;margin:0 0 16px;max-width:63ch}
+  .small{font-size:13px;color:var(--muted)}
+  .caps{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--navy)}
+
+  figure{margin:0 0 26px}
+  figure img{display:block;width:100%;height:260px;object-fit:cover;border-radius:10px}
+  figcaption{font-family:var(--nr);font-style:italic;font-size:14px;color:var(--muted);margin-top:8px}
+
+  /* the one callout: navy band */
+  .callout{background:var(--navy);border-radius:10px;padding:22px 24px;margin:0 0 26px}
+  .callout .caps{color:var(--yellow)}
+  .callout h3{color:#fff;font-size:22px;font-weight:800;margin:6px 0 8px;letter-spacing:-.01em}
+  .callout p{color:var(--onnavy);font-size:15px;margin:0;max-width:56ch}
+
+  .step{display:flex;gap:16px;padding:16px 0;border-top:1px solid var(--rule)}
+  .step:first-of-type{border-top:0}
+  .stepnum{font-family:var(--nr);font-weight:500;font-size:30px;color:var(--navy);line-height:1;min-width:34px}
+  .step p{margin:6px 0 0;font-size:16px}
+
+  .eventrow{display:flex;gap:18px;align-items:baseline;padding:16px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);margin:0 0 26px}
+  .eventrow .num{font-family:var(--nr);font-weight:500;font-size:30px;color:var(--navy);line-height:1;
+                 font-variant-numeric:lining-nums tabular-nums}
+  .eventrow .dow{font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--muted);text-transform:uppercase}
+
+  .btn{display:inline-block;background:var(--navy);color:#fff;text-decoration:none;
+       font-size:14px;font-weight:700;letter-spacing:.02em;padding:14px 24px;border-radius:8px}
+  .textlink{color:var(--navy);text-decoration:underline;text-underline-offset:3px;font-size:15px}
+  .signoff{font-family:var(--nr);font-style:italic;font-size:16px;color:var(--navy);margin-top:30px}
+
+  /* Latest news row */
+  .newsrow{display:flex;gap:18px;padding:18px 0;border-bottom:1px solid var(--rule)}
+  .newsrow img{width:132px;height:88px;object-fit:cover;border-radius:6px;flex:0 0 auto}
+  .newsrow h3{font-size:21px;font-weight:800;letter-spacing:-.01em;margin:0 0 4px}
+  .newsrow p{font-size:15px;margin:0 0 6px;max-width:none;color:var(--body)}
+
+  .legend{max-width:720px;margin:0 auto 46px;background:#fff;padding:22px 28px 26px;border:1px solid var(--rule)}
+  .legend h4{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+  .legend div{display:flex;gap:12px;font-size:14px;padding:7px 0;border-top:1px solid var(--rule)}
+  .legend div:first-of-type{border-top:0}
+  .legend code{font-family:var(--fr);font-weight:700;color:var(--navy);min-width:132px;font-size:13px}
+
+  @media(max-width:640px){
+    .sheet{padding:0 18px 36px}
+    h1{font-size:32px}h2{font-size:24px}p{font-size:16px}
+    .newsrow img{width:96px;height:68px}
+  }
+</style>
+</head>
+<body>
+
+<div class="banner">1 · How families meet it — “Latest news” on the home page</div>
+<div class="sheet">
+  <div class="sect"><span>§ Latest news</span><i></i></div>
+  <div class="newsrow">
+    <img alt="" src="https://images.pexels.com/photos/8613089/pexels-photo-8613089.jpeg?auto=compress&cs=tinysrgb&w=600">
+    <div>
+      <h3>We still need class parents.</h3>
+      <p>Several classes still don’t have their two class parents. Signing up takes about a minute on your phone, and parents are chosen by random draw, not first come, first served.</p>
+      <div class="small">SEPTEMBER 8, 2026</div>
+    </div>
+  </div>
+  <div class="newsrow">
+    <img alt="" src="https://images.pexels.com/photos/6941097/pexels-photo-6941097.jpeg?auto=compress&cs=tinysrgb&w=600">
+    <div>
+      <h3>Election Day bake sale — bakers wanted</h3>
+      <p>The bake sale is Tuesday, November 4. Sign up to bake something or to help at the table.</p>
+      <div class="small">OCTOBER 30, 2026</div>
+    </div>
+  </div>
+</div>
+<div class="note">The picture is the post’s featured image, framed with the picker. The sentence under
+the headline is the <b>summary the Hub writes</b> — today that line is whatever WordPress can scrape,
+which is why some rows on your home page read as half-sentences.</div>
+
+<div class="banner">2 · The post itself — everything filled in</div>
+<div class="sheet">
+  <div style="height:34px"></div>
+  <p class="dateline">Class Parents 2026–2027</p>
+  <h1>We still need class parents.</h1>
+  <div class="strongrule"></div>
+
+  <figure>
+    <img alt="" src="https://images.pexels.com/photos/8613089/pexels-photo-8613089.jpeg?auto=compress&cs=tinysrgb&w=1200">
+  </figure>
+
+  <p>Thank you to every family who signed up in the first week of school. We’re not quite there yet:
+  <strong>several classes still don’t have their two class parents.</strong></p>
+
+  <p>If you’ve been meaning to put your name in, now is the moment — signing up takes about a minute
+  on your phone.</p>
+
+  <div class="callout">
+    <div class="caps">The draw · Thursday, September 10</div>
+    <h3>Sign up by end of day Wednesday, September 9</h3>
+    <p>Two class parents per class are chosen at random on Thursday. Everyone selected is notified by email.</p>
+  </div>
+
+  <div class="sect"><span>§ How it works</span><i></i></div>
+  <div class="step">
+    <div class="stepnum">1</div>
+    <div><h3>Sign up</h3><p>Fill in the short form — your name, your email, and your child’s class. That’s it.</p></div>
+  </div>
+  <div class="step">
+    <div class="stepnum">2</div>
+    <div><h3>The random draw</h3><p>This is not first come, first served. On Thursday we draw two parents at random for every class, so signing up late is no disadvantage.</p></div>
+  </div>
+  <div class="step">
+    <div class="stepnum">3</div>
+    <div><h3>You hear from us</h3><p>Everyone selected is notified by email with next steps. If you aren’t drawn, we keep you on the list.</p></div>
+  </div>
+
+  <div style="height:30px"></div>
+  <a class="btn" href="#">Sign up to be a class parent →</a>
+  <p class="small" style="margin-top:14px">Or send this page to a parent in your child’s class who’d be great at it.</p>
+
+  <p class="signoff">Thank you, as always,<br>Your Northeast PTA</p>
+</div>
+
+<div class="legend">
+  <h4>Where each part came from on the writing screen</h4>
+  <div><code>Kicker</code><span>“Class Parents 2026–2027” — optional, and only when it tells families something.</span></div>
+  <div><code>Headline</code><span>Becomes the post title and the link families click.</span></div>
+  <div><code>The words</code><span>Your paragraphs. The first one also becomes the summary above.</span></div>
+  <div><code>+ a picture</code><span>The featured image, framed with the focal picker.</span></div>
+  <div><code>+ a date</code><span>Drew the navy callout — the one thing a parent must not miss.</span></div>
+  <div><code>+ steps</code><span>Drew the numbered § How it works section.</span></div>
+  <div><code>+ a button</code><span>The single navy button. Everything else stays a text link.</span></div>
+</div>
+
+<div class="banner">3 · The same screen, four lines — a Watchung-style announcement</div>
+<div class="sheet">
+  <div style="height:34px"></div>
+  <h1>Election Day bake sale — bakers wanted</h1>
+  <div class="strongrule"></div>
+
+  <p>Calling all bakers. We’re holding the famous Election Day Bake Sale again this year, and we need
+  people to bake something or help at the table.</p>
+
+  <div class="eventrow">
+    <div>
+      <div class="num">4</div>
+      <div class="dow">Tue</div>
+    </div>
+    <div>
+      <h3>Election Day Bake Sale</h3>
+      <p class="small" style="margin:2px 0 0">All day, in the lobby. Drop off baked goods Monday afternoon.</p>
+    </div>
+  </div>
+
+  <a class="btn" href="#">Sign up to bake →</a>
+</div>
+<div class="note">Same screen, same parts — two chips used instead of five. Nothing was skipped or
+hidden; the parts that weren’t filled in simply don’t draw anything.</div>
+
+</body>
+</html>
