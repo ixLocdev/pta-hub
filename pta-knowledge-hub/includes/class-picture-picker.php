@@ -38,7 +38,7 @@ class PTK_Picture_Picker {
     const PER_PAGE      = 24;
 
     /** page_ hook-suffix fragments (matched the way PTK_Hub_Look matches PAGES) that load the picker. */
-    const PAGES = array( 'ptk-content-wizard' );
+    const PAGES = array( 'ptk-content-wizard', 'ptk-newsletter-builder' );
 
     public static function init() {
         add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue' ) );

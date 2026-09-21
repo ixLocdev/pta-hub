@@ -56,8 +56,18 @@ allowed to rewrite what it says — a contributor may use any picture on the
 site but cannot change one someone else wrote. WordPress's own media screen
 draws the line in the same place.
 
-## Left for the next pass
+## The Newsletter Builder (4.26.0)
 
-The Newsletter Builder's photo fields still use the old picker. They have
-their own focal-point and crop flow, and disturbing that in the same change
-would have risked a working feature for an unrelated win.
+The Builder adopted it a release later, as wiring rather than a rewrite.
+`openImagePicker()` was its single entry point, so the new picker opens
+there when the look is on and `wp.media` still opens when it is off.
+
+The five steps that follow a choice -- set the id, reset the crop if the
+picture changed, refresh the chip, refresh the focal-point picker,
+re-serialize the preview -- were pulled out into `applyChosenImage()` and
+are now shared by both choosers, so neither can drift from the other. The
+whole-photo / crop toggle and the focal point work exactly as before.
+
+`wp.media` is still loaded on that screen: `fetchAttachment()` uses it to
+read a photo's source for the chip and the focal picker. Replacing that is
+a later job and buys little.

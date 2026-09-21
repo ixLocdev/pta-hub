@@ -2253,7 +2253,40 @@
      * just re-point mediaTargetField at whichever field triggered it, and
      * the single select handler reads that.
      */
+    /**
+     * Apply a chosen picture to the field that asked for it: the same five
+     * steps the wp.media select handler runs, so both choosers leave the
+     * Builder in exactly the same state.
+     */
+    function applyChosenImage($hidden, id) {
+        if (!$hidden || !$hidden.length || !id) {
+            return;
+        }
+        var $group = $hidden.closest('.ptk-nl-field-group');
+        var previousId = parseInt($hidden.val(), 10) || 0;
+        $hidden.val(id);
+        if (id !== previousId) {
+            resetImageCrop($group);
+        }
+        refreshImageChip($hidden);
+        refreshFocalPicker($group);
+        serializeAndPreview();
+    }
+
     function openImagePicker($hidden) {
+        // The Hub's own picker when it is there: one question, the pictures
+        // this PTA has actually used, and no share squares in the way. It
+        // hands back { id, url, alt }; everything after that is identical
+        // to the wp.media path below, which stays for the old look.
+        if (document.body.classList.contains('ptk-hub-look') && window.ptkPicturePicker) {
+            window.ptkPicturePicker.open({
+                onChoose: function (picture) {
+                    applyChosenImage($hidden, picture && picture.id);
+                }
+            });
+            return;
+        }
+
         if (typeof wp === 'undefined' || !wp.media) {
             return; // media-upload script not loaded — nothing we can do.
         }
@@ -2273,15 +2306,7 @@
                     return;
                 }
                 var attachment = mediaFrame.state().get('selection').first().toJSON();
-                var $group = mediaTargetField.closest('.ptk-nl-field-group');
-                var previousId = parseInt(mediaTargetField.val(), 10) || 0;
-                mediaTargetField.val(attachment.id);
-                if (attachment.id && attachment.id !== previousId) {
-                    resetImageCrop($group);
-                }
-                refreshImageChip(mediaTargetField);
-                refreshFocalPicker($group);
-                serializeAndPreview();
+                applyChosenImage(mediaTargetField, attachment.id);
             });
         }
 
