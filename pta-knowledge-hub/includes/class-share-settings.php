@@ -52,6 +52,16 @@ class PTK_Share_Settings {
     const NEWS_OPTION  = 'ptk_news_url';
     const CAL_OPTION   = 'ptk_calendar_url';
     const EMAIL_OPTION = 'ptk_contact_email';
+    /**
+     * How a single post signs off -- school-wide, written once, added to
+     * the end of every post the Hub writes. NOT the newsletter's own
+     * per-issue signoff, which lives inside each issue's data and is
+     * untouched by this. Blank means a post ends without one.
+     */
+    const SIGNOFF_OPTION = 'ptk_post_signoff';
+
+    /** How long a sign-off may be. Long enough for three lines, short enough not to be a paragraph. */
+    const SIGNOFF_MAX = 240;
     const NOTICE_KEY   = 'ptk_share_settings_notice_';
 
     /**
@@ -153,6 +163,39 @@ class PTK_Share_Settings {
      * @param mixed $raw
      * @return array{value:string,error:string}
      */
+    /**
+     * Pure: clean a sign-off. Plain text over one or more lines, so a
+     * school can write "Thank you, as always," and its name underneath.
+     * Markup is stripped, runs of blank lines collapse to one break, and
+     * the whole thing is capped -- this is a sign-off, not a paragraph.
+     *
+     * @param string $raw What was typed.
+     * @return string
+     */
+    public static function sanitize_signoff( $raw ) {
+        $raw = is_scalar( $raw ) ? (string) $raw : '';
+        // strip_tags() keeps what is INSIDE a script or style tag, which
+        // would land in the sign-off as stray words. Drop those whole.
+        $raw = preg_replace( '#<(script|style)\b[^>]*>.*?</\1>#is', ' ', $raw );
+        $raw = strip_tags( (string) $raw );
+        // One newline character, whatever the browser sent.
+        $raw = str_replace( array( "\r\n", "\r" ), "\n", $raw );
+        // Trim every line, drop empty ones, keep the order.
+        $lines = array();
+        foreach ( explode( "\n", $raw ) as $line ) {
+            $line = preg_replace( '/[\t ]+/', ' ', $line );
+            $line = trim( $line );
+            if ( '' !== $line ) {
+                $lines[] = $line;
+            }
+        }
+        $out = implode( "\n", $lines );
+        if ( strlen( $out ) > self::SIGNOFF_MAX ) {
+            $out = rtrim( substr( $out, 0, self::SIGNOFF_MAX ) );
+        }
+        return $out;
+    }
+
     public static function validate_contact_email( $raw ) {
         $email = is_string( $raw ) ? trim( $raw ) : '';
 
@@ -533,6 +576,28 @@ class PTK_Share_Settings {
             );
         }
 
+        // ---- How a post signs off (school-wide, blank means none) ----
+        // Only when the field was on the screen. It is only drawn while the
+        // new look is on, and a form that never carried it must not be read
+        // as "the school cleared their sign-off".
+        if ( isset( $_POST['ptk_post_signoff'] ) ) {
+            $signoff_before = (string) get_option( self::SIGNOFF_OPTION, '' );
+            $signoff_after  = self::sanitize_signoff( wp_unslash( $_POST['ptk_post_signoff'] ) );
+            if ( '' === $signoff_after ) {
+                delete_option( self::SIGNOFF_OPTION );
+            } else {
+                update_option( self::SIGNOFF_OPTION, $signoff_after );
+            }
+            if ( $signoff_before !== $signoff_after ) {
+                $notice['messages'][] = array(
+                    'ok',
+                    '' === $signoff_after
+                        ? 'Posts will end without a sign-off.'
+                        : 'Saved how your posts sign off.',
+                );
+            }
+        }
+
         // ---- The new Hub look (per-site, ships off) ----
         $look_before = PTK_Hub_Look::on();
         update_option( PTK_Hub_Look::OPTION, PTK_Hub_Look::sanitize_choice( isset( $_POST['ptk_hub_new_look'] ) ? wp_unslash( $_POST['ptk_hub_new_look'] ) : null ) );
@@ -601,6 +666,35 @@ class PTK_Share_Settings {
         $events = PTK_Ics_Reader::events_in_range( $body, $today, $until, wp_timezone_string() );
 
         return array( 'message' => self::calendar_test_message( '', count( $events ) ), 'reason' => '' );
+    }
+
+    /**
+     * "How your posts sign off" -- the last line of every post the Hub
+     * writes. Only drawn where posts can be written at all, which is only
+     * where the new look is on: with it off this screen is exactly what it
+     * always was, down to the byte.
+     *
+     * Its own method, not an inline branch: PHP's alternate if/endif
+     * indentation leaks into the output and would change the page even
+     * when the field itself is absent.
+     */
+    private static function signoff_field() {
+        if ( ! class_exists( 'PTK_Hub_Look' ) || ! PTK_Hub_Look::on() ) {
+            return '';
+        }
+
+        $value = (string) get_option( self::SIGNOFF_OPTION, '' );
+
+        $out  = "\n                ";
+        $out .= '<h2>How your posts sign off</h2>';
+        $out .= '<p><label for="ptk-post-signoff">The last line of every post you write</label><br>';
+        $out .= '<textarea class="large-text" id="ptk-post-signoff" name="ptk_post_signoff" rows="2" placeholder="Thank you, as always,&#10;Your Northeast PTA">';
+        $out .= esc_textarea( $value );
+        $out .= '</textarea></p>';
+        $out .= '<p class="description">Written once here, added to the end of every post the Hub writes, so nobody retypes it. Leave it empty and posts simply end. This is separate from the sign-off on a newsletter.</p>';
+        $out .= "\n\n                ";
+
+        return $out;
     }
 
     public static function render_page() {
@@ -787,6 +881,7 @@ class PTK_Share_Settings {
                 <?php endif; ?>
                 <p class="description">Added to the "Got news?" closing as "Questions? Email {address}." Only shown when a news link above is also set. Leave it empty to leave it out.</p>
 
+<?php echo self::signoff_field(); // phpcs:ignore WordPress.Security.EscapeOutput -- escapes its own text. ?>
                 <h2>The look of these screens</h2>
                 <p>
                     <label for="ptk-hub-new-look">

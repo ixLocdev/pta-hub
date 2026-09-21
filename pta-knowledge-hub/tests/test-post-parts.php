@@ -43,4 +43,18 @@ ptk_test_ok( '' === $p::summary( $p::defaults() ), 'nothing written, nothing sum
 ptk_test_ok( false === $p::has_content( $p::defaults() ), 'empty parts have no content' );
 ptk_test_ok( true === $p::has_content( $clean ), 'filled parts do' );
 
+// A form can post an array where a string belongs (name[]=x, or a nested
+// name[0][x]). That must not become a PHP warning or the word "Array".
+$odd = $p::sanitize( array(
+	'headline'   => array( 'x' ),
+	'words'      => array( 'x' ),
+	'kicker'     => array( 'x' ),
+	'link_url'   => array( 'https://x.test' ),
+	'date_label' => array( 'x' ),
+	'steps'      => array( array( 'heading' => array( 'x' ), 'body' => array( 'y' ) ) ),
+) );
+ptk_test_ok( '' === $odd['headline'] && '' === $odd['words'] && '' === $odd['kicker'], 'an array where text belongs is nothing at all' );
+ptk_test_ok( '' === $odd['link_url'] && '' === $odd['date_label'], 'the same for a url and a date' );
+ptk_test_ok( array() === $odd['steps'], 'a step made of arrays is dropped, not rendered as "Array"' );
+
 ptk_test_done();

@@ -213,18 +213,35 @@ and the pre-existing hole is worth a fix of its own.
 - Modify: `pta-knowledge-hub/includes/class-post-writer.php`
 - Modify: `pta-knowledge-hub/includes/class-share-settings.php`
 
-- [ ] **Step 1:** Add the sign-off option to `PTK_Share_Settings` (`const SIGNOFF_OPTION = 'ptk_post_signoff';`) with a field on that screen. **This is a new school-wide option**, not the newsletter's per-issue signoff — do not touch that one.
-- [ ] **Step 2:** Write `handle_submission()`: nonce + `current_user_can( 'edit_posts' )`; build parts with `PTK_Post_Parts::sanitize()`; refuse to save when `has_content()` is false, with the validation sentence from the copy class.
-- [ ] **Step 3:** Compose and save:
+- [x] **Step 1:** Add the sign-off option to `PTK_Share_Settings` (`const SIGNOFF_OPTION = 'ptk_post_signoff';`) with a field on that screen. **This is a new school-wide option**, not the newsletter's per-issue signoff — do not touch that one.
+- [x] **Step 2:** Write `handle_submission()`: nonce + `current_user_can( 'edit_posts' )`; build parts with `PTK_Post_Parts::sanitize()`; refuse to save when `has_content()` is false, with the validation sentence from the copy class.
+- [x] **Step 3:** Compose and save:
   - `post_title` = headline
   - `post_content` = `PTK_Post_Renderer::render( $parts, $signoff, $picture )`
   - `post_excerpt` = `PTK_Post_Parts::summary( $parts )`
   - `post_type` = `post`, status `publish` or `draft`
   - featured image = the chosen picture (`set_post_thumbnail`)
   - meta: the parts; **all five framing fields the picker returns** (`image_id`, `focalX`, `focalY`, `zoom`, `fit` — the same hidden fields Task 5 Step 3 put on the screen, not just the id); and `PTK_Post_Renderer::hash()` of what was rendered
-- [ ] **Step 4: Publishing rights.** Offer *Put it on the website* only when `current_user_can( 'publish_posts' )`; otherwise show only the draft button and the copy line that says who presses it. Never offer an action that will fail.
-- [ ] **Step 5: Verify in the browser end to end** — write a post with every chip used, publish it, then **open it on the front end** and confirm the headline, picture, callout, steps and button all render, and that the home page's Latest news row shows the summary. A saved record is not proof; the published page is.
-- [ ] **Step 6: Commit** — `"Save a post the Hub wrote"`
+- [x] **Step 4: Publishing rights.** Offer *Put it on the website* only when `current_user_can( 'publish_posts' )`; otherwise show only the draft button and the copy line that says who presses it. Never offer an action that will fail.
+- [x] **Step 5: Verify in the browser end to end** — write a post with every chip used, publish it, then **open it on the front end** and confirm the headline, picture, callout, steps and button all render, and that the home page's Latest news row shows the summary. A saved record is not proof; the published page is.
+- [x] **Step 6: Commit** — `"Save a post the Hub wrote"`
+
+**Found doing Task 6:** two things the plan did not name.
+
+1. **kses.** `wp_insert_post()` runs the content through `wp_kses_post` for
+   anyone without `unfiltered_html` -- which on multisite is every school admin
+   -- and that strips the inline styles this feature is made of. The save wraps
+   the insert in `kses_remove_filters()` / `kses_init_filters()` (try/finally),
+   the same trusted-write bypass `PTK_Newsletter_Builder::handle_save()` uses,
+   and it is verified as a contributor: a draft saved by a user with
+   `unfiltered_html = no` keeps `display:flex`.
+2. **The sign-off field is part of the redesign**, so Newsletter settings draws
+   it only while `PTK_Hub_Look::on()`, and the save only touches the option when
+   the field was actually posted (otherwise a save with the look off would wipe
+   a sign-off the school set with it on). The look-off render of that screen was
+   diffed against `main`: identical, once the `<?php echo ?>` tag was written
+   with no surrounding whitespace -- the indentation in front of it was 13 bytes
+   of difference on its own.
 
 ---
 

@@ -135,6 +135,24 @@ ptk_test_ok( false !== strpos( $t::calendar_test_message( 'not_public' ), 'isn�
 ptk_test_ok( false !== strpos( $t::calendar_test_message( 'unreachable' ), 'Couldn’t reach' ), 'unreachable: plain fix-it message' );
 ptk_test_ok( false !== strpos( $t::calendar_test_message( 'not_calendar' ), 'didn’t return a calendar' ), 'not_calendar: plain fix-it message' );
 
+// ---------------------------------------------------------------------
+// sanitize_signoff() -- how every single post ends, written once
+// ---------------------------------------------------------------------
+
+ptk_test_ok( '' === $t::sanitize_signoff( '' ), 'no sign-off stays no sign-off' );
+ptk_test_ok( '' === $t::sanitize_signoff( "   \n  \n " ), 'blank lines alone are no sign-off' );
+ptk_test_ok(
+    "Thank you, as always,\nYour Northeast PTA" === $t::sanitize_signoff( "Thank you, as always,\r\nYour Northeast PTA" ),
+    'two lines survive, whatever newline the browser sent'
+);
+ptk_test_ok(
+    "One,\nTwo" === $t::sanitize_signoff( "  One,  \n\n\n   Two   " ),
+    'empty lines collapse and every line is trimmed'
+);
+ptk_test_ok( 'Thank you' === $t::sanitize_signoff( '<b>Thank<script>x</script> you</b>' ), 'markup is stripped, not escaped' );
+ptk_test_ok( strlen( $t::sanitize_signoff( str_repeat( 'a', 400 ) ) ) <= $t::SIGNOFF_MAX, 'a sign-off cannot become a paragraph' );
+ptk_test_ok( '' === $t::sanitize_signoff( array( 'x' ) ), 'anything that is not text is no sign-off' );
+
 // The admin CSS must never draw a one-sided accent bar.
 $css = file_get_contents( __DIR__ . '/../assets/css/share-settings.css' ) . file_get_contents( __DIR__ . '/../assets/css/share-page.css' );
 ptk_test_ok( ! preg_match( '/border-(left|right|inline-start|inline-end)\s*:/i', $css ), 'no one-sided borders in the share page / settings CSS' );

@@ -81,6 +81,12 @@ class PTK_Post_Parts {
      * @return string
      */
     private static function clean_text( $text ) {
+        // A form can post an array where a string is expected
+        // (`name[]=x`, or a nested `name[0][x]`). Casting that to a string
+        // is a PHP warning and the literal word "Array" in somebody's post.
+        if ( ! is_scalar( $text ) ) {
+            return '';
+        }
         $text = (string) $text;
         $text = strip_tags( $text );
         $text = trim( $text );
@@ -96,6 +102,9 @@ class PTK_Post_Parts {
      * @return string
      */
     private static function clean_words( $words ) {
+        if ( ! is_scalar( $words ) ) {
+            return '';
+        }
         $words = (string) $words;
         $words = strip_tags( $words );
         // Trim leading/trailing whitespace on the whole block.
@@ -129,6 +138,9 @@ class PTK_Post_Parts {
      * @return string
      */
     private static function clean_url( $url ) {
+        if ( ! is_scalar( $url ) ) {
+            return '';
+        }
         $url = (string) $url;
         $url = trim( $url );
 

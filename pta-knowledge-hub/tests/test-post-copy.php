@@ -77,6 +77,7 @@ $all = implode( ' ', array(
 	$c::cannot_publish(),
 	$c::no_headline(),
 	$c::nothing_at_all(),
+	$c::could_not_save(),
 	$c::published(),
 	$c::kept_private(),
 	implode( ' ', $c::next_steps() ),
@@ -95,6 +96,9 @@ $all = implode( ' ', array(
 	$c::guard_open_wordpress(),
 	$c::guard_go_back(),
 ) );
+ptk_test_ok( '' !== $c::could_not_save(), 'a save that failed says so' );
+ptk_test_ok( false !== stripos( $c::could_not_save(), 'nothing' ), 'and says nothing went out' );
+
 foreach ( array( 'post type', 'meta', 'excerpt', 'trash', 'publish', 'attachment' ) as $word ) {
 	ptk_test_ok( false === stripos( $all, $word ), 'the screen never says "' . $word . '"' );
 }

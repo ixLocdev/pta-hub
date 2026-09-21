@@ -98,6 +98,11 @@ class PTK_Post_Copy {
 		return 'There is nothing here yet. Write a headline and a sentence or two.';
 	}
 
+	/** The message when the save itself failed -- nothing was written. */
+	public static function could_not_save() {
+		return "That didn't save, and nothing went on the website. Try again.";
+	}
+
 	/** Confirmation message when the post is published. */
 	public static function published() {
 		return 'It is on the website.';
