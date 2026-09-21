@@ -105,6 +105,11 @@ class PTK_Vendor_Moderation {
             wp_die( 'You do not have permission to view this page.' );
         }
 
+        if ( class_exists( 'PTK_Hub_Look' ) && PTK_Hub_Look::on() ) {
+            self::render_new_queue();
+            return;
+        }
+
         global $wpdb;
         $table = PTK_Vendor_Reviews::table();
 
@@ -230,6 +235,299 @@ class PTK_Vendor_Moderation {
             <?php endif; ?>
         </div>
         <?php
+    }
+
+    /* -------------------------------------------------------------- */
+    /*  The new look: "Recommendations waiting for a look"             */
+    /* -------------------------------------------------------------- */
+
+    /**
+     * Everything waiting, read once: pending vendors (each with the
+     * review the member wrote when they suggested it) and pending
+     * reviews of vendors already in the directory.
+     *
+     * @return array{vendors:array<int,array{post:WP_Post,reviews:array}>,reviews:array}
+     */
+    private static function waiting_items() {
+        global $wpdb;
+        $table = PTK_Vendor_Reviews::table();
+
+        $vendors = array();
+        $posts   = get_posts( array(
+            'post_type'   => 'ptk_vendor',
+            'post_status' => 'pending',
+            'numberposts' => -1,
+            'orderby'     => 'date',
+            'order'       => 'ASC',
+        ) );
+        foreach ( $posts as $post ) {
+            $vendors[] = array(
+                'post'    => $post,
+                'reviews' => $wpdb->get_results( $wpdb->prepare(
+                    "SELECT * FROM {$table} WHERE vendor_id = %d AND status = 'pending' ORDER BY id ASC",
+                    $post->ID
+                ) ),
+            );
+        }
+
+        $reviews = $wpdb->get_results(
+            "SELECT r.*, p.post_title AS vendor_name
+             FROM {$table} r
+             INNER JOIN {$wpdb->posts} p
+                     ON p.ID = r.vendor_id
+                    AND p.post_type = 'ptk_vendor'
+                    AND p.post_status = 'publish'
+             WHERE r.status = 'pending'
+             ORDER BY r.updated_at ASC, r.id ASC"
+        );
+
+        return array( 'vendors' => $vendors, 'reviews' => $reviews ? $reviews : array() );
+    }
+
+    /** The nonce'd link that actually adds or turns something down. */
+    private static function moderate_url( $type, $verdict, $id ) {
+        return wp_nonce_url(
+            add_query_arg(
+                array(
+                    'action'  => 'ptk_vendor_moderate',
+                    'type'    => $type,
+                    'verdict' => $verdict,
+                    'id'      => (int) $id,
+                ),
+                admin_url( 'admin-post.php' )
+            ),
+            'ptk_vendor_moderate_' . $type . '_' . (int) $id
+        );
+    }
+
+    /** This screen's own url, with whatever query args are passed. */
+    private static function page_url( array $args = array() ) {
+        $url = add_query_arg(
+            array( 'post_type' => 'pta_knowledge', 'page' => self::PAGE_SLUG ),
+            admin_url( 'edit.php' )
+        );
+        return empty( $args ) ? $url : add_query_arg( $args, $url );
+    }
+
+    /** Phone · email · website, each one we have, already escaped. */
+    private static function contact_line( $vendor_id ) {
+        $bits = array();
+
+        $phone = get_post_meta( $vendor_id, 'ptk_vendor_phone', true );
+        if ( $phone ) {
+            $bits[] = esc_html( $phone );
+        }
+        $email = get_post_meta( $vendor_id, 'ptk_vendor_email', true );
+        if ( $email ) {
+            $bits[] = esc_html( $email );
+        }
+        $website = get_post_meta( $vendor_id, 'ptk_vendor_website', true );
+        if ( $website ) {
+            $bits[] = '<a href="' . esc_url( $website ) . '" target="_blank" rel="noopener noreferrer">'
+                . esc_html( preg_replace( '#^https?://#i', '', untrailingslashit( $website ) ) ) . '</a>';
+        }
+
+        return implode( ' &middot; ', $bits );
+    }
+
+    /** What one member wrote, as the block a person reads, not a table cell. */
+    private static function said_block( $row ) {
+        $att     = PTK_Vendor_Reviews::format_attribution( $row );
+        $ratings = PTK_Approvals_Copy::ratings_line( $row->price_rating, $row->quality_rating );
+        $credit  = PTK_Approvals_Copy::credit_line( 'Written by', $att['name'], $att['pta'] );
+
+        $out  = '<div class="ptk-approval-said">';
+        $out .= '<p class="ptk-approval-verdict">' . esc_html( PTK_Approvals_Copy::verdict_line( (int) $row->recommend ) ) . '</p>';
+        if ( '' !== $ratings ) {
+            $out .= '<p class="ptk-approval-ratings">' . esc_html( $ratings ) . '</p>';
+        }
+        if ( '' !== trim( (string) $row->comment ) ) {
+            $out .= '<p class="ptk-approval-comment">' . esc_html( $row->comment ) . '</p>';
+        }
+        if ( '' !== $credit ) {
+            $out .= '<p class="ptk-approval-credit">' . esc_html( $credit ) . '</p>';
+        }
+        $out .= '</div>';
+        return $out;
+    }
+
+    /** The two buttons under a card: add it, or start turning it down. */
+    private static function decision_row( $type, $id ) {
+        $out  = '<div class="ptk-approval-actions">';
+        $out .= '<a class="ptk-btn ptk-btn-primary" href="' . esc_url( self::moderate_url( $type, 'approve', $id ) ) . '">'
+            . esc_html( PTK_Approvals_Copy::button_label( $type, 'approve' ) ) . '</a>';
+        // Turning down deletes what a member wrote, so this link only asks
+        // the question -- the deletion itself is one more, deliberate click.
+        $out .= '<a class="ptk-btn" href="' . esc_url( self::page_url( array( 'ptk_turn_down' => $type . '-' . (int) $id ) ) ) . '">'
+            . esc_html( PTK_Approvals_Copy::button_label( $type, 'reject' ) ) . '</a>';
+        $out .= '</div>';
+        return $out;
+    }
+
+    /** A company a member suggested, with what they wrote about it. */
+    private static function vendor_card( array $item ) {
+        $vendor  = $item['post'];
+        $first   = ! empty( $item['reviews'] ) ? $item['reviews'][0] : null;
+        $credit  = '';
+        if ( $first ) {
+            $att    = PTK_Vendor_Reviews::format_attribution( $first );
+            $credit = PTK_Approvals_Copy::credit_line( 'Suggested by', $att['name'], $att['pta'] );
+        }
+
+        $out  = '<article class="ptk-approval" data-ptk-key="vendor-' . (int) $vendor->ID . '">';
+        $out .= '<h2 class="ptk-approval-name">' . PTK_Hub_UI::no_widow( $vendor->post_title ) . '</h2>';
+
+        $meta = array();
+        $category = self::vendor_category_name( $vendor );
+        if ( '' !== $category && '—' !== $category ) {
+            $meta[] = esc_html( $category );
+        }
+        if ( '' !== $credit ) {
+            $meta[] = esc_html( $credit );
+        }
+        if ( ! empty( $meta ) ) {
+            $out .= '<p class="ptk-approval-meta">' . implode( ' &middot; ', $meta ) . '</p>';
+        }
+
+        $contact = self::contact_line( $vendor->ID );
+        if ( '' !== $contact ) {
+            $out .= '<p class="ptk-approval-contact">' . $contact . '</p>';
+        }
+
+        foreach ( $item['reviews'] as $row ) {
+            $out .= self::said_block( $row );
+        }
+
+        $out .= self::decision_row( 'vendor', $vendor->ID );
+        $out .= '</article>';
+        return $out;
+    }
+
+    /** A review of a company that is already in the directory. */
+    private static function review_card( $row ) {
+        $out  = '<article class="ptk-approval" data-ptk-key="review-' . (int) $row->id . '">';
+        $out .= '<h2 class="ptk-approval-name">' . PTK_Hub_UI::no_widow( $row->vendor_name ) . '</h2>';
+        $out .= '<p class="ptk-approval-meta">Already in the directory &middot; this is what one member wants to add.</p>';
+        $out .= self::said_block( $row );
+        $out .= self::decision_row( 'review', (int) $row->id );
+        $out .= '</article>';
+        return $out;
+    }
+
+    /**
+     * The one screen that asks before anything is deleted. Reached from a
+     * "Turn this down" link; the answer is the real, nonce'd action.
+     *
+     * @return bool True when it rendered (and the list must not).
+     */
+    private static function render_turn_down( array $waiting ) {
+        $asked = isset( $_GET['ptk_turn_down'] ) ? sanitize_text_field( wp_unslash( $_GET['ptk_turn_down'] ) ) : '';
+        if ( '' === $asked || false === strpos( $asked, '-' ) ) {
+            return false;
+        }
+
+        list( $type, $id ) = explode( '-', $asked, 2 );
+        $id = (int) $id;
+        if ( ! in_array( $type, array( 'vendor', 'review' ), true ) || $id <= 0 ) {
+            return false;
+        }
+
+        // Only ask about something really waiting -- a stale or made-up
+        // link falls back to the list rather than offering to delete.
+        $name = '';
+        $who  = '';
+        if ( 'vendor' === $type ) {
+            foreach ( $waiting['vendors'] as $item ) {
+                if ( (int) $item['post']->ID === $id ) {
+                    $name = $item['post']->post_title;
+                    if ( ! empty( $item['reviews'] ) ) {
+                        $att = PTK_Vendor_Reviews::format_attribution( $item['reviews'][0] );
+                        $who = $att['name'];
+                    }
+                    break;
+                }
+            }
+        } else {
+            foreach ( $waiting['reviews'] as $row ) {
+                if ( (int) $row->id === $id ) {
+                    $name = $row->vendor_name;
+                    $att  = PTK_Vendor_Reviews::format_attribution( $row );
+                    $who  = $att['name'];
+                    break;
+                }
+            }
+        }
+
+        if ( '' === $name ) {
+            return false;
+        }
+
+        echo '<div class="wrap">';
+        echo PTK_Hub_UI::page_open(
+            PTK_Approvals_Copy::confirm_question( $type, $name, $who ),
+            PTK_Approvals_Copy::confirm_warning( $type )
+        );
+
+        echo '<div class="ptk-approval-decide">';
+        // The safe answer is the plain one and comes first: nothing is
+        // lost by going back and looking again.
+        echo PTK_Hub_UI::primary_button( 'Keep it for now', self::page_url() );
+        echo '<a class="ptk-btn ptk-btn-danger" href="' . esc_url( self::moderate_url( $type, 'reject', $id ) ) . '">Yes, turn it down</a>';
+        echo '</div>';
+
+        echo PTK_Hub_UI::page_close();
+        echo '</div>';
+        return true;
+    }
+
+    /** The new-look queue. Only ever reached with PTK_Hub_Look::on(). */
+    private static function render_new_queue() {
+        $waiting = self::waiting_items();
+
+        if ( self::render_turn_down( $waiting ) ) {
+            return;
+        }
+
+        $vendor_count = count( $waiting['vendors'] );
+        $review_count = count( $waiting['reviews'] );
+
+        echo '<div class="wrap">';
+        echo PTK_Hub_UI::page_open(
+            'Recommendations waiting for a look',
+            'Members at every school suggested these. Nothing reaches the directory until you say yes.'
+        );
+
+        $outcome = isset( $_GET['ptk_moderated'] ) ? sanitize_key( wp_unslash( $_GET['ptk_moderated'] ) ) : '';
+        if ( 'approved' === $outcome || 'rejected' === $outcome ) {
+            echo '<p class="ptk-approval-outcome">' . PTK_Hub_UI::no_widow( PTK_Approvals_Copy::outcome_line( $outcome ) ) . '</p>';
+        }
+
+        if ( 0 === $vendor_count && 0 === $review_count ) {
+            $empty = PTK_Approvals_Copy::empty_state();
+            echo PTK_Hub_UI::empty_state( $empty['title'], $empty['text'] );
+        } else {
+            // The screen's one stamp.
+            echo PTK_Hub_UI::waiting_row( PTK_Approvals_Copy::waiting_sentence( $vendor_count, $review_count ) );
+
+            echo '<div class="ptk-approvals">';
+            foreach ( $waiting['vendors'] as $item ) {
+                echo self::vendor_card( $item );
+            }
+            foreach ( $waiting['reviews'] as $row ) {
+                echo self::review_card( $row );
+            }
+            echo '</div>';
+        }
+
+        echo PTK_Hub_UI::quiet_links( array(
+            array(
+                'label' => 'See the whole directory',
+                'url'   => admin_url( 'edit.php?post_type=ptk_vendor' ),
+            ),
+        ) );
+
+        echo PTK_Hub_UI::page_close();
+        echo '</div>';
     }
 
     /** First (only expected) category term name, or a dash. */

@@ -21,7 +21,8 @@ ptk_test_ok( false === $t::is_hub_screen( 'toplevel_page_something-else', '' ), 
 // Every submenu page under the PTA Hub menu reports post_type = pta_knowledge;
 // only pages listed in PAGES (and the real list/editor screens) count.
 ptk_test_ok( true === $t::is_hub_screen( 'pta_knowledge_page_ptk-content-wizard', 'pta_knowledge' ), 'the content wizard is a Hub screen (Phase 4)' );
-ptk_test_ok( false === $t::is_hub_screen( 'pta_knowledge_page_ptk-vendor-approvals', 'pta_knowledge' ), 'vendor approvals is not a Hub screen yet' );
+ptk_test_ok( true === $t::is_hub_screen( 'pta_knowledge_page_ptk-vendor-approvals', 'pta_knowledge' ), 'vendor approvals is a Hub screen (4.20.0)' );
+ptk_test_ok( false === $t::is_hub_screen( 'pta_knowledge_page_ptk-search-analytics', 'pta_knowledge' ), 'search analytics is not migrated yet' );
 ptk_test_ok( true === $t::is_hub_screen( 'pta_knowledge_page_ptk-welcome', 'pta_knowledge' ), 'Start Here is, under the Hub menu' );
 ptk_test_ok( true === $t::is_hub_screen( 'edit-pta_newsletter', 'pta_newsletter' ), 'the newsletter list screen id is a Hub screen' );
 ptk_test_ok( true === $t::is_hub_screen( 'pta_knowledge', 'pta_knowledge' ), 'the entry editor screen id is a Hub screen' );

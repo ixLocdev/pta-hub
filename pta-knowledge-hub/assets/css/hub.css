@@ -670,3 +670,135 @@ body.ptk-hub-look .ptk-router-match-meta {
         flex: 1 1 100%;
     }
 }
+
+/* "Recommendations waiting for a look" -- the Council's approval screen.
+   A card per thing waiting, with what the member wrote inside it. The
+   quote block is set off by a full fill and a full border; no side rail. */
+
+body.ptk-hub-look .ptk-approvals {
+    display: grid;
+    gap: var(--ptk-space-3);
+    margin-top: var(--ptk-space-3);
+}
+
+body.ptk-hub-look .ptk-approval {
+    padding: var(--ptk-space-4);
+    background: var(--ptk-surface);
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-card);
+}
+
+body.ptk-hub-look .ptk-approval-name {
+    margin: 0;
+    font-family: var(--ptk-font-serif);
+    font-size: 19px;
+    font-weight: 600;
+    color: var(--ptk-text);
+}
+
+body.ptk-hub-look .ptk-approval-meta,
+body.ptk-hub-look .ptk-approval-contact {
+    margin: 4px 0 0;
+    font-size: 13.5px;
+    color: var(--ptk-text-dim);
+}
+
+body.ptk-hub-look .ptk-approval-contact a {
+    color: var(--ptk-primary);
+}
+
+body.ptk-hub-look .ptk-approval-said {
+    margin-top: var(--ptk-space-3);
+    padding: var(--ptk-space-3);
+    background: var(--ptk-bg);
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-field);
+}
+
+body.ptk-hub-look .ptk-approval-verdict {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ptk-text);
+}
+
+body.ptk-hub-look .ptk-approval-ratings {
+    margin: 2px 0 0;
+    font-size: 13px;
+    color: var(--ptk-text-dim);
+}
+
+body.ptk-hub-look .ptk-approval-comment {
+    margin: var(--ptk-space-2) 0 0;
+    font-family: var(--ptk-font-serif);
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--ptk-text);
+    white-space: pre-wrap;
+}
+
+body.ptk-hub-look .ptk-approval-credit {
+    margin: var(--ptk-space-2) 0 0;
+    font-size: 12.5px;
+    color: var(--ptk-text-dim);
+}
+
+body.ptk-hub-look .ptk-approval-actions,
+body.ptk-hub-look .ptk-approval-decide {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ptk-space-1);
+    margin-top: var(--ptk-space-3);
+}
+
+body.ptk-hub-look .ptk-approval-outcome {
+    margin: 0 0 var(--ptk-space-3);
+    padding: var(--ptk-space-2) var(--ptk-space-3);
+    background: var(--ptk-primary-soft);
+    border: 1px solid var(--ptk-primary);
+    border-radius: var(--ptk-radius-field);
+    font-size: 14px;
+    color: var(--ptk-text);
+}
+
+body.ptk-hub-look .ptk-btn-danger {
+    background: var(--ptk-surface);
+    border-color: var(--ptk-error);
+    color: var(--ptk-error);
+}
+
+body.ptk-hub-look .ptk-btn-danger:hover,
+body.ptk-hub-look .ptk-btn-danger:focus {
+    background: var(--ptk-error);
+    color: var(--ptk-surface);
+}
+
+@media (max-width: 782px) {
+    body.ptk-hub-look .ptk-approval-actions .ptk-btn,
+    body.ptk-hub-look .ptk-approval-decide .ptk-btn {
+        flex: 1 1 100%;
+    }
+}
+
+/* Buttons inside a page body. "body.ptk-hub-look .ptk-page a" (the link
+   color) outranks the plain ".ptk-btn" rules -- two elements to one -- so
+   a button rendered as a link came out the same color as its own fill and
+   read as blank. These put the button's own color back, and only inside a
+   page, so nothing else has to change. */
+
+body.ptk-hub-look .ptk-page a.ptk-btn {
+    color: var(--ptk-text);
+}
+
+body.ptk-hub-look .ptk-page a.ptk-btn-primary {
+    color: var(--ptk-surface);
+}
+
+body.ptk-hub-look .ptk-page a.ptk-btn-danger {
+    color: var(--ptk-error);
+}
+
+body.ptk-hub-look .ptk-page a.ptk-btn-danger:hover,
+body.ptk-hub-look .ptk-page a.ptk-btn-danger:focus {
+    color: var(--ptk-surface);
+}
