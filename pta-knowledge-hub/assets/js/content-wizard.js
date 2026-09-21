@@ -332,7 +332,24 @@
             var name = $(this).data('block');
 
             if (name === 'image') {
-                openMediaPicker('ptk-featured-image', 'image');
+                // 4.24.0: with the new Hub look, "+ a picture" opens our
+                // own picker (assets/js/picture-picker.js) instead of
+                // wp.media's whole media-library modal. With the look off
+                // -- or if the picker script somehow isn't present -- the
+                // old path below runs exactly as it always has.
+                if ($('body').hasClass('ptk-hub-look') && window.ptkPicturePicker && window.ptkPicturePicker.open) {
+                    window.ptkPicturePicker.open({
+                        onChoose: function (picture) {
+                            $('#ptk-featured-image-id').val(picture.id);
+                            $('#ptk-featured-image-preview').empty().append(
+                                $('<img>').attr({ src: picture.url, alt: '' })
+                            );
+                            qfShowBlock('image');
+                        }
+                    });
+                } else {
+                    openMediaPicker('ptk-featured-image', 'image');
+                }
                 return;
             }
 

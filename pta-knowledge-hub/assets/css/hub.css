@@ -858,3 +858,182 @@ body.ptk-hub-look .ptk-days-count {
 body.ptk-hub-look .ptk-days-export {
     margin-top: var(--ptk-space-3);
 }
+
+/* Picture picker ("Which picture?") */
+
+body.ptk-hub-look .ptk-pic-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(36, 48, 57, .55);
+    z-index: 100000;
+}
+
+body.ptk-hub-look .ptk-pic-modal-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100001;
+    width: min(560px, calc(100vw - 32px));
+    max-height: calc(100vh - 64px);
+    overflow-y: auto;
+    background: var(--ptk-surface);
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-card);
+    padding: var(--ptk-space-4);
+}
+
+body.ptk-hub-look .ptk-pic-modal-close {
+    position: absolute;
+    top: var(--ptk-space-2);
+    right: var(--ptk-space-2);
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-field);
+    background: var(--ptk-surface);
+    color: var(--ptk-text);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+body.ptk-hub-look .ptk-pic-modal-title {
+    font: 600 21px/1.3 var(--ptk-font-serif);
+    color: var(--ptk-text);
+    margin: 0 0 var(--ptk-space-3);
+    padding-right: 40px;
+}
+
+body.ptk-hub-look .ptk-pic-drop {
+    text-align: center;
+    background: var(--ptk-bg);
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-card);
+    padding: var(--ptk-space-4);
+    margin-bottom: var(--ptk-space-4);
+}
+
+body.ptk-hub-look .ptk-pic-drop--active {
+    background: var(--ptk-primary-soft);
+}
+
+body.ptk-hub-look .ptk-pic-drop-label {
+    font: 700 15px/1.3 var(--ptk-font-sans);
+    color: var(--ptk-text);
+    margin: 0 0 4px;
+}
+
+body.ptk-hub-look .ptk-pic-drop .ptk-help {
+    margin: 0 0 var(--ptk-space-2);
+}
+
+body.ptk-hub-look .ptk-pic-pick-btn {
+    cursor: pointer;
+}
+
+body.ptk-hub-look .ptk-pic-progress {
+    margin: var(--ptk-space-2) 0 0;
+    font-size: 12.5px;
+    color: var(--ptk-text-dim);
+}
+
+body.ptk-hub-look .ptk-pic-previous-heading {
+    font: 700 14px/1.3 var(--ptk-font-sans);
+    color: var(--ptk-text);
+    margin: 0 0 var(--ptk-space-2);
+}
+
+body.ptk-hub-look .ptk-pic-search {
+    display: block;
+    width: 100%;
+    font-size: 14px;
+    font-family: var(--ptk-font-sans);
+    color: var(--ptk-text);
+    background: var(--ptk-surface);
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-field);
+    padding: 10px 12px;
+    margin-bottom: var(--ptk-space-2);
+}
+
+body.ptk-hub-look .ptk-pic-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: var(--ptk-space-2);
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+body.ptk-hub-look .ptk-pic-grid-empty {
+    grid-column: 1 / -1;
+}
+
+body.ptk-hub-look .ptk-pic-item {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    padding: 0;
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-field);
+    background: var(--ptk-bg);
+    overflow: hidden;
+    cursor: pointer;
+}
+
+body.ptk-hub-look .ptk-pic-item:hover,
+body.ptk-hub-look .ptk-pic-item:focus {
+    border-color: var(--ptk-primary);
+    outline: none;
+}
+
+body.ptk-hub-look .ptk-pic-item img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+body.ptk-hub-look .ptk-pic-more {
+    display: block;
+    width: 100%;
+    margin-top: var(--ptk-space-2);
+}
+
+body.ptk-hub-look .ptk-pic-back {
+    display: inline-block;
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--ptk-primary);
+    font: 700 13px/1.4 var(--ptk-font-sans);
+    cursor: pointer;
+    margin-bottom: var(--ptk-space-3);
+}
+
+body.ptk-hub-look .ptk-pic-alt-preview {
+    margin-bottom: var(--ptk-space-3);
+}
+
+body.ptk-hub-look .ptk-pic-alt-preview img {
+    display: block;
+    max-width: 100%;
+    max-height: 260px;
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-card);
+}
+
+@media (max-width: 480px) {
+    body.ptk-hub-look .ptk-pic-modal-panel {
+        width: calc(100vw - 24px);
+        max-height: calc(100vh - 32px);
+        padding: var(--ptk-space-3);
+    }
+
+    body.ptk-hub-look .ptk-pic-grid {
+        grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+    }
+}
