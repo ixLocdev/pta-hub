@@ -43,9 +43,9 @@ blocks today, guessing dates out of titles and stripping emoji, precisely
 because posts are written in raw WordPress. A Hub-written post carries its
 parts, so that import becomes a copy rather than a guess.
 
-**2. One story plus chips, not a mini newsletter.** A kicker, a headline, the
-words, a picture, then the chips Create Entry already taught: **+ steps**,
-**+ a date**, **+ a button**. That reproduces Northeast's class-parents post
+**2. One story plus chips, not a mini newsletter.** A kicker, a headline and
+the words, then the chips Create Entry already taught: **+ a picture**,
+**+ steps**, **+ a date**, **+ a button**. That reproduces Northeast's class-parents post
 exactly and still lets Watchung write four lines. A multi-story composer would
 become a second newsletter, with all the same decisions.
 
@@ -75,12 +75,33 @@ someone who already knows what they want. Cards with two buttons already exist
 Your Northeast PTA" once in Newsletter settings and every post ends with it.
 Blank means no sign-off. Nobody retypes it and it cannot drift between writers.
 
+This is a **new school-wide option** on `PTK_Share_Settings`, not the
+newsletter's existing per-issue signoff field, which lives inside each
+issue's own data and stays as it is.
+
 ## The screens
 
 **"Your posts"** — built exactly like "Your newsletters": a card per post,
 newest first, the state it is in, *Open it* / *See what families see*, and a
 **Write a post** button. One menu item covers listing and writing, so the
 trimmed menu goes to eight rather than ten.
+
+### What the list actually contains
+
+`post` is WordPress's ordinary post type, so a school's already full of posts
+this screen did not write. Three kinds, handled differently:
+
+| Kind | How to tell | What the card does |
+|---|---|---|
+| Written here | carries the Hub's parts meta | *Open it* opens the writing screen with the parts loaded. |
+| Written in WordPress | no parts meta — every legacy post, Bradford's newsletter-pastes, Watchung's "11/4 \| …" announcements | Listed, and says plainly that it was written in WordPress. Its action is *Open it in WordPress*, never the Hub screen: there are no parts to load, and opening it here would offer to replace real writing with an empty form. |
+| Made by the newsletter | carries `_ptk_linked_source_newsletter_id` (see `class-newsletter-linked-post.php`) | **Not listed.** Nobody wrote it; it is a byproduct of publishing a newsletter, it is maintained by that newsletter, and editing it here would be overwritten the next time the newsletter is saved. It is already represented on "Your newsletters". |
+
+Listing foreign posts rather than hiding them is deliberate: a volunteer who
+wrote something last year should find it where their posts live, and be told
+why it opens somewhere else — the same way "What you've written" lists
+Council entries and says they are read-only rather than pretending they do
+not exist.
 
 **The writing screen** — one card in the Create Entry shape:
 
