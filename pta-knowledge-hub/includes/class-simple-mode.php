@@ -33,11 +33,26 @@ class PTK_Simple_Mode {
      */
     const TOGGLE_ACTION = 'ptk_simple_mode';
 
+    /**
+     * The slug of the "Show all of WordPress" item at the foot of the
+     * trimmed menu. It is not a screen -- WordPress happily takes a full
+     * url as a menu slug, so clicking it runs the same toggle the top bar
+     * and the home screen's quiet link run.
+     */
+    const MENU_EXIT_SLUG = 'ptk-show-wordpress';
+
     public static function init() {
         // Late priority: run after every other plugin (and WordPress itself)
         // has added its own menu items and admin-bar nodes, so there is
         // something to trim.
+        // 998: the door between the two views, added before the trim so the
+        // trim's keep list can leave it alone. It appears in BOTH states --
+        // "Show all of WordPress" going out, "Back to the simple view"
+        // coming home -- because someone standing in Media or Posts has no
+        // other way back that they can see.
+        add_action( 'admin_menu', array( __CLASS__, 'add_menu_exit' ), 998 );
         add_action( 'admin_menu', array( __CLASS__, 'trim_admin_menu' ), 999 );
+        add_action( 'admin_menu', array( __CLASS__, 'point_menu_exit' ), 1000 );
         add_action( 'admin_bar_menu', array( __CLASS__, 'trim_admin_bar' ), 999 );
 
         // Hub screens only: hide Screen Options and the help tab. These
@@ -176,9 +191,23 @@ class PTK_Simple_Mode {
         return in_array( (string) $slug, is_array( $hub_slugs ) ? $hub_slugs : array(), true );
     }
 
-    /** Top-level menu slugs Simple mode always keeps. */
+    /**
+     * Top-level menu slugs Simple mode always keeps.
+     *
+     * Profile is NOT one of them. WordPress's own profile screen is nine
+     * admin color schemes, a toolbar checkbox, an infinite-scrolling
+     * setting, "Log Out Everywhere Else", and -- from another plugin -- a
+     * Sync/Unsync choice over a checklist of all eleven PTA sites. None of
+     * that can be trimmed honestly: the last two have no hook to remove
+     * them, and hiding fields with CSS leaves them there and submittable.
+     *
+     * Nobody is stranded. "Howdy, ..." in the top bar still opens Edit
+     * Profile, which is where people look for their own account anyway, and
+     * "Show all of WordPress" is now a menu item of its own -- so the
+     * WordPress screens are reached by deciding to, not by wandering in.
+     */
     public static function top_level_keep_slugs() {
-        return array( self::HUB_TOP_SLUG, 'profile.php' );
+        return array( self::HUB_TOP_SLUG, self::MENU_EXIT_SLUG );
     }
 
     /**
@@ -196,7 +225,7 @@ class PTK_Simple_Mode {
      *   so a caller passing nothing still gets the raw list slug.
      */
     public static function hub_task_submenu_slugs( $written_screen_on = false ) {
-        return array(
+        $slugs = array(
             'ptk-welcome',
             'ptk-newsletter-builder',
             // Newsletter settings holds the switch that turns the whole new
@@ -205,18 +234,119 @@ class PTK_Simple_Mode {
             'ptk-share-settings',
             'ptk-content-wizard',
             $written_screen_on ? 'ptk-written' : self::HUB_TOP_SLUG,
-            'edit.php?post_type=pta_newsletter',
+            // "Your newsletters" replaces WordPress's own newsletter list
+            // in the new look, the way "What you've written" replaced the
+            // entry list: that list is bulk actions, checkboxes, an SEO
+            // column and a trash count, and it was the second item a
+            // volunteer ever clicked.
+            $written_screen_on ? 'ptk-newsletters' : 'edit.php?post_type=pta_newsletter',
+        );
+
+        // "Words you've explained" is a home for content, like "What you've
+        // written" beside it -- not a once-in-a-while admin job. Without a
+        // menu entry it could only be reached by typing its address, and a
+        // volunteer hunting for it would end up showing all of WordPress.
+        if ( $written_screen_on ) {
+            $slugs[] = 'ptk-words';
+        }
+
+        return $slugs;
+    }
+
+    /**
+     * Admin-bar node ids, at the top level, that Simple mode always keeps.
+     *
+     * "My Sites" is deliberately NOT one of them. It is one click from every
+     * Hub screen and opens WordPress's own multisite list of all eleven
+     * PTAs, whose Dashboard links drop a volunteer into another school's
+     * admin -- where this look may be off entirely. Someone who really works
+     * at two schools still has their own site list at /wp-admin/my-sites.php
+     * and the full admin bar the moment they show all of WordPress.
+     */
+    public static function admin_bar_keep_ids() {
+        return array(
+            'site-name',
+            // "top-secondary" is the group on the right of the bar, and its
+            // own parent is root -- so it is judged here, and removing it
+            // takes my-account (Edit Profile, Log Out) down with it. That is
+            // the only way a volunteer reaches their own password now that
+            // Profile has left the menu, so both ids stay.
+            'top-secondary',
+            'my-account',
+            'ptk-simple-mode',
         );
     }
 
-    /** Admin-bar node ids, at the top level, that Simple mode always keeps. */
-    public static function admin_bar_keep_ids() {
-        return array( 'site-name', 'my-sites', 'my-account', 'ptk-simple-mode' );
+    /**
+     * Pure: is the door between the two views worth offering at all?
+     * Only where the new look exists and the person is one Simple mode
+     * would apply to.
+     */
+    public static function exit_offered( $look_on, $too_small ) {
+        return (bool) $look_on && ! $too_small;
+    }
+
+    /** exit_offered() against this site and this person. */
+    public static function exit_available() {
+        if ( ! class_exists( 'PTK_Hub_Look' ) || ! PTK_Hub_Look::on() ) {
+            return false;
+        }
+        $user = wp_get_current_user();
+        $caps = ( $user && ! empty( $user->allcaps ) ) ? $user->allcaps : array();
+        return self::exit_offered( true, self::too_small_for_hub( $caps ) );
+    }
+
+    /**
+     * admin_menu (priority 998): the door between the two views, at the
+     * foot of the menu, in whichever direction the person is facing.
+     *
+     * It is not a screen. WordPress takes a url as a menu slug happily
+     * enough, but add_menu_page() escapes what it is given, so the item is
+     * registered under a plain slug and then pointed at the real toggle --
+     * nonce and return address included -- once $menu exists.
+     */
+    public static function add_menu_exit() {
+        if ( is_network_admin() || is_user_admin() || ! function_exists( 'add_menu_page' ) ) {
+            return;
+        }
+        if ( ! self::exit_available() ) {
+            return;
+        }
+
+        global $menu;
+
+        $label = self::toggle_link_label();
+        add_menu_page( $label, $label, 'read', self::MENU_EXIT_SLUG, '', 'dashicons-external', 90 );
+    }
+
+    /**
+     * admin_menu (priority 1000): point the exit item at the real toggle.
+     *
+     * This runs AFTER trim_admin_menu(), deliberately. The trim keeps a menu
+     * item by matching its slug against the keep list, so an item already
+     * rewritten to a full url no longer matches itself and gets swept away
+     * with everything else.
+     */
+    public static function point_menu_exit() {
+        if ( ! self::exit_available() ) {
+            return;
+        }
+
+        global $menu;
+        if ( ! is_array( $menu ) ) {
+            return;
+        }
+        foreach ( $menu as $index => $item ) {
+            if ( ! empty( $item[2] ) && self::MENU_EXIT_SLUG === $item[2] ) {
+                $menu[ $index ][2] = self::toggle_url();
+                break;
+            }
+        }
     }
 
     /**
      * admin_menu (priority 999): remove every top-level menu except the
-     * Hub's and Profile, and every Hub submenu that isn't a Hub task. Never
+     * Hub's and the way out, and every Hub submenu that isn't a Hub task. Never
      * CSS hiding -- these are the real WordPress menu-removal functions, so
      * a hidden screen's URL still works if someone types it; only the menu
      * entry is gone.
@@ -233,24 +363,6 @@ class PTK_Simple_Mode {
 
         $top_keep = self::top_level_keep_slugs();
 
-        // "Profile" is only its own top-level item for people who lack
-        // list_users -- someone who can see the Users menu (most
-        // administrators) has it nested under users.php instead. Removing
-        // every other top-level menu would take that nesting with it, so
-        // add a plain top-level Profile item first when one isn't already
-        // there; the keep list below then leaves it alone like any other.
-        if ( is_array( $menu ) ) {
-            $has_profile_top = false;
-            foreach ( $menu as $item ) {
-                if ( ! empty( $item[2] ) && 'profile.php' === $item[2] ) {
-                    $has_profile_top = true;
-                    break;
-                }
-            }
-            if ( ! $has_profile_top && function_exists( 'add_menu_page' ) ) {
-                add_menu_page( 'Profile', 'Profile', 'read', 'profile.php', '', 'dashicons-admin-users', 80 );
-            }
-        }
 
         if ( is_array( $menu ) ) {
             foreach ( $menu as $item ) {
@@ -284,7 +396,17 @@ class PTK_Simple_Mode {
         if ( is_network_admin() || is_user_admin() ) {
             return;
         }
+
+        // The door itself is offered in both views (see add_menu_exit());
+        // only the trimming below is for Simple mode.
         if ( ! self::active_for_user() ) {
+            if ( self::exit_available() ) {
+                $wp_admin_bar->add_node( array(
+                    'id'    => 'ptk-simple-mode',
+                    'title' => self::toggle_link_label(),
+                    'href'  => self::toggle_url(),
+                ) );
+            }
             return;
         }
 

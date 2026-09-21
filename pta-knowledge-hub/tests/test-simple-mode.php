@@ -55,7 +55,22 @@ ptk_test_ok( false === $t::keep_menu_slug( 'anything', array() ), 'nothing survi
 ptk_test_ok( false === $t::keep_menu_slug( 'anything', null ), 'a non-array keep list is treated as empty' );
 
 // The top-level keep list: the Hub's own menu, plus Profile, nothing else.
-ptk_test_ok( array( 'edit.php?post_type=pta_knowledge', 'profile.php' ) === $t::top_level_keep_slugs(), 'top level keeps only the Hub menu and Profile' );
+ptk_test_ok( array( 'edit.php?post_type=pta_knowledge', 'ptk-show-wordpress' ) === $t::top_level_keep_slugs(), 'top level keeps only the Hub menu and the way out' );
+// WordPress's own profile screen cannot be trimmed honestly -- two of its
+// worst parts have no hook -- so it leaves the menu. "Howdy, ..." in the
+// top bar still reaches it.
+ptk_test_ok( ! in_array( 'profile.php', $t::top_level_keep_slugs(), true ), 'Profile is not in the trimmed menu' );
+ptk_test_ok( in_array( 'my-account', $t::admin_bar_keep_ids(), true ), 'but the account menu in the top bar stays, so nobody is stranded' );
+// my-account sits inside the "top-secondary" group, whose own parent is
+// root -- drop the group and Edit Profile and Log Out go with it.
+ptk_test_ok( in_array( 'top-secondary', $t::admin_bar_keep_ids(), true ), 'the group the account menu lives in stays too, or keeping my-account means nothing' );
+
+// The door between the two views is offered in BOTH directions: someone who
+// showed all of WordPress and is standing in Media needs a way home that
+// they can see, not just a quiet link on a screen they left.
+ptk_test_ok( true === $t::exit_offered( true, false ), 'the way out is offered where the new look is on' );
+ptk_test_ok( false === $t::exit_offered( false, false ), 'and never where the new look is off -- there is no simple view to return to' );
+ptk_test_ok( false === $t::exit_offered( true, true ), 'and not to someone the Hub is too small for' );
 
 // The Hub-task submenu keep list: task screens, not once-in-a-while admin screens.
 $hub_tasks = $t::hub_task_submenu_slugs();
@@ -65,7 +80,7 @@ foreach ( array( 'ptk-welcome', 'ptk-newsletter-builder', 'ptk-share-settings', 
 // Newsletter settings holds the switch that turns the whole new look off,
 // so it stays reachable even though it's otherwise a once-in-a-while screen.
 ptk_test_ok( in_array( 'ptk-share-settings', $hub_tasks, true ), 'hub_task_submenu_slugs() keeps Newsletter settings -- it holds the new-look switch' );
-foreach ( array( 'ptk-settings', 'ptk-search-analytics', 'ptk-content-importer', 'ptk-network-sync', 'ptk-school-colors', 'ptk-vendor-approvals', 'ptk-asked-for', 'ptk-words' ) as $admin_slug ) {
+foreach ( array( 'ptk-settings', 'ptk-search-analytics', 'ptk-content-importer', 'ptk-network-sync', 'ptk-school-colors', 'ptk-vendor-approvals', 'ptk-asked-for' ) as $admin_slug ) {
     ptk_test_ok( ! in_array( $admin_slug, $hub_tasks, true ), "hub_task_submenu_slugs() drops the once-in-a-while admin screen $admin_slug" );
 }
 
@@ -74,17 +89,25 @@ foreach ( array( 'ptk-settings', 'ptk-search-analytics', 'ptk-content-importer',
 // not in the trimmed Simple mode menu.
 $hub_tasks_written = $t::hub_task_submenu_slugs( true );
 ptk_test_ok( in_array( 'ptk-written', $hub_tasks_written, true ), 'hub_task_submenu_slugs( true ) keeps ptk-written' );
+// "Words you've explained" is a home for content, so it earns a menu entry
+// beside it -- but only in the new look, where that screen exists at all.
+ptk_test_ok( in_array( 'ptk-words', $hub_tasks_written, true ), 'hub_task_submenu_slugs( true ) keeps ptk-words' );
+ptk_test_ok( in_array( 'ptk-newsletters', $hub_tasks_written, true ), 'hub_task_submenu_slugs( true ) keeps ptk-newsletters' );
+ptk_test_ok( ! in_array( 'edit.php?post_type=pta_newsletter', $hub_tasks_written, true ), "hub_task_submenu_slugs( true ) drops WordPress's own newsletter list" );
+ptk_test_ok( ! in_array( 'ptk-words', $hub_tasks, true ), 'ptk-words is not in the old-look menu, where the screen does not exist' );
 ptk_test_ok( ! in_array( 'edit.php?post_type=pta_knowledge', $hub_tasks_written, true ), 'hub_task_submenu_slugs( true ) drops the raw All Entries list' );
-foreach ( array( 'ptk-welcome', 'ptk-newsletter-builder', 'ptk-share-settings', 'ptk-content-wizard', 'edit.php?post_type=pta_newsletter' ) as $task_slug ) {
+foreach ( array( 'ptk-welcome', 'ptk-newsletter-builder', 'ptk-share-settings', 'ptk-content-wizard' ) as $task_slug ) {
     ptk_test_ok( in_array( $task_slug, $hub_tasks_written, true ), "hub_task_submenu_slugs( true ) still keeps $task_slug" );
 }
 
 // The admin-bar keep list.
 $bar_keep = $t::admin_bar_keep_ids();
-foreach ( array( 'site-name', 'my-sites', 'my-account', 'ptk-simple-mode' ) as $bar_id ) {
+foreach ( array( 'site-name', 'my-account', 'top-secondary', 'ptk-simple-mode' ) as $bar_id ) {
     ptk_test_ok( in_array( $bar_id, $bar_keep, true ), "admin_bar_keep_ids() keeps $bar_id" );
 }
-foreach ( array( 'new-content', 'comments', 'updates', 'wp-logo' ) as $bar_id ) {
+// "My Sites" opens WordPress's own list of all eleven PTAs, and its
+// Dashboard links land a volunteer in another school's admin.
+foreach ( array( 'new-content', 'comments', 'updates', 'wp-logo', 'my-sites' ) as $bar_id ) {
     ptk_test_ok( ! in_array( $bar_id, $bar_keep, true ), "admin_bar_keep_ids() drops $bar_id" );
 }
 

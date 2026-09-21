@@ -3,7 +3,7 @@
  * Plugin Name: PTA Knowledge Hub
  * Plugin URI:  https://github.com/your-pta/knowledge-hub
  * Description: A searchable knowledge base for your PTA. Volunteers add content through WordPress, parents and members find answers instantly via a smart search bar.
- * Version:     4.23.1
+ * Version:     4.24.0
  * Author:      Lucas Deichl
  * License:     GPL-2.0-or-later
  * Text Domain: pta-knowledge-hub
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'PTK_VERSION', '4.23.1' );
+define( 'PTK_VERSION', '4.24.0' );
 define( 'PTK_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PTK_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -94,6 +94,8 @@ require_once PTK_PLUGIN_DIR . 'includes/class-asked-for-list.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-looking-for-copy.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-words-copy.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-words-list.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-newsletters-copy.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-newsletters-list.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-glossary-tooltips.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-glossary-page.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-content-importer.php';
@@ -186,6 +188,7 @@ function ptk_init() {
     PTK_Written_List::init();
     PTK_Asked_For_List::init();
     PTK_Words_List::init();
+    PTK_Newsletters_List::init();
     PTK_Glossary_Tooltips::init();
     PTK_Glossary_Page::init();
     PTK_Content_Importer::init();

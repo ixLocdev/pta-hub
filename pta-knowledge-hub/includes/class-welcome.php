@@ -56,9 +56,16 @@ class PTK_Welcome {
         // Suggestions. $item[2] is the menu slug.
         $wanted = array(
             self::PAGE_SLUG,
+            // "Your newsletters" stands where WordPress's own list used to;
+            // both are named here so the order holds whichever one the site
+            // is showing.
+            'ptk-newsletters',
             'edit.php?post_type=pta_newsletter',
             'ptk-newsletter-builder',
             'ptk-share-settings',
+            'ptk-content-wizard',
+            'ptk-written',
+            'ptk-words',
         );
         $front = array();
         foreach ( $wanted as $slug ) {
@@ -521,6 +528,28 @@ class PTK_Welcome {
         }
 
         $quiet = array();
+
+        // The two screens a volunteer looks at now and then rather than
+        // every day. Neither is in the trimmed menu, and "What families have
+        // asked for" only shows above as a nudge when something is actually
+        // waiting -- without these links they could be reached only by
+        // typing their address.
+        if ( class_exists( 'PTK_Asked_For_List' ) ) {
+            $quiet[] = array(
+                'label' => 'What families have asked for',
+                'url'   => PTK_Asked_For_List::url(),
+            );
+        }
+        if ( class_exists( 'PTK_Analytics' ) && current_user_can( 'edit_posts' ) ) {
+            $quiet[] = array(
+                'label' => 'What families are looking for',
+                'url'   => add_query_arg(
+                    array( 'post_type' => 'pta_knowledge', 'page' => 'ptk-search-analytics' ),
+                    admin_url( 'edit.php' )
+                ),
+            );
+        }
+
         if ( current_user_can( 'manage_options' ) && class_exists( 'PTK_Share_Settings' ) ) {
             $quiet[] = array(
                 'label' => 'Set up the basics (once)',

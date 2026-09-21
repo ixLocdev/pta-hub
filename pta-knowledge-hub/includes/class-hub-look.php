@@ -32,6 +32,7 @@ class PTK_Hub_Look {
         'ptk-asked-for',
         'ptk-words',
         'ptk-search-analytics',
+        'ptk-newsletters',
     );
 
     /** Post types the Hub owns. */
