@@ -28,6 +28,13 @@ ptk_test_ok( 0 === $clean['image_id'], 'a negative picture id becomes none' );
 ptk_test_ok( '' === $clean['link_url'], 'a javascript: link is refused' );
 ptk_test_ok( 1 === count( $clean['steps'] ), 'a step survives' );
 
+// URL security: protocol-relative and local paths.
+$protocol_relative = $p::sanitize( array( 'link_url' => '//evil.example/steal' ) );
+ptk_test_ok( '' === $protocol_relative['link_url'], 'a scheme-relative //host trick is refused' );
+
+$local_path = $p::sanitize( array( 'link_url' => '/class-parents' ) );
+ptk_test_ok( '/class-parents' === $local_path['link_url'], 'a local path /page is allowed' );
+
 // The summary: the first paragraph.
 ptk_test_ok( 'First paragraph.' === $p::summary( $clean ), 'the summary is the first paragraph' );
 ptk_test_ok( '' === $p::summary( $p::defaults() ), 'nothing written, nothing summarized' );

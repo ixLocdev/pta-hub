@@ -121,7 +121,9 @@ class PTK_Post_Parts {
     }
 
     /**
-     * Sanitize a URL: allow only http://, https://, and mailto:; anything else becomes ''.
+     * Sanitize a URL: allow only http://, https://, mailto:, and local paths (/).
+     * Refuse protocol-relative URLs (//), which silently jump to another host.
+     * Anything else becomes ''.
      *
      * @param string $url
      * @return string
@@ -134,7 +136,17 @@ class PTK_Post_Parts {
             return '';
         }
 
-        // Extract the scheme.
+        // Refuse protocol-relative URLs: // always becomes ''.
+        if ( 0 === strpos( $url, '//' ) ) {
+            return '';
+        }
+
+        // Allow local paths starting with a single /.
+        if ( 0 === strpos( $url, '/' ) ) {
+            return $url;
+        }
+
+        // Extract the scheme (e.g. http:, https:, mailto:).
         if ( preg_match( '#^([a-z][a-z0-9+.-]*):#i', $url, $m ) ) {
             $scheme = strtolower( $m[1] );
             // Allow only http, https, and mailto.
@@ -142,9 +154,11 @@ class PTK_Post_Parts {
             if ( ! in_array( $scheme, $allowed, true ) ) {
                 return '';
             }
+            return $url;
         }
 
-        return $url;
+        // No scheme, no local path: refuse.
+        return '';
     }
 
     /**
