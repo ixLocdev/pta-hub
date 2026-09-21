@@ -40,9 +40,13 @@ class PTK_Post_Renderer {
      *                        "Thank you, as always,\nYour Northeast PTA".
      *                        Rendered only when non-empty; a blank signoff
      *                        renders nothing at all.
+     * @param array  $picture Picture data: array( 'url' => …, 'alt' => …,
+     *                        'fit' => 'crop'|'whole', 'position' => '50% 50%',
+     *                        'zoom' => '' ). Empty or missing picture renders
+     *                        no <figure>.
      * @return string
      */
-    public static function render( array $parts, $signoff = '' ) {
+    public static function render( array $parts, $signoff = '', array $picture = array() ) {
         $parts = array_merge(
             array(
                 'kicker'     => '',
@@ -77,6 +81,30 @@ class PTK_Post_Renderer {
         if ( '' !== $headline ) {
             $html .= '<h1 style="font-family:' . self::FONT_SANS . ';font-size:44px;font-weight:800;line-height:1.02;letter-spacing:-0.025em;color:' . self::INK . ';margin:0;">' . self::esc( $headline ) . '</h1>';
             $html .= '<div style="height:3px;width:56px;background:' . self::RED . ';margin:14px 0 22px;"></div>';
+        }
+
+        // Render picture if provided.
+        $picture_url = self::clean_url( isset( $picture['url'] ) ? $picture['url'] : '' );
+        if ( '' !== $picture_url ) {
+            $picture_alt = self::str( isset( $picture['alt'] ) ? $picture['alt'] : '' );
+            $picture_fit = self::str( isset( $picture['fit'] ) ? $picture['fit'] : 'crop' );
+            $picture_position = self::str( isset( $picture['position'] ) ? $picture['position'] : '50% 50%' );
+            $picture_zoom = self::str( isset( $picture['zoom'] ) ? $picture['zoom'] : '' );
+
+            $img_style = 'display:block;width:100%;height:260px;border-radius:10px;';
+
+            if ( 'whole' === $picture_fit ) {
+                $img_style .= 'object-fit:contain;';
+            } else {
+                $img_style .= 'object-fit:cover;object-position:' . self::esc( $picture_position ) . ';';
+                if ( '' !== $picture_zoom ) {
+                    $img_style .= $picture_zoom;
+                }
+            }
+
+            $html .= '<figure style="margin:0 0 26px;">';
+            $html .= '<img alt="' . self::esc( $picture_alt ) . '" src="' . self::esc( $picture_url ) . '" style="' . $img_style . '">';
+            $html .= '</figure>';
         }
 
         if ( '' !== $words ) {
@@ -200,5 +228,16 @@ class PTK_Post_Renderer {
         }
 
         return '';
+    }
+
+    /**
+     * Hash the rendered HTML with sha1. Used to detect when a post has been
+     * modified outside the Hub (e.g., directly in WordPress).
+     *
+     * @param string $html
+     * @return string A 40-character lowercase hex string.
+     */
+    public static function hash( $html ) {
+        return sha1( (string) $html );
     }
 }

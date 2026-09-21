@@ -71,4 +71,88 @@ $full = $p::sanitize( array(
 ) );
 ptk_test_ok( $r::render( $full, "Thank you,\nYour Northeast PTA" ) === $r::render( $full, "Thank you,\nYour Northeast PTA" ), 'render() is deterministic' );
 
+// Picture support: a picture renders a <figure> below the headline.
+$with_picture = $p::sanitize( array(
+    'headline' => 'We still need class parents.',
+    'words'    => 'Thank you to everyone.',
+) );
+$picture = array(
+    'url'      => 'https://example.com/photo.jpg',
+    'alt'      => 'A photo',
+    'fit'      => 'crop',
+    'position' => '50% 50%',
+    'zoom'     => '',
+);
+$html = $r::render( $with_picture, '', $picture );
+$headline_pos = strpos( $html, '<h1' );
+$rule_pos     = strpos( $html, '<div style="height:3px' );
+$figure_pos   = strpos( $html, '<figure' );
+$body_pos     = strpos( $html, 'Thank you to everyone' );
+ptk_test_ok( false !== $headline_pos && false !== $figure_pos && false !== $body_pos && $rule_pos < $figure_pos && $figure_pos < $body_pos, 'picture renders below the headline in a <figure>' );
+
+// fit: crop renders object-fit:cover and object-position.
+$html = $r::render( $with_picture, '', array(
+    'url'      => 'https://example.com/photo.jpg',
+    'alt'      => 'A photo',
+    'fit'      => 'crop',
+    'position' => '30% 70%',
+    'zoom'     => '',
+) );
+ptk_test_ok( false !== strpos( $html, 'object-fit:cover' ) && false !== strpos( $html, 'object-position:30% 70%' ), 'fit:crop renders object-fit:cover and object-position' );
+
+// fit: whole renders object-fit:contain without object-position.
+$html = $r::render( $with_picture, '', array(
+    'url'      => 'https://example.com/photo.jpg',
+    'alt'      => 'A photo',
+    'fit'      => 'whole',
+    'position' => '50% 50%',
+    'zoom'     => '',
+) );
+ptk_test_ok( false !== strpos( $html, 'object-fit:contain' ) && false === strpos( $html, 'object-position' ), 'fit:whole renders object-fit:contain without object-position' );
+
+// Empty picture array renders no <figure>.
+$html = $r::render( $with_picture, '', array() );
+ptk_test_ok( false === strpos( $html, '<figure' ), 'empty picture array renders no figure' );
+
+// Empty url renders no <figure>.
+$html = $r::render( $with_picture, '', array( 'url' => '', 'alt' => 'A photo', 'fit' => 'crop' ) );
+ptk_test_ok( false === strpos( $html, '<figure' ), 'empty url renders no figure' );
+
+// javascript: url is refused.
+$html = $r::render( $with_picture, '', array( 'url' => 'javascript:alert(1)', 'alt' => 'A photo', 'fit' => 'crop' ) );
+ptk_test_ok( false === strpos( $html, '<figure' ), 'javascript: url is refused' );
+
+// data: url is refused.
+$html = $r::render( $with_picture, '', array( 'url' => 'data:image/png;base64,abc', 'alt' => 'A photo', 'fit' => 'crop' ) );
+ptk_test_ok( false === strpos( $html, '<figure' ), 'data: url is refused' );
+
+// Alt text is escaped.
+$html = $r::render( $with_picture, '', array( 'url' => 'https://example.com/photo.jpg', 'alt' => '<script>alert(1)</script>', 'fit' => 'crop' ) );
+ptk_test_ok( false === strpos( $html, '<script>' ) && false !== strpos( $html, 'alt=' ), 'alt text is escaped' );
+
+// Zoom CSS is appended when fit:crop and zoom is non-empty.
+$html = $r::render( $with_picture, '', array(
+    'url'      => 'https://example.com/photo.jpg',
+    'alt'      => 'A photo',
+    'fit'      => 'crop',
+    'position' => '50% 50%',
+    'zoom'     => 'transform:scale(1.4);',
+) );
+ptk_test_ok( false !== strpos( $html, 'transform:scale(1.4)' ), 'zoom CSS is appended for crop' );
+
+// Hash method: same HTML same hash.
+$html1 = $r::render( $full, "Thank you,\nYour Northeast PTA" );
+$html2 = $r::render( $full, "Thank you,\nYour Northeast PTA" );
+ptk_test_ok( $r::hash( $html1 ) === $r::hash( $html2 ), 'same HTML produces same hash' );
+
+// Hash method: different HTML different hash.
+$html1 = $r::render( array( 'headline' => 'One' ), '' );
+$html2 = $r::render( array( 'headline' => 'Two' ), '' );
+ptk_test_ok( $r::hash( $html1 ) !== $r::hash( $html2 ), 'different HTML produces different hash' );
+
+// Hash is a valid sha1.
+$html = $r::render( $full, '' );
+$hash = $r::hash( $html );
+ptk_test_ok( 1 === preg_match( '/^[a-f0-9]{40}$/', $hash ), 'hash is a valid sha1' );
+
 ptk_test_done();
