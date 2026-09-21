@@ -83,7 +83,8 @@ issue's own data and stays as it is.
 
 **"Your posts"** — built exactly like "Your newsletters": a card per post,
 newest first, the state it is in, *Open it* / *See what families see*, and a
-**Write a post** button. One menu item covers listing and writing, so the
+**Write a post** button — with two exceptions set out under "What the list
+actually contains" below. One menu item covers listing and writing, so the
 trimmed menu goes to eight rather than ten.
 
 ### What the list actually contains
@@ -141,8 +142,11 @@ lesson — only the screen that owns a field may write it.
 myself for now", and the screen says who presses the button — rather than
 offering an action that will fail.
 
-**Removing** is a trash with a real Undo, like entries and suggestions. No
-confirm step: nothing is destroyed.
+**Removing** applies only to posts written here, and is a trash with a real
+Undo, like entries and suggestions. No confirm step: nothing is destroyed. A
+post written in WordPress gets no Remove button — this screen did not write
+it, and offering to bin somebody else's work beside a card we cannot even open
+would be a nasty surprise. The newsletter's own posts are not listed at all.
 
 ## Deliberately out of scope
 
