@@ -65,10 +65,30 @@ class PTK_Picture_Picker {
 
         wp_enqueue_style( 'ptk-hub', PTK_PLUGIN_URL . 'assets/css/hub.css', array(), PTK_VERSION );
 
+        // The framing surface (drag/pinch/wheel dot + crop frame) is the
+        // same engine the Newsletter Builder already uses -- registering
+        // the handles here (WP dedupes by handle) means Create Entry gets
+        // it too, without the Builder's screen loading anything twice.
+        wp_enqueue_script(
+            'ptk-focal-point',
+            PTK_PLUGIN_URL . 'assets/js/focal-point.js',
+            array(),
+            PTK_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
+            'ptk-focal-point-picker',
+            PTK_PLUGIN_URL . 'assets/js/focal-point-picker.js',
+            array( 'jquery', 'ptk-focal-point' ),
+            PTK_VERSION,
+            true
+        );
+
         wp_enqueue_script(
             'ptk-picture-picker',
             PTK_PLUGIN_URL . 'assets/js/picture-picker.js',
-            array( 'jquery' ),
+            array( 'jquery', 'ptk-focal-point-picker' ),
             PTK_VERSION,
             true
         );
@@ -132,6 +152,23 @@ class PTK_Picture_Picker {
                 <div class="ptk-pic-step" id="ptk-pic-alt-step" hidden>
                     <button type="button" class="ptk-pic-back" id="ptk-pic-back"><?php echo esc_html( $c['back_link'] ); ?></button>
                     <div class="ptk-pic-alt-preview" id="ptk-pic-alt-preview"></div>
+
+                    <!-- Only shown when the caller opens with frame:true
+                         (Create Entry). Off by default so the Newsletter
+                         Builder -- which already has its own framing under
+                         its own field -- keeps exactly one framing surface
+                         on screen. See assets/js/picture-picker.js. -->
+                    <div class="ptk-pic-frame-block" id="ptk-pic-frame-block" hidden>
+                        <input type="hidden" data-field="image_focal_x" value="50">
+                        <input type="hidden" data-field="image_focal_y" value="50">
+                        <input type="hidden" data-field="image_zoom" value="0">
+                        <input type="hidden" data-field="image_fit" id="ptk-pic-image-fit" value="whole">
+                        <div class="ptk-pic-fit-toggle" id="ptk-pic-fit-toggle" role="group" aria-label="<?php echo esc_attr( $c['fit_group_label'] ); ?>">
+                            <button type="button" class="ptk-pic-fit-btn" data-fit-value="whole"><?php echo esc_html( $c['fit_whole'] ); ?></button>
+                            <button type="button" class="ptk-pic-fit-btn" data-fit-value="crop"><?php echo esc_html( $c['fit_crop'] ); ?></button>
+                        </div>
+                    </div>
+
                     <div class="ptk-field">
                         <label for="ptk-pic-alt-input"><?php echo esc_html( $c['alt_question'] ); ?></label>
                         <textarea id="ptk-pic-alt-input" rows="2"></textarea>

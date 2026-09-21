@@ -667,17 +667,37 @@ class PTK_Search_Engine {
 
         $thumbnail = get_the_post_thumbnail_url( $post->ID, 'medium' );
 
+        // How the card should show the picture. No meta on the entry
+        // (the default, and every entry saved before 2026-09-21) means
+        // center, cropped, no zoom -- exactly what the card always did.
+        $thumb_style = null;
+        if ( $thumbnail ) {
+            $raw_x     = get_post_meta( $post->ID, 'ptk_image_focal_x', true );
+            $has_focal = '' !== $raw_x;
+            $x         = $has_focal ? $raw_x : 50;
+            $y         = $has_focal ? get_post_meta( $post->ID, 'ptk_image_focal_y', true ) : 50;
+            $zoom      = $has_focal ? get_post_meta( $post->ID, 'ptk_image_zoom', true ) : 0;
+            $fit       = 'whole' === get_post_meta( $post->ID, 'ptk_image_fit', true ) ? 'whole' : 'crop';
+
+            $thumb_style = array(
+                'fit'      => $fit,
+                'position' => PTK_Focal_Point::object_position( $x, $y ),
+                'zoom'     => PTK_Focal_Point::css_zoom_style( $x, $y, $zoom ),
+            );
+        }
+
         return array(
-            'id'        => $post->ID,
-            'title'     => $post->post_title,
-            'excerpt'   => $post->post_excerpt ? $post->post_excerpt : wp_trim_words( wp_strip_all_tags( $post->post_content ), 30 ),
-            'permalink' => get_permalink( $post->ID ),
-            'thumbnail' => $thumbnail ? $thumbnail : null,
-            'category'  => $cat_slug,
-            'catName'   => $cat_name,
-            'tags'      => $post_terms['tag_names'],
-            'score'     => $score,
-            'isBest'    => $is_best,
+            'id'          => $post->ID,
+            'title'       => $post->post_title,
+            'excerpt'     => $post->post_excerpt ? $post->post_excerpt : wp_trim_words( wp_strip_all_tags( $post->post_content ), 30 ),
+            'permalink'   => get_permalink( $post->ID ),
+            'thumbnail'   => $thumbnail ? $thumbnail : null,
+            'thumbnailStyle' => $thumb_style,
+            'category'    => $cat_slug,
+            'catName'     => $cat_name,
+            'tags'        => $post_terms['tag_names'],
+            'score'       => $score,
+            'isBest'      => $is_best,
         );
     }
 

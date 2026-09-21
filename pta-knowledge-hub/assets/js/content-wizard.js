@@ -339,8 +339,14 @@
                 // old path below runs exactly as it always has.
                 if ($('body').hasClass('ptk-hub-look') && window.ptkPicturePicker && window.ptkPicturePicker.open) {
                     window.ptkPicturePicker.open({
+                        frame: true,
+                        aspect: '16:9',
                         onChoose: function (picture) {
                             $('#ptk-featured-image-id').val(picture.id);
+                            $('#ptk-featured-image-focal-x').val(picture.focalX);
+                            $('#ptk-featured-image-focal-y').val(picture.focalY);
+                            $('#ptk-featured-image-zoom').val(picture.zoom);
+                            $('#ptk-featured-image-fit').val(picture.fit);
                             $('#ptk-featured-image-preview').empty().append(
                                 $('<img>').attr({ src: picture.url, alt: '' })
                             );
@@ -388,6 +394,10 @@
                 $('#ptk-qf-has-link').prop('checked', false).trigger('change');
             } else if (name === 'image') {
                 $('#ptk-featured-image-id').val('');
+                $('#ptk-featured-image-focal-x').val('');
+                $('#ptk-featured-image-focal-y').val('');
+                $('#ptk-featured-image-zoom').val('');
+                $('#ptk-featured-image-fit').val('');
                 $('#ptk-featured-image-preview').html('');
             }
 

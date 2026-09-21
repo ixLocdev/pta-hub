@@ -10,6 +10,17 @@
  *   picture is { id, url, alt } -- the same shape the AJAX endpoints
  *   return. onChoose fires once, right before the modal closes.
  *
+ * Framing (2026-09-21, Create Entry): pass frame:true (and optionally
+ * aspect, '16:9' or '1:1') to also show the drag/pinch/wheel dot and a
+ * Whole photo / Crop to fit choice, right after a picture is chosen --
+ * one step, not two. onChoose then receives
+ * { id, url, alt, focalX, focalY, zoom, fit }. With frame absent or
+ * false (the Newsletter Builder's call, which has its own framing under
+ * its own field already), nothing here changes and onChoose gets exactly
+ * what it gets today. Reuses the same engine as the Builder --
+ * window.ptkInitFocalPicker/ptkSetFocalMode/ptkDestroyFocalPicker from
+ * assets/js/focal-point-picker.js -- never a second implementation.
+ *
  * Everything here reads from `ptkPicturePicker` (ajaxUrl, nonce, perPage,
  * copy), localized by PTK_Picture_Picker::enqueue() -- only present on a
  * screen where the look is on and the picker is wired up.
@@ -25,7 +36,8 @@
     var copy = cfg.copy || {};
 
     var $modal, $panel, $chooseStep, $altStep, $grid, $search, $loadMore,
-        $drop, $fileInput, $progress, $altPreview, $altInput, $useBtn, $backBtn;
+        $drop, $fileInput, $progress, $altPreview, $altInput, $useBtn, $backBtn,
+        $frameBlock, $fitToggle;
 
     var onChooseCallback = null;
     var lastFocused = null;
@@ -34,6 +46,8 @@
     var currentSearch = '';
     var loading = false;
     var selected = null; // { id, url, alt }
+    var framing = false;
+    var framingAspect = '16:9';
 
     function init() {
         $modal = $('#ptk-pic-modal');
@@ -53,6 +67,8 @@
         $altInput = $('#ptk-pic-alt-input');
         $useBtn = $('#ptk-pic-use-btn');
         $backBtn = $('#ptk-pic-back');
+        $frameBlock = $('#ptk-pic-frame-block');
+        $fitToggle = $('#ptk-pic-fit-toggle');
 
         $modal.on('click', '[data-ptk-pic-close]', function (e) {
             e.preventDefault();
@@ -118,6 +134,70 @@
         $useBtn.on('click', function () {
             saveAltAndFinish();
         });
+
+        // Mirrors the Newsletter Builder's own Whole photo / Crop to fit
+        // buttons (assets/js/newsletter-builder.js) -- same wording, same
+        // pattern: flip the hidden field, let the engine react.
+        $fitToggle.on('click', '.ptk-pic-fit-btn', function (e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var value = 'crop' === $btn.attr('data-fit-value') ? 'crop' : 'whole';
+            var $fitField = $frameBlock.find('[data-field="image_fit"]').first();
+            if ($fitField.val() !== value) {
+                $fitField.val(value);
+                syncFitButtons(value);
+                if (window.ptkSetFocalMode) {
+                    window.ptkSetFocalMode($frameBlock, value);
+                }
+            }
+            $btn.trigger('focus');
+        });
+    }
+
+    function syncFitButtons(fit) {
+        $fitToggle.find('.ptk-pic-fit-btn').each(function () {
+            var $b = $(this);
+            var active = $b.attr('data-fit-value') === fit;
+            $b.toggleClass('is-active', active).attr('aria-pressed', active ? 'true' : 'false');
+        });
+    }
+
+    /** Mount (or reset) the framing surface for a freshly chosen picture. A
+     * new photo always starts at "Whole photo" -- it may not even contain
+     * whatever the previous photo in this slot was framed for. */
+    function mountFraming(picture) {
+        $frameBlock.find('[data-field="image_focal_x"]').val(50);
+        $frameBlock.find('[data-field="image_focal_y"]').val(50);
+        $frameBlock.find('[data-field="image_zoom"]').val(0);
+        $frameBlock.find('[data-field="image_fit"]').val('whole');
+        syncFitButtons('whole');
+        $frameBlock.removeAttr('hidden');
+        $altPreview.attr('hidden', 'hidden');
+
+        if (window.ptkInitFocalPicker) {
+            window.ptkInitFocalPicker($frameBlock, {
+                aspect: framingAspect,
+                src: picture.url,
+                mode: 'whole'
+            });
+            // ptkInitFocalPicker appends the photo surface as the LAST
+            // child of $frameBlock; move the toggle after it so the order
+            // on screen is photo, then Whole/Crop -- the toggle's static
+            // markup would otherwise sit above the photo it controls.
+            $fitToggle.insertAfter($frameBlock.find('[data-focal-wrap]'));
+        }
+    }
+
+    function unmountFraming() {
+        if (window.ptkDestroyFocalPicker && $frameBlock) {
+            window.ptkDestroyFocalPicker($frameBlock);
+        }
+        if ($frameBlock) {
+            $frameBlock.attr('hidden', 'hidden');
+        }
+        if ($altPreview) {
+            $altPreview.removeAttr('hidden');
+        }
     }
 
     function onModalKeydown(e) {
@@ -149,6 +229,8 @@
     function open(opts) {
         opts = opts || {};
         onChooseCallback = typeof opts.onChoose === 'function' ? opts.onChoose : null;
+        framing = !!opts.frame;
+        framingAspect = ('1:1' === opts.aspect) ? '1:1' : '16:9';
         lastFocused = document.activeElement;
 
         showChooseStep();
@@ -170,12 +252,14 @@
         $('body').removeClass('ptk-pic-modal-open');
         onChooseCallback = null;
         selected = null;
+        unmountFraming();
         if (lastFocused && lastFocused.focus) {
             lastFocused.focus();
         }
     }
 
     function showChooseStep() {
+        unmountFraming();
         $chooseStep.removeAttr('hidden');
         $altStep.attr('hidden', 'hidden');
     }
@@ -188,6 +272,13 @@
         $altInput.val(picture.alt || '');
         $chooseStep.attr('hidden', 'hidden');
         $altStep.removeAttr('hidden');
+
+        if (framing) {
+            mountFraming(picture);
+        } else {
+            unmountFraming();
+        }
+
         window.setTimeout(function () {
             $altInput.trigger('focus');
         }, 0);
@@ -288,6 +379,14 @@
         }).done(function (res) {
             if (res && res.success) {
                 var picture = res.data;
+                if (framing) {
+                    picture = $.extend({}, picture, {
+                        focalX: parseInt($frameBlock.find('[data-field="image_focal_x"]').val(), 10) || 50,
+                        focalY: parseInt($frameBlock.find('[data-field="image_focal_y"]').val(), 10) || 50,
+                        zoom: parseInt($frameBlock.find('[data-field="image_zoom"]').val(), 10) || 0,
+                        fit: 'crop' === $frameBlock.find('[data-field="image_fit"]').val() ? 'crop' : 'whole'
+                    });
+                }
                 var callback = onChooseCallback;
                 close();
                 if (callback) {

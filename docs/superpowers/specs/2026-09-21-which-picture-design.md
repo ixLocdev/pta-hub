@@ -71,3 +71,54 @@ whole-photo / crop toggle and the focal point work exactly as before.
 `wp.media` is still loaded on that screen: `fetchAttachment()` uses it to
 read a photo's source for the chip and the focal picker. Replacing that is
 a later job and buys little.
+
+## Framing, inside the picker (4.27.0)
+
+A photo chosen for an ENTRY used to be cut from the middle wherever it
+appeared, with no way to say otherwise — search cards put it in a 140px box
+with `object-fit: cover` and no `object-position`. The newsletter had had a
+focal picker for months; entries had nothing.
+
+Framing now lives in the picker, opt-in per caller:
+`open({ frame: true, aspect: '16:9' })`. Create Entry asks for it; the
+Newsletter Builder does not, because it already frames under its own field
+and two surfaces on one screen would be worse than none. Both use the same
+engine (`ptkInitFocalPicker`), so there is one implementation of the
+behavior and two hosts.
+
+The step after choosing shows the photo with the focal dot, **Whole photo /
+Crop to fit** (the Builder's own words, reused so the screens agree), then
+"What's in this picture?", then "Use this picture". Zoom is drag, pinch,
+wheel or keys — never a slider.
+
+`onChoose` gains `focalX`, `focalY`, `zoom`, `fit`. Create Entry saves them
+as `ptk_image_focal_x` / `_y`, `ptk_image_zoom`, `ptk_image_fit`, sanitized
+through `PTK_Focal_Point`.
+
+### The half that makes it real
+
+`PTK_Search_Engine::format_result()` returns a `thumbnailStyle`, and
+`assets/js/search.js` applies it to the card. **An entry with no framing
+data gets center / cover / no zoom — byte-for-byte what it always did.**
+Verified on a rendered page, not in theory: a framed entry's card computes
+`object-position: 8% 23%` while an unframed one next to it computes
+`50% 50%`.
+
+Search cards are the only place a `pta_knowledge` featured image is shown
+cropped. The single entry page, the glossary and related entries show no
+featured image at all. Note the **Best Answer** card shows no picture
+either, so a framed entry that comes back as the single best match shows no
+thumbnail — pre-existing, and worth revisiting if pictures should appear
+there.
+
+### A trap worth remembering
+
+Only the screen that HAS the framing step may write those four meta values.
+The older edit form posts a picture but none of them, so writing defaults on
+its behalf silently un-cropped a picture somebody had framed and moved its
+focal point back to the middle — a change they never asked for and would
+only find by looking at the site. `handle_submission()` now writes the
+framing meta only when the framing fields were actually submitted, and an
+unrecognized `fit` falls back to `crop`, which is what entry pictures have
+always done. Verified by saving a framed entry through the old form and
+confirming it still renders at `8% 23%`.

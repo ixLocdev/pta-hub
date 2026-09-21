@@ -1445,6 +1445,15 @@ class PTK_Content_Wizard {
                     <div class="ptk-qf-added-block ptk-qf-block-image" id="ptk-qf-image-block" data-block="image" hidden>
                         <button type="button" class="ptk-qf-block-remove" data-block="image" aria-label="Remove picture">&times;</button>
                         <input type="hidden" name="ptk_featured_image" id="ptk-featured-image-id" value="">
+                        <?php /* Filled in by the picker's framing step (picture-picker.js's
+                                frame:true) -- how the picture should be shown wherever the
+                                entry's card is cropped. Saved as post meta in
+                                handle_submission(); an entry with none of this renders exactly
+                                as it always has (center, cropped, no zoom). */ ?>
+                        <input type="hidden" name="ptk_image_focal_x" id="ptk-featured-image-focal-x" value="">
+                        <input type="hidden" name="ptk_image_focal_y" id="ptk-featured-image-focal-y" value="">
+                        <input type="hidden" name="ptk_image_zoom" id="ptk-featured-image-zoom" value="">
+                        <input type="hidden" name="ptk_image_fit" id="ptk-featured-image-fit" value="">
                         <div class="ptk-image-preview" id="ptk-featured-image-preview"></div>
                     </div>
 
@@ -1913,6 +1922,36 @@ class PTK_Content_Wizard {
             set_post_thumbnail( $post_id, $featured_id );
         } elseif ( $edit_id ) {
             delete_post_thumbnail( $post_id );
+        }
+
+        // How the picture is shown wherever the entry's card is cropped
+        // (picture picker's framing step, Create Entry only -- see
+        // assets/js/picture-picker.js). Sanitized with the same pure
+        // helpers the newsletter renderer already trusts. No picture, no
+        // meta: an entry saved without one must render exactly as it
+        // always has (center, cropped, no zoom) -- see PTK_Focal_Point
+        // and PTK_Search_Engine::format_result().
+        // Only the screen that HAS the framing step may speak for it. The
+        // older edit form posts a picture but none of these fields, and
+        // writing defaults on its behalf would silently un-crop a picture
+        // somebody framed and move its focal point back to the middle --
+        // a change they never asked for and would only discover on the
+        // site. Absent fields mean "leave it as it is".
+        $framing_posted = isset( $_POST['ptk_image_fit'] ) || isset( $_POST['ptk_image_focal_x'] );
+
+        if ( $featured_id && $framing_posted ) {
+            update_post_meta( $post_id, 'ptk_image_focal_x', PTK_Focal_Point::clamp_percent( $_POST['ptk_image_focal_x'] ?? null ) );
+            update_post_meta( $post_id, 'ptk_image_focal_y', PTK_Focal_Point::clamp_percent( $_POST['ptk_image_focal_y'] ?? null ) );
+            update_post_meta( $post_id, 'ptk_image_zoom', PTK_Focal_Point::sanitize_zoom( $_POST['ptk_image_zoom'] ?? null ) );
+            // Cropping is what every entry picture has always done, so it
+            // is what anything unrecognized falls back to.
+            $fit = ( isset( $_POST['ptk_image_fit'] ) && 'whole' === $_POST['ptk_image_fit'] ) ? 'whole' : 'crop';
+            update_post_meta( $post_id, 'ptk_image_fit', $fit );
+        } elseif ( $edit_id && ! $featured_id ) {
+            delete_post_meta( $post_id, 'ptk_image_focal_x' );
+            delete_post_meta( $post_id, 'ptk_image_focal_y' );
+            delete_post_meta( $post_id, 'ptk_image_zoom' );
+            delete_post_meta( $post_id, 'ptk_image_fit' );
         }
 
         // Save category-specific meta fields.

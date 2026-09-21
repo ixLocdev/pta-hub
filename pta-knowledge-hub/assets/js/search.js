@@ -353,6 +353,23 @@
         img.src = result.thumbnail;
         img.alt = result.title;
         img.loading = "lazy";
+
+        // How the picture should be shown -- from PTK_Search_Engine::format_result().
+        // No style (an older entry, or one saved with no picture chosen)
+        // means nothing here changes: plain object-fit:cover, centered,
+        // exactly like every card before this.
+        var style = result.thumbnailStyle;
+        if (style) {
+            if ("whole" === style.fit) {
+                img.style.objectFit = "contain";
+            } else {
+                img.style.objectPosition = style.position;
+                if (style.zoom) {
+                    img.setAttribute("style", (img.getAttribute("style") || "") + style.zoom);
+                }
+            }
+        }
+
         wrap.appendChild(img);
         return wrap;
     }
