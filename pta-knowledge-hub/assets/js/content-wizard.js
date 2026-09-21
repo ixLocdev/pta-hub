@@ -1194,6 +1194,46 @@
      * Edit Mode: Pre-fill form with existing data
      * ────────────────────────────────────────── */
 
+    /**
+     * Open the form for an entry that is already filled in (editing one, or
+     * restoring an autosave).
+     *
+     * Clicking a .ptk-category-card is what reveals every field below it.
+     * An entry saved with no category at all -- made straight in WordPress,
+     * imported, or converted from something -- has no category to click,
+     * so the whole form stayed display:none and the volunteer met their own
+     * title sitting in an input of zero height.
+     *
+     * In the Hub's look the screen has already decided what to call such an
+     * entry ("This is filed as a FAQ") and checked that radio, so fall back
+     * to whatever is checked and open the form on that. With the look off
+     * nothing is checked for an uncategorized entry, so this finds nothing
+     * and the screen behaves exactly as it always has.
+     */
+    function openFormFor(category) {
+        if (!category) {
+            category = $('input[name="ptk_category"]:checked').val() || '';
+        }
+        if (!category) {
+            return;
+        }
+
+        var $card = $('.ptk-category-card[data-category="' + category + '"]');
+        if ($card.length) {
+            $card.trigger('click');
+            return;
+        }
+
+        // No card to click (they are behind "Change that"): do what the
+        // click handler would have done.
+        $('input[name="ptk_category"][value="' + category + '"]').prop('checked', true);
+        revealStep($('#ptk-step-basics'));
+        $('.ptk-category-form').addClass('ptk-hidden').hide();
+        revealStep($('#ptk-form-' + category));
+        revealStep($('#ptk-step-links'));
+        revealStep($('#ptk-step-submit'));
+    }
+
     function restoreEditData(data) {
         isRestoring = true;
 
@@ -1201,12 +1241,7 @@
         clearAutosave();
 
         // Select category.
-        if (data.category) {
-            var $card = $('.ptk-category-card[data-category="' + data.category + '"]');
-            if ($card.length) {
-                $card.trigger('click');
-            }
-        }
+        openFormFor(data.category);
 
         // Basic fields.
         if (data.title) { $('#ptk-title').val(data.title); }
@@ -1522,12 +1557,7 @@
         isRestoring = true;
 
         // Restore category selection.
-        if (data.category) {
-            var $card = $('.ptk-category-card[data-category="' + data.category + '"]');
-            if ($card.length) {
-                $card.trigger('click');
-            }
-        }
+        openFormFor(data.category);
 
         // Restore basic fields.
         if (data.title) { $('#ptk-title').val(data.title); }
