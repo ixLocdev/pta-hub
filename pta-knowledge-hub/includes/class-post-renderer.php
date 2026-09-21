@@ -88,15 +88,18 @@ class PTK_Post_Renderer {
         if ( '' !== $picture_url ) {
             $picture_alt = self::str( isset( $picture['alt'] ) ? $picture['alt'] : '' );
             $picture_fit = self::str( isset( $picture['fit'] ) ? $picture['fit'] : 'crop' );
-            $picture_position = self::str( isset( $picture['position'] ) ? $picture['position'] : '50% 50%' );
-            $picture_zoom = self::str( isset( $picture['zoom'] ) ? $picture['zoom'] : '' );
+            $picture_position = self::clean_css( isset( $picture['position'] ) ? $picture['position'] : '50% 50%' );
+            $picture_zoom = self::clean_css( isset( $picture['zoom'] ) ? $picture['zoom'] : '' );
 
             $img_style = 'display:block;width:100%;height:260px;border-radius:10px;';
 
             if ( 'whole' === $picture_fit ) {
                 $img_style .= 'object-fit:contain;';
             } else {
-                $img_style .= 'object-fit:cover;object-position:' . self::esc( $picture_position ) . ';';
+                $img_style .= 'object-fit:cover;';
+                if ( '' !== $picture_position ) {
+                    $img_style .= 'object-position:' . self::esc( $picture_position ) . ';';
+                }
                 if ( '' !== $picture_zoom ) {
                     $img_style .= $picture_zoom;
                 }
@@ -174,6 +177,40 @@ class PTK_Post_Renderer {
         }
 
         return $html;
+    }
+
+    /**
+     * Validate a CSS value to prevent injection attacks. Refuses values
+     * containing dangerous characters or keywords that could break out of
+     * a style attribute or inject code.
+     *
+     * Dangerous patterns: <, >, ", ', backslash, url(, expression(,
+     * javascript:, /* (comment start).
+     *
+     * @param string $css_value
+     * @return string The value if valid, empty string if dangerous.
+     */
+    private static function clean_css( $css_value ) {
+        $css_value = self::str( $css_value );
+
+        if ( '' === $css_value ) {
+            return '';
+        }
+
+        // Refuse characters that could break out of the style attribute.
+        if ( false !== strpbrk( $css_value, '<>"\'\\' ) ) {
+            return '';
+        }
+
+        // Refuse dangerous keywords and patterns.
+        $dangerous = array( 'url(', 'expression(', 'javascript:', '/*' );
+        foreach ( $dangerous as $pattern ) {
+            if ( false !== stripos( $css_value, $pattern ) ) {
+                return '';
+            }
+        }
+
+        return $css_value;
     }
 
     /**

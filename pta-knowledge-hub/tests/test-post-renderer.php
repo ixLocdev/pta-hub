@@ -140,6 +140,105 @@ $html = $r::render( $with_picture, '', array(
 ) );
 ptk_test_ok( false !== strpos( $html, 'transform:scale(1.4)' ), 'zoom CSS is appended for crop' );
 
+// Malicious zoom breaks out of style attribute -- must be rejected.
+$html = $r::render( $with_picture, '', array(
+    'url'      => 'https://example.com/photo.jpg',
+    'alt'      => 'A photo',
+    'fit'      => 'crop',
+    'position' => '50% 50%',
+    'zoom'     => '"><script>alert(1)</script>',
+) );
+ptk_test_ok( false === strpos( $html, '<script>' ), 'dangerous zoom with script tag is rejected' );
+ptk_test_ok( false !== strpos( $html, '<figure' ), 'picture still renders when zoom is invalid' );
+
+// Zoom containing url() is refused.
+$html = $r::render( $with_picture, '', array(
+    'url'      => 'https://example.com/photo.jpg',
+    'fit'      => 'crop',
+    'position' => '50% 50%',
+    'zoom'     => 'background:url(x);',
+) );
+ptk_test_ok( false === strpos( $html, 'background:url' ), 'zoom with url() is rejected' );
+ptk_test_ok( false !== strpos( $html, '<figure' ), 'picture still renders when zoom has url()' );
+
+// Zoom containing expression() is refused.
+$html = $r::render( $with_picture, '', array(
+    'url'      => 'https://example.com/photo.jpg',
+    'fit'      => 'crop',
+    'position' => '50% 50%',
+    'zoom'     => 'width:expression(1+1);',
+) );
+ptk_test_ok( false === strpos( $html, 'expression' ), 'zoom with expression() is rejected' );
+
+// Zoom containing javascript: is refused.
+$html = $r::render( $with_picture, '', array(
+    'url'      => 'https://example.com/photo.jpg',
+    'fit'      => 'crop',
+    'position' => '50% 50%',
+    'zoom'     => 'background:url(javascript:alert(1));',
+) );
+ptk_test_ok( false === strpos( $html, 'javascript:' ), 'zoom with javascript: is rejected' );
+
+// Zoom containing /* comment is refused.
+$html = $r::render( $with_picture, '', array(
+    'url'      => 'https://example.com/photo.jpg',
+    'fit'      => 'crop',
+    'position' => '50% 50%',
+    'zoom'     => '/* comment */ transform:scale(2);',
+) );
+ptk_test_ok( false === strpos( $html, '/* comment' ), 'zoom with comment is rejected' );
+
+// Zoom containing dangerous characters is refused.
+$html = $r::render( $with_picture, '', array(
+    'url'      => 'https://example.com/photo.jpg',
+    'fit'      => 'crop',
+    'position' => '50% 50%',
+    'zoom'     => 'transform:scale(1);\\x00bad',
+) );
+ptk_test_ok( false !== strpos( $html, '<figure' ), 'picture still renders when zoom has backslash' );
+
+// Malicious position breaks out of object-position value -- must be rejected.
+$html = $r::render( $with_picture, '', array(
+    'url'      => 'https://example.com/photo.jpg',
+    'alt'      => 'A photo',
+    'fit'      => 'crop',
+    'position' => '50% 50%;background:url(x)"onload="alert(1)',
+) );
+ptk_test_ok( false === strpos( $html, 'onload=' ), 'dangerous position is rejected' );
+ptk_test_ok( false !== strpos( $html, '<figure' ), 'picture still renders when position is invalid' );
+
+// Position containing url() is refused.
+$html = $r::render( $with_picture, '', array(
+    'url'      => 'https://example.com/photo.jpg',
+    'fit'      => 'crop',
+    'position' => '50% url(x) 50%',
+) );
+ptk_test_ok( false === strpos( $html, 'url(' ), 'position with url() is rejected' );
+
+// Position containing javascript: is refused.
+$html = $r::render( $with_picture, '', array(
+    'url'      => 'https://example.com/photo.jpg',
+    'fit'      => 'crop',
+    'position' => 'javascript:alert(1)',
+) );
+ptk_test_ok( false === strpos( $html, 'javascript:' ), 'position with javascript: is rejected' );
+
+// Position containing /* comment is refused.
+$html = $r::render( $with_picture, '', array(
+    'url'      => 'https://example.com/photo.jpg',
+    'fit'      => 'crop',
+    'position' => '50% /* comment */ 50%',
+) );
+ptk_test_ok( false === strpos( $html, '/* comment' ), 'position with comment is rejected' );
+
+// Valid position still renders.
+$html = $r::render( $with_picture, '', array(
+    'url'      => 'https://example.com/photo.jpg',
+    'fit'      => 'crop',
+    'position' => '30% 70%',
+) );
+ptk_test_ok( false !== strpos( $html, 'object-position:30% 70%' ), 'valid position still renders' );
+
 // Hash method: same HTML same hash.
 $html1 = $r::render( $full, "Thank you,\nYour Northeast PTA" );
 $html2 = $r::render( $full, "Thank you,\nYour Northeast PTA" );
