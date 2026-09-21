@@ -802,3 +802,59 @@ body.ptk-hub-look .ptk-page a.ptk-btn-danger:hover,
 body.ptk-hub-look .ptk-page a.ptk-btn-danger:focus {
     color: var(--ptk-surface);
 }
+
+/* "What families are looking for" -- searches by day, inside the folded
+   numbers. A row per day: the date, a track, the bar, the count. The bar's
+   width is the only thing set inline, because the width IS the number. */
+
+body.ptk-hub-look .ptk-days-heading {
+    margin: var(--ptk-space-4) 0 0;
+    font-family: var(--ptk-font-serif);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ptk-text);
+}
+
+body.ptk-hub-look .ptk-days {
+    margin-top: var(--ptk-space-1);
+}
+
+body.ptk-hub-look .ptk-days-row {
+    display: flex;
+    align-items: center;
+    gap: var(--ptk-space-1);
+    margin: 4px 0;
+}
+
+body.ptk-hub-look .ptk-days-label {
+    width: 46px;
+    flex: 0 0 auto;
+    font-size: 12.5px;
+    color: var(--ptk-text-dim);
+}
+
+body.ptk-hub-look .ptk-days-track {
+    flex: 1 1 auto;
+    height: 10px;
+    overflow: hidden;
+    background: var(--ptk-line);
+    border-radius: 4px;
+}
+
+body.ptk-hub-look .ptk-days-bar {
+    display: block;
+    height: 100%;
+    background: var(--ptk-primary);
+}
+
+body.ptk-hub-look .ptk-days-count {
+    width: 30px;
+    flex: 0 0 auto;
+    text-align: right;
+    font-size: 12.5px;
+    color: var(--ptk-text);
+}
+
+body.ptk-hub-look .ptk-days-export {
+    margin-top: var(--ptk-space-3);
+}

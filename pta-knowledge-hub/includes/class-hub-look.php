@@ -31,6 +31,7 @@ class PTK_Hub_Look {
         'ptk-vendor-approvals',
         'ptk-asked-for',
         'ptk-words',
+        'ptk-search-analytics',
     );
 
     /** Post types the Hub owns. */

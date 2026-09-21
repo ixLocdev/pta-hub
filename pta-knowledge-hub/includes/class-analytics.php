@@ -256,6 +256,11 @@ class PTK_Analytics {
             wp_die( 'You do not have permission to view this page.' );
         }
 
+        if ( class_exists( 'PTK_Hub_Look' ) && PTK_Hub_Look::on() ) {
+            self::render_new_page();
+            return;
+        }
+
         global $wpdb;
         $table = self::$table;
 
@@ -548,6 +553,234 @@ class PTK_Analytics {
         </script>
         <?php endif; ?>
         <?php
+    }
+
+    /* ---------------------------------------------------------------
+     *  New look: "What families are looking for"
+     * ------------------------------------------------------------- */
+
+    /**
+     * The new look. Same table, same columns, same prepared queries as the
+     * dashboard above -- only the shape of the screen changes. Gaps (what
+     * turned up nothing) lead, because that's the thing a volunteer can
+     * act on; what people did find sits underneath, quieter; the four
+     * counts, the day-by-day chart and the recent-searches stream all fold
+     * away closed, reachable but not the first thing anyone sees.
+     *
+     * Chart.js decision: dropped. The old screen loaded a Chart.js build
+     * from a CDN -- an external request from a school's own admin screen
+     * for what is, underneath, a simple set of daily counts. A plain row
+     * of inline bars (var(--ptk-primary) fill, no new CSS) reads just as
+     * well folded away and adds no dependency.
+     */
+    public static function render_new_page() {
+        global $wpdb;
+        $table = self::$table;
+
+        $range = isset( $_GET['range'] ) ? sanitize_text_field( wp_unslash( $_GET['range'] ) ) : '30'; // phpcs:ignore WordPress.Security.NonceVerification
+        $valid_ranges = array( '7', '30', '90', '365', 'all' );
+        if ( ! in_array( $range, $valid_ranges, true ) ) {
+            $range = '30';
+        }
+
+        $where_date = 'all' === $range
+            ? ''
+            : $wpdb->prepare( 'WHERE searched_at >= DATE_SUB(NOW(), INTERVAL %d DAY)', (int) $range );
+        $zero_where = 'all' === $range
+            ? 'WHERE results_count = 0'
+            : $wpdb->prepare( 'WHERE results_count = 0 AND searched_at >= DATE_SUB(NOW(), INTERVAL %d DAY)', (int) $range );
+        $found_where = 'all' === $range
+            ? 'WHERE results_count > 0'
+            : $wpdb->prepare( 'WHERE results_count > 0 AND searched_at >= DATE_SUB(NOW(), INTERVAL %d DAY)', (int) $range );
+
+        // --- the gaps: what turned up nothing ---
+        $gaps = $wpdb->get_results(
+            "SELECT query, COUNT(*) AS search_count, MAX(searched_at) AS last_searched
+             FROM {$table} {$zero_where}
+             GROUP BY query
+             ORDER BY search_count DESC
+             LIMIT 25"
+        ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+
+        // --- what they did find ---
+        $found = $wpdb->get_results(
+            "SELECT query, COUNT(*) AS search_count
+             FROM {$table} {$found_where}
+             GROUP BY query
+             ORDER BY search_count DESC
+             LIMIT 15"
+        ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+
+        // --- the folded stat tiles ---
+        $total_searches = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table} {$where_date}" ); // phpcs:ignore
+        $unique_queries = (int) $wpdb->get_var( "SELECT COUNT(DISTINCT query) FROM {$table} {$where_date}" ); // phpcs:ignore
+        $zero_count     = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table} {$zero_where}" ); // phpcs:ignore
+        $avg_results    = $wpdb->get_var( "SELECT ROUND(AVG(results_count), 1) FROM {$table} {$where_date}" ); // phpcs:ignore
+        $avg_results    = $avg_results ?? '0';
+
+        // --- the folded chart: daily volume, as plain bars ---
+        $chart_days = 'all' === $range ? 90 : min( (int) $range, 90 );
+        $daily_data = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT DATE(searched_at) AS search_date, COUNT(*) AS search_count
+                 FROM {$table}
+                 WHERE searched_at >= DATE_SUB(NOW(), INTERVAL %d DAY)
+                 GROUP BY DATE(searched_at)
+                 ORDER BY search_date ASC",
+                $chart_days
+            )
+        ); // phpcs:ignore
+
+        // --- the folded recent-searches stream ---
+        $recent_searches = $wpdb->get_results(
+            "SELECT query, results_count, searched_at
+             FROM {$table}
+             ORDER BY searched_at DESC
+             LIMIT 20"
+        ); // phpcs:ignore
+
+        $wizard_url = PTK_Content_Wizard::url();
+        $base_url   = admin_url( 'edit.php?post_type=pta_knowledge&page=ptk-search-analytics' );
+        $now        = current_time( 'timestamp' ); // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp
+
+        echo '<div class="wrap">';
+        echo PTK_Hub_UI::page_open( PTK_Looking_For_Copy::title(), PTK_Looking_For_Copy::lead() );
+
+        // 1. The gaps, first.
+        if ( ! empty( $gaps ) ) {
+            echo PTK_Hub_UI::waiting_row( PTK_Looking_For_Copy::gaps_waiting_sentence( count( $gaps ) ) );
+            echo '<div class="ptk-approvals">';
+            foreach ( $gaps as $row ) {
+                echo self::render_gap_card( $row, $wizard_url, $now );
+            }
+            echo '</div>';
+        } else {
+            $empty = PTK_Looking_For_Copy::gaps_empty();
+            echo PTK_Hub_UI::empty_state( $empty['title'], $empty['text'] );
+        }
+
+        // 2. What they did find, underneath, quieter.
+        if ( ! empty( $found ) ) {
+            echo '<h2 style="margin-top:28px;">' . esc_html( PTK_Looking_For_Copy::found_heading() ) . '</h2>';
+            echo '<div class="ptk-cards">';
+            foreach ( $found as $row ) {
+                echo PTK_Hub_UI::card( array(
+                    'title' => $row->query,
+                    'meta'  => PTK_Looking_For_Copy::found_meta( (int) $row->search_count ),
+                ) );
+            }
+            echo '</div>';
+        }
+
+        // 3. The numbers, folded away, closed by default.
+        echo PTK_Hub_UI::section_fold( array(
+            'title'   => PTK_Looking_For_Copy::numbers_heading(),
+            'summary' => PTK_Looking_For_Copy::numbers_summary( $total_searches, $range ),
+            'body'    => self::render_numbers_fold_body( $range, $base_url, $total_searches, $unique_queries, $avg_results, $zero_count, $daily_data ),
+        ) );
+
+        // 4. Recent searches, quietly, in their own closed fold.
+        echo PTK_Hub_UI::section_fold( array(
+            'title'   => PTK_Looking_For_Copy::recent_heading(),
+            'summary' => PTK_Looking_For_Copy::recent_summary( count( $recent_searches ) ),
+            'body'    => self::render_recent_fold_body( $recent_searches, $now ),
+        ) );
+
+        echo PTK_Hub_UI::page_close();
+        echo '</div>';
+    }
+
+    /** One gap card: the term, how many looked and when, and the way to write it. */
+    private static function render_gap_card( $row, $wizard_url, $now ) {
+        $count      = (int) $row->search_count;
+        $when       = PTK_Looking_For_Copy::when_word( $now, strtotime( $row->last_searched ) );
+        $create_url = add_query_arg( 'ptk_prefill_title', urlencode( $row->query ), $wizard_url );
+
+        $out  = '<article class="ptk-approval">';
+        $out .= '<h2 class="ptk-approval-name">' . PTK_Hub_UI::no_widow( $row->query ) . '</h2>';
+        $out .= '<p class="ptk-approval-meta">' . esc_html( PTK_Looking_For_Copy::looked_sentence( $count, $when ) ) . '</p>';
+        $out .= '<div class="ptk-approval-actions">';
+        $out .= '<a class="ptk-btn ptk-btn-primary" href="' . esc_url( $create_url ) . '">' . esc_html( PTK_Looking_For_Copy::write_answer_button_label() ) . '</a>';
+        $out .= '</div>';
+        $out .= '</article>';
+        return $out;
+    }
+
+    /** The body of the folded "numbers" section: range words, four tiles, the plain bar chart, the export button. */
+    private static function render_numbers_fold_body( $range, $base_url, $total_searches, $unique_queries, $avg_results, $zero_count, $daily_data ) {
+        $out = '';
+
+        // The range, as words -- the same pill markup "What you've written" uses for its own filters.
+        $out .= '<div class="ptk-written-filters" role="group" aria-label="Choose a time range">';
+        foreach ( array( '7', '30', '90', '365', 'all' ) as $key ) {
+            $active = ( $key === $range );
+            $url    = add_query_arg( 'range', $key, $base_url );
+            $out   .= '<a href="' . esc_url( $url ) . '" class="ptk-written-filter' . ( $active ? ' ptk-written-filter--active' : '' ) . '"' . ( $active ? ' aria-current="true"' : '' ) . '>' . esc_html( PTK_Looking_For_Copy::range_label( $key ) ) . '</a>';
+        }
+        $out .= '</div>';
+
+        // Four stat tiles.
+        $out .= '<div class="ptk-cards" style="margin-top:16px;">';
+        $out .= PTK_Hub_UI::card( array( 'title' => number_format( $total_searches ), 'meta' => PTK_Looking_For_Copy::stat_total_label() ) );
+        $out .= PTK_Hub_UI::card( array( 'title' => number_format( $unique_queries ), 'meta' => PTK_Looking_For_Copy::stat_different_label() ) );
+        $out .= PTK_Hub_UI::card( array( 'title' => (string) $avg_results, 'meta' => PTK_Looking_For_Copy::stat_typical_label() ) );
+        $out .= PTK_Hub_UI::card( array( 'title' => number_format( $zero_count ), 'meta' => PTK_Looking_For_Copy::stat_nothing_label() ) );
+        $out .= '</div>';
+
+        // Plain inline bars -- no external chart library, no CDN request from a school's admin.
+        if ( ! empty( $daily_data ) ) {
+            $max = 1;
+            foreach ( $daily_data as $day ) {
+                $max = max( $max, (int) $day->search_count );
+            }
+
+            // Everything below is styled by .ptk-days* in hub.css -- the
+            // only value that has to be inline is the bar's own width,
+            // which is the datum itself.
+            $out .= '<h3 class="ptk-days-heading">' . esc_html( PTK_Looking_For_Copy::chart_heading() ) . '</h3>';
+            $out .= '<div class="ptk-days">';
+            foreach ( $daily_data as $day ) {
+                $count = (int) $day->search_count;
+                $pct   = max( 4, (int) round( ( $count / $max ) * 100 ) );
+                $label = gmdate( 'M j', strtotime( $day->search_date ) );
+                $out  .= '<div class="ptk-days-row">';
+                $out  .= '<span class="ptk-days-label">' . esc_html( $label ) . '</span>';
+                $out  .= '<span class="ptk-days-track">';
+                $out  .= '<span class="ptk-days-bar" style="width:' . esc_attr( $pct ) . '%;"></span>';
+                $out  .= '</span>';
+                $out  .= '<span class="ptk-days-count">' . esc_html( $count ) . '</span>';
+                $out  .= '</div>';
+            }
+            $out .= '</div>';
+        }
+
+        // The export button -- same admin_init handler, same nonce action, unchanged.
+        $export_url = add_query_arg( array(
+            'range'          => $range,
+            'ptk_export_csv' => '1',
+            '_wpnonce'       => wp_create_nonce( 'ptk_export_csv' ),
+        ), $base_url );
+        $out .= '<p class="ptk-days-export">' . PTK_Hub_UI::button( PTK_Looking_For_Copy::export_button_label(), $export_url ) . '</p>';
+
+        return $out;
+    }
+
+    /** The body of the folded "recent searches" section. */
+    private static function render_recent_fold_body( $recent_searches, $now ) {
+        if ( empty( $recent_searches ) ) {
+            return '<p class="ptk-help">Nothing yet.</p>';
+        }
+        $out = '<div class="ptk-cards">';
+        foreach ( $recent_searches as $row ) {
+            $when = PTK_Looking_For_Copy::when_word( $now, strtotime( $row->searched_at ) );
+            $meta = PTK_Looking_For_Copy::recent_result_meta( (int) $row->results_count ) . ' · ' . $when;
+            $out .= PTK_Hub_UI::card( array(
+                'title' => $row->query,
+                'meta'  => $meta,
+            ) );
+        }
+        $out .= '</div>';
+        return $out;
     }
 
     /**
