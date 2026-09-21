@@ -555,3 +555,118 @@ body.ptk-hub-look .ptk-entry-remove-cancel {
         max-width: none;
     }
 }
+
+/* "I'm not sure where to start" -- the box you say it in your own words in,
+   and what the Hub made of it. Emphasis on the best guess is a full border
+   plus a soft fill, never a side bar. */
+
+body.ptk-hub-look .ptk-router {
+    margin: 0 0 var(--ptk-space-3);
+}
+
+body.ptk-hub-look .ptk-router-label {
+    display: block;
+    margin-bottom: var(--ptk-space-1);
+    font-size: 14px;
+    color: var(--ptk-text-dim);
+}
+
+body.ptk-hub-look .ptk-router-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ptk-space-1);
+}
+
+body.ptk-hub-look .ptk-router-input {
+    flex: 1 1 260px;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0 var(--ptk-space-2);
+    font-family: var(--ptk-font-sans);
+    font-size: 15px;
+    color: var(--ptk-text);
+    background: var(--ptk-surface);
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-field);
+    box-shadow: none;
+}
+
+body.ptk-hub-look .ptk-router-input:focus {
+    border-color: var(--ptk-primary);
+    outline: 2px solid var(--ptk-primary);
+    outline-offset: 1px;
+}
+
+body.ptk-hub-look .ptk-router-go {
+    flex: 0 0 auto;
+    min-height: 44px;
+    padding: 0 var(--ptk-space-3);
+    font-family: var(--ptk-font-sans);
+    font-size: 15px;
+    color: var(--ptk-surface);
+    background: var(--ptk-primary);
+    border: 1px solid var(--ptk-primary);
+    border-radius: var(--ptk-radius-field);
+    cursor: pointer;
+}
+
+body.ptk-hub-look .ptk-router-go:hover,
+body.ptk-hub-look .ptk-router-go:focus {
+    background: var(--ptk-text);
+    border-color: var(--ptk-text);
+    color: var(--ptk-surface);
+}
+
+body.ptk-hub-look .ptk-router-said {
+    margin: var(--ptk-space-3) 0 var(--ptk-space-1);
+    font-family: var(--ptk-font-serif);
+    font-size: 15px;
+    color: var(--ptk-text);
+}
+
+body.ptk-hub-look .ptk-router-said--quiet {
+    font-family: var(--ptk-font-sans);
+    font-size: 13px;
+    color: var(--ptk-text-dim);
+}
+
+body.ptk-hub-look .ptk-card-body .ptk-router-match {
+    display: block;
+    padding: var(--ptk-space-2);
+    margin-bottom: var(--ptk-space-1);
+    text-decoration: none;
+    background: var(--ptk-surface);
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-field);
+}
+
+body.ptk-hub-look .ptk-card-body .ptk-router-match--first {
+    background: var(--ptk-primary-soft);
+    border-color: var(--ptk-primary);
+}
+
+body.ptk-hub-look .ptk-card-body .ptk-router-match:hover,
+body.ptk-hub-look .ptk-card-body .ptk-router-match:focus {
+    border-color: var(--ptk-primary);
+}
+
+body.ptk-hub-look .ptk-router-match-title {
+    display: block;
+    font-family: var(--ptk-font-serif);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ptk-text);
+}
+
+body.ptk-hub-look .ptk-router-match-meta {
+    display: block;
+    margin-top: 2px;
+    font-size: 13px;
+    color: var(--ptk-text-dim);
+}
+
+@media (max-width: 782px) {
+    body.ptk-hub-look .ptk-router-go {
+        flex: 1 1 100%;
+    }
+}

@@ -297,7 +297,7 @@ class PTK_Welcome {
             $intentions[] = array(
                 'key'   => 'unsure',
                 'title' => "I'm not sure where to start",
-                'meta'  => 'Pick the sentence that sounds like you.',
+                'meta'  => "Say what you need to do and I'll take you to the right place.",
                 'url'   => '',
                 'soft'  => false,
             );
@@ -336,6 +336,100 @@ class PTK_Welcome {
     }
 
     /**
+     * The inside of the "I'm not sure where to start" card: a box to say
+     * what you need in your own words, whatever that turned out to mean,
+     * and the five example sentences underneath it.
+     *
+     * The form is a plain GET back to this screen -- no JavaScript, no
+     * AJAX -- so it works everywhere, the back button behaves, and the
+     * result can be linked to. PTK_Hub_Router does the thinking and never
+     * sends anyone anywhere on its own: this screen always shows what it
+     * thinks and lets the volunteer click.
+     *
+     * @param array  $intentions From intentions(), including 'unsure'.
+     * @param array  $urls       Intention key => plain destination url.
+     * @param string $typed      What the volunteer wrote, already sanitized.
+     * @return string Trusted markup for PTK_Hub_UI::card()'s body.
+     */
+    private static function render_router_body( array $intentions, array $urls, $typed ) {
+        // Only the intentions really on this volunteer's screen can be
+        // offered -- the router never invents a destination.
+        $available = array();
+        $titles    = array();
+        $metas     = array();
+        foreach ( $intentions as $item ) {
+            if ( 'unsure' === $item['key'] || '' === $item['url'] ) {
+                continue;
+            }
+            $available[]           = $item['key'];
+            $titles[ $item['key'] ] = $item['title'];
+            $metas[ $item['key'] ]  = $item['meta'];
+        }
+
+        $out  = '<form class="ptk-router" method="get" action="' . esc_url( admin_url( 'admin.php' ) ) . '">';
+        $out .= '<input type="hidden" name="page" value="' . esc_attr( self::PAGE_SLUG ) . '">';
+        $out .= '<label class="ptk-router-label" for="ptk-start">What are you trying to get done?</label>';
+        $out .= '<div class="ptk-router-row">';
+        $out .= '<input type="text" class="ptk-router-input" id="ptk-start" name="ptk_start"'
+            . ' autocomplete="off" spellcheck="false"'
+            . ( '' !== $typed ? ' autofocus' : '' )
+            . ' value="' . esc_attr( $typed ) . '"'
+            . ' placeholder="I need parents to volunteer for the book fair">';
+        $out .= '<button type="submit" class="ptk-router-go">Show me where</button>';
+        $out .= '</div>';
+        $out .= '</form>';
+
+        $state = '';
+        if ( '' !== $typed && ! empty( $available ) ) {
+            $route = PTK_Hub_Router::route( $typed, $available );
+            $state = $route['state'];
+
+            $out .= '<p class="ptk-router-said">' . PTK_Hub_UI::no_widow( PTK_Hub_Router::heading( $route['state'] ) ) . '</p>';
+
+            $shown = 0;
+            foreach ( $route['matches'] as $match ) {
+                $key = $match['key'];
+                $to  = PTK_Hub_Router::destination( $key, $typed, $urls );
+                if ( '' === $to || ! isset( $titles[ $key ] ) ) {
+                    continue;
+                }
+                $class = 'ptk-router-match' . ( 0 === $shown ? ' ptk-router-match--first' : '' );
+                $out  .= '<a class="' . esc_attr( $class ) . '" href="' . esc_url( $to ) . '">'
+                    . '<span class="ptk-router-match-title">' . esc_html( $titles[ $key ] ) . '</span>'
+                    . '<span class="ptk-router-match-meta">' . esc_html( $metas[ $key ] ) . '</span>'
+                    . '</a>';
+                $shown++;
+            }
+        }
+
+        // The example sentences, always. After an answer they are the way
+        // back out; before one, they show what this box is for.
+        $cues  = self::cues();
+        $list  = '';
+        foreach ( $cues as $cue_key => $cue_sentence ) {
+            if ( ! isset( $urls[ $cue_key ] ) || '' === $urls[ $cue_key ] || ! isset( $titles[ $cue_key ] ) ) {
+                continue;
+            }
+            $list .= '<a class="ptk-cue" href="' . esc_url( $urls[ $cue_key ] ) . '">'
+                . '<span class="ptk-cue-text">&#8220;' . esc_html( $cue_sentence ) . '&#8221;</span>'
+                . esc_html( $titles[ $cue_key ] )
+                . '</a>';
+        }
+
+        if ( '' !== $list ) {
+            // When nothing matched, the heading above already introduced
+            // this list -- a second line over it would say it twice.
+            if ( 'none' !== $state ) {
+                $label = ( '' !== $typed ) ? 'Or start from one of these:' : 'Or pick the sentence that sounds like you:';
+                $out  .= '<p class="ptk-router-said ptk-router-said--quiet">' . PTK_Hub_UI::no_widow( $label ) . '</p>';
+            }
+            $out .= $list;
+        }
+
+        return $out;
+    }
+
+    /**
      * The new home screen: six intentions instead of a card grid, rendered
      * only when the PTA Hub look is on (see render_page()).
      */
@@ -368,7 +462,12 @@ class PTK_Welcome {
         );
 
         $intentions = self::intentions( $caps, $urls );
-        $cues       = self::cues();
+
+        // What the volunteer typed into "I'm not sure where to start", if
+        // anything. The form is a plain GET back to this same screen, so
+        // the router works with JavaScript off and the result is a real,
+        // shareable url.
+        $typed = isset( $_GET['ptk_start'] ) ? sanitize_text_field( wp_unslash( $_GET['ptk_start'] ) ) : '';
 
         echo '<div class="wrap">';
         echo PTK_Hub_UI::page_open( 'What would you like to do?', "Nothing goes out to families until you say so." );
@@ -382,28 +481,15 @@ class PTK_Welcome {
             }
 
             if ( 'unsure' === $intention['key'] ) {
-                $body = '';
-                foreach ( $cues as $cue_key => $cue_sentence ) {
-                    $target = null;
-                    foreach ( $intentions as $candidate ) {
-                        if ( $candidate['key'] === $cue_key ) {
-                            $target = $candidate;
-                            break;
-                        }
-                    }
-                    if ( ! $target || '' === $target['url'] ) {
-                        continue;
-                    }
-                    $body .= '<a class="ptk-cue" href="' . esc_url( $target['url'] ) . '">'
-                        . '<span class="ptk-cue-text">&#8220;' . esc_html( $cue_sentence ) . '&#8221;</span>'
-                        . esc_html( $target['title'] )
-                        . '</a>';
-                }
                 echo PTK_Hub_UI::card( array(
                     'title' => $intention['title'],
                     'meta'  => $intention['meta'],
-                    'body'  => $body,
+                    'body'  => self::render_router_body( $intentions, $urls, $typed ),
                     'key'   => $intention['key'],
+                    // Open on its own only when they have already asked
+                    // something -- otherwise the answer would be hidden
+                    // behind the fold they just came out of.
+                    'open'  => ( '' !== $typed ),
                 ) );
                 continue;
             }

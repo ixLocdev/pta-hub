@@ -81,6 +81,7 @@ class PTK_Hub_UI {
         $soft  = ! empty( $args['soft'] );
         $body  = isset( $args['body'] ) ? (string) $args['body'] : '';
         $key   = isset( $args['key'] ) ? (string) $args['key'] : '';
+        $open  = ! empty( $args['open'] );
 
         $key_attr = ( '' !== $key ) ? ' data-ptk-key="' . esc_attr( $key ) . '"' : '';
 
@@ -96,7 +97,7 @@ class PTK_Hub_UI {
         }
 
         if ( '' !== $body ) {
-            $out  = '<details class="ptk-card ptk-card--expand"' . $key_attr . '>';
+            $out  = '<details class="ptk-card ptk-card--expand"' . ( $open ? ' open' : '' ) . $key_attr . '>';
             $out .= '<summary><span class="ptk-card-title">' . self::no_widow( $title ) . '</span>';
             if ( '' !== $meta ) {
                 $out .= '<span class="ptk-card-meta">' . self::no_widow( $meta ) . '</span>';
