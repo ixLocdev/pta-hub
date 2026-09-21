@@ -44,6 +44,13 @@ class PTK_Post_Writer {
     /** Set when a save was refused, so the screen can say why and give back what was typed. */
     private static $error = '';
 
+    /**
+     * Set when a save was refused because the post had been worked on
+     * elsewhere. The screen then shows the guard rather than the form:
+     * offering to save again is offering to overwrite somebody's work.
+     */
+    private static $guard_post_id = 0;
+
     public static function init() {
         add_action( 'admin_menu', array( __CLASS__, 'add_page' ) );
         add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
@@ -149,25 +156,50 @@ class PTK_Post_Writer {
             return;
         }
 
+        // Editing one that already exists, or writing a new one?
+        $edit_id = isset( $_POST['ptk_post_id'] ) ? absint( $_POST['ptk_post_id'] ) : 0;
+        if ( $edit_id ) {
+            if ( ! self::is_hub_post( $edit_id ) || ! current_user_can( 'edit_post', $edit_id ) ) {
+                wp_die( 'You do not have permission to change that post.', 'PTA Hub', array( 'back_link' => true ) );
+            }
+            // Checked again here, not only when the form was opened:
+            // somebody may have edited the post in WordPress while this
+            // was sitting open, and the whole point of the guard is that
+            // their work is never replaced by ours.
+            if ( self::changed_elsewhere( $edit_id ) ) {
+                self::$guard_post_id = $edit_id;
+                return;
+            }
+        }
+
         // Never publish for somebody whose role cannot. The screen already
         // offers them only the quiet button; this is the same rule where it
         // is actually enforced, for a form that arrives any other way.
         $asked   = isset( $_POST['ptk_post_status'] ) ? (string) wp_unslash( $_POST['ptk_post_status'] ) : 'draft';
         $publish = ( 'publish' === $asked ) && current_user_can( 'publish_posts' );
 
+        // A post already on the website stays on it. Taking one down is
+        // Remove it, on "Your posts", where it can be undone -- not a
+        // side effect of saving a change to the words.
+        if ( $edit_id && 'publish' === get_post_status( $edit_id ) ) {
+            $publish = true;
+        }
+
         $picture = self::posted_picture( $parts['image_id'] );
         $signoff = (string) get_option( PTK_Share_Settings::SIGNOFF_OPTION, '' );
         $html    = PTK_Post_Renderer::render( $parts, $signoff, $picture );
 
-        $post_data = wp_slash(
-            array(
-                'post_type'    => 'post',
-                'post_status'  => $publish ? 'publish' : 'draft',
-                'post_title'   => $parts['headline'],
-                'post_content' => $html,
-                'post_excerpt' => PTK_Post_Parts::summary( $parts ),
-            )
+        $post_data = array(
+            'post_type'    => 'post',
+            'post_status'  => $publish ? 'publish' : 'draft',
+            'post_title'   => $parts['headline'],
+            'post_content' => $html,
+            'post_excerpt' => PTK_Post_Parts::summary( $parts ),
         );
+        if ( $edit_id ) {
+            $post_data['ID'] = $edit_id;
+        }
+        $post_data = wp_slash( $post_data );
 
         // This HTML is PTK_Post_Renderer's, built from parts that
         // PTK_Post_Parts::sanitize() cleaned and the renderer escaped by
@@ -180,7 +212,7 @@ class PTK_Post_Writer {
         // PTK_Newsletter_Builder::handle_save().
         kses_remove_filters();
         try {
-            $post_id = wp_insert_post( $post_data, true );
+            $post_id = $edit_id ? wp_update_post( $post_data, true ) : wp_insert_post( $post_data, true );
         } finally {
             kses_init_filters();
         }
@@ -313,6 +345,13 @@ class PTK_Post_Writer {
             return;
         }
 
+        // A save refused because the post changed under us: say so, and
+        // do not offer the form again.
+        if ( self::$guard_post_id ) {
+            self::render_guard( self::$guard_post_id );
+            return;
+        }
+
         // Straight after a save, the screen says what happened instead of
         // offering an empty form again.
         $saved = isset( $_GET['ptk_post_saved'] ) ? absint( $_GET['ptk_post_saved'] ) : 0;
@@ -321,12 +360,43 @@ class PTK_Post_Writer {
             return;
         }
 
+        // Opening one that already exists. Refuse anything that is not
+        // ours to open, rather than showing an empty form that would
+        // replace it.
+        // On a refused save the id comes back in the form, not the
+        // address -- without it, saving again would write a second post
+        // instead of changing the one being edited.
+        $edit_id = isset( $_GET['ptk_post_edit_id'] ) ? absint( $_GET['ptk_post_edit_id'] ) : 0;
+        if ( ! $edit_id && '' !== self::$error && isset( $_POST['ptk_post_id'] ) ) {
+            $edit_id = absint( $_POST['ptk_post_id'] );
+        }
+        if ( $edit_id && ( ! self::is_hub_post( $edit_id ) || ! current_user_can( 'edit_post', $edit_id ) ) ) {
+            $edit_id = 0;
+        }
+
+        // The guard: if the post no longer matches what we rendered,
+        // somebody has worked on it elsewhere, and loading the form here
+        // would offer to throw that away.
+        if ( $edit_id && self::changed_elsewhere( $edit_id ) ) {
+            self::render_guard( $edit_id );
+            return;
+        }
+
         // A refused save gives back everything that was typed, exactly as
         // it was typed, with the blocks that were in use still open. Losing
         // somebody's writing because they left the headline out would be a
         // far worse thing than the mistake itself.
-        $parts = ( '' !== self::$error ) ? self::posted_parts() : PTK_Post_Parts::defaults();
-        $open  = self::blocks_in_use( $parts );
+        if ( '' !== self::$error ) {
+            $parts   = self::posted_parts();
+            $framing = self::posted_framing();
+        } elseif ( $edit_id ) {
+            $parts   = array_merge( PTK_Post_Parts::defaults(), (array) get_post_meta( $edit_id, self::PARTS_META, true ) );
+            $framing = self::saved_framing( $edit_id );
+        } else {
+            $parts   = PTK_Post_Parts::defaults();
+            $framing = array();
+        }
+        $open = self::blocks_in_use( $parts );
 
         $chips   = PTK_Post_Copy::chips();
         $hub_url = admin_url( 'edit.php?post_type=pta_knowledge&page=ptk-welcome' );
@@ -341,6 +411,7 @@ class PTK_Post_Writer {
 
             <form method="post" action="" id="ptk-post-form" class="ptk-qf-form">
                 <?php wp_nonce_field( self::NONCE_ACTION, self::NONCE_NAME ); ?>
+                <input type="hidden" name="ptk_post_id" value="<?php echo esc_attr( $edit_id ); ?>">
 
                 <!-- The card: what families will read, in the order they
                      will read it -- the small line above, the headline, the
@@ -373,7 +444,7 @@ class PTK_Post_Writer {
                     </div>
 
                     <?php
-                    echo self::picture_block( $parts, $open['image'] ); // phpcs:ignore WordPress.Security.EscapeOutput -- escapes its own text.
+                    echo self::picture_block( $parts, $open['image'], $framing ); // phpcs:ignore WordPress.Security.EscapeOutput -- escapes its own text.
                     echo self::steps_block( $parts, $open['steps'] );   // phpcs:ignore WordPress.Security.EscapeOutput -- escapes its own text.
                     echo self::date_block( $parts, $open['date'] );     // phpcs:ignore WordPress.Security.EscapeOutput -- escapes its own text.
                     echo self::button_block( $parts, $open['link'] );   // phpcs:ignore WordPress.Security.EscapeOutput -- escapes its own text.
@@ -390,7 +461,7 @@ class PTK_Post_Writer {
                 </div>
 
                 <?php
-                echo self::actions( $can_pub ); // phpcs:ignore WordPress.Security.EscapeOutput -- escapes its own text.
+                echo self::actions( $can_pub, $edit_id ); // phpcs:ignore WordPress.Security.EscapeOutput -- escapes its own text.
                 ?>
             </form>
         </div>
@@ -511,6 +582,104 @@ class PTK_Post_Writer {
         return $out;
     }
 
+    /**
+     * Has this post been worked on outside the Hub since we wrote it?
+     *
+     * We keep a hash of exactly the HTML we rendered. If what is in the
+     * post no longer hashes to it, somebody edited it in WordPress, and
+     * the parts we would load are stale: saving them back would quietly
+     * replace their writing with an older version of it.
+     *
+     * A post with no stored hash at all -- there should be none, but a
+     * failed write or an old row could leave one -- counts as changed. The
+     * safe answer to "I am not sure" is to leave it alone.
+     */
+    public static function changed_elsewhere( $post_id ) {
+        $post = get_post( $post_id );
+        if ( ! $post ) {
+            return true;
+        }
+        return self::is_stale(
+            (string) get_post_meta( $post_id, self::HASH_META, true ),
+            (string) $post->post_content
+        );
+    }
+
+    /**
+     * Pure: does this content still match the hash we stored for it?
+     *
+     * No stored hash means we cannot tell, and the safe answer to "I am
+     * not sure whether somebody rewrote this" is to leave it alone.
+     *
+     * @param string $stored_hash What we recorded when we last wrote it.
+     * @param string $content     What is in the post now.
+     * @return bool True when the post must not be loaded back into the form.
+     */
+    public static function is_stale( $stored_hash, $content ) {
+        $stored_hash = (string) $stored_hash;
+        if ( '' === $stored_hash ) {
+            return true;
+        }
+        return PTK_Post_Renderer::hash( $content ) !== $stored_hash;
+    }
+
+    /**
+     * Say so, plainly, and offer the two ways out -- open it where the
+     * work was done, or go back. Never a third option that overwrites.
+     */
+    private static function render_guard( $post_id ) {
+        $wp_url   = (string) get_edit_post_link( $post_id, '' );
+        $back_url = PTK_Posts_List::url();
+        ?>
+        <div class="wrap ptk-wizard-wrap ptk-qf-wrap ptk-post-wrap">
+            <a class="ptk-qf-back" href="<?php echo esc_url( $back_url ); ?>">&larr; Back to the Hub</a>
+
+            <div class="ptk-qf-card">
+                <h2 class="ptk-qf-question ptk-qf-readonly"><?php echo esc_html( PTK_Post_Copy::guard_title() ); ?></h2>
+                <p class="ptk-qf-answer ptk-qf-readonly"><?php echo esc_html( PTK_Post_Copy::guard_body() ); ?></p>
+                <div class="ptk-entry-actions">
+                    <?php if ( '' !== $wp_url ) : ?>
+                        <a class="ptk-btn" href="<?php echo esc_url( $wp_url ); ?>"><?php echo esc_html( PTK_Post_Copy::guard_open_wordpress() ); ?></a>
+                    <?php endif; ?>
+                    <a class="ptk-btn" href="<?php echo esc_url( $back_url ); ?>"><?php echo esc_html( PTK_Post_Copy::guard_go_back() ); ?></a>
+                </div>
+            </div>
+        </div>
+        <?php
+    }
+
+    /** The four framing fields as they were posted. */
+    private static function posted_framing() {
+        if ( ! isset( $_POST['ptk_post_image_fit'] ) && ! isset( $_POST['ptk_post_image_focal_x'] ) ) {
+            return array();
+        }
+        return array(
+            'x'    => PTK_Focal_Point::clamp_percent( isset( $_POST['ptk_post_image_focal_x'] ) ? $_POST['ptk_post_image_focal_x'] : null ),
+            'y'    => PTK_Focal_Point::clamp_percent( isset( $_POST['ptk_post_image_focal_y'] ) ? $_POST['ptk_post_image_focal_y'] : null ),
+            'zoom' => PTK_Focal_Point::sanitize_zoom( isset( $_POST['ptk_post_image_zoom'] ) ? $_POST['ptk_post_image_zoom'] : null ),
+            'fit'  => ( isset( $_POST['ptk_post_image_fit'] ) && 'whole' === $_POST['ptk_post_image_fit'] ) ? 'whole' : 'crop',
+        );
+    }
+
+    /**
+     * The four framing fields as they were saved. A post framed before is
+     * reopened framed the same way -- only the screen that owns a field
+     * may write it, and that cuts both ways: this screen must hand back
+     * what it was given, not a fresh set of defaults.
+     */
+    private static function saved_framing( $post_id ) {
+        $x = get_post_meta( $post_id, 'ptk_image_focal_x', true );
+        if ( '' === $x ) {
+            return array();
+        }
+        return array(
+            'x'    => PTK_Focal_Point::clamp_percent( $x ),
+            'y'    => PTK_Focal_Point::clamp_percent( get_post_meta( $post_id, 'ptk_image_focal_y', true ) ),
+            'zoom' => PTK_Focal_Point::sanitize_zoom( get_post_meta( $post_id, 'ptk_image_zoom', true ) ),
+            'fit'  => ( 'whole' === get_post_meta( $post_id, 'ptk_image_fit', true ) ) ? 'whole' : 'crop',
+        );
+    }
+
     /** Pure: which of the four blocks this post actually uses. */
     public static function blocks_in_use( array $parts ) {
         $parts = array_merge( PTK_Post_Parts::defaults(), $parts );
@@ -547,13 +716,13 @@ class PTK_Post_Writer {
      * fields the picker hands back, so the saved post can be shown the way
      * it was framed. Hidden until a picture is chosen.
      */
-    private static function picture_block( array $parts, $in_use ) {
+    private static function picture_block( array $parts, $in_use, array $framing = array() ) {
         $image_id = (int) $parts['image_id'];
         $fields   = array(
-            'ptk_post_image_focal_x' => isset( $_POST['ptk_post_image_focal_x'] ) ? PTK_Focal_Point::clamp_percent( $_POST['ptk_post_image_focal_x'] ) : '',
-            'ptk_post_image_focal_y' => isset( $_POST['ptk_post_image_focal_y'] ) ? PTK_Focal_Point::clamp_percent( $_POST['ptk_post_image_focal_y'] ) : '',
-            'ptk_post_image_zoom'    => isset( $_POST['ptk_post_image_zoom'] ) ? PTK_Focal_Point::sanitize_zoom( $_POST['ptk_post_image_zoom'] ) : '',
-            'ptk_post_image_fit'     => ( isset( $_POST['ptk_post_image_fit'] ) && 'whole' === $_POST['ptk_post_image_fit'] ) ? 'whole' : ( isset( $_POST['ptk_post_image_fit'] ) ? 'crop' : '' ),
+            'ptk_post_image_focal_x' => isset( $framing['x'] ) ? $framing['x'] : '',
+            'ptk_post_image_focal_y' => isset( $framing['y'] ) ? $framing['y'] : '',
+            'ptk_post_image_zoom'    => isset( $framing['zoom'] ) ? $framing['zoom'] : '',
+            'ptk_post_image_fit'     => isset( $framing['fit'] ) ? $framing['fit'] : '',
         );
 
         $out  = '<div class="ptk-qf-added-block ptk-qf-block-image" id="ptk-post-image-block" data-block="image"' . self::block_state( $in_use ) . '>';
@@ -632,7 +801,13 @@ class PTK_Post_Writer {
         return $out;
     }
 
-    private static function actions( $can_publish ) {
+    private static function actions( $can_publish, $edit_id = 0 ) {
+        // A post that is already on the website is never taken off it from
+        // here: "Keep it to myself for now" would quietly pull something
+        // families can already read. Taking one down is Remove it, on
+        // "Your posts", where it can be undone.
+        $already_up = $edit_id && 'publish' === get_post_status( $edit_id );
+
         $out = '<div class="ptk-qf-actions">';
 
         if ( $can_publish ) {
@@ -640,8 +815,10 @@ class PTK_Post_Writer {
                 . esc_html( PTK_Post_Copy::primary_button_label() ) . '</button>';
         }
 
-        $out .= '<button type="submit" name="ptk_post_status" value="draft" id="ptk-post-submit-draft" class="ptk-btn ptk-qf-btn-quiet">'
-            . esc_html( PTK_Post_Copy::secondary_button_label() ) . '</button>';
+        if ( ! $already_up ) {
+            $out .= '<button type="submit" name="ptk_post_status" value="draft" id="ptk-post-submit-draft" class="ptk-btn ptk-qf-btn-quiet">'
+                . esc_html( PTK_Post_Copy::secondary_button_label() ) . '</button>';
+        }
 
         $reassure = $can_publish ? PTK_Post_Copy::under_buttons() : PTK_Post_Copy::cannot_publish();
         $out .= '<p class="ptk-qf-reassure">' . esc_html( $reassure ) . '</p>';

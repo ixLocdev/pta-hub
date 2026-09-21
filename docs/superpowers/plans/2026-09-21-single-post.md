@@ -299,10 +299,28 @@ never appears on the screen; the other two do, with the right actions each.
 
 **Files:** Modify `class-post-writer.php`, `class-post-copy.php`
 
-- [ ] **Step 1:** `?ptk_post_edit_id=N` loads the parts back into the screen.
-- [ ] **Step 2: The guard.** Before loading, compare `PTK_Post_Renderer::hash( $post->post_content )` with the stored hash. On a mismatch, do not load the form: say plainly that the post was changed in WordPress, and offer *Open it in WordPress* and *Go back*. **Only the screen that owns a field may write it** — a 4.27.0 bug taught this the hard way, where an older form silently reset framing it did not know about. The precedent is `includes/class-content-wizard.php`, the `$framing_posted` guard in `handle_submission()` (commit `26d6563`); read it before writing this step.
-- [ ] **Step 3: Verify in the browser:** edit a Hub post here (works), then edit the same post in WordPress, come back, and confirm the warning appears and nothing is overwritten.
-- [ ] **Step 4: Commit** — `"Edit a post, and never overwrite work done elsewhere"`
+- [x] **Step 1:** `?ptk_post_edit_id=N` loads the parts back into the screen.
+- [x] **Step 2: The guard.** Before loading, compare `PTK_Post_Renderer::hash( $post->post_content )` with the stored hash. On a mismatch, do not load the form: say plainly that the post was changed in WordPress, and offer *Open it in WordPress* and *Go back*. **Only the screen that owns a field may write it** — a 4.27.0 bug taught this the hard way, where an older form silently reset framing it did not know about. The precedent is `includes/class-content-wizard.php`, the `$framing_posted` guard in `handle_submission()` (commit `26d6563`); read it before writing this step.
+- [x] **Step 3: Verify in the browser:** edit a Hub post here (works), then edit the same post in WordPress, come back, and confirm the warning appears and nothing is overwritten.
+- [x] **Step 4: Commit** — `"Edit a post, and never overwrite work done elsewhere"`
+
+**Three things this turned up:**
+
+- The guard is checked **twice**: when the form opens, and again when it is
+  saved. A form can sit open while somebody edits the post in WordPress, and
+  only the second check catches that. Verified: with the form open and the post
+  changed underneath it, saving showed the guard and wrote nothing -- the
+  hand-made paragraph and the old title both survived.
+- A refused save shows the **guard**, not the form with a message above it.
+  Offering the button again would be offering to overwrite somebody's work.
+- **A post already on the website is never taken down from here.** Editing one
+  that is up shows only *Put it on the website*; "Keep it to myself for now"
+  would quietly pull something families can already read. Taking one down is
+  *Remove it*, where it can be undone.
+
+Framing is read back from the post's own meta when editing, not rebuilt from
+defaults -- the 4.27.0 lesson cuts both ways: a screen that does not own a
+field must hand back what it was given.
 
 ---
 
