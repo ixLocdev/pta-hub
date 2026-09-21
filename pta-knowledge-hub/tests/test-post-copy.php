@@ -78,6 +78,8 @@ $all = implode( ' ', array(
 	$c::no_headline(),
 	$c::nothing_at_all(),
 	$c::could_not_save(),
+	implode( ' ', $c::stamp( true ) ),
+	implode( ' ', $c::stamp( false ) ),
 	$c::published(),
 	$c::kept_private(),
 	implode( ' ', $c::next_steps() ),
@@ -96,6 +98,11 @@ $all = implode( ' ', array(
 	$c::guard_open_wordpress(),
 	$c::guard_go_back(),
 ) );
+$on  = $c::stamp( true );
+$off = $c::stamp( false );
+ptk_test_ok( 'ON THE WEBSITE' === $on[0] && 'success' === $on[1], 'a post that is up says so, quietly' );
+ptk_test_ok( 'NOT ON THE WEBSITE YET' === $off[0] && 'dim' === $off[1], 'one that is not says that instead' );
+
 ptk_test_ok( '' !== $c::could_not_save(), 'a save that failed says so' );
 ptk_test_ok( false !== stripos( $c::could_not_save(), 'nothing' ), 'and says nothing went out' );
 

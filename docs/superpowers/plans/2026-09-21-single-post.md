@@ -249,8 +249,18 @@ and the pre-existing hole is worth a fix of its own.
 
 **Files:** Modify `class-post-writer.php`, `class-post-copy.php`
 
-- [ ] Render a confirmation after saving, in the shape `PTK_Content_Wizard::render_question_first_confirmation()` uses: what happened, one stamp at most, and next steps — *See it the way families see it* · *Put it in the next newsletter* (the Builder's url) · *Write another*.
-- [ ] Verify in the browser. Commit — `"Say what happened after a post is saved"`
+- [x] Render a confirmation after saving, in the shape `PTK_Content_Wizard::render_question_first_confirmation()` uses: what happened, one stamp at most, and next steps — *See it the way families see it* · *Put it in the next newsletter* (the Builder's url) · *Write another*.
+- [x] Verify in the browser. Commit — `"Say what happened after a post is saved"`
+
+**Built as:** `render()` shows the confirmation instead of the form when
+`ptk_post_saved` names a post that carries the parts AND that this person can
+edit -- a contributor asking for somebody else's post gets the plain form and
+sees nothing of it. The card is rebuilt from the saved parts, not from the
+rendered HTML: that HTML is set for a 63-character measure and a 44px headline,
+and squeezing it into an admin column would show somebody something that is not
+what families will see. One stamp (ON THE WEBSITE / NOT ON THE WEBSITE YET), and
+the first next step is the permalink when it is up, the preview link when it is
+not -- never a dead link.
 
 ---
 

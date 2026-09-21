@@ -1269,3 +1269,11 @@ body.ptk-hub-look .ptk-post-date-block .dashicons {
     display: block;
     margin: 0 0 4px;
 }
+
+/* The small line above the headline, once it is written and being read
+   back rather than typed. Same voice as the input it came from. */
+body.ptk-hub-look .ptk-post-kicker-readonly {
+    margin: 0 0 2px;
+    font: italic 500 15px/1.4 var(--ptk-font-serif);
+    color: var(--ptk-primary);
+}

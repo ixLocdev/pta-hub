@@ -313,6 +313,14 @@ class PTK_Post_Writer {
             return;
         }
 
+        // Straight after a save, the screen says what happened instead of
+        // offering an empty form again.
+        $saved = isset( $_GET['ptk_post_saved'] ) ? absint( $_GET['ptk_post_saved'] ) : 0;
+        if ( $saved && self::is_hub_post( $saved ) && current_user_can( 'edit_post', $saved ) ) {
+            self::render_confirmation( $saved );
+            return;
+        }
+
         // A refused save gives back everything that was typed, exactly as
         // it was typed, with the blocks that were in use still open. Losing
         // somebody's writing because they left the headline out would be a
@@ -387,6 +395,120 @@ class PTK_Post_Writer {
             </form>
         </div>
         <?php
+    }
+
+    /**
+     * Is this a post this screen wrote? Only those carry the parts; a post
+     * written in WordPress has none, and this screen must never claim one.
+     */
+    public static function is_hub_post( $post_id ) {
+        $post = get_post( $post_id );
+        if ( ! $post || 'post' !== $post->post_type ) {
+            return false;
+        }
+        return is_array( get_post_meta( $post_id, self::PARTS_META, true ) );
+    }
+
+    /**
+     * What happened, once it has happened: the post as families will read
+     * it, one stamp, and the three things somebody usually wants next.
+     *
+     * Read back from the saved parts rather than from $_POST, which is gone
+     * after the redirect -- the same reader the edit screen will use, so
+     * what is shown here is what was actually kept.
+     */
+    private static function render_confirmation( $post_id ) {
+        $parts   = array_merge( PTK_Post_Parts::defaults(), (array) get_post_meta( $post_id, self::PARTS_META, true ) );
+        $on_site = ( 'publish' === get_post_status( $post_id ) );
+        $stamp   = PTK_Post_Copy::stamp( $on_site );
+        $message = $on_site ? PTK_Post_Copy::published() : PTK_Post_Copy::kept_private();
+        $labels  = PTK_Post_Copy::next_steps();
+
+        $view_url = $on_site ? get_permalink( $post_id ) : get_preview_post_link( $post_id );
+        $steps    = array(
+            array( 'label' => $labels[0], 'url' => $view_url ),
+            array( 'label' => $labels[1], 'url' => class_exists( 'PTK_Newsletter_Builder' ) ? PTK_Newsletter_Builder::url() : '' ),
+            array( 'label' => $labels[2], 'url' => self::url() ),
+        );
+        ?>
+        <div class="wrap ptk-wizard-wrap ptk-qf-wrap ptk-post-wrap">
+            <a class="ptk-qf-back" href="<?php echo esc_url( admin_url( 'edit.php?post_type=pta_knowledge&page=ptk-welcome' ) ); ?>">&larr; Back to the Hub</a>
+
+            <div class="ptk-qf-card ptk-qf-card--done">
+                <div class="ptk-qf-stamp-row"><?php echo PTK_Hub_UI::stamp( $stamp[0], $stamp[1] ); // phpcs:ignore WordPress.Security.EscapeOutput -- pre-escaped by PTK_Hub_UI::stamp(). ?></div>
+                <?php echo self::written_card( $parts, $post_id ); // phpcs:ignore WordPress.Security.EscapeOutput -- escapes its own text. ?>
+            </div>
+
+            <p class="ptk-qf-done-message"><?php echo esc_html( $message ); ?></p>
+
+            <?php echo PTK_Hub_UI::next_steps( $steps ); // phpcs:ignore WordPress.Security.EscapeOutput -- pre-escaped by PTK_Hub_UI::next_steps(). ?>
+        </div>
+        <?php
+    }
+
+    /**
+     * The post, read-only, in the shape it was written in. Not the rendered
+     * HTML itself: that is set for a page 63 characters wide and a 44px
+     * headline, and squeezing it into an admin column would show somebody
+     * something that is not what families will see.
+     */
+    private static function written_card( array $parts, $post_id ) {
+        $out = '';
+
+        if ( '' !== $parts['kicker'] ) {
+            $out .= '<p class="ptk-post-kicker-readonly">' . esc_html( $parts['kicker'] ) . '</p>';
+        }
+
+        $out .= '<h2 class="ptk-qf-question ptk-qf-readonly">' . esc_html( $parts['headline'] ) . '</h2>';
+
+        if ( '' !== $parts['words'] ) {
+            $out .= '<div class="ptk-qf-answer ptk-qf-readonly">';
+            foreach ( preg_split( '/\n\s*\n/', $parts['words'] ) as $paragraph ) {
+                $paragraph = trim( $paragraph );
+                if ( '' !== $paragraph ) {
+                    $out .= '<p>' . esc_html( $paragraph ) . '</p>';
+                }
+            }
+            $out .= '</div>';
+        }
+
+        $thumb = get_the_post_thumbnail_url( $post_id, 'medium' );
+        if ( $thumb ) {
+            $out .= '<div class="ptk-qf-block-image ptk-qf-readonly"><img src="' . esc_url( $thumb ) . '" alt=""></div>';
+        }
+
+        if ( '' !== $parts['date_label'] || '' !== $parts['date_note'] ) {
+            $out .= '<p class="ptk-qf-block-date ptk-qf-readonly"><span class="dashicons dashicons-calendar-alt"></span> ';
+            $out .= esc_html( $parts['date_label'] );
+            if ( '' !== $parts['date_label'] && '' !== $parts['date_note'] ) {
+                $out .= ' &mdash; ';
+            }
+            $out .= esc_html( $parts['date_note'] ) . '</p>';
+        }
+
+        if ( ! empty( $parts['steps'] ) ) {
+            $out .= '<ol class="ptk-qf-block-steps ptk-qf-readonly">';
+            foreach ( $parts['steps'] as $step ) {
+                $heading = isset( $step['heading'] ) ? (string) $step['heading'] : '';
+                $body    = isset( $step['body'] ) ? (string) $step['body'] : '';
+                if ( '' === trim( $heading . $body ) ) {
+                    continue;
+                }
+                $out .= '<li>' . esc_html( $heading );
+                if ( '' !== $heading && '' !== $body ) {
+                    $out .= ' &mdash; ';
+                }
+                $out .= esc_html( $body ) . '</li>';
+            }
+            $out .= '</ol>';
+        }
+
+        if ( '' !== $parts['link_url'] && '' !== $parts['link_text'] ) {
+            $out .= '<p class="ptk-qf-block-link ptk-qf-readonly"><span class="dashicons dashicons-media-default"></span> <a href="'
+                . esc_url( $parts['link_url'] ) . '" target="_blank" rel="noopener">' . esc_html( $parts['link_text'] ) . '</a></p>';
+        }
+
+        return $out;
     }
 
     /** Pure: which of the four blocks this post actually uses. */

@@ -103,6 +103,20 @@ class PTK_Post_Copy {
 		return "That didn't save, and nothing went on the website. Try again.";
 	}
 
+	/**
+	 * The one stamp the confirmation carries: array( text, state ) for
+	 * PTK_Hub_UI::stamp(). Same vocabulary as a newsletter's SENT / NOT
+	 * SENT YET, said the way a post is said.
+	 *
+	 * @param bool $on_the_website
+	 * @return array
+	 */
+	public static function stamp( $on_the_website ) {
+		return $on_the_website
+			? array( 'ON THE WEBSITE', 'success' )
+			: array( 'NOT ON THE WEBSITE YET', 'dim' );
+	}
+
 	/** Confirmation message when the post is published. */
 	public static function published() {
 		return 'It is on the website.';
