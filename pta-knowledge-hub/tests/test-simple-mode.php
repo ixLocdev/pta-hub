@@ -65,7 +65,7 @@ foreach ( array( 'ptk-welcome', 'ptk-newsletter-builder', 'ptk-share-settings', 
 // Newsletter settings holds the switch that turns the whole new look off,
 // so it stays reachable even though it's otherwise a once-in-a-while screen.
 ptk_test_ok( in_array( 'ptk-share-settings', $hub_tasks, true ), 'hub_task_submenu_slugs() keeps Newsletter settings -- it holds the new-look switch' );
-foreach ( array( 'ptk-settings', 'ptk-search-analytics', 'ptk-content-importer', 'ptk-network-sync', 'ptk-school-colors', 'ptk-vendor-approvals' ) as $admin_slug ) {
+foreach ( array( 'ptk-settings', 'ptk-search-analytics', 'ptk-content-importer', 'ptk-network-sync', 'ptk-school-colors', 'ptk-vendor-approvals', 'ptk-asked-for' ) as $admin_slug ) {
     ptk_test_ok( ! in_array( $admin_slug, $hub_tasks, true ), "hub_task_submenu_slugs() drops the once-in-a-while admin screen $admin_slug" );
 }
 

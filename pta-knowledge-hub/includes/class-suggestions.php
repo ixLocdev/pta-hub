@@ -316,6 +316,27 @@ class PTK_Suggestions {
         // Trash the suggestion now that it has a home as a draft.
         wp_trash_post( $id );
 
+        // With the new look on, land on Create Entry (the wizard) to answer
+        // it -- everywhere else in the Hub, "answer a question" means the
+        // wizard, not the classic editor. With it off, nothing changes.
+        if ( class_exists( 'PTK_Hub_Look' ) && PTK_Hub_Look::on() && class_exists( 'PTK_Content_Wizard' ) ) {
+            // Give the draft the type the Hub would have guessed. Without
+            // one the wizard has no category to open, and every field below
+            // stays hidden -- the volunteer lands on their own question
+            // sitting in an input of zero height. A member's request is a
+            // question, so this is the same guess Create Entry makes.
+            if ( class_exists( 'PTK_Entry_Type' ) ) {
+                wp_set_object_terms(
+                    $draft_id,
+                    PTK_Entry_Type::guess( array( 'came_from' => 'question' ) ),
+                    'knowledge_category'
+                );
+            }
+
+            wp_safe_redirect( add_query_arg( 'ptk_edit_id', $draft_id, PTK_Content_Wizard::url() ) );
+            exit;
+        }
+
         wp_safe_redirect( get_edit_post_link( $draft_id, 'raw' ) );
         exit;
     }

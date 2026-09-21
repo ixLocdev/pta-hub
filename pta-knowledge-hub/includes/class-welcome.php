@@ -120,10 +120,14 @@ class PTK_Welcome {
             $counts = wp_count_posts( PTK_Suggestions::POST_TYPE );
             $n      = $counts ? (int) $counts->publish : 0;
             if ( $n > 0 ) {
+                // With the new look on, "What families have asked for" is
+                // where a volunteer actually works this list; WordPress's
+                // own bare list stays the fallback destination otherwise.
+                $asked_for_on = class_exists( 'PTK_Hub_Look' ) && PTK_Hub_Look::on() && class_exists( 'PTK_Asked_For_List' );
                 $out[] = array(
                     'label' => 'Topic suggestions from members',
                     'count' => $n,
-                    'url'   => admin_url( 'edit.php?post_type=' . PTK_Suggestions::POST_TYPE ),
+                    'url'   => $asked_for_on ? PTK_Asked_For_List::url() : admin_url( 'edit.php?post_type=' . PTK_Suggestions::POST_TYPE ),
                     'color' => 'soon',
                 );
             }

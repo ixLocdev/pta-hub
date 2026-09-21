@@ -29,6 +29,7 @@ class PTK_Hub_Look {
         'ptk-content-wizard',
         'ptk-written',
         'ptk-vendor-approvals',
+        'ptk-asked-for',
     );
 
     /** Post types the Hub owns. */
