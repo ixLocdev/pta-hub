@@ -191,11 +191,19 @@ Follow `includes/class-picture-copy.php` and `class-newsletters-copy.php` exactl
 
 Copy the shape of `PTK_Content_Wizard::render_question_first_wizard()` — the card, the chips, the two buttons — and the gating of `PTK_Words_List::add_page()`: the page is registered ONLY when `PTK_Hub_Look::on()`.
 
-- [ ] **Step 1:** Register `ptk-post-writer` under `edit.php?post_type=pta_knowledge`, capability `edit_posts`. Add the slug to `PTK_Hub_Look::PAGES`. Update the assertion in `tests/test-hub-look.php` that says it is not a Hub screen yet.
-- [ ] **Step 2:** Render the card: kicker, headline, words, then the four chips (**+ a picture**, **+ steps**, **+ a date**, **+ a button**) and the blocks they reveal, hidden until used — exactly the progressive-enhancement pattern the wizard uses (real fields, works with JavaScript off).
-- [ ] **Step 3:** Wire **+ a picture** to `window.ptkPicturePicker.open({ frame: true, aspect: '16:9', onChoose })`, storing id/alt/focal/zoom/fit in hidden fields beside it. Reuse `assets/js/content-wizard.js`'s approach; do not write a second picker.
-- [ ] **Step 4: Verify in the browser** (Playground, `http://127.0.0.1:9406`, **127.0.0.1 never localhost**): the screen renders, every chip reveals its block, the picker opens and returns a picture. Nothing saves yet.
-- [ ] **Step 5: Commit** — `"The screen you write one post on"`
+- [x] **Step 1:** Register `ptk-post-writer` under `edit.php?post_type=pta_knowledge`, capability `edit_posts`. Add the slug to `PTK_Hub_Look::PAGES`. Update the assertion in `tests/test-hub-look.php` that says it is not a Hub screen yet.
+- [x] **Step 2:** Render the card: kicker, headline, words, then the four chips (**+ a picture**, **+ steps**, **+ a date**, **+ a button**) and the blocks they reveal, hidden until used — exactly the progressive-enhancement pattern the wizard uses (real fields, works with JavaScript off).
+- [x] **Step 3:** Wire **+ a picture** to `window.ptkPicturePicker.open({ frame: true, aspect: '16:9', onChoose })`, storing id/alt/focal/zoom/fit in hidden fields beside it. Reuse `assets/js/content-wizard.js`'s approach; do not write a second picker.
+- [x] **Step 4: Verify in the browser** (Playground, `http://127.0.0.1:9406`, **127.0.0.1 never localhost**): the screen renders, every chip reveals its block, the picker opens and returns a picture. Nothing saves yet.
+- [x] **Step 5: Commit** — `"The screen you write one post on"`
+
+**Found doing Task 5 (matters for Task 12):** Simple mode's menu trim makes a Hub
+screen that is NOT in `PTK_Simple_Mode::hub_task_submenu_slugs()` return a 403 --
+core's `user_can_access_admin_page()` looks the page up in `$submenu`, which the
+trim has emptied. This is not new and not ours: `ptk-search-analytics`, shipped and
+linked from the home screen, 403s the same way for a Simple mode user today. So the
+writing screen must either be in that list or be reached only with Simple mode off,
+and the pre-existing hole is worth a fix of its own.
 
 ---
 

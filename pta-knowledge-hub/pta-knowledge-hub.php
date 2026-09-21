@@ -96,6 +96,10 @@ require_once PTK_PLUGIN_DIR . 'includes/class-asked-for-list.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-looking-for-copy.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-words-copy.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-words-list.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-post-parts.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-post-renderer.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-post-copy.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-post-writer.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-newsletters-copy.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-newsletters-list.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-glossary-tooltips.php';
@@ -191,6 +195,7 @@ function ptk_init() {
     PTK_Asked_For_List::init();
     PTK_Words_List::init();
     PTK_Newsletters_List::init();
+    PTK_Post_Writer::init();
     PTK_Glossary_Tooltips::init();
     PTK_Glossary_Page::init();
     PTK_Content_Importer::init();

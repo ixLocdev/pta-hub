@@ -1194,3 +1194,78 @@ body.ptk-hub-look .ptk-focal-reset {
 body.ptk-hub-look .ptk-entry-stamp {
     margin: var(--ptk-space-1) 0 0;
 }
+
+/* ──────────────────────────────────────────────────────────────
+   "Put one thing on the website" -- the single post writing screen.
+
+   The card, the chips and the buttons are Create Entry's own
+   (content-wizard.css, enqueued on this screen too). Only the parts a
+   post has and an entry doesn't live here: the small line above the
+   headline, and a step that carries a heading as well as words.
+   ────────────────────────────────────────────────────────────── */
+
+/* The small line above the headline, set the way it will be set on the
+   website: serif, italic, navy, quiet. */
+body.ptk-hub-look .ptk-post-kicker-input {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    font: italic 500 15px/1.4 var(--ptk-font-serif);
+    color: var(--ptk-primary);
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid transparent;
+    padding: 2px 0 4px;
+    outline: none;
+}
+
+body.ptk-hub-look .ptk-post-kicker-input:hover {
+    border-bottom: 1px dashed var(--ptk-text-dim);
+}
+
+body.ptk-hub-look .ptk-post-kicker-input:focus {
+    border-bottom: 1px solid var(--ptk-primary);
+}
+
+body.ptk-hub-look .ptk-post-kicker-input::placeholder {
+    color: var(--ptk-text-dim);
+    font-style: normal;
+}
+
+/* Guidance the moment it is wanted, and not a word before: the hint is
+   there while the field is being used or already has something in it. */
+body.ptk-hub-look .ptk-post-hint {
+    margin: 4px 0 0;
+    font: 400 13px/1.5 var(--ptk-font-sans);
+    color: var(--ptk-text-dim);
+}
+
+body.ptk-hub-look .ptk-post-kicker-input:placeholder-shown:not(:focus) ~ .ptk-post-hint {
+    display: none;
+}
+
+/* A step is a heading and the words under it. */
+body.ptk-hub-look .ptk-post-steps .ptk-post-step-heading {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 4px;
+    font: 700 15px/1.4 var(--ptk-font-sans);
+    color: var(--ptk-text);
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed var(--ptk-text-dim);
+    padding: 2px 0 4px;
+}
+
+body.ptk-hub-look .ptk-post-steps .ptk-post-step-heading:focus {
+    outline: none;
+    border-bottom: 1px solid var(--ptk-primary);
+}
+
+/* The date block stacks two lines, so its icon sits above them rather
+   than beside a field it no longer shares a line with. */
+body.ptk-hub-look .ptk-post-date-block .dashicons {
+    display: block;
+    margin: 0 0 4px;
+}
