@@ -185,9 +185,18 @@ class PTK_Post_Writer {
             $publish = true;
         }
 
-        $picture = self::posted_picture( $parts['image_id'] );
         $signoff = (string) get_option( PTK_Share_Settings::SIGNOFF_OPTION, '' );
-        $html    = PTK_Post_Renderer::render( $parts, $signoff, $picture );
+
+        // The picture is the post's featured image, and every school on
+        // this network shows that at the top of a post already -- the same
+        // Beaver Builder singular template does it on all eleven sites,
+        // falling back to the school logo when a post has none. Rendering
+        // it into the words as well printed the same photo twice, which is
+        // what the first real post showed. So: the picture is saved,
+        // framed and set as the featured image, and the site shows it.
+        // The renderer still knows how (and is still tested for it) for
+        // anywhere that has no featured image of its own.
+        $html = PTK_Post_Renderer::render( $parts, $signoff );
 
         $post_data = array(
             'post_type'    => 'post',
@@ -277,39 +286,6 @@ class PTK_Post_Writer {
             return 0;
         }
         return $image_id;
-    }
-
-    /**
-     * How the picture should be shown, in the shape the renderer takes --
-     * the same shape PTK_Search_Engine::format_result() builds for a card,
-     * from the same four framing fields the picker posts.
-     *
-     * A picture nobody framed (no fields posted at all) is shown the way
-     * every picture was shown before framing existed: centered and cropped.
-     */
-    private static function posted_picture( $image_id ) {
-        $image_id = self::picture_id( $image_id );
-        if ( ! $image_id ) {
-            return array();
-        }
-
-        $url = wp_get_attachment_image_url( $image_id, 'large' );
-        if ( ! $url ) {
-            return array();
-        }
-
-        $x    = PTK_Focal_Point::clamp_percent( isset( $_POST['ptk_post_image_focal_x'] ) ? $_POST['ptk_post_image_focal_x'] : null );
-        $y    = PTK_Focal_Point::clamp_percent( isset( $_POST['ptk_post_image_focal_y'] ) ? $_POST['ptk_post_image_focal_y'] : null );
-        $zoom = PTK_Focal_Point::sanitize_zoom( isset( $_POST['ptk_post_image_zoom'] ) ? $_POST['ptk_post_image_zoom'] : null );
-        $fit  = ( isset( $_POST['ptk_post_image_fit'] ) && 'whole' === $_POST['ptk_post_image_fit'] ) ? 'whole' : 'crop';
-
-        return array(
-            'url'      => $url,
-            'alt'      => (string) get_post_meta( $image_id, '_wp_attachment_image_alt', true ),
-            'fit'      => $fit,
-            'position' => PTK_Focal_Point::object_position( $x, $y ),
-            'zoom'     => PTK_Focal_Point::css_zoom_style( $x, $y, $zoom ),
-        );
     }
 
     /**
