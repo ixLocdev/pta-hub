@@ -150,4 +150,49 @@ class PTK_Single_Enhancements {
 
         return $toc . $content;
     }
+    /* -------------------------------------------------------------- */
+    /*  Reading the answer first                                      */
+    /* -------------------------------------------------------------- */
+
+    /**
+     * Take the "Quick Answer" heading off the top of an entry, and mark the
+     * paragraph it introduced as the lead.
+     *
+     * An FAQ entry is written with a "Quick Answer" heading above its answer.
+     * On a page whose whole job is that one answer the heading earns nothing,
+     * and "Quick Answer" is our word, not a family's. This hides it on screen
+     * only -- the entry's saved words are not touched, so turning this off
+     * brings the heading straight back.
+     *
+     * Only a heading that is the FIRST thing in the entry is removed, and only
+     * when its text is exactly "Quick Answer". A heading of that name further
+     * down is somebody's deliberate section and is left alone.
+     */
+    public static function lead_with_the_answer( string $html ): string {
+        $trimmed = ltrim( $html );
+
+        if ( ! preg_match( '#^<h2\b[^>]*>\s*Quick\s+Answer\s*</h2>#i', $trimmed, $m ) ) {
+            return $html;
+        }
+
+        $rest = substr( $trimmed, strlen( $m[0] ) );
+
+        // The paragraph that heading introduced is now the lead.
+        $rest = preg_replace_callback(
+            '#^(\s*)<p\b([^>]*)>#i',
+            function ( $p ) {
+                $attrs = $p[2];
+                if ( preg_match( '#\sclass\s*=\s*"([^"]*)"#i', $attrs ) ) {
+                    $attrs = preg_replace( '#(\sclass\s*=\s*")#i', '$1ptk-lead ', $attrs, 1 );
+                } else {
+                    $attrs = ' class="ptk-lead"' . $attrs;
+                }
+                return $p[1] . '<p' . $attrs . '>';
+            },
+            $rest,
+            1
+        );
+
+        return $rest;
+    }
 }

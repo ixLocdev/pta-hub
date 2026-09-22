@@ -36,9 +36,10 @@
 }
 
 .ptk-search-wrap,
-.ptk-entry-wrap,
+.ptk-single-wrap,
 .ptk-glossary-wrap,
-.ptk-vendors-wrap {
+.ptk-vendors-wrap,
+.ptk-suggest-form-wrap {
     --ptk-bg: #F8F9F7;
     --ptk-surface: #FFFFFF;
     --ptk-primary: #356F8A;
@@ -73,7 +74,7 @@
 /* The one stamp a public screen is allowed. */
 
 .ptk-search-wrap .ptk-stamp,
-.ptk-entry-wrap .ptk-stamp,
+.ptk-single-wrap .ptk-stamp,
 .ptk-glossary-wrap .ptk-stamp,
 .ptk-vendors-wrap .ptk-stamp {
     display: inline-block;
@@ -90,7 +91,7 @@
 /* The one action on a screen. Everything else is quiet. */
 
 .ptk-search-wrap .ptk-action,
-.ptk-entry-wrap .ptk-action,
+.ptk-single-wrap .ptk-action,
 .ptk-glossary-wrap .ptk-action,
 .ptk-vendors-wrap .ptk-action {
     display: inline-block;
@@ -105,7 +106,7 @@
 }
 
 .ptk-search-wrap .ptk-action:hover,
-.ptk-entry-wrap .ptk-action:hover,
+.ptk-single-wrap .ptk-action:hover,
 .ptk-glossary-wrap .ptk-action:hover,
 .ptk-vendors-wrap .ptk-action:hover {
     background: #2C5E75;
@@ -114,7 +115,7 @@
 }
 
 .ptk-search-wrap .ptk-action:focus-visible,
-.ptk-entry-wrap .ptk-action:focus-visible,
+.ptk-single-wrap .ptk-action:focus-visible,
 .ptk-glossary-wrap .ptk-action:focus-visible,
 .ptk-vendors-wrap .ptk-action:focus-visible {
     outline: 2px solid var(--ptk-primary);
@@ -124,7 +125,7 @@
 /* A quiet link that sits beside the one action. */
 
 .ptk-search-wrap .ptk-quiet,
-.ptk-entry-wrap .ptk-quiet,
+.ptk-single-wrap .ptk-quiet,
 .ptk-glossary-wrap .ptk-quiet,
 .ptk-vendors-wrap .ptk-quiet {
     font: 500 14px/1 var(--ptk-font-sans);
@@ -137,7 +138,7 @@
 }
 
 .ptk-search-wrap .ptk-quiet:hover,
-.ptk-entry-wrap .ptk-quiet:hover,
+.ptk-single-wrap .ptk-quiet:hover,
 .ptk-glossary-wrap .ptk-quiet:hover,
 .ptk-vendors-wrap .ptk-quiet:hover {
     text-decoration: underline;

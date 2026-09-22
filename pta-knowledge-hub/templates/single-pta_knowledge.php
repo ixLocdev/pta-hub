@@ -33,9 +33,9 @@ if ( ! $ptk_in_preview && class_exists( 'PTK_Role_Access' ) ) {
         <div class="ptk-single-wrap">
             <div class="ptk-role-restricted">
                 <div class="ptk-role-restricted-icon" aria-hidden="true">&#128274;</div>
-                <h2>This entry is limited to certain PTA roles</h2>
-                <p>You&rsquo;re logged in, but this entry is only shown to specific volunteer roles (for example, board members). If you think you should be able to see it, ask your PTA president or the person who manages your website to update your access.</p>
-                <a href="<?php echo esc_url( ptk_hub_url() ); ?>" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:15px;font-weight:600;">&larr; Back to the PTA Hub</a>
+                <h2>This one is for certain volunteers</h2>
+                <p>You&rsquo;re signed in, but this is only shown to some roles &mdash; board members, for example. If you think you should see it, ask your PTA president or whoever looks after the website.</p>
+                <a class="ptk-action" href="<?php echo esc_url( ptk_hub_url() ); ?>">Back to the Hub</a>
             </div>
         </div>
         <?php
@@ -44,24 +44,15 @@ if ( ! $ptk_in_preview && class_exists( 'PTK_Role_Access' ) ) {
     }
 }
 
-// Map category slugs to CSS class suffixes.
-$cat_css_map = array(
-    'how-to-guide'   => 'howto',
-    'event-playbook' => 'event',
-    'faq'            => 'faq',
-    'resource'       => 'resource',
-    'glossary'       => 'glossary',
-    'checklist'      => 'checklist',
-    'policy'         => 'policy',
-);
-
 while ( have_posts() ) :
     the_post();
 
-    $cats      = wp_get_post_terms( get_the_ID(), 'knowledge_category' );
-    $cat_slug  = ! empty( $cats ) ? $cats[0]->slug : '';
-    $cat_name  = ! empty( $cats ) ? $cats[0]->name : '';
-    $cat_class = isset( $cat_css_map[ $cat_slug ] ) ? 'ptk-cat-' . $cat_css_map[ $cat_slug ] : '';
+    $cats     = wp_get_post_terms( get_the_ID(), 'knowledge_category' );
+    $cat_slug = ! empty( $cats ) ? $cats[0]->slug : '';
+    $cat_name = ! empty( $cats ) ? $cats[0]->name : '';
+
+    // What a family reads. A category we don't know keeps its own name.
+    $cat_label = $cat_slug ? PTK_Shortcode::category_label( $cat_slug, $cat_name ) : '';
 
     $tags = wp_get_post_terms( get_the_ID(), 'post_tag', array( 'fields' => 'names' ) );
 
@@ -89,7 +80,7 @@ while ( have_posts() ) :
     <?php $ptk_hub_url = ptk_hub_url(); ?>
     <a href="<?php echo esc_url( $ptk_hub_url ); ?>" class="ptk-back-link" onclick="if(history.length>1){history.back();return false;}">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
-        Back to Search
+        Back to the Hub
     </a>
 
     <!-- Breadcrumb -->
@@ -99,7 +90,7 @@ while ( have_posts() ) :
         <a href="<?php echo esc_url( $ptk_hub_url ); ?>">PTA Hub</a>
         <?php if ( $cat_name ) : ?>
             <span class="ptk-sep">/</span>
-            <span><?php echo esc_html( $cat_name ); ?></span>
+            <span><?php echo esc_html( $cat_label ); ?></span>
         <?php endif; ?>
     </nav>
 
@@ -113,9 +104,7 @@ while ( have_posts() ) :
 
     <!-- Category Badge -->
     <?php if ( $cat_name ) : ?>
-        <span class="ptk-single-cat-badge <?php echo esc_attr( $cat_class ); ?>">
-            <?php echo esc_html( $cat_name ); ?>
-        </span>
+        <span class="ptk-single-cat-badge"><?php echo esc_html( $cat_label ); ?></span>
     <?php endif; ?>
 
     <!-- Title -->
@@ -128,33 +117,38 @@ while ( have_posts() ) :
             <span>&middot;</span>
         <?php endif; ?>
         <span>Updated <?php echo get_the_modified_date(); ?></span>
-        <?php if ( $cat_name ) : ?>
-            <span>&middot;</span>
-            <span><?php echo esc_html( $cat_name ); ?></span>
-        <?php endif; ?>
     </div>
 
     <!-- Action Bar -->
     <div class="ptk-single-actions">
         <?php if ( 'faq' === $cat_slug && get_the_excerpt() ) : ?>
-            <button class="ptk-single-faq-copy" data-copy-text="<?php echo esc_attr( get_the_excerpt() ); ?>" aria-label="Copy answer to clipboard">
+            <button class="ptk-single-faq-copy" data-copy-text="<?php echo esc_attr( get_the_excerpt() ); ?>" aria-label="Copy this answer">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
                 </svg>
-                Copy Answer
+                Copy this answer
             </button>
         <?php endif; ?>
         <button class="ptk-print-btn" onclick="window.print();" aria-label="Print this entry">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
             </svg>
-            Print This
+            Print this
         </button>
     </div>
 
     <!-- Content -->
     <div class="ptk-single-content">
-        <?php the_content(); ?>
+        <?php
+        // "Quick Answer" is our word, and on a page whose whole job is that
+        // answer the heading earns nothing. Hidden on screen only -- the
+        // entry's saved words are untouched.
+        $ptk_words = apply_filters( 'the_content', get_the_content() );
+        if ( class_exists( 'PTK_Single_Enhancements' ) ) {
+            $ptk_words = PTK_Single_Enhancements::lead_with_the_answer( $ptk_words );
+        }
+        echo $ptk_words; // phpcs:ignore WordPress.Security.EscapeOutput -- the_content filters already ran.
+        ?>
     </div>
 
     <!-- Tags -->
@@ -173,9 +167,9 @@ while ( have_posts() ) :
     ?>
         <div class="ptk-feedback" id="ptk-feedback" data-post-id="<?php echo esc_attr( get_the_ID() ); ?>">
             <?php if ( $ptk_fb_voted ) : ?>
-                <p class="ptk-feedback-thanks">Thanks for your feedback!</p>
+                <p class="ptk-feedback-thanks">Thanks &mdash; that helps us.</p>
             <?php else : ?>
-                <p class="ptk-feedback-question">Was this entry helpful?</p>
+                <p class="ptk-feedback-question">Did this answer it?</p>
                 <div class="ptk-feedback-buttons">
                     <button class="ptk-feedback-btn" data-helpful="1" data-post-id="<?php echo esc_attr( get_the_ID() ); ?>" aria-label="Yes, this was helpful">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14z"/><path d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/></svg>
@@ -193,7 +187,7 @@ while ( have_posts() ) :
     <!-- Related Entries -->
     <?php if ( ! empty( $related ) ) : ?>
         <div class="ptk-related">
-            <h2 class="ptk-related-title">Related Entries</h2>
+            <h2 class="ptk-related-title">More like this</h2>
             <div class="ptk-related-grid">
                 <?php foreach ( $related as $rel ) : ?>
                     <a href="<?php echo esc_url( get_permalink( $rel->ID ) ); ?>" class="ptk-related-card">
@@ -208,17 +202,15 @@ while ( have_posts() ) :
     <?php endif; ?>
 
     <!-- Suggest-a-topic CTA -->
+    <?php
+    $ptk_suggest_url = get_option( 'ptk_suggest_page_url', '' );
+    if ( ! $ptk_suggest_url ) {
+        $ptk_suggest_url = function_exists( 'ptk_hub_url' ) ? ( ptk_hub_url() . '#ptk-suggest' ) : '#ptk-suggest';
+    }
+    ?>
     <div class="ptk-suggest-cta">
-        <p>
-            Can't find what you need?
-            <?php
-            $ptk_suggest_url = get_option( 'ptk_suggest_page_url', '' );
-            if ( ! $ptk_suggest_url ) {
-                $ptk_suggest_url = function_exists( 'ptk_hub_url' ) ? ( ptk_hub_url() . '#ptk-suggest' ) : '#ptk-suggest';
-            }
-            ?>
-            <a href="<?php echo esc_url( $ptk_suggest_url ); ?>">Suggest a topic &rarr;</a>
-        </p>
+        <p>Not what you needed?</p>
+        <a href="<?php echo esc_url( $ptk_suggest_url ); ?>">Ask us to write it</a>
     </div>
 
     <!-- Print-only footer (hidden on screen, visible in print) -->

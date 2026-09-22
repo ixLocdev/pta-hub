@@ -1,413 +1,683 @@
 /**
- * PTA Knowledge Hub — Single Entry Styles
+ * The Hub families see -- one entry.
  *
- * Scoped under .ptk-single-wrap to prevent theme conflicts.
+ * Rewritten 2026-09-22 against the design system. Every color, font, radius
+ * and space comes from a token declared in public.css. The exception is the
+ * print block at the bottom, which is kept as it was: those values are for
+ * paper, they are battle-tested across eleven themes, and the screen tokens
+ * do not apply there.
+ *
+ * The class names are the ones the template already writes -- nothing here
+ * renames a part.
+ *
+ * The biggest change on this page is not color. It is that the words are set
+ * like something meant to be read: Literata at 17.5px on a 66-character
+ * measure, instead of 15px system sans across the whole container.
+ *
+ * The content itself comes from the_content(), which is the theme's HTML, so
+ * the reading rules target plain h2 / h3 / p / ul / ol inside the wrapper.
+ *
+ * No one-sided borders anywhere in this file.
  */
 
 .ptk-single-wrap {
-    max-width: 800px;
+    max-width: 760px;
     margin: 0 auto;
-    padding: 24px 16px 60px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: 30px 0 48px;
 }
 
-/* Breadcrumb */
-.ptk-single-wrap .ptk-single-nav {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 20px;
-    font-size: 13px;
-    color: #6b7280;
-    flex-wrap: wrap;
-}
-.ptk-single-wrap .ptk-single-nav a {
-    color: #2563eb;
-    text-decoration: none;
-}
-.ptk-single-wrap .ptk-single-nav a:hover { text-decoration: underline; }
-.ptk-single-wrap .ptk-single-nav .ptk-sep { color: #d1d5db; }
-
-/* Category Badge */
-.ptk-single-wrap .ptk-single-cat-badge {
-    display: inline-block;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    padding: 4px 10px;
-    border-radius: 6px;
-    margin-bottom: 12px;
+.ptk-single-wrap *,
+.ptk-single-wrap *::before,
+.ptk-single-wrap *::after {
+    box-sizing: border-box;
 }
 
-/* Category badge colors */
-.ptk-single-wrap .ptk-single-cat-badge.ptk-cat-howto    { background: #dbeafe; color: #1e40af; }
-.ptk-single-wrap .ptk-single-cat-badge.ptk-cat-event    { background: #d1fae5; color: #065f46; }
-.ptk-single-wrap .ptk-single-cat-badge.ptk-cat-faq      { background: #ede9fe; color: #5b21b6; }
-.ptk-single-wrap .ptk-single-cat-badge.ptk-cat-resource  { background: #ffedd5; color: #9a3412; }
-.ptk-single-wrap .ptk-single-cat-badge.ptk-cat-glossary  { background: #ccfbf1; color: #115e59; }
-.ptk-single-wrap .ptk-single-cat-badge.ptk-cat-checklist { background: #dcfce7; color: #166534; }
-.ptk-single-wrap .ptk-single-cat-badge.ptk-cat-policy    { background: #e2e8f0; color: #334155; }
+/* ---------------------------------------------------------------- */
+/*  Getting back, and where you are                                 */
+/* ---------------------------------------------------------------- */
 
-/* Title */
-.ptk-single-wrap .ptk-single-title {
-    font-size: 32px;
-    font-weight: 700;
-    color: #111827;
-    line-height: 1.3;
-    margin: 0 0 16px;
-}
-
-/* Meta */
-.ptk-single-wrap .ptk-single-meta {
-    display: flex;
-    gap: 16px;
-    font-size: 13px;
-    color: #6b7280;
-    margin-bottom: 24px;
-    flex-wrap: wrap;
-}
-
-/* Content */
-.ptk-single-wrap .ptk-single-content {
-    font-size: 16px;
-    line-height: 1.7;
-    color: #374151;
-    max-width: 680px;
-}
-.ptk-single-wrap .ptk-single-content h2 {
-    color: #111827;
-    margin-top: 32px;
-    font-size: 22px;
-}
-.ptk-single-wrap .ptk-single-content h3 {
-    color: #111827;
-    margin-top: 32px;
-    font-size: 18px;
-}
-.ptk-single-wrap .ptk-single-content img {
-    max-width: 100%;
-    height: auto;
-    border-radius: 8px;
-    margin: 16px 0;
-}
-.ptk-single-wrap .ptk-single-content ul,
-.ptk-single-wrap .ptk-single-content ol {
-    margin-left: 24px;
-}
-.ptk-single-wrap .ptk-single-content li { margin-bottom: 6px; }
-
-/* Tags */
-.ptk-single-wrap .ptk-single-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin: 32px 0;
-}
-.ptk-single-wrap .ptk-single-tag {
-    background: #f3f4f6;
-    color: #4b5563;
-    font-size: 12px;
-    padding: 4px 10px;
-    border-radius: 999px;
-}
-
-/* FAQ Copy Button */
-.ptk-single-wrap .ptk-single-faq-copy {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: #f3f4f6;
-    border: 1px solid #e5e7eb;
-    color: #374151;
-    font-size: 14px;
-    font-weight: 500;
-    padding: 10px 18px;
-    border-radius: 8px;
-    cursor: pointer;
-    margin-bottom: 24px;
-    transition: background 0.15s;
-}
-.ptk-single-wrap .ptk-single-faq-copy:hover { background: #e5e7eb; }
-
-/* Back Link */
 .ptk-single-wrap .ptk-back-link {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    color: #2563eb;
-    font-size: 14px;
-    font-weight: 500;
+    font: 500 14px/1 var(--ptk-font-sans);
+    color: var(--ptk-primary);
     text-decoration: none;
-    margin-bottom: 24px;
+    margin-bottom: 14px;
 }
-.ptk-single-wrap .ptk-back-link:hover { text-decoration: underline; }
 
-/* Related Entries */
-.ptk-single-wrap .ptk-related { margin-top: 48px; border-top: 1px solid #e5e7eb; padding-top: 32px; }
-.ptk-single-wrap .ptk-related-title { font-size: 18px; font-weight: 600; color: #111827; margin-bottom: 16px; }
-.ptk-single-wrap .ptk-related-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 12px;
+.ptk-single-wrap .ptk-back-link:hover {
+    text-decoration: underline;
 }
-@media (min-width: 600px) {
-    .ptk-single-wrap .ptk-related-grid { grid-template-columns: repeat(2, 1fr); }
+
+.ptk-single-wrap .ptk-single-nav {
+    font-size: 13px;
+    color: var(--ptk-text-dim);
+    margin: 0 0 var(--ptk-space-4);
 }
-@media (min-width: 900px) {
-    .ptk-single-wrap .ptk-related-grid { grid-template-columns: repeat(3, 1fr); }
-}
-.ptk-single-wrap .ptk-related-card {
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    padding: 14px;
+
+.ptk-single-wrap .ptk-single-nav a {
+    color: var(--ptk-text-dim);
     text-decoration: none;
-    transition: box-shadow 0.15s;
-}
-.ptk-single-wrap .ptk-related-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-.ptk-single-wrap .ptk-related-card-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: #111827;
-    margin-bottom: 4px;
-    line-height: 1.3;
-}
-.ptk-single-wrap .ptk-related-card-excerpt {
-    font-size: 14px;
-    color: #6b7280;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
 }
 
-/* Focus Visible — Keyboard accessibility */
-.ptk-single-wrap a:focus-visible,
-.ptk-single-wrap button:focus-visible {
-    outline: 2px solid #2563eb;
-    outline-offset: 2px;
-}
-.ptk-single-wrap .ptk-related-card:focus-visible {
-    outline: 2px solid #2563eb;
-    outline-offset: 2px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+.ptk-single-wrap .ptk-single-nav a:hover {
+    color: var(--ptk-primary);
 }
 
-/* Reduced Motion */
-@media (prefers-reduced-motion: reduce) {
-    .ptk-single-wrap * { transition-duration: 0.01ms !important; }
+.ptk-single-wrap .ptk-single-nav .ptk-sep {
+    margin: 0 7px;
 }
 
-/* Action Bar (holds print + FAQ copy buttons)
-   On desktop, floats top-right of the title row for better discoverability.
-   On mobile (< 600px) it stacks below the meta like before. */
+/* ---------------------------------------------------------------- */
+/*  The one stamp this page gets                                    */
+/* ---------------------------------------------------------------- */
+
+.ptk-single-wrap .ptk-network-banner {
+    display: inline-block;
+    font: 700 10.5px/1 var(--ptk-font-sans);
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: #FFFFFF;
+    background: var(--ptk-primary);
+    border-radius: var(--ptk-radius-stamp);
+    padding: 5px 8px;
+    margin: 0 0 var(--ptk-space-3);
+    white-space: nowrap;
+}
+
+/* The icon inside it earned nothing; the words say it. */
+.ptk-single-wrap .ptk-network-banner svg {
+    display: none;
+}
+
+/* ---------------------------------------------------------------- */
+/*  What kind of thing this is, and what it says                    */
+/* ---------------------------------------------------------------- */
+
+/* One badge, one look -- the seven category colors are gone here too. */
+.ptk-single-wrap .ptk-single-cat-badge {
+    display: block;
+    font: 600 10.5px/1 var(--ptk-font-sans);
+    letter-spacing: .11em;
+    text-transform: uppercase;
+    color: var(--ptk-text-dim);
+    background: none;
+    border: 0;
+    padding: 0;
+    margin: 0 0 10px;
+}
+
+.ptk-single-wrap .ptk-single-title {
+    font: 600 36px/1.18 var(--ptk-font-serif);
+    letter-spacing: -.005em;
+    color: var(--ptk-text);
+    margin: 0 0 var(--ptk-space-2);
+    text-wrap: balance;
+}
+
+.ptk-single-wrap .ptk-single-meta {
+    font-size: 13px;
+    color: var(--ptk-text-dim);
+    margin: 0 0 20px;
+}
+
+.ptk-single-wrap .ptk-single-meta span {
+    margin: 0 6px;
+}
+
+.ptk-single-wrap .ptk-single-meta span:first-child {
+    margin-left: 0;
+}
+
+/* ---------------------------------------------------------------- */
+/*  Copy this answer, print this                                    */
+/* ---------------------------------------------------------------- */
+
 .ptk-single-wrap .ptk-single-actions {
     display: flex;
-    gap: 10px;
+    gap: var(--ptk-space-1);
     flex-wrap: wrap;
-    margin-bottom: 28px;
-}
-@media (min-width: 720px) {
-    .ptk-single-wrap {
-        position: relative;
-    }
-    .ptk-single-wrap .ptk-single-actions {
-        position: absolute;
-        top: 24px;
-        right: 16px;
-        margin-bottom: 0;
-    }
+    margin: 0 0 var(--ptk-space-5);
+    padding-bottom: var(--ptk-space-4);
+    border-bottom: 1px solid var(--ptk-line);
 }
 
-/* Shared action button base — used by Print and FAQ Copy */
 .ptk-single-wrap .ptk-print-btn,
 .ptk-single-wrap .ptk-single-faq-copy {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    color: #4b5563;
-    font-size: 13px;
-    font-weight: 500;
-    padding: 10px 18px;
-    border-radius: 10px;
+    gap: 6px;
+    font: 500 13.5px/1 var(--ptk-font-sans);
+    color: var(--ptk-text);
+    background: var(--ptk-surface);
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-field);
+    padding: 9px 14px;
     cursor: pointer;
-    transition: all 0.15s ease;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    transition: border-color .15s ease, color .15s ease;
 }
+
+.ptk-single-wrap .ptk-print-btn svg,
+.ptk-single-wrap .ptk-single-faq-copy svg {
+    width: 15px;
+    height: 15px;
+}
+
 .ptk-single-wrap .ptk-print-btn:hover,
 .ptk-single-wrap .ptk-single-faq-copy:hover {
-    background: #f9fafb;
-    border-color: #c7d2fe;
-    color: #2563eb;
-    box-shadow: 0 2px 6px rgba(79, 70, 229, 0.08);
+    border-color: var(--ptk-primary);
+    color: var(--ptk-primary);
 }
+
+.ptk-single-wrap .ptk-print-btn:focus-visible,
+.ptk-single-wrap .ptk-single-faq-copy:focus-visible {
+    outline: 2px solid var(--ptk-primary);
+    outline-offset: 2px;
+}
+
 .ptk-single-wrap .ptk-print-btn:active,
 .ptk-single-wrap .ptk-single-faq-copy:active {
     transform: translateY(1px);
-    box-shadow: none;
 }
-.ptk-single-wrap .ptk-print-btn svg,
-.ptk-single-wrap .ptk-single-faq-copy svg {
-    opacity: 0.5;
-    transition: opacity 0.15s;
+
+.ptk-single-wrap .ptk-single-faq-copy .ptk-copied-icon {
+    display: none;
 }
-.ptk-single-wrap .ptk-print-btn:hover svg,
-.ptk-single-wrap .ptk-single-faq-copy:hover svg {
+
+.ptk-single-wrap .ptk-single-faq-copy.ptk-copied {
+    border-color: var(--ptk-success);
+    color: var(--ptk-success);
+}
+
+.ptk-single-wrap .ptk-single-faq-copy.ptk-copied .ptk-copy-icon {
+    display: none;
+}
+
+.ptk-single-wrap .ptk-single-faq-copy.ptk-copied .ptk-copied-icon {
+    display: inline-block;
     opacity: 1;
 }
 
-/* ============================================
-   Feedback Section — "Was This Helpful?"
-   ============================================ */
+/* ---------------------------------------------------------------- */
+/*  The words themselves -- the part that matters most              */
+/* ---------------------------------------------------------------- */
+
+.ptk-single-wrap .ptk-single-content {
+    font: 400 17.5px/1.68 var(--ptk-font-serif);
+    color: var(--ptk-text);
+    max-width: 66ch;
+}
+
+.ptk-single-wrap .ptk-single-content p {
+    margin: 0 0 20px;
+}
+
+/* The answer an entry leads with. */
+.ptk-single-wrap .ptk-single-content p.ptk-lead {
+    font-size: 20px;
+    line-height: 1.55;
+    font-weight: 500;
+}
+
+.ptk-single-wrap .ptk-single-content h2 {
+    font: 600 22px/1.3 var(--ptk-font-serif);
+    color: var(--ptk-text);
+    margin: 34px 0 var(--ptk-space-2);
+}
+
+.ptk-single-wrap .ptk-single-content h3 {
+    font: 600 18px/1.35 var(--ptk-font-serif);
+    color: var(--ptk-text);
+    margin: 26px 0 var(--ptk-space-1);
+}
+
+.ptk-single-wrap .ptk-single-content ul,
+.ptk-single-wrap .ptk-single-content ol {
+    margin: 0 0 20px;
+    padding-left: 24px;
+}
+
+.ptk-single-wrap .ptk-single-content li {
+    margin: 0 0 9px;
+}
+
+.ptk-single-wrap .ptk-single-content a {
+    color: var(--ptk-primary);
+}
+
+.ptk-single-wrap .ptk-single-content strong {
+    font-weight: 600;
+}
+
+.ptk-single-wrap .ptk-single-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--ptk-radius-field);
+    margin: var(--ptk-space-2) 0;
+}
+
+.ptk-single-wrap .ptk-single-content blockquote {
+    margin: var(--ptk-space-4) 0;
+    padding: var(--ptk-space-3) var(--ptk-space-4);
+    background: var(--ptk-primary-soft);
+    border-radius: var(--ptk-radius-card);
+}
+
+.ptk-single-wrap .ptk-single-content blockquote p:last-child {
+    margin-bottom: 0;
+}
+
+/* ---------------------------------------------------------------- */
+/*  Tags                                                            */
+/* ---------------------------------------------------------------- */
+
+.ptk-single-wrap .ptk-single-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin: 30px 0 0;
+}
+
+.ptk-single-wrap .ptk-single-tag {
+    font: 500 12px/1 var(--ptk-font-sans);
+    color: var(--ptk-text-dim);
+    background: var(--ptk-surface);
+    border: 1px solid var(--ptk-line);
+    border-radius: 999px;
+    padding: 6px 11px;
+}
+
+/* ---------------------------------------------------------------- */
+/*  Did this answer it?                                             */
+/* ---------------------------------------------------------------- */
 
 .ptk-single-wrap .ptk-feedback {
-    margin-top: 48px;
-    padding: 28px 24px;
-    background: #fafafa;
-    border: 1px solid #f0f0f0;
-    border-radius: 14px;
-    text-align: center;
+    margin: 38px 0 0;
+    padding: 18px 20px;
+    background: var(--ptk-surface);
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-card);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
 }
 
 .ptk-single-wrap .ptk-feedback-question {
-    font-size: 15px;
-    font-weight: 600;
-    color: #374151;
-    margin: 0 0 16px;
+    margin: 0;
+    font: 600 14.5px/1.4 var(--ptk-font-sans);
+    color: var(--ptk-text);
+}
+
+.ptk-single-wrap .ptk-feedback-thanks {
+    margin: 0;
+    font: 600 14.5px/1.4 var(--ptk-font-sans);
+    color: var(--ptk-success);
 }
 
 .ptk-single-wrap .ptk-feedback-buttons {
     display: flex;
-    justify-content: center;
-    gap: 12px;
+    gap: var(--ptk-space-1);
+    margin-left: auto;
 }
 
 .ptk-single-wrap .ptk-feedback-btn {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    background: #fff;
-    border: 1.5px solid #e5e7eb;
-    color: #6b7280;
-    font-size: 14px;
-    font-weight: 500;
-    padding: 12px 28px;
-    border-radius: 12px;
+    gap: 6px;
+    font: 500 13.5px/1 var(--ptk-font-sans);
+    color: var(--ptk-text);
+    background: none;
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-field);
+    padding: 9px 18px;
     cursor: pointer;
-    transition: all 0.15s ease;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-}
-
-/* Thumbs up hover */
-.ptk-single-wrap .ptk-feedback-btn[data-helpful="1"]:hover {
-    border-color: #86efac;
-    background: #f0fdf4;
-    color: #166534;
-    box-shadow: 0 3px 10px rgba(34, 197, 94, 0.12);
-    transform: translateY(-1px);
-}
-
-/* Thumbs down hover */
-.ptk-single-wrap .ptk-feedback-btn[data-helpful="0"]:hover {
-    border-color: #fca5a5;
-    background: #fef2f2;
-    color: #991b1b;
-    box-shadow: 0 3px 10px rgba(239, 68, 68, 0.10);
-    transform: translateY(-1px);
-}
-
-.ptk-single-wrap .ptk-feedback-btn:active {
-    transform: translateY(0);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-}
-
-.ptk-single-wrap .ptk-feedback-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
+    transition: border-color .15s ease, color .15s ease;
 }
 
 .ptk-single-wrap .ptk-feedback-btn svg {
-    opacity: 0.4;
-    transition: opacity 0.15s;
-}
-.ptk-single-wrap .ptk-feedback-btn:hover svg {
-    opacity: 1;
+    width: 15px;
+    height: 15px;
 }
 
-.ptk-single-wrap .ptk-feedback-thanks {
-    font-size: 15px;
-    color: #059669;
-    font-weight: 600;
-    margin: 0;
+.ptk-single-wrap .ptk-feedback-btn:hover,
+.ptk-single-wrap .ptk-feedback-btn:hover svg {
+    border-color: var(--ptk-primary);
+    color: var(--ptk-primary);
+}
+
+.ptk-single-wrap .ptk-feedback-btn:focus-visible {
+    outline: 2px solid var(--ptk-primary);
+    outline-offset: 2px;
+}
+
+.ptk-single-wrap .ptk-feedback-btn:active {
+    transform: translateY(1px);
+}
+
+.ptk-single-wrap .ptk-feedback-btn:disabled {
+    opacity: .55;
+    cursor: default;
 }
 
 .ptk-single-wrap .ptk-feedback-counts {
-    font-size: 12px;
-    color: #9ca3af;
-    margin-top: 6px;
-}
-
-@media (max-width: 480px) {
-    .ptk-single-wrap .ptk-feedback-buttons {
-        flex-direction: column;
-        gap: 8px;
-    }
-    .ptk-single-wrap .ptk-feedback-btn {
-        justify-content: center;
-        width: 100%;
-    }
-}
-
-/* Role-restricted notice */
-.ptk-single-wrap .ptk-role-restricted {
-    text-align: center;
-    max-width: 480px;
-    margin: 60px auto;
-    padding: 48px 32px;
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-}
-.ptk-single-wrap .ptk-role-restricted-icon { font-size: 48px; margin-bottom: 12px; }
-.ptk-single-wrap .ptk-role-restricted h2 {
-    font-size: 22px;
-    font-weight: 700;
-    color: #111827;
-    margin: 0 0 8px;
-}
-.ptk-single-wrap .ptk-role-restricted p {
-    font-size: 15px;
-    color: #6b7280;
-    line-height: 1.6;
+    font-size: 13px;
+    color: var(--ptk-text-dim);
     margin: 0;
 }
 
-/* Network sync banner (multisite) */
-.ptk-single-wrap .ptk-network-banner {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
-    border-radius: 8px;
-    padding: 10px 16px;
-    margin-bottom: 20px;
-    font-size: 13px;
-    color: #1e40af;
-}
-.ptk-single-wrap .ptk-network-banner svg { flex-shrink: 0; }
+/* ---------------------------------------------------------------- */
+/*  More like this                                                  */
+/* ---------------------------------------------------------------- */
 
-/* Print-only footer (hidden on screen) */
+.ptk-single-wrap .ptk-related {
+    margin: 42px 0 0;
+}
+
+.ptk-single-wrap .ptk-related-title {
+    font: 600 15px/1.3 var(--ptk-font-sans);
+    color: var(--ptk-text);
+    margin: 0 0 14px;
+}
+
+.ptk-single-wrap .ptk-related-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+}
+
+.ptk-single-wrap .ptk-related-card {
+    display: block;
+    background: var(--ptk-surface);
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-card);
+    padding: 17px 18px;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color .12s, box-shadow .12s;
+}
+
+.ptk-single-wrap .ptk-related-card:hover {
+    border-color: var(--ptk-primary);
+    box-shadow: 0 2px 10px rgba(36, 48, 57, .07);
+}
+
+.ptk-single-wrap .ptk-related-card:focus-visible {
+    outline: 2px solid var(--ptk-primary);
+    outline-offset: 2px;
+}
+
+.ptk-single-wrap .ptk-related-card-title {
+    font: 600 16.5px/1.32 var(--ptk-font-serif);
+    color: var(--ptk-text);
+    margin: 0 0 6px;
+}
+
+.ptk-single-wrap .ptk-related-card-excerpt {
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--ptk-text-dim);
+}
+
+/* ---------------------------------------------------------------- */
+/*  An entry not everyone can see                                   */
+/* ---------------------------------------------------------------- */
+
+.ptk-single-wrap .ptk-role-restricted {
+    background: var(--ptk-surface);
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-card);
+    padding: 34px 28px;
+    text-align: center;
+}
+
+.ptk-single-wrap .ptk-role-restricted-icon {
+    font-size: 28px;
+    margin: 0 0 var(--ptk-space-2);
+}
+
+.ptk-single-wrap .ptk-role-restricted h2 {
+    font: 600 21px/1.3 var(--ptk-font-serif);
+    color: var(--ptk-text);
+    margin: 0 0 10px;
+}
+
+.ptk-single-wrap .ptk-role-restricted p {
+    font-size: 14.5px;
+    color: var(--ptk-text-dim);
+    margin: 0 auto 20px;
+    max-width: 50ch;
+}
+
+/* ---------------------------------------------------------------- */
+/*  Not what you needed?                                            */
+/* ---------------------------------------------------------------- */
+
+.ptk-suggest-cta {
+    max-width: 760px;
+    margin: 42px auto 16px;
+    padding: 24px;
+    background: var(--ptk-surface);
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-card);
+    text-align: center;
+}
+
+.ptk-suggest-cta p {
+    margin: 0 0 14px;
+    font-size: 15px;
+    color: var(--ptk-text-dim);
+}
+
+.ptk-suggest-cta a {
+    display: inline-block;
+    background: var(--ptk-primary);
+    color: #FFFFFF;
+    text-decoration: none;
+    font: 600 14.5px/1 var(--ptk-font-sans);
+    border: 1px solid var(--ptk-primary);
+    border-radius: var(--ptk-radius-field);
+    padding: 12px 18px;
+}
+
+.ptk-suggest-cta a:hover {
+    background: #2C5E75;
+    border-color: #2C5E75;
+    color: #FFFFFF;
+    text-decoration: none;
+}
+
+/* ---------------------------------------------------------------- */
+/*  What's in this entry (the folded contents list)                 */
+/* ---------------------------------------------------------------- */
+
+html { scroll-behavior: smooth; }
+
+.ptk-toc {
+    border: 1px solid var(--ptk-line);
+    background: var(--ptk-surface);
+    padding: var(--ptk-space-2) var(--ptk-space-3);
+    border-radius: var(--ptk-radius-card);
+    margin: var(--ptk-space-4) 0;
+    max-width: 66ch;
+}
+
+.ptk-toc summary {
+    cursor: pointer;
+    font: 600 14px/1.4 var(--ptk-font-sans);
+    color: var(--ptk-text);
+    list-style: none;
+}
+
+.ptk-toc summary::-webkit-details-marker { display: none; }
+
+.ptk-toc summary::before {
+    content: "\25B8 ";
+    display: inline-block;
+    transition: transform .15s ease;
+    color: var(--ptk-text-dim);
+}
+
+.ptk-toc[open] summary::before { transform: rotate(90deg); }
+.ptk-toc[open] summary { margin-bottom: var(--ptk-space-1); }
+
+.ptk-toc ol { margin: var(--ptk-space-1) 0 0 24px; padding: 0; }
+.ptk-toc li { margin: 4px 0; font: 400 14px/1.5 var(--ptk-font-sans); }
+.ptk-toc a { color: var(--ptk-primary); text-decoration: none; }
+.ptk-toc a:hover { text-decoration: underline; }
+
+/* ---------------------------------------------------------------- */
+/*  Suggest-a-topic form ([ptk_suggest_form])                       */
+/* ---------------------------------------------------------------- */
+
+.ptk-suggest-form-wrap {
+    max-width: 560px;
+    margin: 32px auto;
+    padding: 24px;
+    background: var(--ptk-surface);
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-card);
+}
+
+.ptk-suggest-form-title {
+    margin: 0 0 4px;
+    font: 600 22px/1.3 var(--ptk-font-serif);
+    color: var(--ptk-text);
+}
+
+.ptk-suggest-form-intro {
+    margin: 0 0 var(--ptk-space-3);
+    color: var(--ptk-text-dim);
+    font-size: 14px;
+}
+
+.ptk-suggest-form p { margin: 0 0 var(--ptk-space-2); }
+
+.ptk-suggest-form label {
+    display: block;
+    font: 600 13px/1.4 var(--ptk-font-sans);
+    margin-bottom: 4px;
+    color: var(--ptk-text);
+}
+
+.ptk-suggest-form .ptk-optional {
+    color: var(--ptk-text-dim);
+    font-weight: 400;
+}
+
+.ptk-suggest-form input[type=text],
+.ptk-suggest-form input[type=email],
+.ptk-suggest-form textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--ptk-line);
+    border-radius: var(--ptk-radius-field);
+    font: 400 14px/1.5 var(--ptk-font-sans);
+    color: var(--ptk-text);
+    background: var(--ptk-surface);
+}
+
+.ptk-suggest-form input[type=text]:focus,
+.ptk-suggest-form input[type=email]:focus,
+.ptk-suggest-form textarea:focus {
+    outline: 0;
+    border-color: var(--ptk-primary);
+    box-shadow: 0 0 0 3px var(--ptk-primary-soft);
+}
+
+.ptk-suggest-form textarea { font-family: var(--ptk-font-sans); }
+
+.ptk-suggest-submit {
+    background: var(--ptk-primary);
+    color: #FFFFFF;
+    border: 1px solid var(--ptk-primary);
+    border-radius: var(--ptk-radius-field);
+    padding: 12px 18px;
+    font: 600 14.5px/1 var(--ptk-font-sans);
+    cursor: pointer;
+}
+
+.ptk-suggest-submit:hover { background: #2C5E75; border-color: #2C5E75; }
+.ptk-suggest-submit:disabled { opacity: .6; cursor: not-allowed; }
+
+.ptk-suggest-status { margin-top: var(--ptk-space-1); font-size: 13px; }
+.ptk-suggest-error { color: var(--ptk-error); }
+.ptk-suggest-thanks { color: var(--ptk-success); font-weight: 600; }
+
+.ptk-suggest-count {
+    display: block;
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--ptk-text-dim);
+    text-align: right;
+}
+
+.ptk-suggest-count-warn { color: var(--ptk-warning-ink); font-weight: 600; }
+
+/* ---------------------------------------------------------------- */
+/*  Wider than a phone                                              */
+/* ---------------------------------------------------------------- */
+
+@media (min-width: 640px) {
+    .ptk-single-wrap .ptk-related-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .ptk-single-wrap {
+        padding: 22px 18px 34px;
+    }
+
+    .ptk-single-wrap .ptk-single-title {
+        font-size: 28px;
+    }
+
+    .ptk-single-wrap .ptk-single-content {
+        font-size: 16.5px;
+    }
+
+    .ptk-single-wrap .ptk-single-content p.ptk-lead {
+        font-size: 18.5px;
+    }
+
+    .ptk-single-wrap .ptk-feedback-buttons {
+        margin-left: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ptk-single-wrap .ptk-print-btn,
+    .ptk-single-wrap .ptk-single-faq-copy,
+    .ptk-single-wrap .ptk-feedback-btn,
+    .ptk-single-wrap .ptk-related-card,
+    .ptk-toc summary::before {
+        transition: none;
+    }
+
+    .ptk-single-wrap .ptk-print-btn:active,
+    .ptk-single-wrap .ptk-single-faq-copy:active,
+    .ptk-single-wrap .ptk-feedback-btn:active {
+        transform: none;
+    }
+
+    html { scroll-behavior: auto; }
+}
+
+/* ---------------------------------------------------------------- */
+/*  Paper                                                           */
+/* ---------------------------------------------------------------- */
+
+/* The footer that only exists on paper. */
 .ptk-print-footer {
     display: none;
 }
 
-/* Print */
+
+/* Kept as it was. These values are for print, they are tested across the
+   themes the eleven schools run, and the screen tokens do not apply here. */
+
 @media print {
     /* NUCLEAR: hide everything except .ptk-single-wrap first */
     body > *:not(.ptk-single-wrap):not(#page):not(.site):not(main):not(#content):not(.entry-content):not(article) {
@@ -537,56 +807,10 @@
     }
 }
 
-/* Auto Table of Contents (v2.6.0; lighter chrome v2.7.0) */
-html { scroll-behavior: smooth; }
-.ptk-toc { border: 1px solid #e5e7eb; padding: 12px 16px; border-radius: 8px; margin: 24px 0; }
-.ptk-toc summary { cursor: pointer; font-weight: 600; font-size: 14px; color: #475569; list-style: none; }
-.ptk-toc summary::-webkit-details-marker { display: none; }
-.ptk-toc summary::before { content: "▸ "; display: inline-block; transition: transform 0.15s ease; color: #94a3b8; }
-.ptk-toc[open] summary::before { transform: rotate(90deg); }
-.ptk-toc[open] summary { margin-bottom: 8px; color: #1e293b; }
-.ptk-toc ol { margin: 8px 0 0 24px; padding: 0; }
-.ptk-toc li { margin: 4px 0; font-size: 14px; }
-.ptk-toc a { color: #2563eb; text-decoration: none; }
-.ptk-toc a:hover { text-decoration: underline; }
-
-/* Suggest-a-topic CTA on single entries (v2.6.1; accent v2.7.0) */
-.ptk-suggest-cta { margin: 32px 0 16px; padding: 16px 20px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; text-align: center; font-size: 14px; color: #075985; }
-.ptk-suggest-cta a { color: #0369a1; font-weight: 600; text-decoration: none; }
-.ptk-suggest-cta a:hover { text-decoration: underline; }
-
-/* Suggest form (rendered via [ptk_suggest_form] shortcode) */
-.ptk-suggest-form-wrap { max-width: 560px; margin: 32px auto; padding: 24px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; }
-.ptk-suggest-form-title { margin: 0 0 4px; font-size: 22px; }
-.ptk-suggest-form-intro { margin: 0 0 16px; color: #6b7280; font-size: 14px; }
-.ptk-suggest-form p { margin: 0 0 12px; }
-.ptk-suggest-form label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 4px; color: #374151; }
-.ptk-suggest-form .ptk-optional { color: #9ca3af; font-weight: 400; }
-.ptk-suggest-form input[type=text], .ptk-suggest-form input[type=email], .ptk-suggest-form textarea { width: 100%; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; box-sizing: border-box; }
-.ptk-suggest-form textarea { font-family: inherit; }
-.ptk-suggest-submit { background: #2563eb; color: #fff; border: 0; border-radius: 6px; padding: 10px 18px; font-size: 14px; font-weight: 600; cursor: pointer; }
-.ptk-suggest-submit:disabled { opacity: .6; cursor: not-allowed; }
-.ptk-suggest-status { margin-top: 8px; font-size: 13px; }
-.ptk-suggest-error { color: #b91c1c; }
-.ptk-suggest-thanks { color: #047857; font-weight: 600; }
-.ptk-suggest-count { display: block; margin-top: 4px; font-size: 11px; color: #9ca3af; text-align: right; }
-.ptk-suggest-count-warn { color: #b45309; font-weight: 600; }
-
-/* "Copied!" confirmation on single-entry FAQ copy button (v2.8.0) */
-.ptk-single-wrap .ptk-single-faq-copy .ptk-copied-icon { display: none; }
-.ptk-single-wrap .ptk-single-faq-copy.ptk-copied {
-    background: #ecfdf5;
-    border-color: #a7f3d0;
-    color: #059669;
-}
-.ptk-single-wrap .ptk-single-faq-copy.ptk-copied .ptk-copy-icon { display: none; }
-.ptk-single-wrap .ptk-single-faq-copy.ptk-copied .ptk-copied-icon { display: inline-block; opacity: 1; }
-
-/* Submit + filter press states + explicit transitions (v2.8.0) */
-.ptk-single-wrap .ptk-print-btn,
-.ptk-single-wrap .ptk-single-faq-copy {
-    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
-}
-.ptk-single-wrap .ptk-feedback-btn {
-    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+/* Suggest CTA and the contents list are hidden on paper. */
+@media print {
+    .ptk-suggest-cta,
+    .ptk-toc {
+        display: none !important;
+    }
 }

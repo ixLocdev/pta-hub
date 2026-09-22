@@ -57,7 +57,7 @@
         clearContainer();
         var thanks = document.createElement("p");
         thanks.className = "ptk-feedback-thanks";
-        thanks.textContent = "Thanks for your feedback!";
+        thanks.textContent = "Thanks \u2014 that helps us.";
         container.appendChild(thanks);
         showCounts(counts);
     }
@@ -75,7 +75,11 @@
         if (!counts) return;
         var p = document.createElement("p");
         p.className = "ptk-feedback-counts";
-        p.textContent = counts.helpful + " found this helpful \u00b7 " + counts.not_helpful + " did not";
+        // Plain English, and it reads properly when there is only one.
+        var yes = counts.helpful;
+        var no  = counts.not_helpful;
+        var said = (yes === 1 ? "1 person" : yes + " people") + " said yes";
+        p.textContent = no > 0 ? said + ", " + no + " said no." : said + ".";
         container.appendChild(p);
     }
 

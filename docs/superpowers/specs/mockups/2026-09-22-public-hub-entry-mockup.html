@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Hub families see — one entry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,500;7..72,600&family=Karla:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ptk-bg:#F8F9F7; --ptk-surface:#FFFFFF; --ptk-primary:#356F8A;
+    --ptk-primary-soft:#E7F1F5; --ptk-text:#243039; --ptk-text-dim:#68747C;
+    --ptk-success:#477E5F; --ptk-line:#E2E6E4;
+    --serif:'Literata',Georgia,serif; --sans:'Karla',system-ui,sans-serif;
+    --r-card:12px; --r-field:9px; --r-stamp:4px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#EAECE9;font-family:var(--sans);color:var(--ptk-text);
+       line-height:1.5;-webkit-font-smoothing:antialiased}
+
+  .note{max-width:760px;margin:0 auto;padding:30px 24px 6px;font-size:13.5px;color:var(--ptk-text-dim)}
+  .note b{color:var(--ptk-text)}
+  .band{max-width:760px;margin:26px auto 0;padding:11px 24px;background:var(--ptk-text);
+        color:#fff;font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase}
+  .screen{max-width:760px;margin:0 auto 34px;background:var(--ptk-bg);padding:30px 34px 46px}
+
+  /* back + breadcrumb */
+  .back{display:inline-flex;align-items:center;gap:6px;font:500 14px/1 var(--sans);
+        color:var(--ptk-primary);text-decoration:none;margin-bottom:14px}
+  .crumb{font-size:13px;color:var(--ptk-text-dim);margin:0 0 22px}
+  .crumb a{color:var(--ptk-text-dim);text-decoration:none}
+  .crumb a:hover{color:var(--ptk-primary)}
+  .crumb span{margin:0 7px}
+
+  .stamp{display:inline-block;font:700 10.5px/1 var(--sans);letter-spacing:.13em;
+         text-transform:uppercase;color:#fff;background:var(--ptk-primary);
+         border-radius:var(--r-stamp);padding:5px 8px;margin-bottom:16px}
+
+  .kind{display:block;font:600 10.5px/1 var(--sans);letter-spacing:.11em;
+        text-transform:uppercase;color:var(--ptk-text-dim);margin:0 0 10px}
+  h1{font:600 36px/1.18 var(--serif);margin:0 0 12px;text-wrap:balance;letter-spacing:-.005em}
+  .meta{font-size:13px;color:var(--ptk-text-dim);margin:0 0 20px}
+  .meta span{margin:0 6px}
+
+  .tools{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 26px;
+         padding-bottom:22px;border-bottom:1px solid var(--ptk-line)}
+  .tool{display:inline-flex;align-items:center;gap:6px;font:500 13.5px/1 var(--sans);
+        color:var(--ptk-text);background:var(--ptk-surface);border:1px solid var(--ptk-line);
+        border-radius:var(--r-field);padding:9px 14px;cursor:pointer}
+  .tool:hover{border-color:var(--ptk-primary);color:var(--ptk-primary)}
+
+  /* the words themselves */
+  .body{font:400 17.5px/1.68 var(--serif);color:var(--ptk-text);max-width:66ch}
+  .body p{margin:0 0 20px}
+  .body h2{font:600 22px/1.3 var(--serif);margin:34px 0 12px;color:var(--ptk-text)}
+  .body h3{font:600 18px/1.35 var(--serif);margin:26px 0 8px}
+  .body ul,.body ol{margin:0 0 20px;padding-left:24px}
+  .body li{margin:0 0 9px}
+  .body a{color:var(--ptk-primary)}
+  .body strong{font-weight:600}
+  .lead{font-size:20px;line-height:1.55;font-weight:500}
+
+  .tags{display:flex;flex-wrap:wrap;gap:7px;margin:30px 0 0}
+  .tag{font:500 12px/1 var(--sans);color:var(--ptk-text-dim);background:var(--ptk-surface);
+       border:1px solid var(--ptk-line);border-radius:999px;padding:6px 11px}
+
+  .helpful{margin:38px 0 0;padding:18px 20px;background:var(--ptk-surface);
+           border:1px solid var(--ptk-line);border-radius:var(--r-card);
+           display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .helpful p{margin:0;font:600 14.5px/1.4 var(--sans)}
+  .helpful .btns{display:flex;gap:8px;margin-left:auto}
+  .hbtn{font:500 13.5px/1 var(--sans);color:var(--ptk-text);background:none;
+        border:1px solid var(--ptk-line);border-radius:var(--r-field);padding:9px 18px;cursor:pointer}
+  .hbtn:hover{border-color:var(--ptk-primary);color:var(--ptk-primary)}
+
+  .sect{margin:42px 0 0}
+  .sect h2{font:600 15px/1.3 var(--sans);margin:0 0 14px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .card{background:var(--ptk-surface);border:1px solid var(--ptk-line);
+        border-radius:var(--r-card);padding:17px 18px;text-decoration:none;display:block;color:inherit}
+  .card:hover{border-color:var(--ptk-primary)}
+  .card h3{font:600 16.5px/1.32 var(--serif);margin:0 0 6px}
+  .card p{font-size:13.5px;color:var(--ptk-text-dim);margin:0;line-height:1.5}
+
+  .ask{margin:42px 0 0;padding:24px;background:var(--ptk-surface);
+       border:1px solid var(--ptk-line);border-radius:var(--r-card);text-align:center}
+  .ask p{margin:0 0 14px;font-size:15px;color:var(--ptk-text-dim)}
+  .btn{display:inline-block;background:var(--ptk-primary);color:#fff;text-decoration:none;
+       font:600 14.5px/1 var(--sans);border:1px solid var(--ptk-primary);
+       border-radius:var(--r-field);padding:12px 18px;cursor:pointer}
+
+  .locked{background:var(--ptk-surface);border:1px solid var(--ptk-line);
+          border-radius:var(--r-card);padding:34px 28px;text-align:center}
+  .locked h2{font:600 21px/1.3 var(--serif);margin:0 0 10px}
+  .locked p{font-size:14.5px;color:var(--ptk-text-dim);margin:0 auto 20px;max-width:50ch}
+
+  @media (max-width:640px){
+    .grid{grid-template-columns:1fr}
+    .screen{padding:22px 18px 34px}
+    h1{font-size:28px}
+    .body{font-size:16.5px}
+    .helpful .btns{margin-left:0}
+  }
+</style>
+</head>
+<body>
+
+<div class="note">
+  <b>The Hub families see — one entry.</b><br>
+  The page a newsletter link actually drops somebody on. Same parts as today,
+  the same vocabulary the search page just set. The big change is that the words
+  are finally set like something meant to be read: Literata at 17.5px on a 66-character
+  measure, instead of 15px system sans at full container width.
+</div>
+
+<div class="band">1 · A short answer</div>
+<div class="screen">
+  <a class="back" href="#">&larr; Back to the Hub</a>
+  <p class="crumb"><a href="#">Home</a><span>/</span><a href="#">PTA Hub</a><span>/</span>Questions families ask</p>
+
+  <span class="kind">Questions families ask</span>
+  <h1>Where do I park for drop-off?</h1>
+  <p class="meta">1 min read<span>·</span>Updated September 21, 2026</p>
+
+  <div class="tools">
+    <button class="tool">Copy this answer</button>
+    <button class="tool">Print this</button>
+  </div>
+
+  <div class="body">
+    <p class="lead">Drop-off is at the north entrance on Elm Street, between 7:40 and 8:05.</p>
+    <p>Pull all the way forward to the cone before letting anyone out — it keeps the line moving
+       and it's the single biggest thing that shortens the wait for everyone behind you.</p>
+    <p>If you arrive after 8:05 the gate is closed. Park on Elm and walk your child to the front
+       office to sign in.</p>
+  </div>
+
+  <div class="tags">
+    <span class="tag">drop-off</span><span class="tag">morning</span><span class="tag">parking</span>
+  </div>
+
+  <div class="helpful">
+    <p>Did this answer it?</p>
+    <div class="btns"><button class="hbtn">Yes</button><button class="hbtn">No</button></div>
+  </div>
+
+  <div class="sect">
+    <h2>More like this</h2>
+    <div class="grid">
+      <a class="card" href="#"><h3>When does the gate close?</h3><p>8:05 sharp. After that, sign in at the office.</p></a>
+      <a class="card" href="#"><h3>Where is pickup?</h3><p>The blacktop behind the gym, by grade.</p></a>
+    </div>
+  </div>
+
+  <div class="ask">
+    <p>Not what you needed?</p>
+    <a class="btn" href="#">Ask us to write it</a>
+  </div>
+</div>
+
+<div class="band">2 · Something longer, written by the Council</div>
+<div class="screen">
+  <a class="back" href="#">&larr; Back to the Hub</a>
+  <p class="crumb"><a href="#">Home</a><span>/</span><a href="#">PTA Hub</a><span>/</span>Running an event</p>
+
+  <span class="stamp">Shared by the PTA Council</span>
+  <span class="kind">Running an event</span>
+  <h1>Spirit Week, start to finish</h1>
+  <p class="meta">6 min read<span>·</span>Updated September 18, 2026</p>
+
+  <div class="tools">
+    <button class="tool">Print this</button>
+  </div>
+
+  <div class="body">
+    <p class="lead">Spirit Week is five themed dress-up days, one per school day, usually the week
+       before a big fundraiser. Nothing about it costs money.</p>
+
+    <h2>Six weeks before</h2>
+    <p>Pick the five themes and get them approved by the principal. Avoid anything that needs a
+       costume somebody has to buy — the whole point is that a kid with nothing in the closet can
+       still take part.</p>
+    <ul>
+      <li>Book the morning announcements for each day.</li>
+      <li>Ask the art teacher about a hallway banner.</li>
+      <li>Tell the office so the front desk can answer questions.</li>
+    </ul>
+
+    <h2>Two weeks before</h2>
+    <p>Put it in the newsletter with the themes listed by day, and send the same list home on
+       paper. Families plan the weekend before, not the night before.</p>
+
+    <h2>The week itself</h2>
+    <ol>
+      <li><strong>Monday</strong> — take photos in the morning, while everyone still looks the part.</li>
+      <li><strong>Wednesday</strong> — check in with teachers; participation always dips midweek.</li>
+      <li><strong>Friday</strong> — the big one. Save the most popular theme for last.</li>
+    </ol>
+
+    <h2>The day after</h2>
+    <p>Write down what worked while you still remember it, and put the photos somewhere the
+       yearbook people can find them.</p>
+  </div>
+
+  <div class="tags">
+    <span class="tag">spirit week</span><span class="tag">events</span>
+  </div>
+
+  <div class="helpful">
+    <p>Did this answer it?</p>
+    <div class="btns"><button class="hbtn">Yes</button><button class="hbtn">No</button></div>
+  </div>
+
+  <div class="sect">
+    <h2>More like this</h2>
+    <div class="grid">
+      <a class="card" href="#"><h3>Field Day</h3><p>Six weeks out to the day after.</p></a>
+      <a class="card" href="#"><h3>Book Fair</h3><p>What to book, and who runs the register.</p></a>
+    </div>
+  </div>
+
+  <div class="ask">
+    <p>Not what you needed?</p>
+    <a class="btn" href="#">Ask us to write it</a>
+  </div>
+</div>
+
+<div class="band">3 · An entry not everyone can see</div>
+<div class="screen">
+  <div class="locked">
+    <h2>This one is for certain volunteers</h2>
+    <p>You're signed in, but this is only shown to some roles &mdash; board members, for example.
+       If you think you should see it, ask your PTA president.</p>
+    <a class="btn" href="#">Back to the Hub</a>
+  </div>
+</div>
+
+<div class="note" style="padding-bottom:40px">
+  <b>What changes:</b> "Back to Search" becomes "Back to the Hub" (it goes to the Hub, and the
+  page you came from may not have been a search); "Was this entry helpful?" becomes
+  <b>Did this answer it?</b>; "Related Entries" becomes <b>More like this</b>; "Can't find what you
+  need? Suggest a topic" becomes <b>Not what you needed? / Ask us to write it</b>, the same words
+  and the same destination as the search page's empty state. "Shared by the PTA Council" is the
+  one stamp. The category badge loses its color and becomes small caps, matching the cards.<br><br>
+  <b>One thing I did not change, and want your call on:</b> FAQ entries are written with a
+  <b>"Quick Answer"</b> heading above the answer. It's a system word on a family's screen, and on
+  a page whose whole job is that answer the heading earns nothing. I'd delete the heading and let
+  the answer lead, as in state 1 above &mdash; but it lives in the entry's saved words, not the
+  template, so changing it touches what's already written on eleven sites.
+</div>
+
+</body>
+</html>
