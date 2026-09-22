@@ -1,5 +1,10 @@
 # Single post — handoff (2026-09-21)
 
+> **DONE.** All 13 tasks are built, released as 4.28.0 and uploaded to the live
+> network; 4.28.1 and 4.28.2 followed from Lucas's first day of real use. This
+> file is kept for the history below. **The current starting point is
+> `docs/superpowers/2026-09-21-public-hub-handoff.md`.**
+
 Everything needed to continue the "Put one thing on the website" feature in a new chat.
 **Start here, then read the spec and the plan.**
 
