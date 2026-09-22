@@ -328,8 +328,20 @@ field must hand back what it was given.
 
 **Files:** Modify `class-posts-list.php`
 
-- [ ] Copy `PTK_Asked_For_List`'s trash/untrash: `admin-post.php` actions, per-item nonces, a "Removed. Undo" banner. **Note the 4.21.0 trap:** `wp_untrash_post()` restores to `draft`, so Undo must put the status back to what it was, or the card silently fails to return.
-- [ ] Verify in the browser: remove, undo, confirm the post returns with its previous status. Commit — `"Remove a post, and really undo it"`
+- [x] Copy `PTK_Asked_For_List`'s trash/untrash: `admin-post.php` actions, per-item nonces, a "Removed. Undo" banner. **Note the 4.21.0 trap:** `wp_untrash_post()` restores to `draft`, so Undo must put the status back to what it was, or the card silently fails to return.
+- [x] Verify in the browser: remove, undo, confirm the post returns with its previous status. Commit — `"Remove a post, and really undo it"`
+
+**The 4.21.0 trap, avoided and pinned:** `status_after_undo()` is a pure
+function with tests, and the pre-trash status is read from
+`_wp_trash_meta_status` BEFORE untrashing -- `wp_untrash_post()` deletes that
+meta as part of restoring, so afterwards there is nothing left to ask.
+Verified both ways in the browser: a post that was on the website came back on
+it, a draft came back a draft.
+
+**Also checked:** a forged removal of a post written in WordPress is refused
+("You don't have permission to remove that."), even for an administrator who
+could delete it in WordPress -- this screen did not write it, so it does not
+bin it.
 
 ---
 

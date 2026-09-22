@@ -170,6 +170,16 @@ class PTK_Post_Copy {
 		return 'Remove it';
 	}
 
+	/** The banner after removing one. Said in one word, because Undo is right there. */
+	public static function removed_notice() {
+		return 'Removed.';
+	}
+
+	/** The way back from that. */
+	public static function undo_label() {
+		return 'Undo';
+	}
+
 	/** The note when a post was written in WordPress. */
 	public static function card_wordpress() {
 		return 'Written in WordPress, so it opens there.';

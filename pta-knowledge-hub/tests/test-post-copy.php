@@ -89,6 +89,8 @@ $all = implode( ' ', array(
 	$c::card_open(),
 	$c::card_view(),
 	$c::card_remove(),
+	$c::removed_notice(),
+	$c::undo_label(),
 	$c::card_wordpress(),
 	$c::card_open_wordpress(),
 	$empty['title'],
@@ -98,6 +100,9 @@ $all = implode( ' ', array(
 	$c::guard_open_wordpress(),
 	$c::guard_go_back(),
 ) );
+ptk_test_ok( 'Removed.' === $c::removed_notice(), 'removing says so in one word' );
+ptk_test_ok( 'Undo' === $c::undo_label(), 'and the way back is called Undo' );
+
 $on  = $c::stamp( true );
 $off = $c::stamp( false );
 ptk_test_ok( 'ON THE WEBSITE' === $on[0] && 'success' === $on[1], 'a post that is up says so, quietly' );

@@ -39,6 +39,31 @@ ptk_test_ok( true === $l::listed( 'ours' ), 'ours is listed' );
 ptk_test_ok( true === $l::listed( 'wordpress' ), 'so is a post written in WordPress -- with a reason' );
 ptk_test_ok( false === $l::listed( 'newsletter' ), 'a newsletter byproduct is not listed at all' );
 
+// ---------------------------------------------------------------------
+// Only "ours" may be removed from here. Offering to bin somebody else's
+// work, beside a card we cannot even open, would be a nasty surprise.
+// ---------------------------------------------------------------------
+
+ptk_test_ok( true === $l::removable( 'ours' ), 'we may remove what we wrote' );
+ptk_test_ok( false === $l::removable( 'wordpress' ), 'not a post written in WordPress' );
+ptk_test_ok( false === $l::removable( 'newsletter' ), "and not a newsletter's own post" );
+
+// ---------------------------------------------------------------------
+// Undo has to put a post back as it was. wp_untrash_post() lands one on
+// 'draft' whatever it was before (4.21.0 learned this on suggestions), so
+// a post that was on the website must be forced back onto it.
+// ---------------------------------------------------------------------
+
+ptk_test_ok( 'publish' === $l::status_after_undo( 'publish', 'draft' ), 'one that was up goes back up' );
+ptk_test_ok( '' === $l::status_after_undo( 'draft', 'draft' ), 'one that was a draft is already right' );
+ptk_test_ok( '' === $l::status_after_undo( 'publish', 'publish' ), 'and nothing is forced when WordPress got it right' );
+ptk_test_ok( 'pending' === $l::status_after_undo( 'pending', 'draft' ), 'whatever it was, that is what it goes back to' );
+
+// Nothing recorded, or something nonsensical: leave WordPress's answer alone
+// rather than inventing a status for somebody's post.
+ptk_test_ok( '' === $l::status_after_undo( '', 'draft' ), 'no recorded status, no forcing' );
+ptk_test_ok( '' === $l::status_after_undo( 'trash', 'draft' ), 'and never back into the trash' );
+
 // The CSS this screen leans on must never draw a one-sided accent bar.
 $css = file_get_contents( __DIR__ . '/../assets/css/hub.css' );
 ptk_test_ok( ! preg_match( '/border-(left|right|inline-start|inline-end)\s*:/i', $css ), 'no one-sided borders in hub.css' );

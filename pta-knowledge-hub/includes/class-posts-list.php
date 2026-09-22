@@ -43,8 +43,14 @@ class PTK_Posts_List {
     /** How many posts one screenful holds. A school writes a handful a year. */
     const PER_PAGE = 100;
 
+    /** Removing one, and putting it back. */
+    const TRASH_ACTION   = 'ptk_post_trash';
+    const UNTRASH_ACTION = 'ptk_post_untrash';
+
     public static function init() {
         add_action( 'admin_menu', array( __CLASS__, 'add_page' ) );
+        add_action( 'admin_post_' . self::TRASH_ACTION, array( __CLASS__, 'handle_trash' ) );
+        add_action( 'admin_post_' . self::UNTRASH_ACTION, array( __CLASS__, 'handle_untrash' ) );
     }
 
     /* ------------------------------------------------------------------
@@ -77,6 +83,35 @@ class PTK_Posts_List {
     /** Pure: does this kind appear on the screen at all? */
     public static function listed( $kind ) {
         return 'newsletter' !== $kind;
+    }
+
+    /** Pure: may this kind be removed from here? Only what we wrote. */
+    public static function removable( $kind ) {
+        return 'ours' === $kind;
+    }
+
+    /**
+     * Pure: after putting a removed post back, which status does it need
+     * forcing to -- '' when it is already right?
+     *
+     * WordPress's own wp_untrash_post() is deliberately conservative and
+     * lands a restored post on 'draft' whatever it was before (the
+     * wp_untrash_post_status filter's default). A post that was on the
+     * website before Undo must be on the website after it, or Undo has
+     * quietly done something else.
+     *
+     * @param string $before The status it had when it was removed.
+     * @param string $now    The status it came back as.
+     * @return string The status to force, or '' to leave it alone.
+     */
+    public static function status_after_undo( $before, $now ) {
+        $before = (string) $before;
+        $now    = (string) $now;
+
+        if ( '' === $before || 'trash' === $before || $before === $now ) {
+            return '';
+        }
+        return $before;
     }
 
     /* ------------------------------------------------------------------
@@ -123,7 +158,8 @@ class PTK_Posts_List {
             'summary'  => (string) $post->post_excerpt,
             'is_up'    => $is_up,
             'when'     => get_the_date( 'F j, Y', $post ),
-            'can_edit' => current_user_can( 'edit_post', $id ),
+            'can_edit'   => current_user_can( 'edit_post', $id ),
+            'can_remove' => self::removable( $kind ) && current_user_can( 'delete_post', $id ),
             'open_url' => self::opens_here( $kind )
                 ? add_query_arg( 'ptk_post_edit_id', $id, PTK_Post_Writer::url() )
                 : (string) get_edit_post_link( $id, '' ),
@@ -169,6 +205,7 @@ class PTK_Posts_List {
 
         echo '<div class="wrap">';
         echo PTK_Hub_UI::page_open( PTK_Post_Copy::list_title(), PTK_Post_Copy::list_lead() );
+        echo self::render_removed_notice(); // phpcs:ignore WordPress.Security.EscapeOutput -- escapes its own text.
         echo '<p>' . PTK_Hub_UI::primary_button( PTK_Post_Copy::list_add_button(), $add_url ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput -- pre-escaped by PTK_Hub_UI.
 
         if ( empty( $posts ) ) {
@@ -228,8 +265,117 @@ class PTK_Posts_List {
         }
         $out .= '</div>';
 
+        if ( ! empty( $post['can_remove'] ) ) {
+            $out .= self::remove_form( $post['id'] );
+        }
+
         $out .= '</article>';
         return $out;
+    }
+
+    /**
+     * Remove it. No "are you sure": nothing is destroyed, and Undo is
+     * waiting on the next screen -- the same bargain "What families have
+     * asked for" already makes.
+     */
+    private static function remove_form( $post_id ) {
+        $out  = '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" class="ptk-entry-remove-row">';
+        $out .= '<input type="hidden" name="action" value="' . esc_attr( self::TRASH_ACTION ) . '">';
+        $out .= '<input type="hidden" name="id" value="' . esc_attr( $post_id ) . '">';
+        $out .= '<input type="hidden" name="_wpnonce" value="' . esc_attr( wp_create_nonce( self::TRASH_ACTION ) ) . '">';
+        $out .= '<input type="hidden" name="redirect_to" value="' . esc_attr( self::url() ) . '">';
+        $out .= '<button type="submit" class="ptk-entry-remove-btn">' . esc_html( PTK_Post_Copy::card_remove() ) . '</button>';
+        $out .= '</form>';
+        return $out;
+    }
+
+    /** "Removed. Undo", when we have just come back from removing one. */
+    private static function render_removed_notice() {
+        $id = isset( $_GET['ptk_removed'] ) ? absint( $_GET['ptk_removed'] ) : 0;
+        if ( ! $id || 'trash' !== get_post_status( $id ) || ! current_user_can( 'delete_post', $id ) ) {
+            return '';
+        }
+
+        $undo_url = wp_nonce_url(
+            add_query_arg(
+                array(
+                    'action'      => self::UNTRASH_ACTION,
+                    'id'          => $id,
+                    'redirect_to' => rawurlencode( self::url() ),
+                ),
+                admin_url( 'admin-post.php' )
+            ),
+            self::UNTRASH_ACTION
+        );
+
+        return '<div class="ptk-written-notice"><p>' . esc_html( PTK_Post_Copy::removed_notice() )
+            . ' <a href="' . esc_url( $undo_url ) . '">' . esc_html( PTK_Post_Copy::undo_label() ) . '</a></p></div>';
+    }
+
+    /** admin_post_ptk_post_trash: remove one post (WordPress's own trash, so it can come back). */
+    public static function handle_trash() {
+        if ( ! current_user_can( 'read' ) ) {
+            wp_die( 'You must be signed in to do that.', 'Not allowed', array( 'response' => 403 ) );
+        }
+        check_admin_referer( self::TRASH_ACTION );
+
+        $id = isset( $_POST['id'] ) ? absint( $_POST['id'] ) : 0;
+        if ( ! $id || ! self::is_ours( $id ) || ! current_user_can( 'delete_post', $id ) ) {
+            wp_die( "You don't have permission to remove that.", 'Not allowed', array( 'response' => 403 ) );
+        }
+
+        wp_trash_post( $id );
+
+        $redirect = isset( $_POST['redirect_to'] ) ? esc_url_raw( wp_unslash( $_POST['redirect_to'] ) ) : self::url();
+        $redirect = add_query_arg( 'ptk_removed', $id, remove_query_arg( 'ptk_removed', $redirect ) );
+
+        wp_safe_redirect( $redirect );
+        exit;
+    }
+
+    /** admin_post_ptk_post_untrash: a real Undo -- back as it was, not as a draft. */
+    public static function handle_untrash() {
+        if ( ! current_user_can( 'read' ) ) {
+            wp_die( 'You must be signed in to do that.', 'Not allowed', array( 'response' => 403 ) );
+        }
+        check_admin_referer( self::UNTRASH_ACTION );
+
+        $id = isset( $_GET['id'] ) ? absint( $_GET['id'] ) : 0;
+        if ( ! $id || ! self::is_ours( $id ) || ! current_user_can( 'delete_post', $id ) ) {
+            wp_die( "You don't have permission to put that back.", 'Not allowed', array( 'response' => 403 ) );
+        }
+
+        // Read what it was BEFORE untrashing: WordPress keeps the status
+        // it had in _wp_trash_meta_status and deletes that meta as part of
+        // restoring, so afterwards there is nothing left to ask.
+        $before = (string) get_post_meta( $id, '_wp_trash_meta_status', true );
+
+        wp_untrash_post( $id );
+
+        $force = self::status_after_undo( $before, (string) get_post_status( $id ) );
+        if ( '' !== $force ) {
+            wp_update_post( array( 'ID' => $id, 'post_status' => $force ) );
+        }
+
+        $redirect = isset( $_GET['redirect_to'] ) ? esc_url_raw( wp_unslash( $_GET['redirect_to'] ) ) : self::url();
+        wp_safe_redirect( $redirect );
+        exit;
+    }
+
+    /**
+     * Is this one of ours? Read fresh, never from the card that asked --
+     * a removed post is trashed, so shape_post() is no help here.
+     */
+    private static function is_ours( $post_id ) {
+        $post = get_post( $post_id );
+        if ( ! $post || 'post' !== $post->post_type ) {
+            return false;
+        }
+        $kind = self::kind(
+            get_post_meta( $post_id, PTK_Post_Writer::PARTS_META, true ),
+            get_post_meta( $post_id, PTK_Newsletter_Linked_Post::META_SOURCE_NEWSLETTER_ID, true )
+        );
+        return self::removable( $kind );
     }
 
     /**
