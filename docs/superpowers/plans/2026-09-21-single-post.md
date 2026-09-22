@@ -403,13 +403,13 @@ tested.
 
 ## Task 13: Release
 
-- [ ] Bump `Version:` and `PTK_VERSION` in `pta-knowledge-hub/pta-knowledge-hub.php` (4.27.2 → 4.28.0).
-- [ ] Prepend a changelog entry to `update-info.json` (`version`, `last_updated`, `changelog`), written for a volunteer, not a developer.
-- [ ] Rebuild the zip:
+- [x] Bump `Version:` and `PTK_VERSION` in `pta-knowledge-hub/pta-knowledge-hub.php` (4.27.2 → 4.28.0).
+- [x] Prepend a changelog entry to `update-info.json` (`version`, `last_updated`, `changelog`), written for a volunteer, not a developer.
+- [x] Rebuild the zip:
 
 ```bash
 cd "/Users/lucas/apps/PTA/PTA HUB" && rm -f pta-knowledge-hub.zip && zip -rq pta-knowledge-hub.zip pta-knowledge-hub -x "pta-knowledge-hub/tests/*" -x "*.DS_Store" -x "*/node_modules/*" -x "pta-knowledge-hub/.omc/*" -x "pta-knowledge-hub/.impeccable/*"
 ```
 
-- [ ] Update the spec's status line to say what shipped, and add a "what this taught us" note if anything surprised you.
-- [ ] Commit. **Do not push** unless the user asks.
+- [x] Update the spec's status line to say what shipped, and add a "what this taught us" note if anything surprised you.
+- [x] Commit. **Do not push** unless the user asks.

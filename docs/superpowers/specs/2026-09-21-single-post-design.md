@@ -1,6 +1,7 @@
 # "Put one thing on the website" — single post design (2026-09-21)
 
-Status: agreed with Lucas 2026-09-21. Not built.
+Status: **built and released as 4.28.0, 2026-09-21** (branch `single-post`, 13
+tasks). Behind `ptk_hub_new_look`, which still ships off.
 Mockup: `mockups/2026-09-21-single-post-mockup.html`
 
 ## Why
@@ -169,3 +170,36 @@ The standard the last nine screens were held to:
 - browser verification that ends at the **published post on the front end**,
   not at a saved record. On the framing work the rendering half was the part
   that could quietly have been theatre; the same risk applies here.
+
+## What this taught us
+
+Four things worth carrying to the next feature.
+
+**kses would have gutted it, silently.** `wp_insert_post()` runs content
+through `wp_kses_post` for anyone without `unfiltered_html` -- on multisite,
+every school admin -- which strips the inline styles this feature entirely
+consists of. Testing as the logged-in super admin would have shown a perfect
+post and shipped a broken one to eleven schools. The insert uses the Newsletter
+Builder's own trusted-write bypass, and it was verified **as a contributor**,
+not assumed.
+
+**The look-off proof needs hashes, not grep.** A marker grep passes trivially.
+Hashing the same seven pages with the feature's files swapped back to the
+previous commit, and again restored, is what actually proves nothing changed --
+and the first attempt showed identical page LENGTHS with different hashes,
+which was per-request nonces, not a real difference. Normalize every hex token,
+and prove the normalizer is stable by running the same code twice before
+comparing two versions.
+
+**A promise in a docblock is not a behavior.** Simple mode had said for months
+that "a hidden screen's URL still works if someone types it". It did not:
+WordPress finds an admin page's parent by walking `$submenu`, so removing the
+menu item made the page unreachable, and two screens the home page links to
+were 403ing for exactly the volunteers Simple mode is for. It was found by
+chasing an unexplained 403 on a new screen rather than assuming the new screen
+was at fault.
+
+**Probe the code, don't read the report.** Fifteen hostile strings through every
+field found nothing in the renderer (it holds up), but did find that an array
+posted where text belongs -- `ptk_post_kicker[]=x` -- put the literal word
+"Array" into somebody's post. Tests were green either way.
