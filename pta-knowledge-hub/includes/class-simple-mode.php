@@ -52,6 +52,7 @@ class PTK_Simple_Mode {
         // other way back that they can see.
         add_action( 'admin_menu', array( __CLASS__, 'add_menu_exit' ), 998 );
         add_action( 'admin_menu', array( __CLASS__, 'trim_admin_menu' ), 999 );
+        add_filter( 'admin_title', array( __CLASS__, 'restore_admin_title' ), 10, 2 );
         add_action( 'admin_menu', array( __CLASS__, 'point_menu_exit' ), 1000 );
         add_action( 'admin_bar_menu', array( __CLASS__, 'trim_admin_bar' ), 999 );
 
@@ -246,8 +247,14 @@ class PTK_Simple_Mode {
         // written" beside it -- not a once-in-a-while admin job. Without a
         // menu entry it could only be reached by typing its address, and a
         // volunteer hunting for it would end up showing all of WordPress.
+        //
+        // "Your posts" is the same: the single announcements this school has
+        // put on the website, and the way to write another. One entry covers
+        // listing and writing -- the writing screen is reached from the list
+        // and from the home screen, never from a second menu item.
         if ( $written_screen_on ) {
             $slugs[] = 'ptk-words';
+            $slugs[] = 'ptk-posts';
         }
 
         return $slugs;
@@ -382,8 +389,86 @@ class PTK_Simple_Mode {
                     continue;
                 }
                 remove_submenu_page( self::HUB_TOP_SLUG, $item[2] );
+                self::keep_reachable( $item[2], isset( $item[3] ) ? $item[3] : ( isset( $item[0] ) ? $item[0] : '' ) );
             }
         }
+    }
+
+    /**
+     * Keep a trimmed Hub screen reachable by its own address.
+     *
+     * The docblock above has always promised that "a hidden screen's URL
+     * still works if someone types it". It did not. WordPress decides
+     * whether you may open an admin page in user_can_access_admin_page(),
+     * which works out the page's hook name through get_admin_page_parent()
+     * -- and that function finds the parent by WALKING $submenu. Once
+     * remove_submenu_page() has taken the item out, there is no parent to
+     * find, so the hook name falls back from "pta_knowledge_page_<slug>"
+     * to "admin_page_<slug>", which was never registered, and every
+     * request for that screen is refused with a bare "Sorry, you are not
+     * allowed to access this page."
+     *
+     * This bit every Hub screen that is deliberately not in the menu.
+     * "What families are looking for" (ptk-search-analytics) and
+     * "Recommendations waiting for a look" (ptk-vendor-approvals) are both
+     * linked from the home screen's own "waiting for you" row, and both
+     * 403'd for exactly the volunteers Simple mode is for.
+     *
+     * Registering the fallback hook name is all core needs: the page's
+     * render callback is found separately, through the real parent in the
+     * address, which the trim never touched.
+     *
+     * @param string $slug The submenu slug just removed.
+     */
+    private static function keep_reachable( $slug, $title = '' ) {
+        $hookname = self::fallback_hookname( $slug );
+        if ( '' === $hookname ) {
+            return;
+        }
+        $GLOBALS['_registered_pages'][ $hookname ] = true;
+
+        // get_admin_page_title() walks $submenu too, so a screen reached
+        // this way would otherwise open with a blank name in the browser
+        // tab. We know what it is called -- we just removed it.
+        if ( '' !== (string) $title ) {
+            self::$trimmed_titles[ $slug ] = (string) $title;
+        }
+    }
+
+    /** Titles of the screens we trimmed, kept so their browser tab still says what they are. */
+    private static $trimmed_titles = array();
+
+    /**
+     * admin_title: put the name back on a screen we took out of the menu.
+     * Only ever fills a blank -- a screen WordPress can name is left alone.
+     */
+    public static function restore_admin_title( $admin_title, $title ) {
+        if ( '' !== (string) $title ) {
+            return $admin_title;
+        }
+        $page = isset( $GLOBALS['plugin_page'] ) ? (string) $GLOBALS['plugin_page'] : '';
+        if ( '' === $page || ! isset( self::$trimmed_titles[ $page ] ) ) {
+            return $admin_title;
+        }
+        return self::$trimmed_titles[ $page ] . ' ' . $admin_title;
+    }
+
+    /**
+     * Pure: the hook name WordPress falls back to for a page whose parent
+     * it can no longer find -- get_plugin_page_hookname() with an empty
+     * parent. '' for anything that is not one of our own page slugs (a
+     * file like edit.php?post_type=x is a real screen and needs none of
+     * this).
+     *
+     * @param string $slug
+     * @return string
+     */
+    public static function fallback_hookname( $slug ) {
+        $slug = (string) $slug;
+        if ( '' === $slug || false !== strpos( $slug, '.php' ) ) {
+            return '';
+        }
+        return 'admin_page_' . $slug;
     }
 
     /**

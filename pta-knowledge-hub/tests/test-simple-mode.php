@@ -93,6 +93,25 @@ ptk_test_ok( in_array( 'ptk-written', $hub_tasks_written, true ), 'hub_task_subm
 // beside it -- but only in the new look, where that screen exists at all.
 ptk_test_ok( in_array( 'ptk-words', $hub_tasks_written, true ), 'hub_task_submenu_slugs( true ) keeps ptk-words' );
 ptk_test_ok( in_array( 'ptk-newsletters', $hub_tasks_written, true ), 'hub_task_submenu_slugs( true ) keeps ptk-newsletters' );
+ptk_test_ok( in_array( 'ptk-posts', $hub_tasks_written, true ), 'hub_task_submenu_slugs( true ) keeps ptk-posts' );
+ptk_test_ok( ! in_array( 'ptk-post-writer', $hub_tasks_written, true ), 'but not the writing screen -- one entry covers listing and writing' );
+ptk_test_ok( ! in_array( 'ptk-posts', $hub_tasks, true ), 'and neither exists with the new look off' );
+
+// ---------------------------------------------------------------------
+// A trimmed screen must still open by its own address.
+//
+// WordPress works out whether you may open an admin page by walking
+// $submenu for the page's parent. Once the trim has removed the item there
+// is no parent to find, so the hook name falls back to "admin_page_<slug>"
+// -- never registered -- and the screen 403s. Every Hub screen that is
+// deliberately not in the menu was unreachable this way, including
+// "What families are looking for", which the home screen links to.
+// ---------------------------------------------------------------------
+
+ptk_test_ok( 'admin_page_ptk-search-analytics' === $t::fallback_hookname( 'ptk-search-analytics' ), 'the fallback hook name is what core would look for' );
+ptk_test_ok( 'admin_page_ptk-vendor-approvals' === $t::fallback_hookname( 'ptk-vendor-approvals' ), 'same for the approvals screen' );
+ptk_test_ok( '' === $t::fallback_hookname( 'edit.php?post_type=pta_newsletter' ), 'a real WordPress screen needs no fallback' );
+ptk_test_ok( '' === $t::fallback_hookname( '' ), 'and neither does nothing at all' );
 ptk_test_ok( ! in_array( 'edit.php?post_type=pta_newsletter', $hub_tasks_written, true ), "hub_task_submenu_slugs( true ) drops WordPress's own newsletter list" );
 ptk_test_ok( ! in_array( 'ptk-words', $hub_tasks, true ), 'ptk-words is not in the old-look menu, where the screen does not exist' );
 ptk_test_ok( ! in_array( 'edit.php?post_type=pta_knowledge', $hub_tasks_written, true ), 'hub_task_submenu_slugs( true ) drops the raw All Entries list' );

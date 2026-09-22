@@ -67,6 +67,9 @@ class PTK_Welcome {
             'ptk-share-settings',
             'ptk-content-wizard',
             'ptk-written',
+            // The single announcements, and the way to write another.
+            'ptk-posts',
+            'ptk-post-writer',
             'ptk-words',
         );
         $front = array();
