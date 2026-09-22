@@ -349,9 +349,18 @@ bin it.
 
 **Files:** Modify `class-welcome.php`, `class-post-copy.php`, `assets/css/hub.css`
 
-- [ ] The "Tell families what's happening" intention becomes one card with two buttons, **"Just one thing" first and filled**, "This week's newsletter" beside it as the plain one. Meta line: "The weekly newsletter, or a single announcement on the website."
-- [ ] Cards with two buttons already exist (the approvals screen) — reuse that markup rather than inventing a component.
-- [ ] Verify in the browser at desktop and phone width. Commit — `"One intention, two ways out of it"`
+- [x] The "Tell families what's happening" intention becomes one card with two buttons, **"Just one thing" first and filled**, "This week's newsletter" beside it as the plain one. Meta line: "The weekly newsletter, or a single announcement on the website."
+- [x] Cards with two buttons already exist (the approvals screen) — reuse that markup rather than inventing a component.
+- [x] Verify in the browser at desktop and phone width. Commit — `"One intention, two ways out of it"`
+
+**Left as it was:** "I'm not sure where to start" still sends the newsletter
+intention to the Builder. The router matches an intention, not a button, and
+splitting it in two there would mean a sixth cue and a new key for something
+the card itself already makes obvious. Worth a look once posts are in use.
+
+Verified at 375px: the two buttons stack full width inside the card, no
+sideways scroll -- the approvals screen's own rule at 782px does it, so no new
+CSS was needed.
 
 ---
 

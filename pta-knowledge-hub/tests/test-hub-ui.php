@@ -87,6 +87,20 @@ foreach ( $intents as $i ) {
     ptk_test_ok( isset( $i['key'], $i['title'], $i['meta'], $i['url'] ), "intention has key/title/meta/url: {$i['title']}" );
 }
 
+// "Tell families what's happening" is one intention with two ways out of it.
+$branch = $intents[0];
+ptk_test_ok( isset( $branch['buttons'] ) && 2 === count( $branch['buttons'] ), 'the first intention carries two buttons' );
+ptk_test_ok( 'Just one thing' === $branch['buttons'][0]['label'], 'one announcement comes first' );
+ptk_test_ok( ! empty( $branch['buttons'][0]['primary'] ), 'and it is the filled one' );
+ptk_test_ok( "This week's newsletter" === $branch['buttons'][1]['label'], 'the weekly is beside it' );
+ptk_test_ok( empty( $branch['buttons'][1]['primary'] ), 'as the plain one' );
+foreach ( $intents as $i ) {
+    if ( 'newsletter' === $i['key'] ) {
+        continue;
+    }
+    ptk_test_ok( empty( $i['buttons'] ), "one way out of: {$i['title']}" );
+}
+
 // Someone who can't edit sees only what they can actually do.
 $limited = PTK_Welcome::intentions( array( 'edit_posts' => false, 'manage_options' => false ) );
 ptk_test_ok( count( $limited ) < count( $intents ), 'fewer choices without editing rights' );

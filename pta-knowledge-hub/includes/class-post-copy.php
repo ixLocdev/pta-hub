@@ -19,6 +19,26 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class PTK_Post_Copy {
 
+	/**
+	 * The home screen's "Tell families what's happening" card, which is one
+	 * intention with two ways out of it. "Just one thing" comes first and
+	 * filled: a one-off is the more frequent job, and the weekly is the one
+	 * whoever wants it already knows how to find.
+	 */
+	public static function branch_meta() {
+		return 'The weekly newsletter, or a single announcement on the website.';
+	}
+
+	/** The filled button on that card. */
+	public static function branch_post_button() {
+		return 'Just one thing';
+	}
+
+	/** The plain one beside it. */
+	public static function branch_newsletter_button() {
+		return "This week's newsletter";
+	}
+
 	/** The intro line on the writing screen. */
 	public static function intro() {
 		return 'One announcement, on the website. Families see it under Latest news.';

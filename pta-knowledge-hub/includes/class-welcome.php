@@ -8,6 +8,8 @@
  * review) — no new storage. See docs/superpowers/specs/2026-07-15-welcome-page-design.md.
  */
 
+require_once __DIR__ . '/class-post-copy.php';
+
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
@@ -259,7 +261,7 @@ class PTK_Welcome {
         $catalog = array(
             'newsletter' => array(
                 'title'  => "Tell families what's happening",
-                'meta'   => "Write this week's newsletter — five short steps, with a preview.",
+                'meta'   => PTK_Post_Copy::branch_meta(),
                 'needs'  => $edit_posts,
                 'soft'   => true,
             ),
@@ -294,13 +296,34 @@ class PTK_Welcome {
             if ( ! $item['needs'] ) {
                 continue;
             }
-            $intentions[] = array(
+            $intention = array(
                 'key'   => $key,
                 'title' => $item['title'],
                 'meta'  => $item['meta'],
                 'url'   => isset( $urls[ $key ] ) ? (string) $urls[ $key ] : '',
                 'soft'  => $item['soft'],
             );
+
+            // One intention, two ways out of it. A branch SCREEN was
+            // rejected: an extra click before the newsletter is a tax on
+            // the most frequent job in the Hub, paid every week by
+            // somebody who already knows what they want.
+            if ( 'newsletter' === $key ) {
+                $intention['buttons'] = array(
+                    array(
+                        'label'   => PTK_Post_Copy::branch_post_button(),
+                        'url'     => isset( $urls['post'] ) ? (string) $urls['post'] : '',
+                        'primary' => true,
+                    ),
+                    array(
+                        'label'   => PTK_Post_Copy::branch_newsletter_button(),
+                        'url'     => $intention['url'],
+                        'primary' => false,
+                    ),
+                );
+            }
+
+            $intentions[] = $intention;
         }
 
         // The "not sure" route needs at least two real choices to be worth offering.
@@ -362,6 +385,34 @@ class PTK_Welcome {
      * @param string $typed      What the volunteer wrote, already sanitized.
      * @return string Trusted markup for PTK_Hub_UI::card()'s body.
      */
+    /**
+     * An intention that is really two: the card says what it is for, and
+     * the buttons say which way. Same two-button row the approvals screen
+     * already uses, so nothing new is invented for it.
+     */
+    private static function render_branch_card( array $intention ) {
+        $class = 'ptk-card' . ( ! empty( $intention['soft'] ) ? ' ptk-card--soft' : '' );
+
+        $out  = '<div class="' . esc_attr( $class ) . '" data-ptk-key="' . esc_attr( $intention['key'] ) . '">';
+        $out .= '<h2 class="ptk-card-title">' . PTK_Hub_UI::no_widow( $intention['title'] ) . '</h2>';
+        $out .= '<p class="ptk-card-meta">' . PTK_Hub_UI::no_widow( $intention['meta'] ) . '</p>';
+        $out .= '<div class="ptk-approval-actions">';
+
+        foreach ( $intention['buttons'] as $button ) {
+            $url = isset( $button['url'] ) ? (string) $button['url'] : '';
+            if ( '' === $url ) {
+                continue;
+            }
+            $classes = 'ptk-btn' . ( ! empty( $button['primary'] ) ? ' ptk-btn-primary' : '' );
+            $out    .= '<a class="' . esc_attr( $classes ) . '" href="' . esc_url( $url ) . '">'
+                . esc_html( $button['label'] ) . '</a>';
+        }
+
+        $out .= '</div>';
+        $out .= '</div>';
+        return $out;
+    }
+
     private static function render_router_body( array $intentions, array $urls, $typed ) {
         // Only the intentions really on this volunteer's screen can be
         // offered -- the router never invents a destination.
@@ -461,6 +512,9 @@ class PTK_Welcome {
 
         $urls = array(
             'newsletter' => class_exists( 'PTK_Newsletter_Builder' ) ? PTK_Newsletter_Builder::url() : '',
+            // The other half of "Tell families what's happening": one
+            // announcement, written on its own screen.
+            'post'       => class_exists( 'PTK_Post_Writer' ) ? PTK_Post_Writer::url() : '',
             // ?ptk_for=question / ?ptk_for=word pick the question-first
             // screen's headline and starting type (plan Task 2) -- only
             // read by the wizard when the new look is on; with it off the
@@ -502,6 +556,11 @@ class PTK_Welcome {
                     // behind the fold they just came out of.
                     'open'  => ( '' !== $typed ),
                 ) );
+                continue;
+            }
+
+            if ( ! empty( $intention['buttons'] ) ) {
+                echo self::render_branch_card( $intention ); // phpcs:ignore WordPress.Security.EscapeOutput -- escapes its own text.
                 continue;
             }
 

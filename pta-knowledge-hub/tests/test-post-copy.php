@@ -64,6 +64,9 @@ ptk_test_ok( 'Go back' === $c::guard_go_back(), 'the action to go back' );
 // --- no WordPress or database words anywhere in the screen's words ---
 $all = implode( ' ', array(
 	$c::intro(),
+	$c::branch_meta(),
+	$c::branch_post_button(),
+	$c::branch_newsletter_button(),
 	$c::headline_field_label(),
 	$c::headline_placeholder(),
 	$c::kicker_field_label(),
