@@ -368,16 +368,36 @@ CSS was needed.
 
 **Files:** Modify `class-simple-mode.php`, `tests/test-simple-mode.php`
 
-- [ ] Add `ptk-posts` to `hub_task_submenu_slugs( true )` — one menu item covers listing and writing, so the trimmed menu goes to eight. Update the test.
-- [ ] Add both new slugs to the reorder list in `PTK_Welcome::reorder_menu()` so they do not pile up at the bottom.
-- [ ] **The look-off proof, the release gate for every screen in this redesign:**
+- [x] Add `ptk-posts` to `hub_task_submenu_slugs( true )` — one menu item covers listing and writing, so the trimmed menu goes to eight. Update the test.
+- [x] Add both new slugs to the reorder list in `PTK_Welcome::reorder_menu()` so they do not pile up at the bottom.
+- [x] **The look-off proof, the release gate for every screen in this redesign:**
   1. Turn `ptk_hub_new_look` off at `/wp-admin/admin.php?page=ptk-share-settings`.
   2. Fetch Start Here, Create Entry, the Builder, `edit.php` (posts) and the front-end home page, normalizing `t.replace(/"time":"\d+"/g,'"time":"X"')` and `t.replace(/\d+\s+(second|min|minute|hour|day)s?\s+ago/g,'AGO')`.
   3. `git stash push -u -m proof -- <only your files, named explicitly>` — **never a bare `git stash`**.
   4. Re-fetch and compare byte-for-byte; none of your markers may appear.
   5. `git stash pop`.
   - **The front end is not gated by the look.** A post already published must render identically with the switch off — if it does not, that is a bug, not an expected difference.
-- [ ] Commit — `"Put one thing on the website: menu, order, and the look-off proof"`
+- [x] Commit — `"Put one thing on the website: menu, order, and the look-off proof"`
+
+**The proof, done properly.** Marker-grepping is not enough, so the seven
+look-off pages (Start Here, Create Entry, the Builder, Newsletter settings,
+`edit.php`, the front page, and a published post) were hashed twice: once with
+this feature's twelve files swapped back to `20d70cc`, once with them restored.
+**All seven hashes match exactly**, and no marker appears on any of them.
+
+Two things that nearly made the proof lie:
+
+- A first pass showed identical LENGTHS but different hashes on six pages. That
+  was per-request nonces the normalizer missed, not a real difference -- WordPress
+  scatters more than `_wpnonce`. Normalizing every 10- and 32-character hex token
+  fixed it, and the same-code-twice run was checked to be stable before trusting
+  a comparison between two runs.
+- The whitespace in front of a `<?php echo ?>` tag is output. See Task 6.
+
+**Also fixed here (pre-existing, not this feature's):** Simple mode's trim made
+every Hub screen outside the menu return 403, including two the home screen
+links to. See the commit for the mechanism; `fallback_hookname()` is pure and
+tested.
 
 ---
 
