@@ -54,10 +54,19 @@ class PTK_Shortcode {
      * Enqueue CSS and JS for the search page.
      */
     private static function enqueue_assets() {
+        // The shared public look -- tokens and fonts. Every public surface
+        // loads this first; the page's own sheet declares no color of its own.
+        wp_enqueue_style(
+            'ptk-public',
+            PTK_PLUGIN_URL . 'assets/css/public.css',
+            array(),
+            PTK_VERSION
+        );
+
         wp_enqueue_style(
             'ptk-search-page',
             PTK_PLUGIN_URL . 'assets/css/search-page.css',
-            array(),
+            array( 'ptk-public' ),
             PTK_VERSION
         );
 
@@ -70,8 +79,14 @@ class PTK_Shortcode {
         );
 
         wp_localize_script( 'ptk-search', 'ptkSearch', array(
-            'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-            'nonce'   => wp_create_nonce( 'ptk_search_nonce' ),
+            'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
+            'nonce'         => wp_create_nonce( 'ptk_search_nonce' ),
+            // "Ask us to write this" posts to the suggestion endpoint that
+            // PTK_Suggestions already owns -- same nonce, same honeypot, same
+            // rate limit, and it lands in "What families have asked for".
+            'suggestNonce'  => wp_create_nonce( 'ptk_submit_suggestion' ),
+            'categoryNames' => self::category_labels(),
+            'linkText'      => self::card_link_texts(),
         ) );
 
         wp_enqueue_script(
@@ -81,5 +96,59 @@ class PTK_Shortcode {
             PTK_VERSION,
             true
         );
+    }
+    /* -------------------------------------------------------------- */
+    /*  What a family should read                                     */
+    /* -------------------------------------------------------------- */
+
+    /**
+     * Family-facing names for the categories this plugin ships.
+     *
+     * Presentation only. The taxonomy terms themselves are stored data on
+     * eleven school sites and are never renamed here -- a category we do not
+     * know about keeps whatever name its site gave it.
+     */
+    public static function category_labels(): array {
+        return array(
+            'faq'            => 'Questions families ask',
+            'how-to-guide'   => 'How to do something',
+            'event-playbook' => 'Running an event',
+            'resource'       => 'Forms and files',
+            'glossary'       => 'Words we use',
+            'checklist'      => 'Step-by-step lists',
+            'policy'         => 'Rules we follow',
+        );
+    }
+
+    /**
+     * One category's family-facing name, or its own name if we don't know it.
+     */
+    public static function category_label( string $slug, string $fallback = '' ): string {
+        $labels = self::category_labels();
+        if ( isset( $labels[ $slug ] ) ) {
+            return $labels[ $slug ];
+        }
+        return '' !== $fallback ? $fallback : $slug;
+    }
+
+    /**
+     * What the link at the bottom of a card says. Plain English, and it tells
+     * you what you get -- never a bare "View".
+     */
+    public static function card_link_texts(): array {
+        return array(
+            'faq'            => 'Read the answer',
+            'how-to-guide'   => 'See the steps',
+            'event-playbook' => 'See the steps',
+            'resource'       => 'Open it',
+            'glossary'       => 'Read the answer',
+            'checklist'      => 'See the list',
+            'policy'         => 'Read it',
+        );
+    }
+
+    public static function card_link_text( string $slug ): string {
+        $texts = self::card_link_texts();
+        return isset( $texts[ $slug ] ) ? $texts[ $slug ] : 'Read it';
     }
 }

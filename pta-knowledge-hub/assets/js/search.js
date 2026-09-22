@@ -33,14 +33,27 @@
     var acDropdown       = null; // Autocomplete dropdown element.
     var acSelectedIndex  = -1;   // Keyboard navigation index.
 
-    var categoryNames = {
-        "how-to-guide":   "How-To Guides",
-        "event-playbook": "Event Playbooks",
-        "faq":            "FAQs",
-        "resource":       "Resources",
-        "glossary":       "Glossary",
-        "checklist":      "Checklists",
-        "policy":         "Policies & Rules"
+    // What a family reads. PHP sends these (PTK_Shortcode::category_labels) so
+    // the words are written down in one place; these are the same words, kept
+    // here so the page still reads properly if the localize ever goes missing.
+    var categoryNames = (window.ptkSearch && ptkSearch.categoryNames) || {
+        "how-to-guide":   "How to do something",
+        "event-playbook": "Running an event",
+        "faq":            "Questions families ask",
+        "resource":       "Forms and files",
+        "glossary":       "Words we use",
+        "checklist":      "Step-by-step lists",
+        "policy":         "Rules we follow"
+    };
+
+    var linkTexts = (window.ptkSearch && ptkSearch.linkText) || {
+        "how-to-guide":   "See the steps",
+        "event-playbook": "See the steps",
+        "faq":            "Read the answer",
+        "resource":       "Open it",
+        "glossary":       "Read the answer",
+        "checklist":      "See the list",
+        "policy":         "Read it"
     };
     var categoryOrder = ["how-to-guide", "event-playbook", "faq", "resource", "glossary", "checklist", "policy"];
 
@@ -96,19 +109,6 @@
         return svg;
     }
 
-    function starSvg() {
-        var ns = "http://www.w3.org/2000/svg";
-        var svg = document.createElementNS(ns, "svg");
-        svg.setAttribute("width", "14");
-        svg.setAttribute("height", "14");
-        svg.setAttribute("viewBox", "0 0 24 24");
-        svg.setAttribute("fill", "currentColor");
-        svg.setAttribute("aria-hidden", "true");
-        var p = document.createElementNS(ns, "path");
-        p.setAttribute("d", "M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z");
-        svg.appendChild(p);
-        return svg;
-    }
 
     // ==========================================
     //  Event Listeners
@@ -309,7 +309,7 @@
             return;
         }
 
-        countEl.textContent = totalVisible + " result" + (totalVisible !== 1 ? "s" : "") + " found";
+        countEl.textContent = countSentence(totalVisible, !!data.bestAnswer, lastQuery);
         suggestedEl.style.display = "none";
         emptyEl.style.display = "none";
         resultsEl.style.display = "block";
@@ -327,14 +327,7 @@
     }
 
     function linkText(cat) {
-        if (cat === "how-to-guide") return "Read Steps \u2192";
-        if (cat === "event-playbook") return "View Playbook \u2192";
-        if (cat === "faq") return "Full Answer \u2192";
-        if (cat === "resource") return "View Resource \u2192";
-        if (cat === "glossary") return "Read Definition \u2192";
-        if (cat === "checklist") return "View Checklist \u2192";
-        if (cat === "policy") return "Read Policy \u2192";
-        return "View \u2192";
+        return (linkTexts[cat] || "Read it") + " \u2192";
     }
 
     function buildTagChips(tags, max) {
@@ -462,11 +455,8 @@
     function buildBestAnswerCard(result) {
         var card = el("div", "ptk-best-answer-card");
 
-        // Label
-        var label = el("div", "ptk-best-answer-label");
-        label.appendChild(starSvg());
-        label.appendChild(document.createTextNode(" Best Answer"));
-        card.appendChild(label);
+        // The one stamp on this page.
+        card.appendChild(el("div", "ptk-best-answer-label", "Start here"));
 
         // Title
         card.appendChild(el("h3", "ptk-card-title", result.title));
@@ -479,11 +469,27 @@
         if (tags) card.appendChild(tags);
 
         // CTA link
+        var row = el("div", "ptk-best-answer-row");
+
         var link = document.createElement("a");
         link.href = result.permalink;
         link.className = "ptk-best-answer-link";
-        link.textContent = "Read Full Entry \u2192";
-        card.appendChild(link);
+        link.textContent = "Read the whole answer";
+        row.appendChild(link);
+
+        // copy-button.js picks this up by delegation, like every other one.
+        if (result.excerpt) {
+            var copyBtn = document.createElement("button");
+            copyBtn.className = "ptk-copy-btn";
+            copyBtn.type = "button";
+            copyBtn.setAttribute("data-copy-text", result.excerpt);
+            copyBtn.setAttribute("aria-label", "Copy this answer");
+            copyBtn.appendChild(copySvg());
+            copyBtn.appendChild(el("span", "ptk-copy-label", "Copy this answer"));
+            row.appendChild(copyBtn);
+        }
+
+        card.appendChild(row);
 
         return card;
     }
@@ -504,11 +510,95 @@
     }
 
     // ==========================================
+    //  Saying how many, in words
+    // ==========================================
+
+    /**
+     * "7 other things mention volunteer." -- when a best answer is already
+     * shown above, the others are the ones still worth counting.
+     */
+    function countSentence(total, hasBest, query) {
+        var others = hasBest ? total - 1 : total;
+        if (others <= 0) return "";
+        var thing = (others === 1) ? " thing " : " things ";
+        var verb  = (others === 1) ? "mentions " : "mention ";
+        return others + (hasBest ? " other" : "") + thing + verb + query + ".";
+    }
+
+    // ==========================================
+    //  Ask us to write this
+    // ==========================================
+
+    var askBtn  = document.getElementById("ptk-ask-btn");
+    var askWrap = document.getElementById("ptk-ask");
+    var askDone = document.getElementById("ptk-ask-done");
+
+    if (askBtn) {
+        askBtn.addEventListener("click", function () {
+            var words = (input.value || lastQuery || "").trim();
+            if (!words) return;
+
+            askBtn.disabled = true;
+            askBtn.textContent = "Sending\u2026";
+
+            var body = new URLSearchParams();
+            body.append("action", "ptk_submit_suggestion");
+            body.append("_wpnonce", (window.ptkSearch && ptkSearch.suggestNonce) || "");
+            body.append("suggestion_title", words);
+            body.append("suggestion_body", "Someone searched the Hub for this and found nothing.");
+
+            fetch(ptkSearch.ajaxUrl, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: body.toString()
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (res && res.success) {
+                    askSent(words);
+                } else {
+                    askFailed(res && res.data && res.data.message);
+                }
+            })
+            .catch(function () { askFailed(null); });
+        });
+    }
+
+    function askSent(words) {
+        if (askWrap) askWrap.style.display = "none";
+        if (askDone) {
+            askDone.textContent = "Thanks \u2014 we'll look at writing about " + words + ".";
+            askDone.style.display = "block";
+        }
+    }
+
+    function askFailed(message) {
+        askBtn.disabled = false;
+        askBtn.textContent = "Ask us to write this";
+        if (askDone) {
+            askDone.textContent = message || "That didn't send. Please try again in a moment.";
+            askDone.style.display = "block";
+        }
+    }
+
+    /** Put the ask button back the way it started, for a new search. */
+    function resetAsk() {
+        if (askWrap) askWrap.style.display = "";
+        if (askDone) askDone.style.display = "none";
+        if (askBtn) {
+            askBtn.disabled = false;
+            askBtn.textContent = "Ask us to write this";
+        }
+    }
+
+    // ==========================================
     //  UI State Helpers
     // ==========================================
 
     function resetUI() {
         lastQuery = "";
+        resetAsk();
         resultsEl.style.display = "none";
         emptyEl.style.display = "none";
         loadingEl.style.display = "none";
@@ -536,8 +626,16 @@
 
     var didYouMeanEl = document.getElementById("ptk-did-you-mean");
 
+    var emptyTextEl = document.getElementById("ptk-empty-text");
+
     function showEmpty(hint, didYouMean) {
         emptyEl.style.display = "block";
+        resetAsk();
+        if (emptyTextEl) {
+            emptyTextEl.textContent = lastQuery
+                ? "Nothing here mentions " + lastQuery + ". Try fewer words, or a different one \u2014 and if it's something families should know, tell us and we'll write it."
+                : "Nothing here matches what you typed. Try fewer words, or a different one.";
+        }
         resultsEl.style.display = "none";
         suggestedEl.style.display = "none";
         if (recentEl) recentEl.style.display = "none";
@@ -572,34 +670,21 @@
     }
 
     function showSuggestions(suggestions, didYouMean) {
-        // Show the results area with a "no exact matches" message + browseable cards.
-        emptyEl.style.display = "none";
+        // Nothing matched, but we have near misses. Say so plainly, keep the
+        // "ask us to write this" way out on screen, and show them underneath.
+        showEmpty(null, didYouMean);
         suggestedEl.style.display = "none";
         resultsEl.style.display = "block";
         if (errorEl) errorEl.style.display = "none";
+        if (recentEl) recentEl.style.display = "none";
 
-        countEl.textContent = "No exact matches \u2014 browse available entries:";
+        countEl.textContent = "Closest we have:";
 
         while (bestEl.firstChild) bestEl.removeChild(bestEl.firstChild);
         bestEl.style.display = "none";
         while (groupsEl.firstChild) groupsEl.removeChild(groupsEl.firstChild);
 
-        // Did you mean?
-        if (didYouMeanEl && didYouMean) {
-            while (didYouMeanEl.firstChild) didYouMeanEl.removeChild(didYouMeanEl.firstChild);
-            didYouMeanEl.appendChild(document.createTextNode("Did you mean: "));
-            var link = document.createElement("button");
-            link.className = "ptk-dym-link";
-            link.textContent = didYouMean;
-            link.addEventListener("click", function () {
-                input.value = didYouMean;
-                clearBtn.style.display = "flex";
-                doSearch(didYouMean);
-            });
-            didYouMeanEl.appendChild(link);
-            didYouMeanEl.appendChild(document.createTextNode("?"));
-            didYouMeanEl.style.display = "block";
-        }
+        // "Did you mean" is already on screen -- showEmpty() wrote it.
 
         // Group suggestions by category.
         var grouped = {};
@@ -757,9 +842,10 @@
 
             row.appendChild(titleEl);
 
-            if (item.catName) {
-                var suffix = (item.category || "").replace("how-to-guide", "howto").replace("event-playbook", "event");
-                row.appendChild(el("span", "ptk-ac-cat ptk-badge-" + suffix, item.catName));
+            if (item.catName || item.category) {
+                // What a family reads, not the stored name.
+                var acLabel = categoryNames[item.category] || item.catName;
+                row.appendChild(el("span", "ptk-ac-cat", acLabel));
             }
 
             // Track click on selection.

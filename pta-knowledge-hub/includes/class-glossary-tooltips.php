@@ -114,6 +114,7 @@ class PTK_Glossary_Tooltips {
         $parts = preg_split( '/(<[^>]*>)/', $html, -1, PREG_SPLIT_DELIM_CAPTURE );
         $replaced = false;
         $inside_tooltip = false;
+        $link_depth = 0;
 
         foreach ( $parts as &$part ) {
             // Skip HTML tags.
@@ -125,10 +126,19 @@ class PTK_Glossary_Tooltips {
                 if ( $inside_tooltip && strpos( $part, '</span' ) !== false ) {
                     $inside_tooltip = false;
                 }
+                // Track if we're inside a link. A link we add inside one that
+                // is already there is not allowed in HTML: the browser closes
+                // the outer one early and the markup around it falls apart --
+                // which is what turned a whole-card link into three pieces.
+                if ( preg_match( '#^<a[\s>]#i', $part ) ) {
+                    $link_depth++;
+                } elseif ( preg_match( '#^</a[\s>]#i', $part ) && $link_depth > 0 ) {
+                    $link_depth--;
+                }
                 continue;
             }
 
-            if ( $replaced || $inside_tooltip ) {
+            if ( $replaced || $inside_tooltip || $link_depth > 0 ) {
                 continue;
             }
 
