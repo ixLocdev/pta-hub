@@ -94,8 +94,22 @@ ptk_test_ok( 'Just one thing' === $branch['buttons'][0]['label'], 'one announcem
 ptk_test_ok( ! empty( $branch['buttons'][0]['primary'] ), 'and it is the filled one' );
 ptk_test_ok( "This week's newsletter" === $branch['buttons'][1]['label'], 'the weekly is beside it' );
 ptk_test_ok( empty( $branch['buttons'][1]['primary'] ), 'as the plain one' );
+// "Change something you've already written" is the other two-way card:
+// announcements and answers live in different places, and somebody looking
+// for what they wrote yesterday should not have to know which.
+$change = null;
 foreach ( $intents as $i ) {
-    if ( 'newsletter' === $i['key'] ) {
+    if ( 'fix' === $i['key'] ) {
+        $change = $i;
+    }
+}
+ptk_test_ok( null !== $change && 2 === count( $change['buttons'] ), 'the editing intention carries two buttons' );
+ptk_test_ok( 'Your posts' === $change['buttons'][0]['label'], 'the announcements come first' );
+ptk_test_ok( "What you've written" === $change['buttons'][1]['label'], 'the answers beside them' );
+ptk_test_ok( false === strpos( $change['title'], 'wrong' ), 'and it is no longer about something being wrong' );
+
+foreach ( $intents as $i ) {
+    if ( in_array( $i['key'], array( 'newsletter', 'fix' ), true ) ) {
         continue;
     }
     ptk_test_ok( empty( $i['buttons'] ), "one way out of: {$i['title']}" );

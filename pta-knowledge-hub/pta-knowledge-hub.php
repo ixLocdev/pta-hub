@@ -3,7 +3,7 @@
  * Plugin Name: PTA Knowledge Hub
  * Plugin URI:  https://github.com/your-pta/knowledge-hub
  * Description: A searchable knowledge base for your PTA. Volunteers add content through WordPress, parents and members find answers instantly via a smart search bar.
- * Version:     4.28.1
+ * Version:     4.28.2
  * Author:      Lucas Deichl
  * License:     GPL-2.0-or-later
  * Text Domain: pta-knowledge-hub
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'PTK_VERSION', '4.28.1' );
+define( 'PTK_VERSION', '4.28.2' );
 define( 'PTK_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PTK_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -101,6 +101,7 @@ require_once PTK_PLUGIN_DIR . 'includes/class-post-renderer.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-post-copy.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-post-writer.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-posts-list.php';
+require_once PTK_PLUGIN_DIR . 'includes/class-post-banner.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-newsletters-copy.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-newsletters-list.php';
 require_once PTK_PLUGIN_DIR . 'includes/class-glossary-tooltips.php';
@@ -198,6 +199,7 @@ function ptk_init() {
     PTK_Newsletters_List::init();
     PTK_Post_Writer::init();
     PTK_Posts_List::init();
+    PTK_Post_Banner::init();
     PTK_Glossary_Tooltips::init();
     PTK_Glossary_Page::init();
     PTK_Content_Importer::init();

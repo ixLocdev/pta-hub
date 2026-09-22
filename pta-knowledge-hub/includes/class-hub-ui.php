@@ -278,6 +278,40 @@ class PTK_Hub_UI {
         return '<p class="ptk-quiet-links">' . implode( '', $out ) . '</p>';
     }
 
+    /**
+     * The quiet links again, but each one saying what it is for.
+     *
+     * A bare row of four links told a volunteer nothing: "What families are
+     * looking for" is only obvious to somebody who has already opened it.
+     * Same place, same quietness, one sentence each.
+     *
+     * Keys per row: label, url, desc, new_tab (bool).
+     */
+    public static function quiet_rows( array $rows ) {
+        $out = '';
+        foreach ( $rows as $row ) {
+            $label = isset( $row['label'] ) ? (string) $row['label'] : '';
+            $url   = isset( $row['url'] ) ? (string) $row['url'] : '';
+            if ( '' === $label || '' === $url ) {
+                continue;
+            }
+            $desc = isset( $row['desc'] ) ? (string) $row['desc'] : '';
+            $tab  = ! empty( $row['new_tab'] ) ? ' target="_blank" rel="noopener"' : '';
+
+            $out .= '<li class="ptk-quiet-row">';
+            $out .= '<a href="' . esc_url( $url ) . '"' . $tab . '>' . esc_html( $label ) . '</a>';
+            if ( '' !== $desc ) {
+                $out .= '<span class="ptk-quiet-desc">' . self::no_widow( $desc ) . '</span>';
+            }
+            $out .= '</li>';
+        }
+
+        if ( '' === $out ) {
+            return '';
+        }
+        return '<ul class="ptk-quiet-rows">' . $out . '</ul>';
+    }
+
     /** An empty state: nothing to show yet, and why that's fine. */
     public static function empty_state( $title, $text = '' ) {
         $out  = '<div class="ptk-empty">';

@@ -281,6 +281,10 @@ class PTK_Simple_Mode {
             'top-secondary',
             'my-account',
             'ptk-simple-mode',
+            // "Edit this post", added by PTK_Post_Writer while looking at
+            // an announcement on the site. It is the one thing on that
+            // page a volunteer is likely to want.
+            'ptk-edit-post',
         );
     }
 
@@ -689,6 +693,18 @@ class PTK_Simple_Mode {
     /** The toggle link's label -- what clicking it will do next, not the current state. */
     public static function toggle_link_label() {
         return self::active_for_user() ? 'Show all of WordPress' : 'Back to the simple view';
+    }
+
+    /** Pure: the sentence under that link, which has to follow the direction it points. */
+    public static function toggle_desc_for( $in_simple_view ) {
+        return $in_simple_view
+            ? 'The full admin, for anything these screens do not cover.'
+            : "The short menu, with just the screens the Hub uses.";
+    }
+
+    /** toggle_desc_for() for the person reading it. */
+    public static function toggle_link_desc() {
+        return self::toggle_desc_for( self::active_for_user() );
     }
 
     /**

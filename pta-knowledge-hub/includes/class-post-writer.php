@@ -38,6 +38,9 @@ class PTK_Post_Writer {
     /** The parts this screen wrote, kept beside the post they were rendered into. */
     const PARTS_META = '_ptk_post_parts';
 
+    /** The toolbar item that opens a post back on this screen. */
+    const TOOLBAR_NODE = 'ptk-edit-post';
+
     /** A hash of the HTML we rendered, so an edit made outside the Hub can be seen. */
     const HASH_META = '_ptk_post_hash';
 
@@ -55,6 +58,8 @@ class PTK_Post_Writer {
         add_action( 'admin_menu', array( __CLASS__, 'add_page' ) );
         add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
         add_action( 'admin_init', array( __CLASS__, 'handle_submission' ) );
+        // On the site itself, looking at a post we wrote.
+        add_action( 'admin_bar_menu', array( __CLASS__, 'add_toolbar_edit_link' ), 81 );
     }
 
     /* ------------------------------------------------------------------
@@ -112,6 +117,37 @@ class PTK_Post_Writer {
             PTK_VERSION,
             true
         );
+    }
+
+    /**
+     * "Edit this post" in the toolbar, while looking at one on the site.
+     *
+     * The toolbar's other offer there is Page Builder, which is the right
+     * door for a page and the wrong one for an announcement: it opens a
+     * layout editor over writing that was never laid out that way. This
+     * puts the post back on the screen it was written on.
+     *
+     * Only for a post this screen wrote, only for somebody who may change
+     * it, and only where the screen exists at all.
+     */
+    public static function add_toolbar_edit_link( $wp_admin_bar ) {
+        if ( is_admin() || ! is_singular( 'post' ) ) {
+            return;
+        }
+        if ( ! class_exists( 'PTK_Hub_Look' ) || ! PTK_Hub_Look::on() ) {
+            return;
+        }
+
+        $post_id = get_queried_object_id();
+        if ( ! $post_id || ! self::is_hub_post( $post_id ) || ! current_user_can( 'edit_post', $post_id ) ) {
+            return;
+        }
+
+        $wp_admin_bar->add_node( array(
+            'id'    => self::TOOLBAR_NODE,
+            'title' => 'Edit this post',
+            'href'  => add_query_arg( 'ptk_post_edit_id', $post_id, self::url() ),
+        ) );
     }
 
     /* ------------------------------------------------------------------

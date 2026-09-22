@@ -97,6 +97,12 @@ ptk_test_ok( in_array( 'ptk-posts', $hub_tasks_written, true ), 'hub_task_submen
 ptk_test_ok( ! in_array( 'ptk-post-writer', $hub_tasks_written, true ), 'but not the writing screen -- one entry covers listing and writing' );
 ptk_test_ok( ! in_array( 'ptk-posts', $hub_tasks, true ), 'and neither exists with the new look off' );
 
+// The door between the two views: the sentence under it has to follow the
+// direction it points, or it describes where you already are.
+ptk_test_ok( false !== stripos( $t::toggle_desc_for( true ), 'full admin' ), 'in the simple view, it offers the full admin' );
+ptk_test_ok( false !== stripos( $t::toggle_desc_for( false ), 'short menu' ), 'in the full admin, it offers the short menu' );
+ptk_test_ok( $t::toggle_desc_for( true ) !== $t::toggle_desc_for( false ), 'and the two are never the same sentence' );
+
 // ---------------------------------------------------------------------
 // A trimmed screen must still open by its own address.
 //

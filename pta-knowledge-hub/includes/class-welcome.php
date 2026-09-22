@@ -286,9 +286,15 @@ class PTK_Welcome {
                 'needs'  => $edit_posts,
                 'soft'   => false,
             ),
+            // Key kept as 'fix' -- the router matches on it, and "there's
+            // a typo on the website" is still exactly this. What changed is
+            // that it now means everything you have written, not only the
+            // entries: somebody looking for the announcement they posted
+            // yesterday did not read "fix something that's wrong" as the
+            // way back to it.
             'fix'        => array(
-                'title'  => "Fix something that's wrong",
-                'meta'   => 'Find what this site has written and change it.',
+                'title'  => "Change something you've already written",
+                'meta'   => 'Your announcements, and the answers on the Hub.',
                 'needs'  => $edit_posts,
                 'soft'   => false,
             ),
@@ -311,6 +317,21 @@ class PTK_Welcome {
             // rejected: an extra click before the newsletter is a tax on
             // the most frequent job in the Hub, paid every week by
             // somebody who already knows what they want.
+            if ( 'fix' === $key ) {
+                $intention['buttons'] = array(
+                    array(
+                        'label'   => PTK_Post_Copy::change_posts_button(),
+                        'url'     => isset( $urls['posts'] ) ? (string) $urls['posts'] : '',
+                        'primary' => true,
+                    ),
+                    array(
+                        'label'   => PTK_Post_Copy::change_entries_button(),
+                        'url'     => $intention['url'],
+                        'primary' => false,
+                    ),
+                );
+            }
+
             if ( 'newsletter' === $key ) {
                 $intention['buttons'] = array(
                     array(
@@ -527,6 +548,7 @@ class PTK_Welcome {
             'word'       => class_exists( 'PTK_Content_Wizard' ) ? add_query_arg( 'ptk_for', 'word', PTK_Content_Wizard::url() ) : '',
             'vendor'     => $vendor_url,
             'fix'        => class_exists( 'PTK_Written_List' ) ? PTK_Written_List::url() : admin_url( 'edit.php?post_type=pta_knowledge' ),
+            'posts'      => class_exists( 'PTK_Posts_List' ) ? PTK_Posts_List::url() : '',
         );
 
         $intentions = self::intentions( $caps, $urls );
@@ -596,15 +618,36 @@ class PTK_Welcome {
         // asked for" only shows above as a nudge when something is actually
         // waiting -- without these links they could be reached only by
         // typing their address.
+        // The site itself, the way families see it. Nothing in the admin
+        // pointed at it, so the only way across was to know the address.
+        if ( function_exists( 'ptk_hub_url' ) ) {
+            $quiet[] = array(
+                'label'   => 'See the Hub the way families see it',
+                'desc'    => 'The search, the answers and the vendor directory, on the website.',
+                'url'     => ptk_hub_url(),
+                'new_tab' => true,
+            );
+        }
+        if ( function_exists( 'ptk_glossary_url' ) ) {
+            $quiet[] = array(
+                'label'   => 'See the glossary families read',
+                'desc'    => 'Every word this school has explained, in one alphabetical page.',
+                'url'     => ptk_glossary_url(),
+                'new_tab' => true,
+            );
+        }
+
         if ( class_exists( 'PTK_Asked_For_List' ) ) {
             $quiet[] = array(
                 'label' => 'What families have asked for',
+                'desc'  => 'Topics members asked the PTA to write about.',
                 'url'   => PTK_Asked_For_List::url(),
             );
         }
         if ( class_exists( 'PTK_Analytics' ) && current_user_can( 'edit_posts' ) ) {
             $quiet[] = array(
                 'label' => 'What families are looking for',
+                'desc'  => 'What people searched the Hub for, starting with the searches that found nothing.',
                 'url'   => add_query_arg(
                     array( 'post_type' => 'pta_knowledge', 'page' => 'ptk-search-analytics' ),
                     admin_url( 'edit.php' )
@@ -615,15 +658,17 @@ class PTK_Welcome {
         if ( current_user_can( 'manage_options' ) && class_exists( 'PTK_Share_Settings' ) ) {
             $quiet[] = array(
                 'label' => 'Set up the basics (once)',
+                'desc'  => 'The links, colors and sign-off every newsletter and post carries.',
                 'url'   => PTK_Share_Settings::page_url(),
             );
         }
         $quiet[] = array(
             'label' => class_exists( 'PTK_Simple_Mode' ) ? PTK_Simple_Mode::toggle_link_label() : 'Show all of WordPress',
+            'desc'  => class_exists( 'PTK_Simple_Mode' ) ? PTK_Simple_Mode::toggle_link_desc() : '',
             'url'   => class_exists( 'PTK_Simple_Mode' ) ? PTK_Simple_Mode::toggle_url() : admin_url(),
         );
         if ( ! empty( $quiet ) ) {
-            echo PTK_Hub_UI::quiet_links( $quiet );
+            echo PTK_Hub_UI::quiet_rows( $quiet ); // phpcs:ignore WordPress.Security.EscapeOutput -- pre-escaped by PTK_Hub_UI.
         }
 
         echo PTK_Hub_UI::page_close();

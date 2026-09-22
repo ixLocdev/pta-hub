@@ -1277,3 +1277,39 @@ body.ptk-hub-look .ptk-post-kicker-readonly {
     font: italic 500 15px/1.4 var(--ptk-font-serif);
     color: var(--ptk-primary);
 }
+
+/* The quiet links at the foot of Start Here, each saying what it is for.
+   A bare row of four told a volunteer nothing. */
+
+body.ptk-hub-look .ptk-quiet-rows {
+    list-style: none;
+    margin: var(--ptk-space-4) 0 0;
+    padding: var(--ptk-space-3) 0 0;
+    border-top: 1px solid var(--ptk-line);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: var(--ptk-space-2) var(--ptk-space-4);
+}
+
+body.ptk-hub-look .ptk-quiet-row {
+    margin: 0;
+}
+
+body.ptk-hub-look .ptk-quiet-row a {
+    display: block;
+    font: 600 14px/1.4 var(--ptk-font-sans);
+    color: var(--ptk-primary);
+    text-decoration: none;
+}
+
+body.ptk-hub-look .ptk-quiet-row a:hover,
+body.ptk-hub-look .ptk-quiet-row a:focus {
+    text-decoration: underline;
+}
+
+body.ptk-hub-look .ptk-quiet-desc {
+    display: block;
+    margin-top: 1px;
+    font: 400 13px/1.5 var(--ptk-font-sans);
+    color: var(--ptk-text-dim);
+}

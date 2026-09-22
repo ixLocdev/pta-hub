@@ -29,6 +29,16 @@ class PTK_Post_Copy {
 		return 'The weekly newsletter, or a single announcement on the website.';
 	}
 
+	/** The filled button on "Change something you've already written". */
+	public static function change_posts_button() {
+		return 'Your posts';
+	}
+
+	/** The plain one beside it -- the answers on the Hub. */
+	public static function change_entries_button() {
+		return "What you've written";
+	}
+
 	/** The filled button on that card. */
 	public static function branch_post_button() {
 		return 'Just one thing';
