@@ -1,27 +1,46 @@
-# The public Hub — handoff (2026-09-21, night)
+# The public Hub — handoff
 
-**Start here.** The next piece of work is the part of the plugin **families**
-see, which still looks the way it did before this year's redesign. Everything
-below is what a new chat needs to pick it up.
+**Updated 2026-09-21 (late).** The search page is built; three surfaces to go.
 
 ---
 
 ## 1. Where things stand
 
-**Branch `single-post`, at 4.28.2.** The "Put one thing on the website" feature
-is finished (13 tasks), released, and Lucas has uploaded it to the live network.
-Three releases in one evening:
+**`main` is at 4.28.2** — `single-post` was merged (clean fast-forward, 20 commits)
+and is what the live sites run. Not pushed.
 
-| | |
-|---|---|
-| 4.28.0 | The feature: write one announcement, Your posts, edit + guard, remove + undo, the home-screen branch, the menu, the look-off proof. |
-| 4.28.1 | The picture was printed twice — once as the template's banner, once in the words. |
-| 4.28.2 | "Edit this post" in the toolbar; the focal point now aims the banner; "Change something you've already written"; the Start Here links explain themselves and cross to the public site. |
+**Branch `public-hub`, at 4.29.0** — the search page at `/knowledge-base` now
+looks like the rest of the Hub. Committed, zip built at the repo root, **not
+uploaded** (Lucas's call) and **not pushed**.
 
-**`main` is still at 4.27.2 and has NOT been merged.** Lucas is running branch
-builds on the live sites, so main is now behind what schools actually have.
-**Ask about merging `single-post` into main before starting new work** — it is a
-clean fast-forward and the longer it waits the more confusing it gets.
+What 4.29.0 did:
+
+- `assets/css/public.css` (new) — the eleven tokens and the two bundled fonts,
+  declared on `.ptk-search-wrap` / `.ptk-entry-wrap` / `.ptk-glossary-wrap` /
+  `.ptk-vendors-wrap`. `hub.css` puts them on `body.ptk-hub-look`, which is
+  admin-only and behind a setting; the front end must not depend on it.
+  **The next three surfaces build on this file and declare no color of their own.**
+- `assets/css/search-page.css` — rewritten against those tokens, every class
+  name kept, 813 lines of Tailwind defaults gone.
+- Family-facing category names via `PTK_Shortcode::category_labels()`, mirrored
+  into JS through `wp_localize_script`. **Presentation only — no taxonomy term is
+  renamed**, and an unknown slug keeps its own name.
+- "Ask us to write this" on the empty state, posting to the `ptk_submit_suggestion`
+  endpoint `PTK_Suggestions` already owned. Verified end to end: the words arrive
+  in *What families have asked for* with "Answer it" ready.
+- **A bug older than this work:** `PTK_Glossary_Tooltips::replace_first_in_text()`
+  skipped text inside an existing tooltip but not inside an existing **link**, so a
+  glossary word within any link produced an anchor inside an anchor. Browsers close
+  the outer one early and the markup around it falls apart — it was tearing the
+  "Just added" cards into three pieces. Now tracked with `$link_depth`.
+
+**Open question for Lucas, not yet answered:** clicking a "kind of thing" chip
+before typing anything sets the filter but changes nothing on screen — the filter
+only applies to search results. That was true before this work too. Worth deciding
+whether a chip on its own should browse that kind.
+
+**Still to do here:** the single entry, the glossary, then the vendor directory,
+in that order, following the vocabulary the search page just set.
 
 The repo still carries **eight of Lucas's own uncommitted edits** (`AGENTS.md`,
 five plan docs under `docs/superpowers/plans/2026-07-*`, and
@@ -70,28 +89,18 @@ use the Playground (below) rather than asking Lucas for a login.
 
 ---
 
-## 4. The decision to make first (brainstorm before building)
+## 4. The palette — settled 2026-09-21
 
-**There are two palettes in this project already, and the public Hub has to
-pick one.**
+**Lucas chose the admin teal `#356F8A`** — one palette across the whole plugin,
+admin and public alike, not the newsletter's navy. The tokens in `public.css` are
+the same eleven as `hub.css`. The remaining three surfaces use them; don't reopen
+this.
 
-- `assets/css/hub.css` — the admin redesign — uses `--ptk-primary: #356F8A`.
-- The house style, the newsletter and `PTK_Post_Renderer` use navy `#1a2f5c`
-  (`/Users/lucas/apps/PTA/HOUSE-STYLE.md`, memory "Design taste (PTA)").
+Spec, mockup and plan for the search page, as the pattern for the next three:
 
-Families already know the newsletter's navy from their inbox; volunteers know
-the admin teal. My instinct is that the public Hub should be **the newsletter's
-voice, not the admin's** — a family arriving from an email should feel they are
-in the same place. But that is Lucas's call and it decides everything else, so
-**brainstorm it with him before writing CSS** (superpowers:brainstorming), then
-write a spec and a mockup the way the single post was done:
-
-- spec → `docs/superpowers/specs/`
-- mockup → `docs/superpowers/specs/mockups/` (a standalone HTML file he can open)
-- plan → `docs/superpowers/plans/`
-
-Start with the **search page**: it is where most people land, and it sets the
-vocabulary the other three follow.
+- spec → `docs/superpowers/specs/2026-09-21-public-hub-search-design.md`
+- mockup → `docs/superpowers/specs/mockups/2026-09-21-public-hub-search-mockup.html`
+- plan → `docs/superpowers/plans/2026-09-21-public-hub-search-plan.md`
 
 ---
 
