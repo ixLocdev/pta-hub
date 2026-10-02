@@ -46,9 +46,10 @@ class PTK_Glossary_Page {
      * Render the glossary shortcode.
      */
     public static function render( $atts ) {
-        // Access check.
-        if ( ! ptk_check_access( true ) ) {
-            return '';
+        // Access check. A shortcode must return its output, not echo it --
+        // echoed, the members-only card lands above the page instead of in it.
+        if ( ! ptk_check_access() ) {
+            return ptk_members_only_markup( 'The glossary is for PTA members and volunteers. Sign in to see it.' );
         }
 
         $terms = self::get_glossary_terms();

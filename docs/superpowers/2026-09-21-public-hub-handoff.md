@@ -1,6 +1,22 @@
 # The public Hub — handoff
 
-**Updated 2026-09-21 (late).** The search page is built; three surfaces to go.
+**Updated 2026-10-02.** All four public surfaces are built: search (4.29.0),
+single entry (4.30.0), glossary (4.31.0), vendor directory (4.32.0), plus the
+shared "For PTA members" sign-in card (`ptk_members_only_markup()`, 4.32.0).
+All on branch `public-hub`, committed, **not uploaded and not pushed**.
+Next: Lucas looks at all four, then merge `public-hub` into `main`.
+
+Notes from 4.31/4.32 worth keeping:
+- The vendor wrapper carries both `.ptk-vd-wrap` (its own styles) and
+  `.ptk-vendors-wrap` (public.css tokens).
+- The vendor detail goes two-column on a **container query** (wrap >= 760px),
+  not a media query: the default theme holds content to 645px on desktop.
+- `ptk_glossary_terms` is one transient shared by the tooltips (unsorted) and
+  the glossary page; the page now sorts on every read.
+
+---
+
+*Older notes below.*
 
 ---
 

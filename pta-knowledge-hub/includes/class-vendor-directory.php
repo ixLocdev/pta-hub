@@ -29,17 +29,6 @@ class PTK_Vendor_Directory {
         'other-services'   => 'Other Services',
     );
 
-    /** Category tile emoji by term slug (spec: Member experience). */
-    private static $category_emoji = array(
-        'food-catering'    => '🍕',
-        'entertainment'    => '🎉',
-        'printing-apparel' => '👕',
-        'fundraising'      => '💰',
-        'event-supplies'   => '🎪',
-        'photography'      => '📸',
-        'other-services'   => '🔧',
-    );
-
     public static function init() {
         add_action( 'init', array( __CLASS__, 'register_content_types' ) );
 
@@ -603,32 +592,21 @@ class PTK_Vendor_Directory {
      * deliberately not called (see render_shortcode()).
      */
     private static function render_login_prompt() {
-        $login_url = wp_login_url( get_permalink() );
-        ob_start();
-        ?>
-        <style>
-            .ptk-login-required{text-align:center;max-width:480px;margin:60px auto;padding:48px 32px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
-            .ptk-login-icon{font-size:48px;margin-bottom:12px}
-            .ptk-login-required h2{font-size:22px;font-weight:700;color:#111827;margin:0 0 8px}
-            .ptk-login-required p{font-size:15px;color:#6b7280;line-height:1.6;margin:0 0 24px}
-            .ptk-login-btn{display:inline-block;background:#4f46e5;color:#fff!important;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;transition:background .15s}
-            .ptk-login-btn:hover{background:#4338ca;color:#fff!important}
-        </style>
-        <div class="ptk-login-required">
-            <div class="ptk-login-icon">&#128274;</div>
-            <h2>Members Only</h2>
-            <p>The Vendor Directory is for PTA members. Please log in to see vendor reviews from all our PTAs.</p>
-            <a href="<?php echo esc_url( $login_url ); ?>" class="ptk-login-btn">Log In</a>
-        </div>
-        <?php
-        return ob_get_clean();
+        return ptk_members_only_markup( 'The vendor list is for PTA members. Sign in to see what other PTAs thought of the businesses they hired.' );
     }
 
     private static function enqueue_assets() {
+        // The shared public look -- tokens and fonts -- first.
+        wp_enqueue_style(
+            'ptk-public',
+            PTK_PLUGIN_URL . 'assets/css/public.css',
+            array(),
+            PTK_VERSION
+        );
         wp_enqueue_style(
             'ptk-vendor-directory',
             PTK_PLUGIN_URL . 'assets/css/vendor-directory.css',
-            array(),
+            array( 'ptk-public' ),
             PTK_VERSION
         );
         wp_enqueue_script(
@@ -685,6 +663,21 @@ class PTK_Vendor_Directory {
         );
     }
 
+    /**
+     * Stars and the review count under a card. Nothing at all when there are
+     * no reviews -- the verdict line already says so, and five empty stars
+     * read as a bad score.
+     */
+    private static function card_foot( $combined, $count ) {
+        if ( $count < 1 ) {
+            return '';
+        }
+        return '<span class="ptk-vd-card-foot">'
+            . self::stars_markup( $combined, 'Average rating' )
+            . '<span class="ptk-vd-card-count">' . esc_html( $count . ( 1 === $count ? ' review' : ' reviews' ) ) . '</span>'
+            . '</span>';
+    }
+
     /** "3 days ago" from a GMT MySQL datetime. */
     private static function relative_date( $mysql_gmt ) {
         $ts = strtotime( $mysql_gmt . ' UTC' );
@@ -702,16 +695,17 @@ class PTK_Vendor_Directory {
         $vendors    = $data['vendors'];
         $categories = $data['categories'];
         ?>
-        <div class="ptk-vd-wrap">
+        <div class="ptk-vd-wrap ptk-vendors-wrap">
             <div class="ptk-vd-hero">
-                <h2 class="ptk-vd-title">Vendor Directory</h2>
-                <p class="ptk-vd-subtitle">Vendors our PTAs have actually used — with honest reviews from every school.</p>
+                <h2 class="ptk-vd-title">Who should we hire?</h2>
+                <p class="ptk-vd-subtitle"><?php echo PTK_Hub_UI::no_widow( 'Businesses PTAs across the district have actually used, and what they\'d tell you about them.' ); ?></p>
             </div>
 
             <div class="ptk-vd-search-box">
+                <svg class="ptk-vd-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <input type="search" id="ptk-vd-search" class="ptk-vd-search"
-                       aria-label="Search vendors"
-                       placeholder="&#128269;&nbsp; Search vendors&hellip; e.g. pizza, DJ, t-shirts">
+                       aria-label="Look for a business"
+                       placeholder="Pizza, a DJ, T-shirts&hellip;" autocomplete="off">
             </div>
 
             <?php
@@ -720,15 +714,12 @@ class PTK_Vendor_Directory {
             } );
             if ( $tiles ) :
                 ?>
-                <div class="ptk-vd-tiles" role="group" aria-label="Filter vendors by category">
-                    <?php foreach ( $tiles as $slug => $cat ) :
-                        $emoji = isset( self::$category_emoji[ $slug ] ) ? self::$category_emoji[ $slug ] : '🔧';
-                        ?>
+                <div class="ptk-vd-tiles" role="group" aria-label="Show one kind of business">
+                    <?php foreach ( $tiles as $slug => $cat ) : ?>
                         <button type="button" class="ptk-vd-tile"
                                 data-category="<?php echo esc_attr( $slug ); ?>" aria-pressed="false">
-                            <span class="ptk-vd-tile-emoji" aria-hidden="true"><?php echo esc_html( $emoji ); ?></span>
                             <span class="ptk-vd-tile-name"><?php echo esc_html( $cat['name'] ); ?></span>
-                            <span class="ptk-vd-tile-count"><?php echo esc_html( $cat['count'] . ( 1 === $cat['count'] ? ' vendor' : ' vendors' ) ); ?></span>
+                            <span class="ptk-vd-tile-count"><?php echo esc_html( $cat['count'] ); ?></span>
                         </button>
                     <?php endforeach; ?>
                 </div>
@@ -745,29 +736,29 @@ class PTK_Vendor_Directory {
                            href="<?php echo esc_url( add_query_arg( 'vendor', $vendor['slug'] ) ); ?>"
                            data-category="<?php echo esc_attr( $vendor['category_slug'] ); ?>"
                            data-search="<?php echo esc_attr( mb_strtolower( $vendor['name'] . ' ' . $vendor['category_name'] ) ); ?>">
+                            <span class="ptk-vd-card-kind"><?php echo esc_html( $vendor['category_name'] ); ?></span>
                             <span class="ptk-vd-card-name"><?php echo esc_html( $vendor['name'] ); ?></span>
-                            <span class="ptk-vd-card-stars">
-                                <?php echo self::stars_markup( $combined, 'Average rating' ); // phpcs:ignore -- escaped inside ?>
-                            </span>
                             <span class="ptk-vd-card-verdict"><?php echo esc_html( self::verdict_line( $stats ) ); ?></span>
-                            <span class="ptk-vd-card-count"><?php echo esc_html( $count . ( 1 === $count ? ' review' : ' reviews' ) ); ?></span>
+                            <?php echo self::card_foot( $combined, $count ); // phpcs:ignore -- escaped inside ?>
                         </a>
                     <?php endforeach; ?>
                 </div>
                 <div class="ptk-vd-empty ptk-vd-empty-search" hidden>
-                    <p class="ptk-vd-empty-title">No vendors match your search.</p>
-                    <button type="button" class="ptk-vd-clear-search ptk-vd-btn-secondary">Clear search</button>
+                    <p class="ptk-vd-empty-title">No one has reviewed that yet</p>
+                    <p class="ptk-vd-empty-text">Try another word, or if you know a good one, suggest it below.</p>
+                    <button type="button" class="ptk-vd-clear-search ptk-quiet">Show every business</button>
                 </div>
             <?php else : ?>
                 <div class="ptk-vd-empty">
-                    <p class="ptk-vd-empty-title">No vendors yet.</p>
-                    <p class="ptk-vd-empty-text">Be the first to suggest one — the button below is waiting.</p>
+                    <p class="ptk-vd-empty-title">No businesses here yet</p>
+                    <p class="ptk-vd-empty-text">Hired someone good for a PTA event? You can be the first to suggest one.</p>
                 </div>
             <?php endif; ?>
 
             <div class="ptk-vd-suggest-section">
-                <button type="button" class="ptk-vd-reveal ptk-vd-btn-primary"
-                        data-target="ptk-vd-suggest-form">&#9997;&#65039; Suggest a vendor</button>
+                <p class="ptk-vd-suggest-lead">Know a business other PTAs should hear about?</p>
+                <button type="button" class="ptk-vd-reveal ptk-action"
+                        data-target="ptk-vd-suggest-form">Suggest a business</button>
                 <?php self::render_suggest_form( $categories ); ?>
             </div>
         </div>
@@ -781,11 +772,11 @@ class PTK_Vendor_Directory {
     private static function render_not_found() {
         $back_url = remove_query_arg( 'vendor' );
         ?>
-        <div class="ptk-vd-wrap">
+        <div class="ptk-vd-wrap ptk-vendors-wrap">
             <div class="ptk-vd-empty">
-                <p class="ptk-vd-empty-title">That vendor isn't in the directory.</p>
-                <p class="ptk-vd-empty-text">It may still be awaiting approval by the PTA Council.</p>
-                <p><a class="ptk-vd-back-link" href="<?php echo esc_url( $back_url ); ?>">&larr; All vendors</a></p>
+                <p class="ptk-vd-empty-title">That business isn't on the list</p>
+                <p class="ptk-vd-empty-text">It may still be waiting for the PTA Council to look at it.</p>
+                <p><a class="ptk-vd-back-link ptk-quiet" href="<?php echo esc_url( $back_url ); ?>">See every business</a></p>
             </div>
         </div>
         <?php
@@ -803,12 +794,12 @@ class PTK_Vendor_Directory {
         $back_url     = remove_query_arg( 'vendor' );
         $review_count = count( $reviews );
         ?>
-        <div class="ptk-vd-wrap">
-            <p class="ptk-vd-back"><a class="ptk-vd-back-link" href="<?php echo esc_url( $back_url ); ?>">&larr; All vendors</a></p>
+        <div class="ptk-vd-wrap ptk-vendors-wrap">
+            <p class="ptk-vd-back"><a class="ptk-vd-back-link" href="<?php echo esc_url( $back_url ); ?>"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>Every business</a></p>
 
             <div class="ptk-vd-detail">
                 <div class="ptk-vd-main">
-                    <h2 class="ptk-vd-reviews-title">Reviews (<?php echo esc_html( $review_count ); ?>)</h2>
+                    <h3 class="ptk-vd-reviews-title">What PTAs said</h3>
 
                     <?php if ( $own_pending ) : ?>
                         <?php self::render_review_card( $own, true ); ?>
@@ -820,7 +811,8 @@ class PTK_Vendor_Directory {
                         <?php endforeach; ?>
                     <?php elseif ( ! $own_pending ) : ?>
                         <div class="ptk-vd-empty">
-                            <p class="ptk-vd-empty-title">No reviews yet — be the first.</p>
+                            <p class="ptk-vd-empty-title">No one has reviewed them yet</p>
+                            <p class="ptk-vd-empty-text">If your PTA has used them, yours would be the first.</p>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -849,22 +841,22 @@ class PTK_Vendor_Directory {
                         $contacts = array();
                         if ( $vendor['phone'] ) {
                             $tel        = preg_replace( '/[^0-9+]/', '', $vendor['phone'] );
-                            $contacts[] = '<li>&#128222; <a href="' . esc_url( 'tel:' . $tel ) . '">' . esc_html( $vendor['phone'] ) . '</a></li>';
+                            $contacts[] = '<li><span class="ptk-vd-contact-label">Phone</span><a href="' . esc_url( 'tel:' . $tel ) . '">' . esc_html( $vendor['phone'] ) . '</a></li>';
                         }
                         if ( $vendor['email'] ) {
-                            $contacts[] = '<li>&#9993;&#65039; <a href="' . esc_url( 'mailto:' . $vendor['email'] ) . '">' . esc_html( $vendor['email'] ) . '</a></li>';
+                            $contacts[] = '<li><span class="ptk-vd-contact-label">Email</span><a href="' . esc_url( 'mailto:' . $vendor['email'] ) . '">' . esc_html( $vendor['email'] ) . '</a></li>';
                         }
                         if ( $vendor['website'] ) {
                             $display    = preg_replace( '#^https?://#i', '', untrailingslashit( $vendor['website'] ) );
-                            $contacts[] = '<li>&#127760; <a href="' . esc_url( $vendor['website'] ) . '" target="_blank" rel="noopener noreferrer">' . esc_html( $display ) . '</a></li>';
+                            $contacts[] = '<li><span class="ptk-vd-contact-label">Website</span><a href="' . esc_url( $vendor['website'] ) . '" target="_blank" rel="noopener noreferrer">' . esc_html( $display ) . '</a></li>';
                         }
                         if ( $contacts ) {
                             echo '<ul class="ptk-vd-contacts">' . implode( '', $contacts ) . '</ul>'; // Each row escaped above.
                         }
                         ?>
 
-                        <button type="button" class="ptk-vd-reveal ptk-vd-btn-primary ptk-vd-write-btn"
-                                data-target="ptk-vd-review-form">&#9997;&#65039; <?php echo $own ? 'Update my review' : 'Write a review'; ?></button>
+                        <button type="button" class="ptk-vd-reveal ptk-action ptk-vd-write-btn"
+                                data-target="ptk-vd-review-form"><?php echo $own ? 'Change my review' : 'Tell other PTAs how it went'; ?></button>
                     </div>
 
                     <?php self::render_review_form( $vendor['id'], $own ); ?>
@@ -883,11 +875,11 @@ class PTK_Vendor_Directory {
             <header class="ptk-vd-review-head">
                 <strong><?php echo esc_html( $att['pta'] . ' · ' . $att['name'] ); ?></strong>
                 <?php if ( $pending ) : ?>
-                    <span class="ptk-vd-pending-chip">Waiting for Council approval</span>
+                    <span class="ptk-stamp ptk-vd-pending-chip">Waiting for approval</span>
                 <?php endif; ?>
             </header>
             <p class="ptk-vd-review-verdict <?php echo $recommend ? 'ptk-vd-verdict-yes' : 'ptk-vd-verdict-no'; ?>">
-                <?php echo $recommend ? '&#128077; Would use again' : '&#128078; Would not use again'; ?>
+                <?php echo $recommend ? 'Would use them again' : 'Would not use them again'; ?>
             </p>
             <p class="ptk-vd-review-stars">
                 <span class="ptk-vd-review-stars-label">Price</span>
@@ -936,9 +928,9 @@ class PTK_Vendor_Directory {
             <input type="hidden" name="ptk_recommend" value="<?php echo esc_attr( $recommend ); ?>">
             <div class="ptk-vd-thumbs-row">
                 <button type="button" class="ptk-vd-thumb" data-value="1"
-                        aria-pressed="<?php echo '1' === $recommend ? 'true' : 'false'; ?>">&#128077; Yes, would use again</button>
+                        aria-pressed="<?php echo '1' === $recommend ? 'true' : 'false'; ?>">Yes, we would</button>
                 <button type="button" class="ptk-vd-thumb" data-value="0"
-                        aria-pressed="<?php echo '0' === $recommend ? 'true' : 'false'; ?>">&#128078; No, would not</button>
+                        aria-pressed="<?php echo '0' === $recommend ? 'true' : 'false'; ?>">No, we wouldn't</button>
             </div>
         </fieldset>
 
@@ -1004,7 +996,7 @@ class PTK_Vendor_Directory {
         ?>
         <form id="ptk-vd-review-form" class="ptk-vd-form ptk-vd-review-form"
               data-action="ptk_submit_vendor_review" hidden novalidate>
-            <h3 class="ptk-vd-form-title"><?php echo $user_review ? 'Update your review' : 'Write a review'; ?></h3>
+            <h3 class="ptk-vd-form-title"><?php echo $user_review ? 'Change your review' : 'How did it go?'; ?></h3>
             <input type="hidden" name="vendor_id" value="<?php echo esc_attr( $vendor_id ); ?>">
 
             <?php self::render_posting_as(); ?>
@@ -1013,7 +1005,7 @@ class PTK_Vendor_Directory {
 
             <p class="ptk-vd-expectation">Your review is checked by the PTA Council before it appears — usually within a few days.</p>
             <div class="ptk-vd-form-error" role="alert" hidden></div>
-            <button type="submit" class="ptk-vd-btn-primary ptk-vd-submit"><?php echo $user_review ? 'Update my review' : 'Send review'; ?></button>
+            <button type="submit" class="ptk-action ptk-vd-submit"><?php echo $user_review ? 'Save my changes' : 'Send my review'; ?></button>
         </form>
         <?php
     }
@@ -1026,27 +1018,27 @@ class PTK_Vendor_Directory {
         ?>
         <form id="ptk-vd-suggest-form" class="ptk-vd-form ptk-vd-suggest-form"
               data-action="ptk_suggest_vendor" hidden novalidate>
-            <h3 class="ptk-vd-form-title">Suggest a vendor</h3>
+            <h3 class="ptk-vd-form-title">Suggest a business</h3>
 
             <?php self::render_posting_as(); ?>
 
             <p class="ptk-vd-field">
-                <label for="suggest-vendor-name" class="ptk-vd-field-label"><strong>Vendor name</strong></label>
+                <label for="suggest-vendor-name" class="ptk-vd-field-label"><strong>What's the business called?</strong></label>
                 <input type="text" id="suggest-vendor-name" name="vendor_name" maxlength="120" required
                        placeholder="e.g. John's Pizza">
             </p>
 
             <p class="ptk-vd-field">
-                <label for="suggest-vendor-category" class="ptk-vd-field-label"><strong>Category</strong></label>
+                <label for="suggest-vendor-category" class="ptk-vd-field-label"><strong>What kind of business is it?</strong></label>
                 <select id="suggest-vendor-category" name="vendor_category" required>
-                    <option value="">Pick a category&hellip;</option>
+                    <option value="">Pick one&hellip;</option>
                     <?php foreach ( $categories as $slug => $cat ) : ?>
                         <option value="<?php echo esc_attr( $slug ); ?>"><?php echo esc_html( $cat['name'] ); ?></option>
                     <?php endforeach; ?>
                 </select>
             </p>
 
-            <p class="ptk-vd-contact-note">How can PTAs reach them? At least one is required.</p>
+            <p class="ptk-vd-contact-note">How can other PTAs reach them? One of these is enough.</p>
             <p class="ptk-vd-field">
                 <label for="suggest-vendor-phone" class="ptk-vd-field-label"><strong>Phone</strong> <span class="ptk-vd-field-hint">(optional)</span></label>
                 <input type="tel" id="suggest-vendor-phone" name="vendor_phone" maxlength="40" placeholder="(555) 555-0100">
@@ -1060,14 +1052,14 @@ class PTK_Vendor_Directory {
                 <input type="url" id="suggest-vendor-website" name="vendor_website" maxlength="200" placeholder="https://">
             </p>
 
-            <h4 class="ptk-vd-form-subtitle">Your review</h4>
-            <p class="ptk-vd-field-hint">A vendor with zero reviews isn't useful — tell everyone how it went.</p>
+            <h4 class="ptk-vd-form-subtitle">How did it go?</h4>
+            <p class="ptk-vd-field-hint">A name on its own doesn't help anyone. Tell other PTAs what it was like.</p>
             <?php self::render_review_fields( 'suggest' ); ?>
             <?php self::render_honeypot( 'suggest' ); ?>
 
             <p class="ptk-vd-expectation">Your suggestion is checked by the PTA Council before it appears — usually within a few days.</p>
             <div class="ptk-vd-form-error" role="alert" hidden></div>
-            <button type="submit" class="ptk-vd-btn-primary ptk-vd-submit">Send suggestion</button>
+            <button type="submit" class="ptk-action ptk-vd-submit">Send my suggestion</button>
         </form>
         <?php
     }

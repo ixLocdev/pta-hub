@@ -3,7 +3,7 @@
  * Plugin Name: PTA Knowledge Hub
  * Plugin URI:  https://github.com/your-pta/knowledge-hub
  * Description: A searchable knowledge base for your PTA. Volunteers add content through WordPress, parents and members find answers instantly via a smart search bar.
- * Version:     4.31.0
+ * Version:     4.32.0
  * Author:      Lucas Deichl
  * License:     GPL-2.0-or-later
  * Text Domain: pta-knowledge-hub
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'PTK_VERSION', '4.31.0' );
+define( 'PTK_VERSION', '4.32.0' );
 define( 'PTK_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PTK_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -142,26 +142,39 @@ function ptk_check_access( $render_message = false ) {
 
     // Access denied — optionally render a message.
     if ( $render_message ) {
-        $login_url = wp_login_url( get_permalink() );
-        ?>
-        <style>
-            .ptk-login-required{text-align:center;max-width:480px;margin:60px auto;padding:48px 32px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
-            .ptk-login-icon{font-size:48px;margin-bottom:12px}
-            .ptk-login-required h2{font-size:22px;font-weight:700;color:#111827;margin:0 0 8px}
-            .ptk-login-required p{font-size:15px;color:#6b7280;line-height:1.6;margin:0 0 24px}
-            .ptk-login-btn{display:inline-block;background:#4f46e5;color:#fff!important;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;transition:background .15s}
-            .ptk-login-btn:hover{background:#4338ca;color:#fff!important}
-        </style>
-        <div class="ptk-login-required">
-            <div class="ptk-login-icon">&#128274;</div>
-            <h2>Members Only</h2>
-            <p>The PTA Hub is for PTA members and volunteers. Please log in with your WordPress account to view this content.</p>
-            <a href="<?php echo esc_url( $login_url ); ?>" class="ptk-login-btn">Log In</a>
-        </div>
-        <?php
+        echo ptk_members_only_markup( 'The PTA Hub is for PTA members and volunteers. Sign in to see it.' ); // Escaped inside.
     }
 
     return false;
+}
+
+/**
+ * The "members only" card every public Hub page shows to someone signed out.
+ *
+ * Its styles are inline on purpose: this prints before -- or instead of --
+ * the page's own stylesheet, so it cannot lean on public.css. The values are
+ * the same tokens, written out.
+ *
+ * @param string $why One plain sentence saying what is behind the sign-in.
+ * @return string
+ */
+function ptk_members_only_markup( $why ) {
+    $login_url = wp_login_url( get_permalink() );
+    $css = '.ptk-login-required{box-sizing:border-box;text-align:center;max-width:460px;margin:56px auto;padding:36px 28px;background:#FFFFFF;border:1px solid #E2E6E4;border-radius:12px;font-family:Karla,system-ui,-apple-system,sans-serif;color:#243039}'
+        . '.ptk-login-required .ptk-login-icon{width:30px;height:30px;color:#356F8A;margin:0 auto 12px;display:block}'
+        . '.ptk-login-required h2{font:600 22px/1.3 Literata,Georgia,serif;color:#243039;margin:0 0 8px}'
+        . '.ptk-login-required p{font-size:15px;line-height:1.55;color:#68747C;margin:0 auto 22px;max-width:40ch}'
+        . '.ptk-login-required .ptk-login-btn{display:inline-block;background:#356F8A;color:#FFFFFF!important;text-decoration:none;padding:12px 22px;border-radius:9px;font:600 14.5px/1 Karla,system-ui,sans-serif}'
+        . '.ptk-login-required .ptk-login-btn:hover{background:#2C5E75}'
+        . '.ptk-login-required .ptk-login-btn:focus-visible{outline:2px solid #356F8A;outline-offset:2px}';
+
+    return '<style>' . $css . '</style>'
+        . '<div class="ptk-login-required">'
+        . '<svg class="ptk-login-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>'
+        . '<h2>For PTA members</h2>'
+        . '<p>' . esc_html( $why ) . '</p>'
+        . '<a href="' . esc_url( $login_url ) . '" class="ptk-login-btn">Sign in</a>'
+        . '</div>';
 }
 
 /**
