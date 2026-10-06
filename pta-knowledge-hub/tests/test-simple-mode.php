@@ -130,6 +130,17 @@ $bar_keep = $t::admin_bar_keep_ids();
 foreach ( array( 'site-name', 'my-account', 'top-secondary', 'ptk-simple-mode' ) as $bar_id ) {
     ptk_test_ok( in_array( $bar_id, $bar_keep, true ), "admin_bar_keep_ids() keeps $bar_id" );
 }
+// On a phone, WordPress hides the side menu behind the menu-toggle button
+// and hides every top-bar item it doesn't know. Without the toggle, the
+// menu's "Show all of WordPress" is unreachable -- Lucas was locked in.
+ptk_test_ok( in_array( 'menu-toggle', $bar_keep, true ), 'admin_bar_keep_ids() keeps menu-toggle, the phone menu button' );
+$phone_css = $t::phone_bar_css();
+ptk_test_ok( false !== strpos( $phone_css, '782px' ), 'the phone rule uses WordPress\'s own phone breakpoint' );
+ptk_test_ok( false !== strpos( $phone_css, '#wp-admin-bar-ptk-simple-mode' ), 'and un-hides the way between the two views' );
+ptk_test_ok( false !== strpos( $phone_css, 'display: block' ), 'as a visible item' );
+ptk_test_ok( false === strpos( $phone_css, 'border-left' ) && false === strpos( $phone_css, 'border-right' ), 'with no one-sided borders' );
+ptk_test_ok( 'user-actions' === $t::ACCOUNT_EXIT_PARENT, 'the account menu also carries the way between the views' );
+
 // "My Sites" opens WordPress's own list of all eleven PTAs, and its
 // Dashboard links land a volunteer in another school's admin.
 foreach ( array( 'new-content', 'comments', 'updates', 'wp-logo', 'my-sites' ) as $bar_id ) {

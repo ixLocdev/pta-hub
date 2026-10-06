@@ -41,6 +41,14 @@ class PTK_Simple_Mode {
      */
     const MENU_EXIT_SLUG = 'ptk-show-wordpress';
 
+    /**
+     * The group inside the account menu (Edit Profile, Log Out) that also
+     * carries the way between the two views. On a phone, tapping your
+     * picture opens that menu -- the one part of the top bar WordPress
+     * never hides -- so the door is always there.
+     */
+    const ACCOUNT_EXIT_PARENT = 'user-actions';
+
     public static function init() {
         // Late priority: run after every other plugin (and WordPress itself)
         // has added its own menu items and admin-bar nodes, so there is
@@ -55,6 +63,12 @@ class PTK_Simple_Mode {
         add_filter( 'admin_title', array( __CLASS__, 'restore_admin_title' ), 10, 2 );
         add_action( 'admin_menu', array( __CLASS__, 'point_menu_exit' ), 1000 );
         add_action( 'admin_bar_menu', array( __CLASS__, 'trim_admin_bar' ), 999 );
+
+        // On a phone WordPress hides every top-bar item it doesn't know,
+        // the door between the views included. Un-hide it, in the admin
+        // and on the site.
+        add_action( 'admin_head', array( __CLASS__, 'print_phone_bar_css' ) );
+        add_action( 'wp_head', array( __CLASS__, 'print_phone_bar_css' ) );
 
         // Hub screens only: hide Screen Options and the help tab. These
         // filters always run their check internally -- see the
@@ -280,6 +294,11 @@ class PTK_Simple_Mode {
             // Profile has left the menu, so both ids stay.
             'top-secondary',
             'my-account',
+            // The phone's menu button. Below 783px WordPress hides the side
+            // menu until this is tapped -- remove it and the menu, and the
+            // "Show all of WordPress" item at its foot, can't be reached at
+            // all. (Lucas was locked in on his phone, 2026-10.)
+            'menu-toggle',
             'ptk-simple-mode',
             // "Edit this post", added by PTK_Post_Writer while looking at
             // an announcement on the site. It is the one thing on that
@@ -490,11 +509,7 @@ class PTK_Simple_Mode {
         // only the trimming below is for Simple mode.
         if ( ! self::active_for_user() ) {
             if ( self::exit_available() ) {
-                $wp_admin_bar->add_node( array(
-                    'id'    => 'ptk-simple-mode',
-                    'title' => self::toggle_link_label(),
-                    'href'  => self::toggle_url(),
-                ) );
+                self::add_toggle_nodes( $wp_admin_bar );
             }
             return;
         }
@@ -513,11 +528,67 @@ class PTK_Simple_Mode {
             $wp_admin_bar->remove_node( $node->id );
         }
 
+        self::add_toggle_nodes( $wp_admin_bar );
+    }
+
+    /**
+     * The door between the two views, twice: on the bar itself, and inside
+     * the account menu beside Edit Profile and Log Out. Two places because
+     * a phone shows the bar item only thanks to print_phone_bar_css(), and
+     * the account menu works everywhere without any help.
+     */
+    private static function add_toggle_nodes( $wp_admin_bar ) {
+        $label = self::toggle_link_label();
+        $url   = self::toggle_url();
+
         $wp_admin_bar->add_node( array(
             'id'    => 'ptk-simple-mode',
-            'title' => self::toggle_link_label(),
-            'href'  => self::toggle_url(),
+            'title' => $label,
+            'href'  => $url,
         ) );
+
+        if ( $wp_admin_bar->get_node( self::ACCOUNT_EXIT_PARENT ) ) {
+            $wp_admin_bar->add_node( array(
+                'id'     => 'ptk-simple-mode-account',
+                'parent' => self::ACCOUNT_EXIT_PARENT,
+                'title'  => $label,
+                'href'   => $url,
+            ) );
+        }
+    }
+
+    /**
+     * Pure: the phone rule for the bar item. WordPress's own admin-bar CSS,
+     * below 783px, hides every top-level item it doesn't list and shrinks
+     * the rest to 52px icon squares with their text pushed out of sight.
+     * This puts the door back as a short line of text.
+     */
+    public static function phone_bar_css() {
+        return '@media screen and (max-width: 782px) {'
+            . ' #wpadminbar li#wp-admin-bar-ptk-simple-mode { display: block; }'
+            . ' #wpadminbar li#wp-admin-bar-ptk-simple-mode > .ab-item {'
+            . ' width: auto; text-indent: 0; overflow: visible; white-space: nowrap;'
+            . ' padding: 0 10px; font-size: 13px; line-height: 46px; height: 46px; color: #f0f0f1; }'
+            . ' }';
+    }
+
+    /**
+     * admin_head / wp_head: print phone_bar_css() -- in the simple view only.
+     *
+     * The simple bar is three or four items, so the line of text fits on a
+     * phone. The full bar already has five icons; the extra text pushed the
+     * account picture onto a second line over the page. And the full view
+     * doesn't need it: its own menu button and the account menu both carry
+     * "Back to the simple view".
+     */
+    public static function print_phone_bar_css() {
+        if ( ! function_exists( 'is_admin_bar_showing' ) || ! is_admin_bar_showing() ) {
+            return;
+        }
+        if ( ! self::exit_available() || ! self::active_for_user() ) {
+            return;
+        }
+        echo '<style id="ptk-simple-mode-phone">' . self::phone_bar_css() . '</style>' . "\n";
     }
 
     /** True when the current screen is a Hub screen AND Simple mode is on for the current user. */
