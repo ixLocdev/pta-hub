@@ -437,6 +437,41 @@ class PTK_Welcome {
         return $out;
     }
 
+    /**
+     * The router's answer when it is "Tell families what's happening": the
+     * same two ways out the home card offers, not a link straight into the
+     * newsletter. Which one leads depends on the words -- PTK_Hub_Router::
+     * one_thing_first() -- and the leading one is the filled button.
+     */
+    private static function render_router_branch( $class, $title, $meta, $typed, array $urls ) {
+        $post = array(
+            'label' => PTK_Post_Copy::branch_post_button(),
+            'url'   => (string) $urls['post'],
+        );
+        $news = array(
+            'label' => PTK_Post_Copy::branch_newsletter_button(),
+            'url'   => isset( $urls['newsletter'] ) ? (string) $urls['newsletter'] : '',
+        );
+        $order = PTK_Hub_Router::one_thing_first( $typed ) ? array( $post, $news ) : array( $news, $post );
+
+        $out  = '<div class="' . esc_attr( $class . ' ptk-router-match--branch' ) . '">';
+        $out .= '<span class="ptk-router-match-title">' . esc_html( $title ) . '</span>';
+        $out .= '<span class="ptk-router-match-meta">' . esc_html( $meta ) . '</span>';
+        $out .= '<div class="ptk-approval-actions">';
+        $first = true;
+        foreach ( $order as $button ) {
+            if ( '' === $button['url'] ) {
+                continue;
+            }
+            $out  .= '<a class="' . ( $first ? 'ptk-btn ptk-btn-primary' : 'ptk-btn' ) . '" href="' . esc_url( $button['url'] ) . '">'
+                . esc_html( $button['label'] ) . '</a>';
+            $first = false;
+        }
+        $out .= '</div>';
+        $out .= '</div>';
+        return $out;
+    }
+
     private static function render_router_body( array $intentions, array $urls, $typed ) {
         // Only the intentions really on this volunteer's screen can be
         // offered -- the router never invents a destination.
@@ -470,7 +505,7 @@ class PTK_Welcome {
             $route = PTK_Hub_Router::route( $typed, $available );
             $state = $route['state'];
 
-            $out .= '<p class="ptk-router-said">' . PTK_Hub_UI::no_widow( PTK_Hub_Router::heading( $route['state'] ) ) . '</p>';
+            $out .= '<p class="ptk-router-said">' . PTK_Hub_UI::no_widow( PTK_Hub_Router::heading( $route['state'], count( $route['matches'] ) ) ) . '</p>';
 
             $shown = 0;
             foreach ( $route['matches'] as $match ) {
@@ -480,10 +515,14 @@ class PTK_Welcome {
                     continue;
                 }
                 $class = 'ptk-router-match' . ( 0 === $shown ? ' ptk-router-match--first' : '' );
-                $out  .= '<a class="' . esc_attr( $class ) . '" href="' . esc_url( $to ) . '">'
-                    . '<span class="ptk-router-match-title">' . esc_html( $titles[ $key ] ) . '</span>'
-                    . '<span class="ptk-router-match-meta">' . esc_html( $metas[ $key ] ) . '</span>'
-                    . '</a>';
+                if ( 'newsletter' === $key && ! empty( $urls['post'] ) ) {
+                    $out .= self::render_router_branch( $class, $titles[ $key ], $metas[ $key ], $typed, $urls );
+                } else {
+                    $out .= '<a class="' . esc_attr( $class ) . '" href="' . esc_url( $to ) . '">'
+                        . '<span class="ptk-router-match-title">' . esc_html( $titles[ $key ] ) . '</span>'
+                        . '<span class="ptk-router-match-meta">' . esc_html( $metas[ $key ] ) . '</span>'
+                        . '</a>';
+                }
                 $shown++;
             }
         }

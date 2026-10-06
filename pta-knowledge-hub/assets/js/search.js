@@ -30,6 +30,7 @@
     var acDebounceTimer  = null;
     var activeFilter     = "all";
     var lastQuery        = "";
+    var requestSeq       = 0;    // Only the newest search or browse may draw.
     var acDropdown       = null; // Autocomplete dropdown element.
     var acSelectedIndex  = -1;   // Keyboard navigation index.
 
@@ -122,7 +123,7 @@
         clearTimeout(acDebounceTimer);
 
         if (q.length === 0) {
-            resetUI();
+            showHome();
             hideAutocomplete();
             return;
         }
@@ -143,7 +144,7 @@
     clearBtn.addEventListener("click", function () {
         input.value = "";
         clearBtn.style.display = "none";
-        resetUI();
+        showHome();
         hideAutocomplete();
         input.focus();
     });
@@ -200,8 +201,12 @@
             btn.setAttribute("aria-pressed", "true");
             activeFilter = btn.getAttribute("data-category");
 
+            // With words typed, a chip narrows the search. With nothing
+            // typed, it shows everything of that kind.
             if (lastQuery) {
                 doSearch(lastQuery);
+            } else {
+                showHome();
             }
         });
     }
@@ -230,6 +235,7 @@
 
     function doSearch(query) {
         lastQuery = query;
+        var mine = ++requestSeq;
         showLoading();
 
         var url = ptkSearch.ajaxUrl + "?action=pta_search&q=" + encodeURIComponent(query) + "&_wpnonce=" + encodeURIComponent(ptkSearch.nonce);
@@ -240,6 +246,7 @@
                 return res.json();
             })
             .then(function (json) {
+                if (mine !== requestSeq) return;
                 hideLoading();
                 if (json.success) {
                     renderResults(json.data);
@@ -248,9 +255,66 @@
                 }
             })
             .catch(function () {
+                if (mine !== requestSeq) return;
                 hideLoading();
                 showError();
             });
+    }
+
+    // Nothing typed: the home view, or -- with a kind of thing picked --
+    // everything of that kind.
+    function showHome() {
+        resetUI();
+        if (activeFilter !== "all") {
+            doBrowse(activeFilter);
+        } else {
+            requestSeq++; // A browse still on its way must not draw over home.
+        }
+    }
+
+    function doBrowse(cat) {
+        var mine = ++requestSeq;
+        showLoading();
+
+        var url = ptkSearch.ajaxUrl + "?action=pta_browse&cat=" + encodeURIComponent(cat) + "&_wpnonce=" + encodeURIComponent(ptkSearch.nonce);
+
+        fetch(url)
+            .then(function (res) {
+                if (!res.ok) throw new Error("HTTP " + res.status);
+                return res.json();
+            })
+            .then(function (json) {
+                if (mine !== requestSeq) return;
+                hideLoading();
+                renderBrowse(cat, json.success ? json.data : null);
+            })
+            .catch(function () {
+                if (mine !== requestSeq) return;
+                hideLoading();
+                showError();
+            });
+    }
+
+    function renderBrowse(cat, data) {
+        while (groupsEl.firstChild) groupsEl.removeChild(groupsEl.firstChild);
+        while (bestEl.firstChild) bestEl.removeChild(bestEl.firstChild);
+        bestEl.style.display = "none";
+
+        var items = (data && data.groups && data.groups[cat]) || [];
+        var name  = categoryNames[cat] || cat;
+
+        if (items.length) {
+            groupsEl.appendChild(buildGroup(cat, items));
+            // The group heading already names the kind; the count doesn't repeat it.
+            countEl.textContent = items.length === 1 ? "1 thing." : items.length + " things, A to Z.";
+        } else {
+            countEl.textContent = "Nothing in " + name + " yet.";
+        }
+
+        suggestedEl.style.display = "none";
+        emptyEl.style.display = "none";
+        resultsEl.style.display = "block";
+        if (recentEl) recentEl.style.display = "none";
     }
 
     // ==========================================

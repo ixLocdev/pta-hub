@@ -75,6 +75,9 @@ class PTK_Search_Engine {
         add_action( 'wp_ajax_nopriv_pta_search', array( __CLASS__, 'handle_search' ) );
 
         // Autocomplete endpoint (lightweight — returns titles only).
+        add_action( 'wp_ajax_pta_browse', array( __CLASS__, 'handle_browse' ) );
+        add_action( 'wp_ajax_nopriv_pta_browse', array( __CLASS__, 'handle_browse' ) );
+
         add_action( 'wp_ajax_pta_autocomplete', array( __CLASS__, 'handle_autocomplete' ) );
         add_action( 'wp_ajax_nopriv_pta_autocomplete', array( __CLASS__, 'handle_autocomplete' ) );
 
@@ -358,6 +361,11 @@ class PTK_Search_Engine {
                     if ( $shown >= 10 ) {
                         break;
                     }
+                    // The suggestions are a fresh list of posts, not the
+                    // scored set, so role access has to be checked here too.
+                    if ( class_exists( 'PTK_Role_Access' ) && ! PTK_Role_Access::can_user_view( $post->ID ) ) {
+                        continue;
+                    }
                     $pt = isset( $fallback_terms[ $post->ID ] ) ? $fallback_terms[ $post->ID ] : array(
                         'categories' => array(),
                         'cat_slugs'  => array(),
@@ -373,6 +381,70 @@ class PTK_Search_Engine {
         // Cache for 1 hour.
         set_transient( $cache_key, $response, HOUR_IN_SECONDS );
 
+        wp_send_json_success( $response );
+    }
+
+    /**
+     * Everything of one kind, A to Z -- what a category chip shows when
+     * nothing has been typed. Same response shape as handle_search(), with
+     * every entry under its one group and no best answer.
+     */
+    public static function handle_browse() {
+        check_ajax_referer( 'ptk_search_nonce', '_wpnonce' );
+
+        if ( ! ptk_check_access() ) {
+            wp_send_json_error( array( 'message' => 'Login required.' ), 403 );
+        }
+
+        $cat  = isset( $_GET['cat'] ) ? sanitize_title( wp_unslash( $_GET['cat'] ) ) : '';
+        $term = $cat ? get_term_by( 'slug', $cat, 'knowledge_category' ) : false;
+        if ( ! $term ) {
+            wp_send_json_success( array( 'bestAnswer' => null, 'groups' => array(), 'total' => 0 ) );
+        }
+
+        // Under ptk_search_ so invalidate_cache() clears it with the rest.
+        $cache_key = 'ptk_search_browse_' . md5( $cat . '|' . self::viewer_cache_fragment() );
+        $cached    = get_transient( $cache_key );
+        if ( false !== $cached ) {
+            wp_send_json_success( $cached );
+        }
+
+        $posts = get_posts( array(
+            'post_type'      => 'pta_knowledge',
+            'post_status'    => 'publish',
+            'posts_per_page' => 200,
+            'orderby'        => 'title',
+            'order'          => 'ASC',
+            'tax_query'      => array(
+                array(
+                    'taxonomy' => 'knowledge_category',
+                    'field'    => 'term_id',
+                    'terms'    => $term->term_id,
+                ),
+            ),
+        ) );
+
+        $terms = self::batch_load_terms( wp_list_pluck( $posts, 'ID' ) );
+        $items = array();
+        foreach ( $posts as $post ) {
+            if ( class_exists( 'PTK_Role_Access' ) && ! PTK_Role_Access::can_user_view( $post->ID ) ) {
+                continue;
+            }
+            $pt = isset( $terms[ $post->ID ] ) ? $terms[ $post->ID ] : array(
+                'categories' => array(),
+                'cat_slugs'  => array(),
+                'tag_names'  => array(),
+            );
+            $items[] = self::format_result( $post, 0, $pt );
+        }
+
+        $response = array(
+            'bestAnswer' => null,
+            'groups'     => $items ? array( $cat => $items ) : array(),
+            'total'      => count( $items ),
+        );
+
+        set_transient( $cache_key, $response, HOUR_IN_SECONDS );
         wp_send_json_success( $response );
     }
 

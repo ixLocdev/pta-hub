@@ -102,4 +102,26 @@ ptk_test_ok( $urls['newsletter'] === $to_news, 'the newsletter opens as it alway
 
 ptk_test_ok( '' === $r::destination( 'answer', 'anything', array() ), 'no url means no link, never a broken one' );
 
+
+// --- "Tell families" is two screens: one thing first unless it says roundup ---
+$one = array(
+    'Picture day is next Tuesday',
+    'Tell families the school is closed Friday',
+    'I need parents to volunteer for the book fair',
+    'Picture day is this week', // a date is not a roundup
+);
+foreach ( $one as $sentence ) {
+    ptk_test_ok( $r::one_thing_first( $sentence ), 'one thing first for: ' . $sentence );
+}
+$roundup = array(
+    'We need to send out the newsletter',
+    'Everything going on this week',
+    'The monthly roundup',
+);
+foreach ( $roundup as $sentence ) {
+    ptk_test_ok( ! $r::one_thing_first( $sentence ), 'newsletter first for: ' . $sentence );
+}
+
+ptk_test_ok( 'Is this it?' === $r::heading( 'choices', 1 ), 'one unsure guess is asked about, not called a list' );
+
 ptk_test_done();

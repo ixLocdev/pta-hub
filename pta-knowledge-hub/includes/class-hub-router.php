@@ -335,13 +335,36 @@ class PTK_Hub_Router {
         return $url . $glue . rawurlencode( $key ) . '=' . rawurlencode( $value );
     }
 
+    /** Words that mean the whole roundup, not one announcement. */
+    const ROUNDUP_WORDS = array(
+        'newsletter', 'roundup', 'round up', 'round-up', 'send out', 'goes out',
+        'everything', 'all the', 'weekly', 'monthly',
+    );
+
+    /**
+     * "Tell families what's happening" is two screens: one announcement on
+     * its own, or the newsletter. Which to put first for this sentence --
+     * one thing, unless the words say roundup. Picture day is one thing;
+     * "the newsletter" or "everything going on this week" is not.
+     */
+    public static function one_thing_first( $sentence ) {
+        $text = self::normalize( $sentence );
+        foreach ( self::ROUNDUP_WORDS as $needle ) {
+            if ( self::has( $text, $needle ) ) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /** The line above the result, in the assistant's voice. */
-    public static function heading( $state ) {
+    public static function heading( $state, $count = 2 ) {
         if ( 'confident' === $state ) {
             return 'That sounds like:';
         }
         if ( 'choices' === $state ) {
-            return 'Which of these sounds right?';
+            // Unsure, but only one guess -- "which of these" would point at a list of one.
+            return ( 1 === (int) $count ) ? 'Is this it?' : 'Which of these sounds right?';
         }
         return "I couldn't tell from that. Here's everything you can do:";
     }

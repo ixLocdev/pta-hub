@@ -650,6 +650,16 @@ body.ptk-hub-look .ptk-card-body .ptk-router-match:focus {
     border-color: var(--ptk-primary);
 }
 
+/* "Tell families what's happening" answers with two buttons, so the match
+   itself is not a link and must not look like one when hovered. */
+body.ptk-hub-look .ptk-card-body .ptk-router-match--branch:hover {
+    border-color: var(--ptk-primary);
+}
+
+body.ptk-hub-look .ptk-router-match--branch .ptk-approval-actions {
+    margin-top: var(--ptk-space-2);
+}
+
 body.ptk-hub-look .ptk-router-match-title {
     display: block;
     font-family: var(--ptk-font-serif);
